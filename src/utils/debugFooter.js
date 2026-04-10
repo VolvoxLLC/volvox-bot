@@ -47,9 +47,9 @@ function shortModel(model) {
 }
 
 /**
- * Normalize and aggregate usage statistics from a CLIProcess result.
+ * Normalize and aggregate usage statistics from an AI SDK result.
  *
- * @param {Object} result - CLIProcess send() result object; may contain `usage` (snake_case) and/or `modelUsage` (per-model camelCase) fields.
+ * @param {Object} result - Result from generate()/stream() in aiClient.js.
  * @param {string} model - Model name used for the request.
  * @returns {Object} An object with normalized fields:
  *  - model {string} - Model name (or 'unknown').
@@ -63,37 +63,17 @@ function shortModel(model) {
 function extractStats(result, model) {
   const usage = result?.usage || {};
 
-  // The CLI result includes both `usage` (snake_case, aggregate) and
-  // `modelUsage` (camelCase, per-model).  When tools are used (multi-turn),
-  // `usage` may be empty while `modelUsage` contains the real totals.
-  // Fall back to the first modelUsage entry when `usage` has no input tokens.
-  let accumulatedModelUsage = {};
-  if (!usage.input_tokens && !usage.inputTokens && result?.modelUsage) {
-    const entries = Object.values(result.modelUsage);
-    if (entries.length > 0) {
-      accumulatedModelUsage = entries.reduce(
-        (acc, entry) => ({
-          inputTokens: (acc.inputTokens || 0) + (entry.inputTokens || 0),
-          outputTokens: (acc.outputTokens || 0) + (entry.outputTokens || 0),
-          cacheCreationInputTokens:
-            (acc.cacheCreationInputTokens || 0) + (entry.cacheCreationInputTokens || 0),
-          cacheReadInputTokens: (acc.cacheReadInputTokens || 0) + (entry.cacheReadInputTokens || 0),
-        }),
-        {},
-      );
-    }
-  }
+  // Anthropic-specific cache token stats live in providerMetadata, not in usage.
+  const anthropicMeta = result?.providerMetadata?.anthropic || {};
 
   return {
     model: model || 'unknown',
-    cost: result?.total_cost_usd || 0,
-    durationMs: result?.duration_ms || 0,
-    inputTokens: usage.input_tokens ?? usage.inputTokens ?? accumulatedModelUsage.inputTokens ?? 0,
-    outputTokens:
-      usage.output_tokens ?? usage.outputTokens ?? accumulatedModelUsage.outputTokens ?? 0,
-    cacheCreation:
-      usage.cache_creation_input_tokens ?? accumulatedModelUsage.cacheCreationInputTokens ?? 0,
-    cacheRead: usage.cache_read_input_tokens ?? accumulatedModelUsage.cacheReadInputTokens ?? 0,
+    cost: result?.costUsd ?? 0,
+    durationMs: result?.durationMs ?? 0,
+    inputTokens: usage.inputTokens ?? 0,
+    outputTokens: usage.outputTokens ?? 0,
+    cacheCreation: anthropicMeta.cacheCreationInputTokens ?? 0,
+    cacheRead: anthropicMeta.cacheReadInputTokens ?? 0,
   };
 }
 
@@ -148,8 +128,8 @@ function buildCompact(classify, respond, searchCount) {
 /**
  * Build a text-only debug footer summarizing AI usage and costs.
  *
- * @param {Object} classifyStats - Stats object from the classifier CLIProcess result.
- * @param {Object} respondStats - Stats object from the responder CLIProcess result.
+ * @param {Object} classifyStats - Normalized stats for the classification stage.
+ * @param {Object} respondStats - Normalized stats for the response generation stage.
  * @param {string} [level="verbose"] - Density level: "verbose", "compact", or "split".
  * @param {Object} [options] - Additional display options.
  * @param {number} [options.searchCount] - Number of web searches performed; included in the footer when greater than 0.

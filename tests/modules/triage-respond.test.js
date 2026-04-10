@@ -587,11 +587,11 @@ describe('triage-respond', () => {
   describe('buildStatsAndLog', () => {
     it('should build stats and fetch channel', async () => {
       const classifyMessage = {
-        total_cost_usd: 0.001,
+        costUsd: 0.001,
       };
 
       const respondMessage = {
-        total_cost_usd: 0.002,
+        costUsd: 0.002,
       };
 
       const resolved = {

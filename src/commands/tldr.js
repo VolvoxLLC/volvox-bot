@@ -6,8 +6,8 @@
 
 import { EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { info, error as logError } from '../logger.js';
-import { CLIProcess } from '../modules/cli-process.js';
 import { getConfig } from '../modules/config.js';
+import { generate } from '../utils/aiClient.js';
 import { safeEditReply } from '../utils/safeSend.js';
 
 /** Colour for TLDR embeds (teal-ish) */
@@ -31,14 +31,6 @@ const SUMMARIZE_MODEL = 'claude-haiku-4-5';
 /** Default system prompt for summarization (used when no per-guild override is set) */
 const DEFAULT_SYSTEM_PROMPT =
   'Summarize this Discord conversation. Extract: 1) Key topics discussed, 2) Decisions made, 3) Action items, 4) Notable links shared. Be concise.';
-
-/** Short-lived CLIProcess for summarization (spawns a fresh process per call). */
-const summarizerProcess = new CLIProcess('tldr-summarizer', {
-  model: SUMMARIZE_MODEL,
-  systemPrompt: DEFAULT_SYSTEM_PROMPT,
-  tools: '',
-  permissionMode: 'bypassPermissions',
-});
 
 export const data = new SlashCommandBuilder()
   .setName('tldr')
@@ -170,19 +162,27 @@ async function fetchAndFormatMessages(channel, opts) {
 }
 
 /**
- * Call Claude via CLI subprocess to summarize a conversation.
- * Uses the same auth flow as AI chat (ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN).
+ * Call Claude via Vercel AI SDK to summarize a conversation.
+ * Uses ANTHROPIC_API_KEY for authentication.
  * @param {string} conversationText
  * @param {string} [systemPrompt] - Per-guild system prompt override
  * @returns {Promise<string>} Raw summary text from Claude
  */
 async function summarizeWithAI(conversationText, systemPrompt) {
   const truncated = conversationText.slice(0, MAX_INPUT_CHARS);
-  const overrides = systemPrompt ? { systemPrompt } : {};
-
-  await summarizerProcess.start();
-  const result = await summarizerProcess.send(truncated, overrides);
-  return result.result ?? '';
+  try {
+    const result = await generate({
+      model: SUMMARIZE_MODEL,
+      system: systemPrompt || DEFAULT_SYSTEM_PROMPT,
+      prompt: truncated,
+      maxTokens: 4096,
+      timeout: 30_000,
+    });
+    return result.text ?? '';
+  } catch (err) {
+    logError('TLDR AI summarization failed', { error: err.message });
+    return '';
+  }
 }
 
 /**

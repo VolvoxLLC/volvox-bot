@@ -35,7 +35,6 @@ describe('config.json', () => {
     expect(typeof config.triage.classifyBudget).toBe('number');
     expect(typeof config.triage.respondModel).toBe('string');
     expect(typeof config.triage.respondBudget).toBe('number');
-    expect(typeof config.triage.tokenRecycleLimit).toBe('number');
     expect(typeof config.triage.timeout).toBe('number');
     expect(typeof config.triage.moderationResponse).toBe('boolean');
     expect(Array.isArray(config.triage.triggerWords)).toBe(true);

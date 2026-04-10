@@ -1,6 +1,6 @@
 /**
  * AI Module
- * Handles AI chat functionality powered by Claude CLI (headless mode)
+ * Handles AI chat functionality powered by Vercel AI SDK
  * Conversation history is persisted to PostgreSQL with in-memory cache
  */
 

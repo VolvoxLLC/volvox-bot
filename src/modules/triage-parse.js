@@ -50,6 +50,7 @@ export function parseSDKResult(raw, channelId, label) {
     const recovered = {
       classification: classMatch[1],
       reasoning: reasonMatch ? reasonMatch[1] : 'Recovered from truncated response',
+      confidence: 0.5,
       targetMessageIds: [],
     };
     info(`${label}: recovered classification from truncated JSON`, { channelId, ...recovered });
@@ -71,19 +72,16 @@ export function parseSDKResult(raw, channelId, label) {
  * @param {string} channelId - For logging
  * @returns {Object|null} Parsed { classification, reasoning, targetMessageIds } or null
  */
-export function parseClassifyResult(sdkMessage, channelId) {
-  const parsed = parseSDKResult(sdkMessage.result, channelId, 'Classifier');
+export function parseClassifyResult(sdkResult, channelId) {
+  const parsed = parseSDKResult(sdkResult.text, channelId, 'Classifier');
 
   if (!parsed?.classification) {
     warn('Classifier result unparseable', {
       channelId,
-      resultType: typeof sdkMessage.result,
-      messageKeys: Object.keys(sdkMessage),
-      hasResult: 'result' in sdkMessage,
-      isError: sdkMessage.is_error,
-      errors: sdkMessage.errors?.map((e) => e.message || e).slice(0, 5),
-      stopReason: sdkMessage.stop_reason,
-      resultSnippet: JSON.stringify(sdkMessage.result)?.slice(0, 300),
+      resultType: typeof sdkResult.text,
+      hasText: 'text' in sdkResult,
+      finishReason: sdkResult.finishReason,
+      resultSnippet: sdkResult.text?.slice(0, 300),
     });
     return null;
   }
@@ -105,19 +103,16 @@ export function parseClassifyResult(sdkMessage, channelId) {
  * @param {string} channelId - For logging
  * @returns {Object|null} Parsed { responses: [...] } or null
  */
-export function parseRespondResult(sdkMessage, channelId) {
-  const parsed = parseSDKResult(sdkMessage.result, channelId, 'Responder');
+export function parseRespondResult(sdkResult, channelId) {
+  const parsed = parseSDKResult(sdkResult.text, channelId, 'Responder');
 
   if (!parsed) {
     warn('Responder result unparseable', {
       channelId,
-      resultType: typeof sdkMessage.result,
-      messageKeys: Object.keys(sdkMessage),
-      hasResult: 'result' in sdkMessage,
-      isError: sdkMessage.is_error,
-      errors: sdkMessage.errors?.map((e) => e.message || e).slice(0, 5),
-      stopReason: sdkMessage.stop_reason,
-      resultSnippet: JSON.stringify(sdkMessage.result)?.slice(0, 300),
+      resultType: typeof sdkResult.text,
+      hasText: 'text' in sdkResult,
+      finishReason: sdkResult.finishReason,
+      resultSnippet: sdkResult.text?.slice(0, 300),
     });
     return null;
   }

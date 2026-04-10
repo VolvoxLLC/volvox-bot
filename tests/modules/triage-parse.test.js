@@ -97,21 +97,27 @@ describe('parseClassifyResult', () => {
 
   it('should return null when parsed result has no classification', () => {
     const sdkMessage = {
-      result: '{"reasoning":"something","targetMessageIds":[]}',
-      is_error: false,
-      errors: [],
-      stop_reason: 'end_turn',
+      text: '{"reasoning":"something","targetMessageIds":[]}',
+      finishReason: 'stop',
+      costUsd: 0,
+      durationMs: 0,
+      usage: { inputTokens: 0, outputTokens: 0 },
+      sources: [],
+      providerMetadata: { anthropic: {} },
     };
     const result = parseClassifyResult(sdkMessage, 'ch1');
     expect(result).toBeNull();
   });
 
-  it('should return null when result is null/unparseable', () => {
+  it('should return null when text is null/unparseable', () => {
     const sdkMessage = {
-      result: null,
-      is_error: true,
-      errors: [{ message: 'Something failed' }],
-      stop_reason: null,
+      text: null,
+      finishReason: 'error',
+      costUsd: 0,
+      durationMs: 0,
+      usage: { inputTokens: 0, outputTokens: 0 },
+      sources: [],
+      providerMetadata: { anthropic: {} },
     };
     const result = parseClassifyResult(sdkMessage, 'ch1');
     expect(result).toBeNull();
@@ -119,7 +125,13 @@ describe('parseClassifyResult', () => {
 
   it('should return parsed classification on success', () => {
     const sdkMessage = {
-      result: '{"classification":"spam","reasoning":"it is spam","targetMessageIds":["m1"]}',
+      text: '{"classification":"spam","reasoning":"it is spam","targetMessageIds":["m1"]}',
+      finishReason: 'stop',
+      costUsd: 0.001,
+      durationMs: 50,
+      usage: { inputTokens: 100, outputTokens: 50 },
+      sources: [],
+      providerMetadata: { anthropic: {} },
     };
     const result = parseClassifyResult(sdkMessage, 'ch1');
     expect(result).not.toBeNull();
@@ -127,12 +139,15 @@ describe('parseClassifyResult', () => {
     expect(result.targetMessageIds).toEqual(['m1']);
   });
 
-  it('should handle errors array with non-string entries', () => {
+  it('should return null when text is empty string', () => {
     const sdkMessage = {
-      result: null,
-      is_error: true,
-      errors: ['plain string error'],
-      stop_reason: 'error',
+      text: '',
+      finishReason: 'stop',
+      costUsd: 0,
+      durationMs: 0,
+      usage: { inputTokens: 0, outputTokens: 0 },
+      sources: [],
+      providerMetadata: { anthropic: {} },
     };
     const result = parseClassifyResult(sdkMessage, 'ch1');
     expect(result).toBeNull();
@@ -144,12 +159,15 @@ describe('parseRespondResult', () => {
     vi.clearAllMocks();
   });
 
-  it('should return null when parsed result is null', () => {
+  it('should return null when text is null', () => {
     const sdkMessage = {
-      result: null,
-      is_error: true,
-      errors: [],
-      stop_reason: null,
+      text: null,
+      finishReason: 'error',
+      costUsd: 0,
+      durationMs: 0,
+      usage: { inputTokens: 0, outputTokens: 0 },
+      sources: [],
+      providerMetadata: { anthropic: {} },
     };
     const result = parseRespondResult(sdkMessage, 'ch1');
     expect(result).toBeNull();
@@ -157,7 +175,13 @@ describe('parseRespondResult', () => {
 
   it('should return parsed result on success', () => {
     const sdkMessage = {
-      result: '{"responses":[{"target_message_id":"m1","response":"Help text"}]}',
+      text: '{"responses":[{"target_message_id":"m1","response":"Help text"}]}',
+      finishReason: 'stop',
+      costUsd: 0.005,
+      durationMs: 200,
+      usage: { inputTokens: 500, outputTokens: 100 },
+      sources: [],
+      providerMetadata: { anthropic: {} },
     };
     const result = parseRespondResult(sdkMessage, 'ch1');
     expect(result).not.toBeNull();
@@ -166,19 +190,28 @@ describe('parseRespondResult', () => {
 
   it('should return result even without responses key (truthy parsed)', () => {
     const sdkMessage = {
-      result: '{"something":"else"}',
+      text: '{"something":"else"}',
+      finishReason: 'stop',
+      costUsd: 0,
+      durationMs: 0,
+      usage: { inputTokens: 0, outputTokens: 0 },
+      sources: [],
+      providerMetadata: { anthropic: {} },
     };
     const result = parseRespondResult(sdkMessage, 'ch1');
     expect(result).not.toBeNull();
     expect(result.something).toBe('else');
   });
 
-  it('should handle errors with no message property', () => {
+  it('should return null when text is empty string', () => {
     const sdkMessage = {
-      result: '',
-      is_error: true,
-      errors: [{ code: 'timeout' }],
-      stop_reason: 'timeout',
+      text: '',
+      finishReason: 'stop',
+      costUsd: 0,
+      durationMs: 0,
+      usage: { inputTokens: 0, outputTokens: 0 },
+      sources: [],
+      providerMetadata: { anthropic: {} },
     };
     const result = parseRespondResult(sdkMessage, 'ch1');
     expect(result).toBeNull();

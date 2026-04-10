@@ -92,15 +92,19 @@ describe('shortModel', () => {
 // ── extractStats ────────────────────────────────────────────────────────────
 
 describe('extractStats', () => {
-  it('should extract stats from a CLIProcess result', () => {
+  it('should extract stats from an AI SDK result', () => {
     const result = {
-      total_cost_usd: 0.005,
-      duration_ms: 200,
+      costUsd: 0.005,
+      durationMs: 200,
       usage: {
-        input_tokens: 1204,
-        output_tokens: 340,
-        cache_creation_input_tokens: 120,
-        cache_read_input_tokens: 800,
+        inputTokens: 1204,
+        outputTokens: 340,
+      },
+      providerMetadata: {
+        anthropic: {
+          cacheCreationInputTokens: 120,
+          cacheReadInputTokens: 800,
+        },
       },
     };
     const stats = extractStats(result, 'claude-sonnet-4-6');
@@ -117,9 +121,10 @@ describe('extractStats', () => {
 
   it('should handle missing usage fields gracefully', () => {
     const result = {
-      total_cost_usd: 0.001,
-      duration_ms: 50,
+      costUsd: 0.001,
+      durationMs: 50,
       usage: {},
+      providerMetadata: { anthropic: {} },
     };
     const stats = extractStats(result, 'claude-haiku-4-5');
     expect(stats.inputTokens).toBe(0);
@@ -135,37 +140,33 @@ describe('extractStats', () => {
     expect(stats.inputTokens).toBe(0);
   });
 
-  it('should handle camelCase usage keys', () => {
+  it('should extract usage tokens from camelCase keys', () => {
     const result = {
-      total_cost_usd: 0.002,
-      duration_ms: 100,
+      costUsd: 0.002,
+      durationMs: 100,
       usage: {
         inputTokens: 500,
         outputTokens: 100,
       },
+      providerMetadata: { anthropic: {} },
     };
     const stats = extractStats(result, 'test-model');
     expect(stats.inputTokens).toBe(500);
     expect(stats.outputTokens).toBe(100);
   });
 
-  it('should fall back to modelUsage when usage has no tokens', () => {
+  it('should extract cache tokens from providerMetadata.anthropic', () => {
     const result = {
-      total_cost_usd: 0.003,
-      duration_ms: 150,
-      usage: {},
-      modelUsage: {
-        'claude-sonnet': {
-          inputTokens: 300,
-          outputTokens: 150,
-          cacheCreationInputTokens: 50,
+      costUsd: 0.003,
+      durationMs: 150,
+      usage: {
+        inputTokens: 400,
+        outputTokens: 200,
+      },
+      providerMetadata: {
+        anthropic: {
+          cacheCreationInputTokens: 60,
           cacheReadInputTokens: 200,
-        },
-        'claude-haiku': {
-          inputTokens: 100,
-          outputTokens: 50,
-          cacheCreationInputTokens: 10,
-          cacheReadInputTokens: 0,
         },
       },
     };
@@ -176,56 +177,44 @@ describe('extractStats', () => {
     expect(stats.cacheRead).toBe(200);
   });
 
-  it('should handle empty modelUsage object gracefully', () => {
+  it('should handle missing providerMetadata gracefully', () => {
     const result = {
-      total_cost_usd: 0.001,
-      duration_ms: 100,
-      usage: {},
-      modelUsage: {}, // empty - no entries
+      costUsd: 0.001,
+      durationMs: 100,
+      usage: { inputTokens: 50, outputTokens: 10 },
     };
     const stats = extractStats(result, 'test-model');
-    expect(stats.inputTokens).toBe(0);
-    expect(stats.outputTokens).toBe(0);
+    expect(stats.inputTokens).toBe(50);
+    expect(stats.outputTokens).toBe(10);
+    expect(stats.cacheCreation).toBe(0);
+    expect(stats.cacheRead).toBe(0);
   });
 
-  it('should use modelUsage when input_tokens is undefined (not in usage)', () => {
-    // When usage has no input_tokens at all (undefined), falls through to modelUsage
+  it('should handle empty providerMetadata.anthropic', () => {
     const result = {
-      total_cost_usd: 0,
-      duration_ms: 0,
-      usage: {}, // no input_tokens or inputTokens → falls back to modelUsage
-      modelUsage: {
-        'claude-haiku': {
-          inputTokens: 200,
-          outputTokens: 100,
-          cacheCreationInputTokens: 0,
-          cacheReadInputTokens: 0,
-        },
-      },
+      costUsd: 0,
+      durationMs: 0,
+      usage: { inputTokens: 200, outputTokens: 100 },
+      providerMetadata: { anthropic: {} },
     };
     const stats = extractStats(result, 'model');
     expect(stats.inputTokens).toBe(200);
     expect(stats.outputTokens).toBe(100);
+    expect(stats.cacheCreation).toBe(0);
+    expect(stats.cacheRead).toBe(0);
   });
 
-  it('should use mu.cacheCreation when cache_creation_input_tokens is absent', () => {
-    // When usage has no cache fields, falls back to mu.cacheCreationInputTokens
+  it('should default to zero when usage is empty and no providerMetadata', () => {
     const result = {
-      total_cost_usd: 0,
-      duration_ms: 0,
-      usage: {}, // no cache tokens in usage
-      modelUsage: {
-        model1: {
-          inputTokens: 100,
-          outputTokens: 50,
-          cacheCreationInputTokens: 30,
-          cacheReadInputTokens: 10,
-        },
-      },
+      costUsd: 0,
+      durationMs: 0,
+      usage: {},
     };
     const stats = extractStats(result, 'model');
-    expect(stats.cacheCreation).toBe(30);
-    expect(stats.cacheRead).toBe(10);
+    expect(stats.inputTokens).toBe(0);
+    expect(stats.outputTokens).toBe(0);
+    expect(stats.cacheCreation).toBe(0);
+    expect(stats.cacheRead).toBe(0);
   });
 });
 

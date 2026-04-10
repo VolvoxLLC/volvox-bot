@@ -1,0 +1,494 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+// ── Mocks (must use vi.hoisted for vi.mock factory references) ──────────────
+
+vi.mock('../../src/logger.js', () => ({
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
+
+const { mockGenerateText, mockStreamText, mockCreateAnthropic, mockCalculateCost } = vi.hoisted(
+  () => ({
+    mockGenerateText: vi.fn(),
+    mockStreamText: vi.fn(),
+    mockCreateAnthropic: vi.fn(),
+    mockCalculateCost: vi.fn(),
+  }),
+);
+
+vi.mock('ai', () => ({
+  generateText: (...args) => mockGenerateText(...args),
+  streamText: (...args) => mockStreamText(...args),
+  stepCountIs: (n) => n,
+}));
+
+vi.mock('@ai-sdk/anthropic', () => {
+  const modelFn = vi.fn((id) => ({ modelId: id, provider: 'anthropic' }));
+  modelFn.tools = {
+    webSearch_20250305: vi.fn(() => ({ type: 'web_search', name: 'web_search' })),
+  };
+  mockCreateAnthropic.mockReturnValue(modelFn);
+  return {
+    createAnthropic: (...args) => mockCreateAnthropic(...args),
+  };
+});
+
+vi.mock('../../src/utils/aiCost.js', () => ({
+  calculateCost: (...args) => mockCalculateCost(...args),
+}));
+
+// ── Import under test (after mocks) ────────────────────────────────────────
+
+const { generate, stream, _clearProviderCache } = await import('../../src/utils/aiClient.js');
+const { AIClientError } = await import('../../src/utils/errors.js');
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+
+function makeGenerateResult(overrides = {}) {
+  return {
+    text: '{"classification":"respond"}',
+    totalUsage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
+    usage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
+    finishReason: 'stop',
+    sources: [],
+    providerMetadata: { anthropic: {} },
+    ...overrides,
+  };
+}
+
+function makeStreamResult(overrides = {}) {
+  return {
+    text: Promise.resolve('response text'),
+    totalUsage: Promise.resolve({ inputTokens: 200, outputTokens: 100, totalTokens: 300 }),
+    usage: Promise.resolve({ inputTokens: 200, outputTokens: 100, totalTokens: 300 }),
+    finishReason: Promise.resolve('stop'),
+    sources: Promise.resolve([]),
+    providerMetadata: Promise.resolve({ anthropic: {} }),
+    ...overrides,
+  };
+}
+
+// ── Tests ───────────────────────────────────────────────────────────────────
+
+describe('generate', () => {
+  beforeEach(() => {
+    _clearProviderCache();
+    mockGenerateText.mockReset();
+    mockStreamText.mockReset();
+    mockCalculateCost.mockReset();
+    mockCreateAnthropic.mockClear();
+    mockCalculateCost.mockResolvedValue(0.001);
+  });
+
+  afterEach(() => {
+    _clearProviderCache();
+  });
+
+  it('should call generateText with resolved model and return result', async () => {
+    mockGenerateText.mockResolvedValue(makeGenerateResult());
+
+    const result = await generate({
+      model: 'claude-haiku-4-5',
+      system: 'You are a bot',
+      prompt: 'Hello',
+    });
+
+    expect(mockGenerateText).toHaveBeenCalledOnce();
+    const call = mockGenerateText.mock.calls[0][0];
+    expect(call.system).toBe('You are a bot');
+    expect(call.prompt).toBe('Hello');
+
+    expect(result.text).toBe('{"classification":"respond"}');
+    expect(result.usage.inputTokens).toBe(100);
+    expect(result.costUsd).toBe(0.001);
+    expect(result.finishReason).toBe('stop');
+    expect(typeof result.durationMs).toBe('number');
+  });
+
+  it('should default bare model names to anthropic provider', async () => {
+    mockGenerateText.mockResolvedValue(makeGenerateResult());
+
+    await generate({ model: 'claude-haiku-4-5', prompt: 'test' });
+
+    expect(mockCreateAnthropic).toHaveBeenCalledWith(
+      expect.objectContaining({ apiKey: undefined }),
+    );
+  });
+
+  it('should parse provider-prefixed model strings', async () => {
+    mockGenerateText.mockResolvedValue(makeGenerateResult());
+
+    await generate({ model: 'anthropic:claude-sonnet-4-6', prompt: 'test' });
+
+    expect(mockCreateAnthropic).toHaveBeenCalled();
+  });
+
+  it('should throw for unsupported providers', async () => {
+    await expect(
+      generate({ model: 'unknown-provider:some-model', prompt: 'test' }),
+    ).rejects.toThrow(AIClientError);
+  });
+
+  it('should cache provider instances by config tuple', async () => {
+    mockGenerateText.mockResolvedValue(makeGenerateResult());
+
+    await generate({ model: 'claude-haiku-4-5', prompt: 'test1' });
+    await generate({ model: 'claude-haiku-4-5', prompt: 'test2' });
+
+    // createAnthropic should only be called once (cached)
+    expect(mockCreateAnthropic).toHaveBeenCalledTimes(1);
+  });
+
+  it('should create separate providers for different apiKeys', async () => {
+    mockGenerateText.mockResolvedValue(makeGenerateResult());
+
+    await generate({ model: 'claude-haiku-4-5', prompt: 'test1', apiKey: 'key-1' });
+    await generate({ model: 'claude-haiku-4-5', prompt: 'test2', apiKey: 'key-2' });
+
+    expect(mockCreateAnthropic).toHaveBeenCalledTimes(2);
+  });
+
+  it('should pass apiKey and baseUrl overrides to provider', async () => {
+    mockGenerateText.mockResolvedValue(makeGenerateResult());
+
+    await generate({
+      model: 'claude-haiku-4-5',
+      prompt: 'test',
+      apiKey: 'sk-custom',
+      baseUrl: 'https://proxy.example.com',
+    });
+
+    expect(mockCreateAnthropic).toHaveBeenCalledWith({
+      apiKey: 'sk-custom',
+      baseURL: 'https://proxy.example.com',
+    });
+  });
+
+  it('should include thinking providerOptions when thinking > 0', async () => {
+    mockGenerateText.mockResolvedValue(makeGenerateResult());
+
+    await generate({ model: 'claude-sonnet-4-6', prompt: 'think', thinking: 4096 });
+
+    const call = mockGenerateText.mock.calls[0][0];
+    expect(call.providerOptions).toEqual({
+      anthropic: { thinking: { type: 'enabled', budgetTokens: 4096 } },
+    });
+  });
+
+  it('should NOT include thinking providerOptions when thinking is 0', async () => {
+    mockGenerateText.mockResolvedValue(makeGenerateResult());
+
+    await generate({ model: 'claude-haiku-4-5', prompt: 'no think', thinking: 0 });
+
+    const call = mockGenerateText.mock.calls[0][0];
+    expect(call.providerOptions).toEqual({});
+  });
+
+  it('should include web search tool for anthropic models', async () => {
+    mockGenerateText.mockResolvedValue(makeGenerateResult());
+
+    await generate({
+      model: 'claude-sonnet-4-6',
+      prompt: 'search',
+      tools: ['WebSearch'],
+    });
+
+    const call = mockGenerateText.mock.calls[0][0];
+    expect(call.tools).toHaveProperty('web_search');
+    expect(call.stopWhen).toBeDefined();
+  });
+
+  it('should NOT include tools when toolNames is empty', async () => {
+    mockGenerateText.mockResolvedValue(makeGenerateResult());
+
+    await generate({ model: 'claude-haiku-4-5', prompt: 'no tools' });
+
+    const call = mockGenerateText.mock.calls[0][0];
+    expect(call.tools).toBeUndefined();
+  });
+
+  it('should throw AIClientError with reason timeout on abort', async () => {
+    mockGenerateText.mockImplementation(
+      () => new Promise((_, reject) => setTimeout(() => reject(new Error('aborted')), 50)),
+    );
+
+    await expect(
+      generate({ model: 'claude-haiku-4-5', prompt: 'slow', timeout: 10 }),
+    ).rejects.toThrow(AIClientError);
+
+    try {
+      await generate({ model: 'claude-haiku-4-5', prompt: 'slow', timeout: 10 });
+    } catch (err) {
+      expect(err.reason).toBe('timeout');
+    }
+  });
+
+  it('should throw AIClientError with reason api on API errors', async () => {
+    const apiError = new Error('Bad request');
+    apiError.statusCode = 400;
+    mockGenerateText.mockRejectedValue(apiError);
+
+    try {
+      await generate({ model: 'claude-haiku-4-5', prompt: 'bad' });
+      expect.fail('should have thrown');
+    } catch (err) {
+      expect(err).toBeInstanceOf(AIClientError);
+      expect(err.reason).toBe('api');
+      expect(err.statusCode).toBe(400);
+    }
+  });
+
+  it('should calculate cost via aiCost module', async () => {
+    mockGenerateText.mockResolvedValue(makeGenerateResult());
+    mockCalculateCost.mockResolvedValue(0.042);
+
+    const result = await generate({ model: 'claude-sonnet-4-6', prompt: 'expensive' });
+
+    expect(mockCalculateCost).toHaveBeenCalledWith('anthropic', 'claude-sonnet-4-6', {
+      inputTokens: 100,
+      outputTokens: 50,
+      cachedInputTokens: 0,
+    });
+    expect(result.costUsd).toBe(0.042);
+  });
+});
+
+describe('stream', () => {
+  beforeEach(() => {
+    _clearProviderCache();
+    mockGenerateText.mockReset();
+    mockStreamText.mockReset();
+    mockCalculateCost.mockReset();
+    mockCreateAnthropic.mockClear();
+    mockCalculateCost.mockResolvedValue(0.002);
+  });
+
+  afterEach(() => {
+    _clearProviderCache();
+  });
+
+  it('should call streamText and await final results', async () => {
+    mockStreamText.mockReturnValue(makeStreamResult());
+
+    const result = await stream({ model: 'claude-sonnet-4-6', prompt: 'stream me' });
+
+    expect(mockStreamText).toHaveBeenCalledOnce();
+    expect(result.text).toBe('response text');
+    expect(result.usage.inputTokens).toBe(200);
+    expect(result.costUsd).toBe(0.002);
+    expect(typeof result.durationMs).toBe('number');
+  });
+
+  it('should forward tool-call chunks to onChunk callback', async () => {
+    let capturedOnChunk;
+    mockStreamText.mockImplementation((opts) => {
+      capturedOnChunk = opts.onChunk;
+      return makeStreamResult();
+    });
+
+    const toolCalls = [];
+    await stream({
+      model: 'claude-sonnet-4-6',
+      prompt: 'search',
+      tools: ['WebSearch'],
+      onChunk: (name, args) => toolCalls.push({ name, args }),
+    });
+
+    // Simulate a tool-call chunk
+    capturedOnChunk({
+      chunk: { type: 'tool-call', toolName: 'web_search', args: { query: 'test' } },
+    });
+    capturedOnChunk({ chunk: { type: 'text', textDelta: 'hello' } }); // should be ignored
+
+    expect(toolCalls).toHaveLength(1);
+    expect(toolCalls[0].name).toBe('web_search');
+  });
+
+  it('should throw AIClientError on timeout', async () => {
+    mockStreamText.mockReturnValue({
+      ...makeStreamResult(),
+      text: new Promise((_, reject) => setTimeout(() => reject(new Error('abort')), 50)),
+    });
+
+    await expect(
+      stream({ model: 'claude-haiku-4-5', prompt: 'slow', timeout: 10 }),
+    ).rejects.toThrow(AIClientError);
+  });
+
+  it('should throw AIClientError with reason api on non-abort error', async () => {
+    const apiErr = new Error('Internal server error');
+    apiErr.statusCode = 500;
+    mockStreamText.mockImplementation(() => {
+      throw apiErr;
+    });
+
+    try {
+      await stream({ model: 'claude-haiku-4-5', prompt: 'fail' });
+      expect.fail('should have thrown');
+    } catch (err) {
+      expect(err).toBeInstanceOf(AIClientError);
+      expect(err.reason).toBe('api');
+      expect(err.statusCode).toBe(500);
+    }
+  });
+
+  it('should catch onChunk callback errors and log them (no unhandled rejection)', async () => {
+    const { error: logError } = await import('../../src/logger.js');
+    let capturedOnChunk;
+    mockStreamText.mockImplementation((opts) => {
+      capturedOnChunk = opts.onChunk;
+      return makeStreamResult();
+    });
+
+    await stream({
+      model: 'claude-sonnet-4-6',
+      prompt: 'search',
+      tools: ['WebSearch'],
+      onChunk: () => {
+        throw new Error('callback boom');
+      },
+    });
+
+    // Simulate a tool-call chunk that triggers the throwing onChunk
+    capturedOnChunk({
+      chunk: { type: 'tool-call', toolName: 'web_search', args: { query: 'test' } },
+    });
+
+    expect(logError).toHaveBeenCalledWith(
+      'onChunk callback error (sync)',
+      expect.objectContaining({ error: 'callback boom' }),
+    );
+  });
+});
+
+// ── withRetry tests (via generate/stream) ──────────────────────────────────
+
+describe('withRetry', () => {
+  beforeEach(() => {
+    _clearProviderCache();
+    mockGenerateText.mockReset();
+    mockStreamText.mockReset();
+    mockCalculateCost.mockReset();
+    mockCreateAnthropic.mockClear();
+    mockCalculateCost.mockResolvedValue(0.001);
+  });
+
+  afterEach(() => {
+    _clearProviderCache();
+  });
+
+  it('should retry on 429 then succeed', async () => {
+    const rateLimitErr = new Error('Rate limited');
+    rateLimitErr.statusCode = 429;
+    rateLimitErr.headers = { 'retry-after': '0.01' };
+
+    mockGenerateText
+      .mockRejectedValueOnce(rateLimitErr)
+      .mockResolvedValueOnce(makeGenerateResult());
+
+    const result = await generate({ model: 'claude-haiku-4-5', prompt: 'retry me' });
+
+    expect(mockGenerateText).toHaveBeenCalledTimes(2);
+    expect(result.text).toBe('{"classification":"respond"}');
+  });
+
+  it('should exhaust retries and throw', async () => {
+    const serverErr = new Error('Server error');
+    serverErr.statusCode = 500;
+
+    mockGenerateText
+      .mockRejectedValueOnce(serverErr)
+      .mockRejectedValueOnce(serverErr)
+      .mockRejectedValueOnce(serverErr);
+
+    await expect(generate({ model: 'claude-haiku-4-5', prompt: 'always fail' })).rejects.toThrow(
+      AIClientError,
+    );
+
+    expect(mockGenerateText).toHaveBeenCalledTimes(3);
+  });
+
+  it('should not retry on non-retryable error (401)', async () => {
+    const authErr = new Error('Unauthorized');
+    authErr.statusCode = 401;
+
+    mockGenerateText.mockRejectedValue(authErr);
+
+    await expect(generate({ model: 'claude-haiku-4-5', prompt: 'bad key' })).rejects.toThrow(
+      AIClientError,
+    );
+
+    expect(mockGenerateText).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ── generate edge cases ────────────────────────────────────────────────────
+
+describe('generate — edge cases', () => {
+  beforeEach(() => {
+    _clearProviderCache();
+    mockGenerateText.mockReset();
+    mockStreamText.mockReset();
+    mockCalculateCost.mockReset();
+    mockCreateAnthropic.mockClear();
+    mockCalculateCost.mockResolvedValue(0.001);
+  });
+
+  afterEach(() => {
+    _clearProviderCache();
+  });
+
+  it('should handle externally-aborted AbortSignal', async () => {
+    // Simulate an external signal that aborts mid-request
+    const controller = new AbortController();
+
+    mockGenerateText.mockImplementation(async () => {
+      // Abort while the request is "in flight"
+      controller.abort();
+      throw new Error('The operation was aborted');
+    });
+
+    try {
+      await generate({
+        model: 'claude-haiku-4-5',
+        prompt: 'cancelled',
+        abortSignal: controller.signal,
+      });
+      expect.fail('should have thrown');
+    } catch (err) {
+      expect(err).toBeInstanceOf(AIClientError);
+      expect(err.reason).toBe('timeout');
+    }
+  });
+
+  it('should fall back to usage when totalUsage is undefined', async () => {
+    const result = makeGenerateResult({
+      totalUsage: undefined,
+      usage: { inputTokens: 42, outputTokens: 17, totalTokens: 59 },
+    });
+    mockGenerateText.mockResolvedValue(result);
+
+    const res = await generate({ model: 'claude-haiku-4-5', prompt: 'fallback usage' });
+
+    expect(res.usage.inputTokens).toBe(42);
+    expect(res.usage.outputTokens).toBe(17);
+  });
+
+  it('should extract cachedInputTokens from providerMetadata and pass to calculateCost', async () => {
+    const result = makeGenerateResult({
+      providerMetadata: { anthropic: { cacheReadInputTokens: 75 } },
+    });
+    mockGenerateText.mockResolvedValue(result);
+    mockCalculateCost.mockResolvedValue(0.005);
+
+    await generate({ model: 'claude-sonnet-4-6', prompt: 'cached' });
+
+    expect(mockCalculateCost).toHaveBeenCalledWith('anthropic', 'claude-sonnet-4-6', {
+      inputTokens: 100,
+      outputTokens: 50,
+      cachedInputTokens: 75,
+    });
+  });
+});

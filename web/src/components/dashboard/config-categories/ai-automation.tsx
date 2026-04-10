@@ -466,15 +466,6 @@ export function AiAutomationCategory() {
                 </label>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Streaming</span>
-                <ToggleSwitch
-                  checked={draftConfig.triage?.streaming ?? false}
-                  onChange={(v) => updateTriageField('streaming', v)}
-                  disabled={saving}
-                  label="Streaming"
-                />
-              </div>
-              <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Moderation Response</span>
                 <ToggleSwitch
                   checked={draftConfig.triage?.moderationResponse ?? false}

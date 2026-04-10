@@ -6,12 +6,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ── Mocks (before imports) ───────────────────────────────────────────────────
 
-const mockClassifierSend = vi.fn();
-const mockResponderSend = vi.fn();
-const mockClassifierStart = vi.fn().mockResolvedValue(undefined);
-const mockResponderStart = vi.fn().mockResolvedValue(undefined);
-const mockClassifierClose = vi.fn();
-const mockResponderClose = vi.fn();
+const { mockGenerate, mockStream } = vi.hoisted(() => ({
+  mockGenerate: vi.fn(),
+  mockStream: vi.fn(),
+}));
+
+vi.mock('../../src/utils/aiClient.js', () => ({
+  generate: (...args) => mockGenerate(...args),
+  stream: (...args) => mockStream(...args),
+}));
 
 const mockCheckGuildBudget = vi.fn();
 
@@ -30,35 +33,6 @@ vi.mock('../../src/utils/discordCache.js', () => ({
   fetchMemberCached: vi.fn().mockResolvedValue(null),
   invalidateGuildCache: vi.fn().mockResolvedValue(undefined),
 }));
-
-vi.mock('../../src/modules/cli-process.js', () => {
-  class CLIProcessError extends Error {
-    constructor(message, reason, meta = {}) {
-      super(message);
-      this.name = 'CLIProcessError';
-      this.reason = reason;
-      Object.assign(this, meta);
-    }
-  }
-  return {
-    CLIProcess: vi.fn().mockImplementation(function MockCLIProcess(name) {
-      if (name === 'classifier') {
-        this.name = 'classifier';
-        this.send = mockClassifierSend;
-        this.start = mockClassifierStart;
-        this.close = mockClassifierClose;
-        this.alive = true;
-      } else {
-        this.name = 'responder';
-        this.send = mockResponderSend;
-        this.start = mockResponderStart;
-        this.close = mockResponderClose;
-        this.alive = true;
-      }
-    }),
-    CLIProcessError,
-  };
-});
 
 vi.mock('../../src/utils/safeSend.js', () => ({
   safeSend: vi.fn().mockResolvedValue(undefined),
@@ -130,7 +104,6 @@ function makeConfig(overrides = {}) {
       classifyBudget: 0.05,
       respondModel: 'claude-sonnet-4-5',
       respondBudget: 0.2,
-      tokenRecycleLimit: 20000,
       timeout: 30000,
       moderationResponse: true,
       defaultInterval: 0,
@@ -170,16 +143,13 @@ function makeMessage(channelId = 'ch-budget', content = 'hello') {
 
 function mockClassifyResult(classification) {
   return {
-    content: [{ type: 'text', text: JSON.stringify(classification) }],
-    total_cost_usd: 0.001,
-    usage: {
-      input_tokens: 100,
-      output_tokens: 50,
-      cache_creation_input_tokens: 0,
-      cache_read_input_tokens: 0,
-    },
-    model: 'claude-haiku-4-5',
-    _durationMs: 100,
+    text: JSON.stringify(classification),
+    costUsd: 0.001,
+    usage: { inputTokens: 100, outputTokens: 50 },
+    durationMs: 100,
+    finishReason: 'stop',
+    sources: [],
+    providerMetadata: { anthropic: {} },
   };
 }
 
@@ -214,14 +184,14 @@ describe('triage budget gate', () => {
       reasoning: 'not relevant',
       targetMessageIds: [],
     };
-    mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
+    mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
 
     const msg = makeMessage();
     await accumulateMessage(msg, config);
     await vi.runAllTimersAsync();
 
     // Classifier was called — evaluation was NOT blocked
-    expect(mockClassifierSend).toHaveBeenCalled();
+    expect(mockGenerate).toHaveBeenCalled();
     expect(warn).not.toHaveBeenCalledWith(
       expect.stringContaining('budget exceeded'),
       expect.anything(),
@@ -241,7 +211,7 @@ describe('triage budget gate', () => {
       reasoning: 'ok',
       targetMessageIds: [],
     };
-    mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
+    mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
 
     const msg = makeMessage();
     await accumulateMessage(msg, config);
@@ -253,7 +223,7 @@ describe('triage budget gate', () => {
       expect.objectContaining({ guildId: 'guild-test', pct: 85 }),
     );
     // Evaluation still runs
-    expect(mockClassifierSend).toHaveBeenCalled();
+    expect(mockGenerate).toHaveBeenCalled();
   });
 
   it('blocks evaluation and logs warning when budget is exceeded', async () => {
@@ -269,7 +239,7 @@ describe('triage budget gate', () => {
     await vi.runAllTimersAsync();
 
     // Classifier should NOT be called
-    expect(mockClassifierSend).not.toHaveBeenCalled();
+    expect(mockGenerate).not.toHaveBeenCalled();
     // Warning logged
     expect(warn).toHaveBeenCalledWith(
       'Guild daily AI budget exceeded — skipping triage evaluation',
@@ -316,7 +286,7 @@ describe('triage budget gate', () => {
       reasoning: 'ok',
       targetMessageIds: [],
     };
-    mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
+    mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
 
     const msg = makeMessage();
     await accumulateMessage(msg, noBudgetConfig);
@@ -325,7 +295,7 @@ describe('triage budget gate', () => {
     // checkGuildBudget should not be called when not configured
     expect(mockCheckGuildBudget).not.toHaveBeenCalled();
     // Evaluation still runs
-    expect(mockClassifierSend).toHaveBeenCalled();
+    expect(mockGenerate).toHaveBeenCalled();
   });
 
   it('skips budget check when dailyBudgetUsd is 0', async () => {
@@ -339,14 +309,14 @@ describe('triage budget gate', () => {
       reasoning: 'ok',
       targetMessageIds: [],
     };
-    mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
+    mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
 
     const msg = makeMessage();
     await accumulateMessage(msg, zeroBudgetConfig);
     await vi.runAllTimersAsync();
 
     expect(mockCheckGuildBudget).not.toHaveBeenCalled();
-    expect(mockClassifierSend).toHaveBeenCalled();
+    expect(mockGenerate).toHaveBeenCalled();
   });
 
   it('allows evaluation when budget check throws (non-fatal)', async () => {
@@ -357,14 +327,14 @@ describe('triage budget gate', () => {
       reasoning: 'ok',
       targetMessageIds: [],
     };
-    mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
+    mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
 
     const msg = makeMessage();
     await accumulateMessage(msg, config);
     await vi.runAllTimersAsync();
 
     // Should log debug (non-fatal) and proceed with evaluation
-    expect(mockClassifierSend).toHaveBeenCalled();
+    expect(mockGenerate).toHaveBeenCalled();
   });
 
   it('calls checkGuildBudget with correct guildId and budget', async () => {
@@ -375,7 +345,7 @@ describe('triage budget gate', () => {
       reasoning: 'ok',
       targetMessageIds: [],
     };
-    mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
+    mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
 
     const msg = makeMessage();
     await accumulateMessage(msg, config);

@@ -15,7 +15,6 @@ describe('triage-config', () => {
       expect(result.classifyBudget).toBe(0.05);
       expect(result.respondBudget).toBe(0.2);
       expect(result.timeout).toBe(30000);
-      expect(result.tokenRecycleLimit).toBe(20000);
     });
 
     it('should resolve PR #68 flat format as fallback', () => {

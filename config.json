@@ -32,8 +32,6 @@
     "classifyApiKey": null,
     "respondBaseUrl": null,
     "respondApiKey": null,
-    "streaming": false,
-    "tokenRecycleLimit": 20000,
     "contextMessages": 10,
     "timeout": 30000,
     "moderationResponse": true,

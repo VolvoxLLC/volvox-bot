@@ -6,12 +6,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ── Mocks (must precede imports) ─────────────────────────────────────────────
 
-const mockClassifierSend = vi.fn();
-const mockResponderSend = vi.fn();
-const mockClassifierStart = vi.fn().mockResolvedValue(undefined);
-const mockResponderStart = vi.fn().mockResolvedValue(undefined);
-const mockClassifierClose = vi.fn();
-const mockResponderClose = vi.fn();
+const { mockGenerate, mockStream } = vi.hoisted(() => ({
+  mockGenerate: vi.fn(),
+  mockStream: vi.fn(),
+}));
+
+vi.mock('../../src/utils/aiClient.js', () => ({
+  generate: (...args) => mockGenerate(...args),
+  stream: (...args) => mockStream(...args),
+}));
 
 // Mock discordCache to pass through to the underlying client.channels.fetch
 vi.mock('../../src/utils/discordCache.js', () => ({
@@ -29,35 +32,6 @@ vi.mock('../../src/utils/discordCache.js', () => ({
   fetchMemberCached: vi.fn().mockResolvedValue(null),
   invalidateGuildCache: vi.fn().mockResolvedValue(undefined),
 }));
-
-vi.mock('../../src/modules/cli-process.js', () => {
-  class CLIProcessError extends Error {
-    constructor(message, reason, meta = {}) {
-      super(message);
-      this.name = 'CLIProcessError';
-      this.reason = reason;
-      Object.assign(this, meta);
-    }
-  }
-  return {
-    CLIProcess: vi.fn().mockImplementation(function MockCLIProcess(name) {
-      if (name === 'classifier') {
-        this.name = 'classifier';
-        this.send = mockClassifierSend;
-        this.start = mockClassifierStart;
-        this.close = mockClassifierClose;
-        this.alive = true;
-      } else {
-        this.name = 'responder';
-        this.send = mockResponderSend;
-        this.start = mockResponderStart;
-        this.close = mockResponderClose;
-        this.alive = true;
-      }
-    }),
-    CLIProcessError,
-  };
-});
 
 vi.mock('../../src/modules/spam.js', () => ({ isSpam: vi.fn().mockReturnValue(false) }));
 vi.mock('../../src/utils/safeSend.js', () => ({ safeSend: vi.fn().mockResolvedValue(undefined) }));
@@ -104,8 +78,6 @@ vi.mock('../../src/modules/triage-config.js', () => ({
     respondModel: 'sonnet',
     classifyBudget: 0.05,
     respondBudget: 0.2,
-    tokenRecycleLimit: 20000,
-    streaming: false,
     timeout: 30000,
     thinkingTokens: 0,
     statusReactions: true,
@@ -117,7 +89,7 @@ vi.mock('../../src/modules/triage-buffer.js', async (importOriginal) => {
 });
 
 import { warn } from '../../src/logger.js';
-import { CLIProcessError } from '../../src/modules/cli-process.js';
+import { AIClientError } from '../../src/utils/errors.js';
 import {
   accumulateMessage,
   evaluateNow,
@@ -143,7 +115,6 @@ function makeTriageConfig(overrides = {}) {
       respondModel: 'sonnet',
       classifyBudget: 0.05,
       respondBudget: 0.2,
-      tokenRecycleLimit: 20000,
       timeout: 30000,
       defaultInterval: 100,
       statusReactions: true,
@@ -198,8 +169,6 @@ describe('triage module coverage', () => {
     channelBuffers.clear();
     mockClient = makeMockClient();
 
-    mockClassifierStart.mockResolvedValue(undefined);
-    mockResponderStart.mockResolvedValue(undefined);
     parseClassifyResult.mockReturnValue(null); // default: classifier says nothing
     parseRespondResult.mockReturnValue(null);
     checkTriggerWords.mockReturnValue(false);
@@ -215,12 +184,12 @@ describe('triage module coverage', () => {
   describe('evaluateNow - buffer guard', () => {
     it('returns early when buffer is empty', async () => {
       await evaluateNow('empty-channel', makeTriageConfig(), mockClient);
-      expect(mockClassifierSend).not.toHaveBeenCalled();
+      expect(mockGenerate).not.toHaveBeenCalled();
     });
 
     it('returns early when channel has no buffer entry', async () => {
       await evaluateNow('nonexistent', makeTriageConfig(), mockClient);
-      expect(mockClassifierSend).not.toHaveBeenCalled();
+      expect(mockGenerate).not.toHaveBeenCalled();
     });
   });
 
@@ -230,7 +199,7 @@ describe('triage module coverage', () => {
       const classifyPromise = new Promise((resolve) => {
         resolveClassify = resolve;
       });
-      mockClassifierSend.mockReturnValueOnce(classifyPromise);
+      mockGenerate.mockReturnValueOnce(classifyPromise);
 
       // Accumulate a message to create buffer entry
       const msg = makeDiscordMessage('ch-concurrent', 'message 1');
@@ -249,7 +218,15 @@ describe('triage module coverage', () => {
         buf.pendingReeval = false;
       }
 
-      resolveClassify({ type: 'result', is_error: false });
+      resolveClassify({
+        text: '{}',
+        costUsd: 0,
+        usage: { inputTokens: 0, outputTokens: 0 },
+        durationMs: 0,
+        finishReason: 'stop',
+        sources: [],
+        providerMetadata: { anthropic: {} },
+      });
     });
   });
 
@@ -270,11 +247,14 @@ describe('triage module coverage', () => {
 
   describe('evaluateNow - classifier returns ignore', () => {
     it('stops processing when classifier returns null (ignore)', async () => {
-      mockClassifierSend.mockResolvedValue({
-        type: 'result',
-        is_error: false,
-        result: '{}',
-        total_cost_usd: 0,
+      mockGenerate.mockResolvedValue({
+        text: '{}',
+        costUsd: 0,
+        usage: { inputTokens: 0, outputTokens: 0 },
+        durationMs: 0,
+        finishReason: 'stop',
+        sources: [],
+        providerMetadata: { anthropic: {} },
       });
       parseClassifyResult.mockReturnValue(null); // null = ignore
 
@@ -282,13 +262,13 @@ describe('triage module coverage', () => {
       await accumulateMessage(msg, makeTriageConfig());
       await evaluateNow('ch-ignore', makeTriageConfig(), mockClient);
 
-      expect(mockResponderSend).not.toHaveBeenCalled();
+      expect(mockStream).not.toHaveBeenCalled();
     });
   });
 
   describe('evaluateNow - classifier timeout', () => {
-    it('handles CLIProcessError timeout from classifier', async () => {
-      mockClassifierSend.mockRejectedValue(new CLIProcessError('Timeout', 'timeout'));
+    it('handles AIClientError timeout from classifier', async () => {
+      mockGenerate.mockRejectedValue(new AIClientError('Timeout', 'timeout'));
 
       const msg = makeDiscordMessage('ch-timeout', 'hello');
       await accumulateMessage(msg, makeTriageConfig());
@@ -303,10 +283,10 @@ describe('triage module coverage', () => {
     });
   });
 
-  describe('evaluateNow - non-timeout CLIProcessError', () => {
+  describe('evaluateNow - non-timeout AIClientError', () => {
     it('logs parse errors without sending user message', async () => {
       const { error: logError } = await import('../../src/logger.js');
-      mockClassifierSend.mockRejectedValue(new CLIProcessError('Parse failed', 'parse'));
+      mockGenerate.mockRejectedValue(new AIClientError('Parse failed', 'parse'));
 
       const msg = makeDiscordMessage('ch-parse-err', 'hello');
       await accumulateMessage(msg, makeTriageConfig());
@@ -319,7 +299,7 @@ describe('triage module coverage', () => {
     });
 
     it('sends error message to channel for non-parse failures', async () => {
-      mockClassifierSend.mockRejectedValue(new Error('Unexpected failure'));
+      mockGenerate.mockRejectedValue(new Error('Unexpected failure'));
 
       const msg = makeDiscordMessage('ch-gen-err', 'hello');
       await accumulateMessage(msg, makeTriageConfig());
@@ -366,11 +346,14 @@ describe('triage module coverage', () => {
 
     it('handles trigger word detected - calls evaluateNow', async () => {
       checkTriggerWords.mockReturnValueOnce(true);
-      mockClassifierSend.mockResolvedValue({
-        type: 'result',
-        is_error: false,
-        result: '{}',
-        total_cost_usd: 0,
+      mockGenerate.mockResolvedValue({
+        text: '{}',
+        costUsd: 0,
+        usage: { inputTokens: 0, outputTokens: 0 },
+        durationMs: 0,
+        finishReason: 'stop',
+        sources: [],
+        providerMetadata: { anthropic: {} },
       });
       parseClassifyResult.mockReturnValueOnce(null); // ignore
 
@@ -381,7 +364,7 @@ describe('triage module coverage', () => {
       // Give it a tick for the fire-and-forget
       await new Promise((r) => setTimeout(r, 10));
       expect(checkTriggerWords).toHaveBeenCalledWith('urgent message', expect.any(Object));
-      expect(mockClassifierSend).toHaveBeenCalled();
+      expect(mockGenerate).toHaveBeenCalled();
     });
 
     it('fetches referenced message content for replies', async () => {
@@ -412,9 +395,8 @@ describe('triage module coverage', () => {
       const config = makeTriageConfig();
       delete config.ai.systemPrompt;
 
-      await startTriage(mockClient, config);
-      // Should not throw — uses promptPath fallback
-      expect(mockClassifierStart).toHaveBeenCalled();
+      // Should not throw — uses loadPrompt fallback
+      await expect(startTriage(mockClient, config)).resolves.toBeUndefined();
     });
   });
 });

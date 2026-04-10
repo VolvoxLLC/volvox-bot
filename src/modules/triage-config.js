@@ -17,8 +17,8 @@ export function resolveTriageConfig(triageConfig) {
   const classifyModel = triageConfig.classifyModel ?? 'claude-haiku-4-5';
 
   const respondModel =
-    triageConfig.respondModel ??
-    (typeof triageConfig.model === 'string'
+    triageConfig.respondModel ||
+    (typeof triageConfig.model === 'string' && triageConfig.model
       ? triageConfig.model
       : (triageConfig.models?.default ?? 'claude-sonnet-4-6'));
 
@@ -35,9 +35,7 @@ export function resolveTriageConfig(triageConfig) {
       ? triageConfig.timeout
       : (triageConfig.timeouts?.response ?? 30000);
 
-  const tokenRecycleLimit = triageConfig.tokenRecycleLimit ?? 20000;
-  const thinkingTokens = triageConfig.thinkingTokens ?? 4096;
-  const streaming = triageConfig.streaming ?? false;
+  const thinkingTokens = triageConfig.thinkingTokens ?? 0;
 
   const classifyBaseUrl = triageConfig.classifyBaseUrl ?? null;
   const respondBaseUrl = triageConfig.respondBaseUrl ?? null;
@@ -50,9 +48,7 @@ export function resolveTriageConfig(triageConfig) {
     classifyBudget,
     respondBudget,
     timeout,
-    tokenRecycleLimit,
     thinkingTokens,
-    streaming,
     classifyBaseUrl,
     respondBaseUrl,
     classifyApiKey,

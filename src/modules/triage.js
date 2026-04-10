@@ -2,7 +2,7 @@
  * Triage Module
  * Per-channel message triage with split Haiku classifier + Sonnet responder.
  *
- * Two CLIProcess instances handle classification (cheap, fast) and
+ * Two AI SDK calls handle classification (cheap, fast) and
  * response generation (expensive, only when needed).  ~80% of evaluations are
  * "ignore" -- handled by Haiku alone at ~10x lower cost than Sonnet.
  *
@@ -16,11 +16,12 @@
  */
 
 import { debug, info, error as logError, warn } from '../logger.js';
-import { loadPrompt, promptPath } from '../prompts/index.js';
+import { loadPrompt } from '../prompts/index.js';
+import { generate, stream } from '../utils/aiClient.js';
 import { fetchChannelCached } from '../utils/discordCache.js';
+import { AIClientError } from '../utils/errors.js';
 import { checkGuildBudget } from '../utils/guildSpend.js';
 import { safeSend } from '../utils/safeSend.js';
-import { CLIProcess, CLIProcessError } from './cli-process.js';
 import { buildMemoryContext, extractAndStoreMemories } from './memory.js';
 
 // ── Sub-module imports ───────────────────────────────────────────────────────
@@ -64,10 +65,10 @@ let config = null;
 /** @type {Object|null} */
 let healthMonitor = null;
 
-/** @type {CLIProcess|null} */
-let classifierProcess = null;
-/** @type {CLIProcess|null} */
-let responderProcess = null;
+/** @type {Object|null} AI SDK config for classification calls */
+let classifierConfig = null;
+/** @type {Object|null} AI SDK config for response generation calls */
+let responderConfig = null;
 
 // ── Budget alert throttle ────────────────────────────────────────────────────
 // Track the last time a budget-exceeded alert was posted per guild so we don't
@@ -94,7 +95,7 @@ const BUDGET_ALERT_COOLDOWN_MS = 60 * 60 * 1_000;
  *   context,              // resolved channel context messages used for prompting
  *   memoryContext         // concatenated memory context for target users (may be empty string)
  * }` when classification produced actionable output; `null` if classification failed or is `'ignore'`. */
-async function runClassification(channelId, snapshot, evalConfig, evalClient) {
+async function runClassification(channelId, snapshot, evalConfig, evalClient, abortSignal) {
   const contextLimit = evalConfig.triage?.contextMessages ?? 10;
   const context =
     contextLimit > 0
@@ -117,7 +118,11 @@ async function runClassification(channelId, snapshot, evalConfig, evalClient) {
     promptLength: classifyPrompt.length,
     promptSnippet: classifyPrompt.slice(0, 500),
   });
-  const classifyMessage = await classifierProcess.send(classifyPrompt);
+  const classifyMessage = await generate({
+    ...classifierConfig,
+    prompt: classifyPrompt,
+    abortSignal,
+  });
   const classification = parseClassifyResult(classifyMessage, channelId);
 
   if (!classification) {
@@ -129,7 +134,7 @@ async function runClassification(channelId, snapshot, evalConfig, evalClient) {
     classification: classification.classification,
     reasoning: classification.reasoning,
     targetCount: classification.targetMessageIds.length,
-    totalCostUsd: classifyMessage.total_cost_usd,
+    totalCostUsd: classifyMessage.costUsd,
   });
 
   // Never ignore when the bot is @mentioned — override classifier mistakes.
@@ -185,16 +190,19 @@ async function runClassification(channelId, snapshot, evalConfig, evalClient) {
 
     const memoryParts = await Promise.all(
       [...uniqueUsers.entries()].map(async ([userId, { username, content }]) => {
+        let timer;
         try {
           return await Promise.race([
             buildMemoryContext(userId, username, content),
-            new Promise((_, reject) =>
-              setTimeout(() => reject(new Error('Memory context timeout')), 5000),
-            ),
+            new Promise((_, reject) => {
+              timer = setTimeout(() => reject(new Error('Memory context timeout')), 5000);
+            }),
           ]);
         } catch (err) {
           debug('Memory context fetch failed', { userId, error: err.message });
           return '';
+        } finally {
+          clearTimeout(timer);
         }
       }),
     );
@@ -271,6 +279,8 @@ async function runResponder(
   evalClient,
   triggerMessageId = null,
   statusReactions = true,
+  abortSignal = null,
+  resolved = null,
 ) {
   const respondPrompt = buildRespondPrompt(
     context,
@@ -282,8 +292,8 @@ async function runResponder(
   debug('Responder prompt built', { channelId, promptLength: respondPrompt.length });
 
   // Transition: remove 👀, add 🧠 or 💬 (shows current stage)
-  const resolved = resolveTriageConfig(evalConfig.triage || {});
-  const respondEmoji = resolved.thinkingTokens > 0 ? '\uD83E\uDDE0' : '\uD83D\uDCAC';
+  const resolvedConfig = resolved ?? resolveTriageConfig(evalConfig.triage || {});
+  const respondEmoji = resolvedConfig.thinkingTokens > 0 ? '\uD83E\uDDE0' : '\uD83D\uDCAC';
   if (statusReactions && triggerMessageId) {
     removeReaction(evalClient, channelId, triggerMessageId, '\uD83D\uDC40');
     addReaction(evalClient, channelId, triggerMessageId, respondEmoji);
@@ -292,37 +302,39 @@ async function runResponder(
   // Detect WebSearch tool use mid-stream: send a typing indicator + count searches
   let searchNotified = false;
   let searchCount = 0;
-  const respondMessage = await responderProcess.send(
-    respondPrompt,
-    {},
-    {
-      onEvent: async (msg) => {
-        const toolUses = msg.message?.content?.filter((c) => c.type === 'tool_use') || [];
-        const searches = toolUses.filter((t) => t.name === 'WebSearch');
-        if (searches.length > 0) {
-          searchCount += searches.length;
-          if (!searchNotified) {
-            searchNotified = true;
-            // Add 🔍 reaction to the trigger message to signal web search
-            if (statusReactions && triggerMessageId) {
-              addReaction(evalClient, channelId, triggerMessageId, '\uD83D\uDD0D');
-            }
-            const ch = await evalClient.channels.fetch(channelId).catch(() => null);
-            if (ch) {
-              try {
-                await safeSend(ch, '\uD83D\uDD0D Searching the web for that \u2014 one moment...');
-              } catch (notifyErr) {
-                warn('Failed to send WebSearch notification', {
-                  channelId,
-                  error: notifyErr?.message,
-                });
-              }
+  const respondMessage = await stream({
+    ...responderConfig,
+    prompt: respondPrompt,
+    abortSignal,
+    onChunk: async (toolName) => {
+      if (toolName === 'web_search') {
+        searchCount++;
+        if (!searchNotified) {
+          searchNotified = true;
+          // Add 🔍 reaction to the trigger message to signal web search
+          if (statusReactions && triggerMessageId) {
+            addReaction(evalClient, channelId, triggerMessageId, '\uD83D\uDD0D');
+          }
+          const ch = await evalClient.channels.fetch(channelId).catch(() => null);
+          if (ch) {
+            try {
+              await safeSend(ch, '\uD83D\uDD0D Searching the web for that \u2014 one moment...');
+            } catch (notifyErr) {
+              warn('Failed to send WebSearch notification', {
+                channelId,
+                error: notifyErr?.message,
+              });
             }
           }
         }
-      },
+      }
     },
-  );
+  });
+
+  // Fallback: if server-side tool didn't emit onChunk events, check result.sources
+  if (searchCount === 0 && respondMessage.sources?.length > 0) {
+    searchCount = respondMessage.sources.length;
+  }
   const parsed = parseRespondResult(respondMessage, channelId);
 
   if (!parsed?.responses?.length) {
@@ -333,7 +345,7 @@ async function runResponder(
   info('Triage response generated', {
     channelId,
     responseCount: parsed.responses.length,
-    totalCostUsd: respondMessage.total_cost_usd,
+    totalCostUsd: respondMessage.costUsd,
   });
 
   return { parsed, respondMessage, searchCount };
@@ -375,15 +387,15 @@ function extractMemories(snapshot, parsed) {
 /**
  * Orchestrates a two-step triage for a channel buffer: classify messages, generate responses when needed, send results, and trigger memory extraction.
  *
- * Performs a classification pass over the provided snapshot and, if the classification warrants, generates and sends responses to Discord, writes analytics/moderation logs, and initiates background memory extraction. Any CLIProcess timeout is rethrown to the caller; other failures are logged and may produce a user-visible error message in the channel.
+ * Performs a classification pass over the provided snapshot and, if the classification warrants, generates and sends responses to Discord, writes analytics/moderation logs, and initiates background memory extraction. Any AI client timeout is rethrown to the caller; other failures are logged and may produce a user-visible error message in the channel.
  *
  * @param {string} channelId - ID of the Discord channel being evaluated.
  * @param {Array<Object>} snapshot - A snapshot of buffered messages for the channel.
  * @param {Object} evalConfig - Effective triage configuration to use for this evaluation.
  * @param {import('discord.js').Client} evalClient - Discord client used to fetch channels and send messages.
- * @throws {CLIProcessError} When a classifier/responder CLI process times out; the error is rethrown.
+ * @throws {AIClientError} When a classifier/responder CLI process times out; the error is rethrown.
  */
-async function evaluateAndRespond(channelId, snapshot, evalConfig, evalClient) {
+async function evaluateAndRespond(channelId, snapshot, evalConfig, evalClient, abortSignal) {
   const snapshotIds = new Set(snapshot.map((m) => m.messageId));
 
   try {
@@ -468,7 +480,13 @@ async function evaluateAndRespond(channelId, snapshot, evalConfig, evalClient) {
     }
 
     // Step 1: Classify
-    const classResult = await runClassification(channelId, snapshot, evalConfig, evalClient);
+    const classResult = await runClassification(
+      channelId,
+      snapshot,
+      evalConfig,
+      evalClient,
+      abortSignal,
+    );
     if (!classResult) return;
 
     const { classification, classifyMessage, context, memoryContext, wasMentioned } = classResult;
@@ -497,6 +515,19 @@ async function evaluateAndRespond(channelId, snapshot, evalConfig, evalClient) {
       addReaction(evalClient, channelId, triggerMessageId, '\uD83D\uDC40');
     }
 
+    // Resolve triage config once for the entire evaluation cycle
+    const resolved = resolveTriageConfig(evalConfig.triage || {});
+
+    // B3: Budget enforcement — warn if classifier cost exceeded its budget
+    if (classifyMessage.costUsd > resolved.classifyBudget) {
+      warn('Classify cost exceeded budget', {
+        channelId,
+        costUsd: classifyMessage.costUsd,
+        classifyBudget: resolved.classifyBudget,
+        overage: classifyMessage.costUsd - resolved.classifyBudget,
+      });
+    }
+
     // Step 2: Respond
     const respResult = await runResponder(
       channelId,
@@ -508,13 +539,24 @@ async function evaluateAndRespond(channelId, snapshot, evalConfig, evalClient) {
       evalClient,
       triggerMessageId,
       statusReactions,
+      abortSignal,
+      resolved,
     );
     if (!respResult) return;
 
     const { parsed, respondMessage, searchCount } = respResult;
 
+    // B3: Budget enforcement — warn if responder cost exceeded its budget
+    if (respondMessage.costUsd > resolved.respondBudget) {
+      warn('Respond cost exceeded budget', {
+        channelId,
+        costUsd: respondMessage.costUsd,
+        respondBudget: resolved.respondBudget,
+        overage: respondMessage.costUsd - resolved.respondBudget,
+      });
+    }
+
     // Step 3: Build stats, log analytics, and send to Discord
-    const resolved = resolveTriageConfig(evalConfig.triage || {});
     const { stats, channel } = await buildStatsAndLog(
       classifyMessage,
       respondMessage,
@@ -560,7 +602,7 @@ async function evaluateAndRespond(channelId, snapshot, evalConfig, evalClient) {
     // Step 4: Extract memories (fire-and-forget)
     extractMemories(snapshot, parsed);
   } catch (err) {
-    if (err instanceof CLIProcessError && err.reason === 'timeout') {
+    if (err instanceof AIClientError && err.reason === 'timeout') {
       warn('Triage evaluation aborted (timeout)', { channelId });
       throw err;
     }
@@ -568,7 +610,7 @@ async function evaluateAndRespond(channelId, snapshot, evalConfig, evalClient) {
     logError('Triage evaluation failed', { channelId, error: err.message, stack: err.stack });
 
     // Only send user-visible error for non-parse failures (persistent issues)
-    if (!(err instanceof CLIProcessError && err.reason === 'parse')) {
+    if (!(err instanceof AIClientError && err.reason === 'parse')) {
       try {
         const channel = await evalClient.channels.fetch(channelId).catch(() => null);
         if (channel) {
@@ -634,60 +676,36 @@ export async function startTriage(discordClient, botConfig, monitor) {
   const triageConfig = botConfig.triage || {};
   const resolved = resolveTriageConfig(triageConfig);
 
-  classifierProcess = new CLIProcess(
-    'classifier',
-    {
-      model: resolved.classifyModel,
-      systemPromptFile: promptPath('triage-classify-system'),
-      maxBudgetUsd: resolved.classifyBudget,
-      thinkingTokens: 0, // disabled for classifier
-      tools: '', // no tools for classification
-      ...(resolved.classifyBaseUrl && { baseUrl: resolved.classifyBaseUrl }),
-      ...(resolved.classifyApiKey && { apiKey: resolved.classifyApiKey }),
-    },
-    {
-      tokenLimit: resolved.tokenRecycleLimit,
-      streaming: resolved.streaming,
-      timeout: resolved.timeout,
-    },
-  );
+  // Classifier config — no tools, no thinking
+  const classifySystem = loadPrompt('triage-classify-system');
+  classifierConfig = {
+    model: resolved.classifyModel,
+    system: classifySystem,
+    thinking: 0,
+    timeout: resolved.timeout,
+    ...(resolved.classifyBaseUrl && { baseUrl: resolved.classifyBaseUrl }),
+    ...(resolved.classifyApiKey && { apiKey: resolved.classifyApiKey }),
+  };
 
-  // Responder system prompt: use config personality if provided, otherwise use the prompt file.
+  // Responder config — web search tool, thinking tokens, combined system prompt.
   // JSON output schema is always appended so it can't be lost when config overrides the personality.
-  const responderSystemPromptFlags = botConfig.ai?.systemPrompt
-    ? { systemPrompt: botConfig.ai.systemPrompt }
-    : { systemPromptFile: promptPath('triage-respond-system') };
-
+  const baseSystem = botConfig.ai?.systemPrompt || loadPrompt('triage-respond-system');
   const jsonSchemaAppend = loadPrompt('triage-respond-schema');
+  responderConfig = {
+    model: resolved.respondModel,
+    system: `${baseSystem}\n\n${jsonSchemaAppend}`,
+    thinking: resolved.thinkingTokens,
+    timeout: resolved.timeout,
+    tools: ['WebSearch'],
+    ...(resolved.respondBaseUrl && { baseUrl: resolved.respondBaseUrl }),
+    ...(resolved.respondApiKey && { apiKey: resolved.respondApiKey }),
+  };
 
-  responderProcess = new CLIProcess(
-    'responder',
-    {
-      model: resolved.respondModel,
-      ...responderSystemPromptFlags,
-      appendSystemPrompt: jsonSchemaAppend,
-      maxBudgetUsd: resolved.respondBudget,
-      thinkingTokens: resolved.thinkingTokens,
-      allowedTools: ['WebSearch'],
-      ...(resolved.respondBaseUrl && { baseUrl: resolved.respondBaseUrl }),
-      ...(resolved.respondApiKey && { apiKey: resolved.respondApiKey }),
-    },
-    {
-      tokenLimit: resolved.tokenRecycleLimit,
-      streaming: resolved.streaming,
-      timeout: resolved.timeout,
-    },
-  );
-
-  await Promise.all([classifierProcess.start(), responderProcess.start()]);
-
-  info('Triage processes started', {
+  info('Triage configured', {
     classifyModel: resolved.classifyModel,
     classifyBaseUrl: resolved.classifyBaseUrl || 'direct',
     respondModel: resolved.respondModel,
     respondBaseUrl: resolved.respondBaseUrl || 'direct',
-    tokenRecycleLimit: resolved.tokenRecycleLimit,
-    streaming: resolved.streaming,
     intervalMs: triageConfig.defaultInterval ?? 0,
   });
 }
@@ -696,10 +714,8 @@ export async function startTriage(discordClient, botConfig, monitor) {
  * Clear all timers, abort in-flight evaluations, close CLI processes, and reset state.
  */
 export function stopTriage() {
-  classifierProcess?.close();
-  responderProcess?.close();
-  classifierProcess = null;
-  responderProcess = null;
+  classifierConfig = null;
+  responderConfig = null;
 
   for (const [, buf] of channelBuffers) {
     if (buf.timer) {
@@ -884,9 +900,15 @@ export async function evaluateNow(channelId, evalConfig, evalClient, evalMonitor
       return;
     }
 
-    await evaluateAndRespond(channelId, snapshot, evalConfig, evalClient || client);
+    await evaluateAndRespond(
+      channelId,
+      snapshot,
+      evalConfig,
+      evalClient || client,
+      abortController.signal,
+    );
   } catch (err) {
-    if (err instanceof CLIProcessError && err.reason === 'timeout') {
+    if (err instanceof AIClientError && err.reason === 'timeout') {
       warn('Triage evaluation aborted (timeout)', { channelId });
       return;
     }

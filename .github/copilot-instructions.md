@@ -28,7 +28,7 @@ pnpm --prefix web build          # Build the Next.js dashboard
 | Component | Tech |
 |-----------|------|
 | Bot runtime | Node.js 22+, ESM JavaScript, discord.js v14 |
-| AI features | Anthropic Claude SDK (`@anthropic-ai/sdk`, `@anthropic-ai/claude-code`) |
+| AI features | Vercel AI SDK (`ai`, `@ai-sdk/anthropic`) |
 | Database | PostgreSQL 17+ with node-pg-migrate |
 | Caching | Redis 7+ (ioredis) with in-memory fallback |
 | API | Express 5 REST API |
