@@ -8,6 +8,7 @@ import { LogViewer } from '@/components/dashboard/log-viewer';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
 import { useLogStream } from '@/lib/log-ws';
 import { cn } from '@/lib/utils';
+import { ErrorBoundary } from '@/components/ui/error-boundary';
 import type { DiscordChannel } from '@/types/discord';
 
 /**
