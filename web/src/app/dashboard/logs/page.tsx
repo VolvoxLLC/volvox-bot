@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { HealthSection } from '@/components/dashboard/health-section';
 import { LogFilters } from '@/components/dashboard/log-filters';
 import { LogViewer } from '@/components/dashboard/log-viewer';
-import { PageHeader } from '@/components/dashboard/page-header';
 import type { DiscordChannel } from '@/components/ui/channel-selector';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
