@@ -54,15 +54,7 @@ function getEntryChannelId(entry: LogEntry): string | null {
  * @param status - The current connection status used to select the dot color and label text
  * @returns The UI element displaying a colored status dot and its label
  */
-function StatusIndicator({ status }: { status: ConnectionStatus }) {
-  const s = STATUS_STYLES[status];
-  return (
-    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-      <span className={cn('h-2 w-2 rounded-full shrink-0', s.dot)} />
-      <span>{s.label}</span>
-    </div>
-  );
-}
+// StatusIndicator removed — status rendering is handled inline by the parent page.
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 

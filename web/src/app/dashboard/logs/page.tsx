@@ -10,7 +10,6 @@ import type { DiscordChannel } from '@/components/ui/channel-selector';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
 import { useLogStream } from '@/lib/log-ws';
-import { cn } from '@/lib/utils';
 
 /**
  * Dashboard page that streams real-time bot logs and displays health and restart history.
