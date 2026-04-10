@@ -415,8 +415,7 @@ export function Header() {
               className={cn(
                 `${COMPACT_BTN_BASE} bg-transparent `,
                 COMPACT_BTN_OVERLAY,
-                (!guildId || statsLoading || casesLoading) &&
-                  COMPACT_BTN_DISABLED,
+                (!guildId || statsLoading || casesLoading) && COMPACT_BTN_DISABLED,
               )}
             >
               <RefreshCw
@@ -444,7 +443,10 @@ export function Header() {
               )}
             >
               <RefreshCw
-                className={cn('h-3 w-3 md:h-3.5 md:w-3.5 opacity-60', membersLoading && 'animate-spin')}
+                className={cn(
+                  'h-3 w-3 md:h-3.5 md:w-3.5 opacity-60',
+                  membersLoading && 'animate-spin',
+                )}
               />
               <span>Refresh Members</span>
             </button>
@@ -465,7 +467,10 @@ export function Header() {
               )}
             >
               <RefreshCw
-                className={cn('h-3 w-3 md:h-3.5 md:w-3.5 opacity-60', ticketsLoading && 'animate-spin')}
+                className={cn(
+                  'h-3 w-3 md:h-3.5 md:w-3.5 opacity-60',
+                  ticketsLoading && 'animate-spin',
+                )}
               />
               <span>Refresh Tickets</span>
             </button>
@@ -482,12 +487,14 @@ export function Header() {
               className={cn(
                 `${COMPACT_BTN_BASE} bg-transparent `,
                 COMPACT_BTN_OVERLAY,
-                (!guildId || conversationsLoading) &&
-                  COMPACT_BTN_DISABLED,
+                (!guildId || conversationsLoading) && COMPACT_BTN_DISABLED,
               )}
             >
               <RefreshCw
-                className={cn('h-3 w-3 md:h-3.5 md:w-3.5 opacity-60', conversationsLoading && 'animate-spin')}
+                className={cn(
+                  'h-3 w-3 md:h-3.5 md:w-3.5 opacity-60',
+                  conversationsLoading && 'animate-spin',
+                )}
               />
               <span>Refresh Conversations</span>
             </button>
@@ -508,7 +515,10 @@ export function Header() {
               )}
             >
               <RefreshCw
-                className={cn('h-3 w-3 md:h-3.5 md:w-3.5 opacity-60', auditLogLoading && 'animate-spin')}
+                className={cn(
+                  'h-3 w-3 md:h-3.5 md:w-3.5 opacity-60',
+                  auditLogLoading && 'animate-spin',
+                )}
               />
               <span>Refresh Audit Log</span>
             </button>
@@ -529,7 +539,10 @@ export function Header() {
               )}
             >
               <RefreshCw
-                className={cn('h-3 w-3 md:h-3.5 md:w-3.5 opacity-60', tempRolesLoading && 'animate-spin')}
+                className={cn(
+                  'h-3 w-3 md:h-3.5 md:w-3.5 opacity-60',
+                  tempRolesLoading && 'animate-spin',
+                )}
               />
               <span>Refresh Temp Roles</span>
             </button>
@@ -550,7 +563,10 @@ export function Header() {
               )}
             >
               <RefreshCw
-                className={cn('h-3 w-3 md:h-3.5 md:w-3.5 opacity-60', performanceLoading && 'animate-spin')}
+                className={cn(
+                  'h-3 w-3 md:h-3.5 md:w-3.5 opacity-60',
+                  performanceLoading && 'animate-spin',
+                )}
               />
               <span>Refresh Metrics</span>
             </button>
@@ -571,7 +587,10 @@ export function Header() {
               )}
             >
               <RefreshCw
-                className={cn('h-3 w-3 md:h-3.5 md:w-3.5 opacity-60', healthLoading && 'animate-spin')}
+                className={cn(
+                  'h-3 w-3 md:h-3.5 md:w-3.5 opacity-60',
+                  healthLoading && 'animate-spin',
+                )}
               />
               <span>Refresh Health</span>
             </button>
