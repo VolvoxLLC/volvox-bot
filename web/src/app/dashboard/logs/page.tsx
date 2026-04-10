@@ -1,6 +1,7 @@
 'use client';
 
 import { ScrollText } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { HealthSection } from '@/components/dashboard/health-section';
 import { LogFilters } from '@/components/dashboard/log-filters';
