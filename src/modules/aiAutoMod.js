@@ -1,16 +1,16 @@
 /**
  * AI Auto-Moderation Module
- * Uses Claude SDK to analyze messages for toxicity, spam, and harassment.
+ * Uses Claude CLI subprocess to analyze messages for toxicity, spam, and harassment.
  * Supports configurable thresholds, per-guild settings, and multiple actions:
  * warn, timeout, kick, ban, or flag for review.
  */
 
 import { EmbedBuilder } from 'discord.js';
 import { info, error as logError, warn } from '../logger.js';
-import { _setAnthropicClient, getAnthropicClient } from '../utils/anthropicClient.js';
 import { fetchChannelCached } from '../utils/discordCache.js';
 import { isExempt } from '../utils/modExempt.js';
 import { safeSend } from '../utils/safeSend.js';
+import { CLIProcess } from './cli-process.js';
 import { createCase } from './moderation.js';
 
 /** Default config when none is provided */
@@ -32,21 +32,6 @@ const DEFAULTS = {
   autoDelete: true,
   exemptRoleIds: [],
 };
-
-/**
- * Get the shared Anthropic client.
- * @returns {import('@anthropic-ai/sdk').default}
- */
-function getClient() {
-  return getAnthropicClient();
-}
-
-/**
- * Reset the Anthropic client (for testing).
- */
-export function resetClient() {
-  _setAnthropicClient(null);
-}
 
 /**
  * Get the merged AI auto-mod config for a guild.
@@ -84,8 +69,6 @@ export async function analyzeMessage(content, autoModConfig) {
     };
   }
 
-  const client = getClient();
-
   const prompt = `You are a content moderation assistant. Analyze the following Discord message and rate it on three dimensions.
 
 Message to analyze:
@@ -106,13 +89,13 @@ Respond ONLY with valid JSON in this exact format:
   "reason": "brief explanation of main concern or 'clean' if none"
 }`;
 
-  const response = await client.messages.create({
+  const proc = new CLIProcess('ai-automod', {
     model: mergedConfig.model ?? DEFAULTS.model,
-    max_tokens: 256,
-    messages: [{ role: 'user', content: prompt }],
+    tools: '', // no tools needed for moderation analysis
   });
-
-  const text = response.content[0]?.text ?? '{}';
+  await proc.start();
+  const msg = await proc.send(prompt);
+  const text = msg.result ?? '{}';
 
   let parsed;
   try {

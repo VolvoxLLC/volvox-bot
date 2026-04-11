@@ -24,25 +24,22 @@ vi.mock('../../src/modules/moderation.js', () => ({
   createCase: vi.fn().mockResolvedValue({ id: 1, caseNumber: 42 }),
 }));
 
-// Anthropic mock: use a module-level variable accessed via closure
-let _mockCreate = vi.fn();
+// CLIProcess mock: use a module-level variable accessed via closure
+let _mockSend = vi.fn();
 
-vi.mock('@anthropic-ai/sdk', () => {
-  class MockAnthropic {
-    constructor() {
-      this.messages = { create: (...args) => _mockCreate(...args) };
+vi.mock('../../src/modules/cli-process.js', () => {
+  class MockCLIProcess {
+    constructor() {}
+    async start() {}
+    async send(...args) {
+      return _mockSend(...args);
     }
   }
-  return { default: MockAnthropic };
+  return { CLIProcess: MockCLIProcess };
 });
 
 // Import after mocks
-import {
-  analyzeMessage,
-  checkAiAutoMod,
-  getAiAutoModConfig,
-  resetClient,
-} from '../../src/modules/aiAutoMod.js';
+import { analyzeMessage, checkAiAutoMod, getAiAutoModConfig } from '../../src/modules/aiAutoMod.js';
 import { createCase } from '../../src/modules/moderation.js';
 import { isExempt } from '../../src/utils/modExempt.js';
 
@@ -85,16 +82,12 @@ function makeClient() {
 
 function makeClaudeResponse(scores) {
   return {
-    content: [
-      {
-        text: JSON.stringify({
-          toxicity: scores.toxicity ?? 0,
-          spam: scores.spam ?? 0,
-          harassment: scores.harassment ?? 0,
-          reason: scores.reason ?? 'test reason',
-        }),
-      },
-    ],
+    result: JSON.stringify({
+      toxicity: scores.toxicity ?? 0,
+      spam: scores.spam ?? 0,
+      harassment: scores.harassment ?? 0,
+      reason: scores.reason ?? 'test reason',
+    }),
   };
 }
 
@@ -130,21 +123,18 @@ describe('getAiAutoModConfig', () => {
 
 describe('analyzeMessage', () => {
   beforeEach(() => {
-    resetClient();
-    _mockCreate = vi.fn();
+    _mockSend = vi.fn();
   });
 
   it('returns clean result for short messages', async () => {
     const result = await analyzeMessage('hi', {});
     expect(result.flagged).toBe(false);
     expect(result.categories).toHaveLength(0);
-    expect(_mockCreate).not.toHaveBeenCalled();
+    expect(_mockSend).not.toHaveBeenCalled();
   });
 
   it('returns clean result when scores are below thresholds', async () => {
-    _mockCreate.mockResolvedValue(
-      makeClaudeResponse({ toxicity: 0.1, spam: 0.2, harassment: 0.1 }),
-    );
+    _mockSend.mockResolvedValue(makeClaudeResponse({ toxicity: 0.1, spam: 0.2, harassment: 0.1 }));
     const cfg = getAiAutoModConfig({});
     const result = await analyzeMessage('this is a normal message', cfg);
     expect(result.flagged).toBe(false);
@@ -153,7 +143,7 @@ describe('analyzeMessage', () => {
   });
 
   it('flags toxicity when score exceeds threshold', async () => {
-    _mockCreate.mockResolvedValue(
+    _mockSend.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.9, spam: 0.1, harassment: 0.1, reason: 'hate speech' }),
     );
     const cfg = getAiAutoModConfig({});
@@ -165,7 +155,7 @@ describe('analyzeMessage', () => {
   });
 
   it('flags spam when score exceeds threshold', async () => {
-    _mockCreate.mockResolvedValue(
+    _mockSend.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.1, spam: 0.95, harassment: 0.1, reason: 'ad spam' }),
     );
     const cfg = getAiAutoModConfig({});
@@ -175,9 +165,7 @@ describe('analyzeMessage', () => {
   });
 
   it('picks most severe action from multiple triggered categories', async () => {
-    _mockCreate.mockResolvedValue(
-      makeClaudeResponse({ toxicity: 0.9, spam: 0.95, harassment: 0.8 }),
-    );
+    _mockSend.mockResolvedValue(makeClaudeResponse({ toxicity: 0.9, spam: 0.95, harassment: 0.8 }));
     const cfg = getAiAutoModConfig({
       aiAutoMod: {
         actions: { toxicity: 'warn', spam: 'timeout', harassment: 'kick' },
@@ -190,9 +178,7 @@ describe('analyzeMessage', () => {
   });
 
   it('handles malformed JSON from Claude gracefully', async () => {
-    _mockCreate.mockResolvedValue({
-      content: [{ text: 'oops not json at all' }],
-    });
+    _mockSend.mockResolvedValue({ result: 'oops not json at all' });
     const cfg = getAiAutoModConfig({});
     const result = await analyzeMessage('some content here', cfg);
     expect(result.flagged).toBe(false);
@@ -200,15 +186,13 @@ describe('analyzeMessage', () => {
   });
 
   it('handles Claude API errors by throwing', async () => {
-    _mockCreate.mockRejectedValue(new Error('Rate limited'));
+    _mockSend.mockRejectedValue(new Error('Rate limited'));
     const cfg = getAiAutoModConfig({});
     await expect(analyzeMessage('test content here', cfg)).rejects.toThrow('Rate limited');
   });
 
   it('clamps scores to [0, 1]', async () => {
-    _mockCreate.mockResolvedValue(
-      makeClaudeResponse({ toxicity: 1.5, spam: -0.3, harassment: 0.8 }),
-    );
+    _mockSend.mockResolvedValue(makeClaudeResponse({ toxicity: 1.5, spam: -0.3, harassment: 0.8 }));
     const cfg = getAiAutoModConfig({});
     const result = await analyzeMessage('some message text here', cfg);
     expect(result.scores.toxicity).toBe(1);
@@ -216,12 +200,9 @@ describe('analyzeMessage', () => {
   });
 
   it('extracts JSON from markdown code blocks', async () => {
-    _mockCreate.mockResolvedValue({
-      content: [
-        {
-          text: '```json\n{"toxicity": 0.8, "spam": 0.1, "harassment": 0.1, "reason": "hateful"}\n```',
-        },
-      ],
+    _mockSend.mockResolvedValue({
+      result:
+        '```json\n{"toxicity": 0.8, "spam": 0.1, "harassment": 0.1, "reason": "hateful"}\n```',
     });
     const cfg = getAiAutoModConfig({});
     const result = await analyzeMessage('bad message content here', cfg);
@@ -235,8 +216,7 @@ describe('checkAiAutoMod', () => {
   let client;
 
   beforeEach(() => {
-    resetClient();
-    _mockCreate = vi.fn();
+    _mockSend = vi.fn();
     vi.mocked(isExempt).mockReturnValue(false);
     vi.mocked(createCase).mockResolvedValue({ id: 1, caseNumber: 42 });
     message = makeMessage();
@@ -250,7 +230,7 @@ describe('checkAiAutoMod', () => {
   it('returns not flagged when aiAutoMod is disabled', async () => {
     const result = await checkAiAutoMod(message, client, { aiAutoMod: { enabled: false } });
     expect(result.flagged).toBe(false);
-    expect(_mockCreate).not.toHaveBeenCalled();
+    expect(_mockSend).not.toHaveBeenCalled();
   });
 
   it('returns not flagged when aiAutoMod config is missing', async () => {
@@ -262,17 +242,15 @@ describe('checkAiAutoMod', () => {
     message.author.bot = true;
     const result = await checkAiAutoMod(message, client, { aiAutoMod: { enabled: true } });
     expect(result.flagged).toBe(false);
-    expect(_mockCreate).not.toHaveBeenCalled();
+    expect(_mockSend).not.toHaveBeenCalled();
   });
 
   it('returns not flagged for exempt users', async () => {
     vi.mocked(isExempt).mockReturnValue(true);
-    _mockCreate.mockResolvedValue(
-      makeClaudeResponse({ toxicity: 0.9, spam: 0.9, harassment: 0.9 }),
-    );
+    _mockSend.mockResolvedValue(makeClaudeResponse({ toxicity: 0.9, spam: 0.9, harassment: 0.9 }));
     const result = await checkAiAutoMod(message, client, { aiAutoMod: { enabled: true } });
     expect(result.flagged).toBe(false);
-    expect(_mockCreate).not.toHaveBeenCalled();
+    expect(_mockSend).not.toHaveBeenCalled();
   });
 
   it('returns not flagged for empty messages', async () => {
@@ -289,11 +267,11 @@ describe('checkAiAutoMod', () => {
       aiAutoMod: { enabled: true, exemptRoleIds: [exemptRoleId] },
     });
     expect(result.flagged).toBe(false);
-    expect(_mockCreate).not.toHaveBeenCalled();
+    expect(_mockSend).not.toHaveBeenCalled();
   });
 
   it('flags and deletes message when action is delete', async () => {
-    _mockCreate.mockResolvedValue(
+    _mockSend.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.1, spam: 0.95, harassment: 0.1, reason: 'spam' }),
     );
     const guildConfig = {
@@ -313,7 +291,7 @@ describe('checkAiAutoMod', () => {
   });
 
   it('creates a warn case when action is warn', async () => {
-    _mockCreate.mockResolvedValue(
+    _mockSend.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.1, spam: 0.1, harassment: 0.9, reason: 'harassment' }),
     );
     const guildConfig = {
@@ -336,7 +314,7 @@ describe('checkAiAutoMod', () => {
   });
 
   it('times out member when action is timeout', async () => {
-    _mockCreate.mockResolvedValue(
+    _mockSend.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.9, spam: 0.1, harassment: 0.1, reason: 'toxic' }),
     );
     const guildConfig = {
@@ -357,7 +335,7 @@ describe('checkAiAutoMod', () => {
   });
 
   it('kicks member when action is kick', async () => {
-    _mockCreate.mockResolvedValue(
+    _mockSend.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.9, spam: 0.1, harassment: 0.1, reason: 'toxic' }),
     );
     const guildConfig = {
@@ -377,7 +355,7 @@ describe('checkAiAutoMod', () => {
   });
 
   it('bans member when action is ban', async () => {
-    _mockCreate.mockResolvedValue(
+    _mockSend.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.95, spam: 0.1, harassment: 0.1, reason: 'severe' }),
     );
     const guildConfig = {
@@ -400,7 +378,7 @@ describe('checkAiAutoMod', () => {
   });
 
   it('fails open when Claude throws', async () => {
-    _mockCreate.mockRejectedValue(new Error('API error'));
+    _mockSend.mockRejectedValue(new Error('API error'));
     const guildConfig = {
       aiAutoMod: {
         enabled: true,
@@ -417,7 +395,7 @@ describe('checkAiAutoMod', () => {
   });
 
   it('returns categories in flagged result', async () => {
-    _mockCreate.mockResolvedValue(
+    _mockSend.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.9, spam: 0.9, harassment: 0.9, reason: 'everything bad' }),
     );
     const guildConfig = {
@@ -438,7 +416,7 @@ describe('checkAiAutoMod', () => {
   });
 
   it('deletes message when action is delete and autoDelete is false', async () => {
-    _mockCreate.mockResolvedValue(
+    _mockSend.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.1, spam: 0.95, harassment: 0.1, reason: 'spam' }),
     );
     const guildConfig = {
