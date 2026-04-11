@@ -139,6 +139,8 @@ describe('commandInteraction handler', () => {
     await getHandler()(interaction);
     expect(interaction.reply).toHaveBeenCalledWith({ content: 'denied', ephemeral: true });
     expect(logger.warn).toHaveBeenCalledWith('Permission denied', {
+      guildId: 'guild1',
+      channelId: undefined,
       user: 'user#1',
       command: 'config',
     });

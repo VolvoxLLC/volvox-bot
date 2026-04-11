@@ -55,12 +55,14 @@ export function clearRateLimitCache() {
 }
 
 /**
- * Handle AFK logic for every guild message:
- *  1. If the sender is AFK → clear their status, DM them a ping summary.
- *  2. If any mentioned user is AFK → reply inline and log the ping.
+ * Process a guild message to clear a sender's AFK status and notify mentioned AFK users.
  *
- * @param {import('discord.js').Message} message
- * @returns {Promise<void>}
+ * Clears the message author's AFK status (if present) and DMs them a summary of pings,
+ * and records pings for any mentioned guild members who are AFK. For mentioned AFK users,
+ * an inline notice is sent unless suppressed by the per-channel rate limit.
+ *
+ * @param {import('discord.js').Message} message - The guild message to inspect for AFK status and mentions.
+ * @returns {Promise<void>} Nothing.
  */
 export async function handleAfkMentions(message) {
   // Only fire in guild channels
@@ -111,6 +113,7 @@ export async function handleAfkMentions(message) {
 
       info('AFK auto-cleared on message', {
         guildId: message.guild.id,
+        channelId: message.channel.id,
         userId: message.author.id,
       });
 
@@ -124,6 +127,8 @@ export async function handleAfkMentions(message) {
       } catch (dmErr) {
         // DMs may be closed; not fatal
         logError('Failed to DM AFK ping summary', {
+          guildId: message.guild?.id,
+          channelId: message.channel?.id,
           userId: message.author.id,
           error: dmErr?.message,
         });
@@ -178,6 +183,7 @@ export async function handleAfkMentions(message) {
 
       info('AFK ping tracked', {
         guildId: message.guild.id,
+        channelId: message.channel.id,
         afkUserId: userId,
         pingerId: message.author.id,
       });

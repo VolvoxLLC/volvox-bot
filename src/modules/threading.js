@@ -193,12 +193,13 @@ export function buildThreadKey(userId, channelId) {
 }
 
 /**
- * Locate a previously cached thread for the message author in the same channel and prepare it for reuse.
+ * Locate a cached reusable thread for the message author in the same channel and prepare it for reuse.
  *
- * If a valid, non-expired thread is found it will be returned; the function will update the thread's last-active timestamp
- * and attempt to unarchive the thread if necessary. Stale, missing, or inaccessible entries are removed from the cache.
- * @param {import('discord.js').Message} message - The triggering Discord message (used to identify user and channel).
- * @returns {Promise<import('discord.js').ThreadChannel|null>} `ThreadChannel` if a reusable thread was found and prepared, `null` otherwise.
+ * If a thread is found and still within the configured reuse window, ensures the thread is unarchived,
+ * updates its last-active timestamp, and returns it. Stale, missing, archived-but-unrecoverable, or
+ * inaccessible entries are removed from the cache and result in `null`.
+ * @param {import('discord.js').Message} message - The triggering Discord message used to identify the user and channel.
+ * @returns {Promise<import('discord.js').ThreadChannel|null>} The reusable `ThreadChannel` if found and prepared, `null` otherwise.
  */
 export async function findExistingThread(message) {
   const threadConfig = getThreadConfig(message.guild?.id);
@@ -227,11 +228,15 @@ export async function findExistingThread(message) {
       try {
         await thread.setArchived(false);
         info('Unarchived thread for reuse', {
+          guildId: message.guild?.id,
+          channelId: message.channel.id,
           threadId: thread.id,
           userId: message.author.id,
         });
       } catch (err) {
         warn('Failed to unarchive thread, creating new one', {
+          guildId: message.guild?.id,
+          channelId: message.channel.id,
           threadId: thread.id,
           error: err.message,
         });
@@ -279,6 +284,7 @@ export async function createThread(message, cleanContent) {
   });
 
   info('Created conversation thread', {
+    guildId: message.guild?.id,
     threadId: thread.id,
     threadName,
     userId: message.author.id,
@@ -323,21 +329,25 @@ export async function getOrCreateThread(message, cleanContent) {
     return await resultPromise;
   } finally {
     // Only delete if it's still our promise (not replaced by another call)
-    if (pendingThreadCreations.get(key) === resultPromise) {
+    if (Object.is(pendingThreadCreations.get(key), resultPromise)) {
       pendingThreadCreations.delete(key);
     }
   }
 }
 
 /**
- * Internal implementation of getOrCreateThread (without locking).
+ * Attempt to reuse an existing conversation thread for the given message or create a new one.
  * @private
+ * @param {import('discord.js').Message} message - The Discord message that triggered thread lookup/creation.
+ * @param {string} cleanContent - Sanitized message content used to generate a thread name when creating.
+ * @returns {Promise<{ thread: import('discord.js').ThreadChannel|null, isNew: boolean }>} `thread` is the thread channel or `null` if creation failed; `isNew` is `true` when a new thread was created, `false` when an existing thread was reused or creation failed.
  */
 async function _getOrCreateThreadInner(message, cleanContent) {
   // Try to reuse an existing thread
   const existingThread = await findExistingThread(message);
   if (existingThread) {
     info('Reusing existing thread', {
+      guildId: message.guild?.id,
       threadId: existingThread.id,
       userId: message.author.id,
       channelId: message.channel.id,

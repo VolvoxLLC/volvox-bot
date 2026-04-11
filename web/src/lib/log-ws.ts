@@ -18,6 +18,8 @@ export interface LogEntry {
 }
 
 export interface LogFilter {
+  guildId?: string;
+  channelIds?: string[];
   level?: LogLevel | 'all';
   module?: string;
   search?: string;
@@ -192,10 +194,11 @@ export function useLogStream(options: UseLogStreamOptions = {}): UseLogStreamRes
           backoffRef.current = INITIAL_BACKOFF_MS;
           connectingRef.current = false;
           // Re-apply active filter after reconnect
-          const f = activeFilterRef.current;
-          if (Object.keys(f).length > 0) {
-            ws.send(JSON.stringify({ type: 'filter', ...f }));
-          }
+          const f = {
+            ...activeFilterRef.current,
+            ...(guildId ? { guildId } : {}),
+          };
+          ws.send(JSON.stringify({ type: 'filter', ...f }));
           break;
         }
 
@@ -240,13 +243,15 @@ export function useLogStream(options: UseLogStreamOptions = {}): UseLogStreamRes
         if (!unmountedRef.current) connect();
       }, delay);
     };
-  }, [fetchTicket]);
+  }, [fetchTicket, guildId]);
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
   useEffect(() => {
     unmountedRef.current = false;
 
     if (enabled) {
+      // Clear stale logs from previous guild/filter when scope changes
+      setLogs([]);
       setStatus('reconnecting');
       connect();
     }
@@ -266,12 +271,19 @@ export function useLogStream(options: UseLogStreamOptions = {}): UseLogStreamRes
   }, [enabled, connect]);
 
   // ── Actions ────────────────────────────────────────────────────────────────
-  const sendFilter = useCallback((filter: LogFilter) => {
-    activeFilterRef.current = filter;
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: 'filter', ...filter }));
-    }
-  }, []);
+  const sendFilter = useCallback(
+    (filter: LogFilter) => {
+      const nextFilter = {
+        ...filter,
+        ...(guildId ? { guildId } : {}),
+      };
+      activeFilterRef.current = nextFilter;
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ type: 'filter', ...nextFilter }));
+      }
+    },
+    [guildId],
+  );
 
   const clearLogs = useCallback(() => {
     setLogs([]);

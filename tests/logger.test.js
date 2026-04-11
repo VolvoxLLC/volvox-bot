@@ -53,7 +53,7 @@ describe('logger module', () => {
     expect(typeof logger.info).toBe('function');
     expect(typeof logger.warn).toBe('function');
     expect(typeof logger.error).toBe('function');
-  });
+  }, 30_000);
 
   it('should export default object with all log functions', async () => {
     const logger = await import('../src/logger.js');

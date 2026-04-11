@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation';
 import { getServerSession } from 'next-auth';
+import { ConfigProvider } from '@/components/dashboard/config-context';
 import { DashboardShell } from '@/components/layout/dashboard-shell';
+import { GuildDirectoryProvider } from '@/components/layout/guild-directory-context';
 import { authOptions } from '@/lib/auth';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -11,5 +13,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
     redirect('/login');
   }
 
-  return <DashboardShell>{children}</DashboardShell>;
+  return (
+    <GuildDirectoryProvider>
+      <ConfigProvider>
+        <DashboardShell>{children}</DashboardShell>
+      </ConfigProvider>
+    </GuildDirectoryProvider>
+  );
 }

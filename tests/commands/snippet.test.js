@@ -23,6 +23,7 @@ vi.mock('../../src/logger.js', () => ({
 
 import { autocomplete, data, execute } from '../../src/commands/snippet.js';
 import { getPool } from '../../src/db.js';
+import * as logger from '../../src/logger.js';
 import { isModerator } from '../../src/utils/permissions.js';
 
 const mockSnippet = {
@@ -487,5 +488,56 @@ describe('snippet command', () => {
     expect(interaction.editReply).toHaveBeenCalledWith(
       expect.stringContaining('Failed to execute'),
     );
+  });
+
+  // ── channelId logging (PR change) ─────────────────────────────────────────
+
+  describe('channelId in info logs', () => {
+    it('logs channelId when snippet is saved', async () => {
+      const mockPool = {
+        query: vi.fn().mockResolvedValue({ rows: [{ id: 1 }] }),
+      };
+      getPool.mockReturnValue(mockPool);
+
+      const interaction = { ...createInteraction('save'), channelId: 'channel-snippet-save' };
+      interaction.options._setString('name', 'my-snippet');
+      interaction.options._setString('code', 'const x = 1;');
+      interaction.options._setString('language', 'js');
+      await execute(interaction);
+
+      expect(logger.info).toHaveBeenCalledWith(
+        'Snippet saved',
+        expect.objectContaining({
+          guildId: 'guild1',
+          channelId: 'channel-snippet-save',
+        }),
+      );
+    });
+
+    it('logs channelId when snippet is deleted by author', async () => {
+      const mockPool = {
+        query: vi
+          .fn()
+          .mockResolvedValueOnce({
+            rows: [{ id: 1, guild_id: 'guild1', author_id: 'user1', name: 'my-snippet' }],
+          })
+          .mockResolvedValueOnce({ rows: [] }),
+      };
+      getPool.mockReturnValue(mockPool);
+
+      isModerator.mockReturnValue(false);
+
+      const interaction = { ...createInteraction('delete'), channelId: 'channel-snippet-delete' };
+      interaction.options._setString('name', 'my-snippet');
+      await execute(interaction);
+
+      expect(logger.info).toHaveBeenCalledWith(
+        'Snippet deleted',
+        expect.objectContaining({
+          guildId: 'guild1',
+          channelId: 'channel-snippet-delete',
+        }),
+      );
+    });
   });
 });

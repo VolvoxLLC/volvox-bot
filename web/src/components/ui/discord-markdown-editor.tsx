@@ -41,8 +41,6 @@ export type DiscordMarkdownEditorProps = Readonly<{
   value: string;
   onChange: (value: string) => void;
   variables?: string[];
-  /** Delimiters wrapping variable names when inserted and displayed. Defaults to `['{{', '}}']`. */
-  variableDelimiters?: readonly [string, string];
   /** Maps variable names to sample values displayed inside the preview badges. */
   variableSamples?: Readonly<Record<string, string>>;
   maxLength?: number;
@@ -205,23 +203,39 @@ const SHORTCUT_MAP: Record<string, string> = {
 // Component
 // ---------------------------------------------------------------------------
 
-const DEFAULT_DELIMITERS = ['{{', '}}'] as const;
+const EDITOR_PANE_CONTENT_CLASSES = 'w-full px-3 py-2 text-sm leading-relaxed';
 
+/**
+ * A controlled Markdown editor with a formatting toolbar, variable insertion, and live HTML preview.
+ *
+ * @param value - Current editor text value.
+ * @param onChange - Callback invoked with the new text when the value changes.
+ * @param variables - Optional list of variable names available for insertion.
+ * @param variableDelimiters - Pair of strings used to wrap inserted variables (open, close).
+ * @param variableSamples - Optional map of variable name → sample text used to render previews.
+ * @param maxLength - Maximum allowed number of characters in the editor.
+ * @param placeholder - Placeholder text shown when the editor is empty.
+ * @param className - Additional CSS class names applied to the editor container.
+ * @param disabled - When true, disables user interaction with the editor and toolbar.
+ * @returns The rendered Discord-style Markdown editor React element.
+ */
 export function DiscordMarkdownEditor({
   value,
   onChange,
   variables = [],
-  variableDelimiters = DEFAULT_DELIMITERS,
   variableSamples,
   maxLength = 2000,
   placeholder = 'Enter your message...',
   className,
   disabled = false,
 }: DiscordMarkdownEditorProps) {
-  const [varOpen, varClose] = variableDelimiters;
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const rafIdsRef = React.useRef<number[]>([]);
   const [showVariables, setShowVariables] = React.useState(false);
+  const activeVariables = React.useMemo(
+    () => (variables.length > 0 ? [...variables] : undefined),
+    [variables],
+  );
 
   React.useEffect(
     () => () => {
@@ -272,8 +286,10 @@ export function DiscordMarkdownEditor({
       const rafId = requestAnimationFrame(() => {
         rafIdsRef.current = rafIdsRef.current.filter((id) => id !== rafId);
         if (textareaRef.current) {
+          const { cursorPos: _cursorPos } = result;
+          void _cursorPos;
           textareaRef.current.focus();
-          textareaRef.current.setSelectionRange(result.cursorPos, result.cursorPos);
+          textareaRef.current.setSelectionRange(result.cursorPos ?? null, result.cursorPos ?? null);
         }
       });
       rafIdsRef.current.push(rafId);
@@ -301,25 +317,21 @@ export function DiscordMarkdownEditor({
   React.useEffect(() => {
     setIsMounted(true);
   }, []);
+
   const previewContent = React.useMemo(() => {
     if (!isMounted) return null;
-    let html = parseDiscordMarkdown(value, variables.length > 0 ? variables : undefined);
+    let html = parseDiscordMarkdown(value, activeVariables);
     if (variableSamples) {
-      html = html.replace(
-        /data-variable="(\w+)">[^<]+<\/span>/g,
-        (match, name: string) => {
-          const sample = variableSamples[name];
-          if (sample === undefined) return match;
-          const escaped = sample
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
-          return `data-variable="${name}">${escaped}</span>`;
-        },
-      );
+      html = html.replace(/data-variable="(\w+)">[^<]+<\/span>/g, (match, name: string) => {
+        const sample = variableSamples[name];
+        if (sample === undefined) return match;
+        const escaped = sample.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        return `data-variable="${name}">${escaped}</span>`;
+      });
     }
     return renderPreviewContent(html);
-  }, [value, isMounted, variableSamples]);
+  }, [value, isMounted, variableSamples, activeVariables]);
+
   const getCharCountColor = (): string => {
     if (isOverLimit) {
       return 'text-red-500';
@@ -388,7 +400,7 @@ export function DiscordMarkdownEditor({
                   onSelect={() => insertVariable(variable)}
                 >
                   <span className="rounded bg-primary/10 px-1 py-0.5 font-mono text-primary">
-                    {`${varOpen}${variable}${varClose}`}
+                    {`{{${variable}}}`}
                   </span>
                   {variable}
                 </DropdownMenuItem>
@@ -398,7 +410,7 @@ export function DiscordMarkdownEditor({
         )}
       </div>
 
-      <div className="grid min-h-[200px] grid-cols-1 md:grid-cols-2">
+      <div className="grid grid-cols-1 md:grid-cols-2">
         <div className="md:border-r md:border-input">
           <textarea
             ref={textareaRef}
@@ -408,16 +420,22 @@ export function DiscordMarkdownEditor({
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             disabled={disabled}
-            className="min-h-[200px] w-full resize-none bg-transparent px-3 py-2 font-mono text-sm leading-relaxed [field-sizing:content] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+            className={cn(
+              EDITOR_PANE_CONTENT_CLASSES,
+              'resize-none bg-transparent font-mono [field-sizing:content] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50',
+            )}
             aria-label="Markdown editor"
           />
         </div>
 
-        <section
-          className="border-t border-input px-3 py-2 md:border-t-0"
-          aria-label="Preview"
-        >
-          <div className="discord-preview max-w-none text-sm leading-relaxed">
+        <section className="border-t border-input md:border-t-0" aria-label="Preview">
+          <div
+            className={cn(
+              EDITOR_PANE_CONTENT_CLASSES,
+              'discord-preview relative -top-[3px] max-w-none',
+              'font-mono md:overflow-x-auto md:overflow-y-hidden md:whitespace-nowrap',
+            )}
+          >
             {previewContent}
           </div>
         </section>

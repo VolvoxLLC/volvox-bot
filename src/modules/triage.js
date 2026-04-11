@@ -80,20 +80,22 @@ const BUDGET_ALERT_COOLDOWN_MS = 60 * 60 * 1_000;
 // ── Two-step CLI evaluation ──────────────────────────────────────────────────
 
 /**
- * Classify a channel buffer snapshot using the Haiku classifier and prepare context for responding.
+ * Classify a buffered channel snapshot and prepare context and memory for potential responses.
  *
- * Builds a classification prompt from recent channel context and the provided snapshot, sends it to the classifier,
- * parses the result, and, if the classification requires a response, gathers per-target memory context.
+ * Sends a classification prompt built from recent channel context and the provided snapshot to the classifier;
+ * when the result indicates a response is required, gathers the channel context and per-target memory context.
  * @param {string} channelId - ID of the channel being evaluated.
- * @param {Array<Object>} snapshot - Array of buffered message entries (author, content, userId, messageId, etc.).
- * @param {Object} evalConfig - Triage configuration (controls context message limits and related settings).
- * @param {import('discord.js').Client} evalClient - Discord client used to fetch additional context and user info.
- * @returns {{classification: Object, classifyMessage: Object, context: Array, memoryContext: string}|null} `{
- *   classification,       // parsed classification object
- *   classifyMessage,      // raw classifier response message (includes cost metadata)
- *   context,              // resolved channel context messages used for prompting
- *   memoryContext         // concatenated memory context for target users (may be empty string)
- * }` when classification produced actionable output; `null` if classification failed or is `'ignore'`. */
+ * @param {Array<Object>} snapshot - Buffered message entries (objects containing at least author, content, userId, messageId, and optional guildId).
+ * @param {Object} evalConfig - Evaluation configuration; uses triage settings such as `contextMessages` and `confidenceThreshold`.
+ * @param {import('discord.js').Client} evalClient - Discord client used to detect the bot user and to fetch additional channel/user context.
+ * @returns {{classification: Object, classifyMessage: Object, context: Array<Object>, memoryContext: string, wasMentioned: boolean}|null} An object with:
+ *   - `classification`: parsed classification result (label, confidence, reasoning, targetMessageIds, etc.),
+ *   - `classifyMessage`: raw classifier response message (includes cost/metadata),
+ *   - `context`: array of channel context messages used for prompting,
+ *   - `memoryContext`: concatenated memory context for target users (may be empty string),
+ *   - `wasMentioned`: `true` if the bot was @mentioned in the snapshot; `false` otherwise.
+ *   Returns `null` if classification failed, was determined to be `'ignore'`, or failed the confidence threshold gates.
+ */
 async function runClassification(channelId, snapshot, evalConfig, evalClient) {
   const contextLimit = evalConfig.triage?.contextMessages ?? 10;
   const context =
@@ -139,7 +141,9 @@ async function runClassification(channelId, snapshot, evalConfig, evalClient) {
     const mentionTag = `<@${botId}>`;
     wasMentioned = snapshot.some((m) => m.content?.includes(mentionTag));
     if (classification.classification === 'ignore' && wasMentioned) {
-      info('Triage: overriding ignore → respond (bot was @mentioned)', { channelId });
+      info('Triage: overriding ignore → respond (bot was @mentioned)', {
+        channelId,
+      });
       classification.classification = 'respond';
       classification.targetMessageIds = snapshot
         .filter((m) => m.content?.includes(mentionTag))
@@ -148,7 +152,10 @@ async function runClassification(channelId, snapshot, evalConfig, evalClient) {
   }
 
   if (classification.classification === 'ignore') {
-    info('Triage: ignoring channel', { channelId, reasoning: classification.reasoning });
+    info('Triage: ignoring channel', {
+      channelId,
+      reasoning: classification.reasoning,
+    });
     return null;
   }
 
@@ -814,13 +821,13 @@ export async function accumulateMessage(message, msgConfig) {
 const MAX_REEVAL_DEPTH = 3;
 
 /**
- * Trigger an immediate triage evaluation for the given channel.
+ * Run an immediate triage evaluation of the buffered messages for the given channel.
  *
- * @param {string} channelId - The ID of the channel to evaluate.
- * @param {Object} evalConfig - Bot configuration.
- * @param {import('discord.js').Client} evalClient - Discord client.
- * @param {Object} [evalMonitor] - Health monitor.
- * @param {number} [depth=0] - Current recursion depth (guards against infinite re-evaluation loops).
+ * @param {string} channelId - ID of the channel whose buffer should be evaluated.
+ * @param {Object} evalConfig - Bot configuration used for this evaluation (and for any bounded recursive re-evaluations).
+ * @param {import('discord.js').Client} [evalClient] - Optional Discord client to use instead of the module client.
+ * @param {Object} [evalMonitor] - Optional health monitor used for recursive evaluations.
+ * @param {number} [depth=0] - Current recursion depth; stops further re-evaluations once the configured max depth is reached.
  */
 export async function evaluateNow(channelId, evalConfig, evalClient, evalMonitor, depth = 0) {
   if (depth >= MAX_REEVAL_DEPTH) {
@@ -833,14 +840,19 @@ export async function evaluateNow(channelId, evalConfig, evalClient, evalMonitor
   // Check if channel is blocked before processing buffered messages.
   // This guards against the case where a channel is blocked AFTER messages
   // were buffered but BEFORE evaluateNow runs.
+  // Also captures guildId for the evaluation log below (avoiding a second fetch).
   const usedClient = evalClient || client;
+  let cachedGuildId = null;
   try {
     const ch = await fetchChannelCached(usedClient, channelId);
-    const guildId = ch?.guildId ?? null;
+    cachedGuildId = ch?.guildId ?? null;
     // Only check parentId for threads - for regular channels, parentId is the category ID
     const parentId = ch?.isThread?.() ? ch.parentId : null;
-    if (isChannelBlocked(channelId, parentId, guildId)) {
-      debug('evaluateNow skipping blocked channel with buffered messages', { channelId, guildId });
+    if (isChannelBlocked(channelId, parentId, cachedGuildId)) {
+      debug('evaluateNow skipping blocked channel with buffered messages', {
+        channelId,
+        guildId: cachedGuildId,
+      });
       return;
     }
   } catch (err) {
@@ -873,7 +885,11 @@ export async function evaluateNow(channelId, evalConfig, evalClient, evalMonitor
   buf.abortController = abortController;
 
   try {
-    info('Triage evaluating', { channelId, buffered: buf.messages.length });
+    info('Triage evaluating', {
+      guildId: cachedGuildId,
+      channelId,
+      buffered: buf.messages.length,
+    });
 
     // Take a snapshot of the buffer for evaluation
     const snapshot = [...buf.messages];

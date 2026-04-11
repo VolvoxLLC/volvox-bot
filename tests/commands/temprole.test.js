@@ -4,7 +4,7 @@ vi.mock('../../src/utils/safeSend.js', () => ({
   safeSend: vi.fn(),
   safeReply: vi.fn(),
   safeFollowUp: vi.fn(),
-  safeEditReply: (t, opts) => t.editReply(opts),
+  safeEditReply: vi.fn((t, opts) => t.editReply(opts)),
 }));
 
 vi.mock('../../src/modules/tempRoleHandler.js', () => ({
@@ -25,12 +25,14 @@ vi.mock('../../src/logger.js', () => ({
 }));
 
 import { adminOnly, data, execute } from '../../src/commands/temprole.js';
+import * as logger from '../../src/logger.js';
 import {
   assignTempRole,
   listTempRoles,
   revokeTempRole,
 } from '../../src/modules/tempRoleHandler.js';
 import { parseDuration } from '../../src/utils/duration.js';
+import { safeEditReply } from '../../src/utils/safeSend.js';
 
 // Minimal Discord mock helpers
 const mockRole = { id: 'role1', name: 'VIP', position: 3 };
@@ -212,6 +214,71 @@ describe('temprole command', () => {
       // editReply called with an embed object (not a string)
       const call = interaction.editReply.mock.calls[0][0];
       expect(call).toHaveProperty('embeds');
+    });
+
+    it('uses safeEditReply (not interaction.editReply directly) for list success', async () => {
+      listTempRoles.mockResolvedValueOnce({
+        rows: [
+          {
+            id: 2,
+            user_id: 'u2',
+            role_id: 'r2',
+            expires_at: new Date(Date.now() + 86400000).toISOString(),
+            reason: 'testing',
+          },
+        ],
+        total: 1,
+      });
+
+      const interaction = createInteraction('list');
+      interaction.options.getUser = vi.fn().mockReturnValue(null);
+      await execute(interaction);
+
+      expect(safeEditReply).toHaveBeenCalledWith(
+        interaction,
+        expect.objectContaining({ embeds: expect.any(Array) }),
+      );
+    });
+
+    it('uses safeEditReply when no assignments exist', async () => {
+      const interaction = createInteraction('list');
+      interaction.options.getUser = vi.fn().mockReturnValue(null);
+      await execute(interaction);
+
+      expect(safeEditReply).toHaveBeenCalledWith(
+        interaction,
+        expect.stringContaining('No active temporary role'),
+      );
+    });
+  });
+
+  // ── channelId logging (PR change) ─────────────────────────────────────────
+
+  describe('channelId in info logs', () => {
+    it('logs channelId when temp role is assigned', async () => {
+      const interaction = { ...createInteraction('assign'), channelId: 'channel-temprole-assign' };
+      await execute(interaction);
+
+      expect(logger.info).toHaveBeenCalledWith(
+        'Temp role assigned via command',
+        expect.objectContaining({
+          guildId: 'guild1',
+          channelId: 'channel-temprole-assign',
+        }),
+      );
+    });
+
+    it('logs channelId when temp role is revoked', async () => {
+      const interaction = { ...createInteraction('revoke'), channelId: 'channel-temprole-revoke' };
+      await execute(interaction);
+
+      expect(logger.info).toHaveBeenCalledWith(
+        'Temp role manually revoked',
+        expect.objectContaining({
+          guildId: 'guild1',
+          channelId: 'channel-temprole-revoke',
+        }),
+      );
     });
   });
 });

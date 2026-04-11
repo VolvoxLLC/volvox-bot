@@ -26,6 +26,7 @@ vi.mock('../../../src/api/middleware/oauthJwt.js', () => ({
 
 import { groupMessagesIntoConversations } from '../../../src/api/routes/conversations.js';
 import { createApp } from '../../../src/api/server.js';
+import * as logger from '../../../src/logger.js';
 
 const TEST_SECRET = 'test-conversations-secret';
 
@@ -671,6 +672,27 @@ describe('conversations routes', () => {
 
       expect(res.status).toBe(400);
       expect(res.body.error).toContain('notes');
+    });
+
+    it('should log guildId (not guild) in error log on DB failure', async () => {
+      // Cause the DB to fail on the message lookup
+      mockPool.query.mockRejectedValueOnce(new Error('db error'));
+
+      await authed(
+        request(app)
+          .post('/api/v1/guilds/guild1/conversations/1/flag')
+          .send({ messageId: 5, reason: 'test' }),
+      );
+
+      expect(logger.error).toHaveBeenCalledWith(
+        'Failed to flag message',
+        expect.objectContaining({ guildId: 'guild1' }),
+      );
+      // Verify old key 'guild' is NOT used
+      expect(logger.error).not.toHaveBeenCalledWith(
+        'Failed to flag message',
+        expect.objectContaining({ guild: expect.anything() }),
+      );
     });
   });
 

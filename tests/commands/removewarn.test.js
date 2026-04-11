@@ -11,6 +11,7 @@ vi.mock('../../src/modules/warningEngine.js', () => ({
 vi.mock('../../src/logger.js', () => ({ info: vi.fn(), error: vi.fn(), warn: vi.fn() }));
 
 import { data, execute, moderatorOnly } from '../../src/commands/removewarn.js';
+import * as logger from '../../src/logger.js';
 import { removeWarning } from '../../src/modules/warningEngine.js';
 
 describe('removewarn command', () => {
@@ -54,5 +55,18 @@ describe('removewarn command', () => {
     const interaction = createInteraction();
     await execute(interaction);
     expect(interaction.editReply).toHaveBeenCalledWith(expect.stringContaining('Failed'));
+  });
+
+  it('should include channelId in info log when warning is removed', async () => {
+    const interaction = { ...createInteraction(), channelId: 'channel-removewarn' };
+    await execute(interaction);
+
+    expect(logger.info).toHaveBeenCalledWith(
+      'Warning removed via command',
+      expect.objectContaining({
+        guildId: 'guild1',
+        channelId: 'channel-removewarn',
+      }),
+    );
   });
 });

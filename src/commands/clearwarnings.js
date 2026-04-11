@@ -41,6 +41,7 @@ export async function execute(interaction) {
 
     info('Warnings cleared via command', {
       guildId: interaction.guild.id,
+      channelId: interaction.channelId,
       target: user.tag,
       moderator: interaction.user.tag,
       count,

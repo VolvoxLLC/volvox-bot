@@ -2,11 +2,10 @@
 
 import { RefreshCw, Search, Shield, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect } from 'react';
 import { CaseTable } from '@/components/dashboard/case-table';
 import { EmptyState } from '@/components/dashboard/empty-state';
 import { ModerationStats } from '@/components/dashboard/moderation-stats';
-import { PageHeader } from '@/components/dashboard/page-header';
 import { Button } from '@/components/ui/button';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { Input } from '@/components/ui/input';
@@ -47,8 +46,6 @@ export default function ModerationClient() {
     fetchCases,
     fetchUserHistory,
   } = useModerationStore();
-
-  const abortRefreshRef = useRef<AbortController | null>(null);
 
   const onGuildChange = useCallback(() => {
     resetOnGuildChange();
@@ -93,46 +90,6 @@ export default function ModerationClient() {
     return () => controller.abort();
   }, [guildId, lookupUserId, userHistoryPage, fetchUserHistory, onUnauthorized]);
 
-  useEffect(() => {
-    return () => {
-      abortRefreshRef.current?.abort();
-    };
-  }, []);
-
-  const handleRefresh = useCallback(() => {
-    if (!guildId) return;
-    abortRefreshRef.current?.abort();
-    const controller = new AbortController();
-    abortRefreshRef.current = controller;
-    const { signal } = controller;
-    void (async () => {
-      const [statsResult, casesResult] = await Promise.all([
-        fetchStats(guildId, { signal }),
-        fetchCases(guildId, { signal }),
-      ]);
-      if (lookupUserId) {
-        const historyResult = await fetchUserHistory(guildId, lookupUserId, userHistoryPage, {
-          signal,
-        });
-        if (historyResult === 'unauthorized') {
-          onUnauthorized();
-          return;
-        }
-      }
-      if (statsResult === 'unauthorized' || casesResult === 'unauthorized') {
-        onUnauthorized();
-      }
-    })();
-  }, [
-    guildId,
-    lookupUserId,
-    userHistoryPage,
-    fetchStats,
-    fetchCases,
-    fetchUserHistory,
-    onUnauthorized,
-  ]);
-
   const handleUserHistorySearch = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
@@ -150,26 +107,6 @@ export default function ModerationClient() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        icon={Shield}
-        title="Moderation"
-        description="Review cases, track activity, and audit your moderation team."
-        actions={
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2"
-            onClick={handleRefresh}
-            disabled={!guildId || statsLoading || casesLoading}
-          >
-            <RefreshCw
-              className={`h-4 w-4 ${statsLoading || casesLoading ? 'animate-spin' : ''}`}
-            />
-            Refresh
-          </Button>
-        }
-      />
-
       {/* No guild selected */}
       {!guildId && (
         <EmptyState
@@ -189,7 +126,7 @@ export default function ModerationClient() {
 
           <div className="grid gap-5 xl:grid-cols-2 xl:items-start">
             {/* Cases */}
-            <section className="dashboard-panel space-y-3 rounded-2xl p-4 md:p-5">
+            <section className="group relative overflow-hidden rounded-[24px] border border-border/40 bg-card/40 p-6 backdrop-blur-2xl shadow-lg transition-all hover:bg-card/50 space-y-4">
               <div>
                 <h3 className="text-lg font-semibold tracking-tight">Cases</h3>
                 <p className="text-sm text-muted-foreground">
@@ -214,7 +151,7 @@ export default function ModerationClient() {
             </section>
 
             {/* User History Lookup */}
-            <section className="dashboard-panel space-y-3 rounded-2xl p-4 md:p-5">
+            <section className="group relative overflow-hidden rounded-[24px] border border-border/40 bg-card/40 p-6 backdrop-blur-2xl shadow-lg transition-all hover:bg-card/50 space-y-4">
               <div>
                 <h3 className="text-lg font-semibold tracking-tight">User History Lookup</h3>
                 <p className="text-sm text-muted-foreground">
@@ -229,8 +166,8 @@ export default function ModerationClient() {
                 <div className="relative min-w-[15rem] flex-1">
                   <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
-                    className="h-10 rounded-xl border-border/70 bg-background/70 pl-9"
-                    placeholder="Discord user ID (e.g. 123456789012345678)"
+                    className="h-10 rounded-xl border border-white/10 bg-black/20 pl-9 transition-colors focus:bg-black/30 w-[300px]"
+                    placeholder="Discord ID (e.g. 123456...)"
                     value={userHistoryInput}
                     onChange={(e) => setUserHistoryInput(e.target.value)}
                     aria-label="User ID for history lookup"
@@ -239,6 +176,7 @@ export default function ModerationClient() {
                 <Button
                   type="submit"
                   size="sm"
+                  className="h-10 rounded-xl px-4 text-xs font-bold uppercase tracking-wider"
                   disabled={!userHistoryInput.trim() || userHistoryLoading}
                 >
                   {userHistoryLoading ? (

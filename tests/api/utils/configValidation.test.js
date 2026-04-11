@@ -427,6 +427,45 @@ describe('configValidation', () => {
       ).toEqual([]);
     });
 
+    it('should accept valid xp.levelUpDm object', () => {
+      expect(
+        validateSingleValue('xp.levelUpDm', {
+          enabled: true,
+          sendOnEveryLevel: true,
+          defaultMessage: 'Level {{level}}',
+          messages: [{ level: 5, message: 'Milestone {{level}}' }],
+        }),
+      ).toEqual([]);
+    });
+
+    it('should reject duplicate xp.levelUpDm message levels', () => {
+      const errors = validateSingleValue('xp.levelUpDm.messages', [
+        { level: 5, message: 'First' },
+        { level: 5, message: 'Second' },
+      ]);
+      expect(errors.some((e) => e.includes('duplicate value "5"'))).toBe(true);
+    });
+
+    it('should reject blank xp.levelUpDm override messages', () => {
+      const errors = validateSingleValue('xp.levelUpDm.messages', [{ level: 5, message: '' }]);
+      expect(errors.some((e) => e.includes('at least 1 characters'))).toBe(true);
+    });
+
+    it('should reject whitespace-only xp.levelUpDm templates', () => {
+      const defaultErrors = validateSingleValue('xp.levelUpDm.defaultMessage', '   ');
+      const overrideErrors = validateSingleValue('xp.levelUpDm.messages', [
+        { level: 5, message: '   ' },
+      ]);
+
+      expect(defaultErrors.some((e) => e.includes('required pattern'))).toBe(true);
+      expect(overrideErrors.some((e) => e.includes('required pattern'))).toBe(true);
+    });
+
+    it('should reject xp.levelUpDm messages above Discord length limit', () => {
+      const errors = validateSingleValue('xp.levelUpDm.defaultMessage', 'x'.repeat(2001));
+      expect(errors.some((e) => e.includes('max length'))).toBe(true);
+    });
+
     it('should reject non-boolean roleRewards.stackRoles', () => {
       const errors = validateSingleValue('xp.roleRewards', { stackRoles: 'yes' });
       expect(errors.some((e) => e.includes('expected boolean'))).toBe(true);

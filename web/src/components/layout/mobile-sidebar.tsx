@@ -3,8 +3,7 @@
 import { Menu } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { ServerSelector } from './server-selector';
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
 import { Sidebar } from './sidebar';
 
 /**
@@ -18,8 +17,7 @@ export function MobileSidebar() {
     <>
       <Button
         variant="ghost"
-        size="icon"
-        className="dashboard-chip rounded-xl md:hidden"
+        className="dashboard-chip h-10 w-14 min-w-10 p-0 rounded-full md:hidden"
         onClick={() => setOpen(true)}
         aria-label="Toggle menu"
       >
@@ -29,17 +27,13 @@ export function MobileSidebar() {
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent
           side="left"
-          className="w-[min(21.5rem,92vw)] border-r border-border/70 bg-gradient-to-b from-card via-card/90 to-background p-0"
+          className="flex h-full w-[min(21.5rem,90vw)] flex-col border-r border-border/70 bg-gradient-to-b from-card via-card/90 to-background p-0"
         >
-          <SheetHeader className="border-b border-border/60 p-4 pb-3 text-left">
-            <SheetTitle className="text-base font-semibold tracking-tight">Control Room</SheetTitle>
-          </SheetHeader>
-          <div className="p-4 pb-2">
-            <ServerSelector />
-          </div>
-          <div className="px-4 pb-4">
-            <Sidebar onNavClick={() => setOpen(false)} />
-          </div>
+          <SheetTitle className="sr-only">Dashboard Navigation</SheetTitle>
+          <SheetDescription className="sr-only">
+            Browse dashboard navigation and switch workspaces from the control room sidebar.
+          </SheetDescription>
+          <Sidebar onNavClick={() => setOpen(false)} className="flex-1" />
         </SheetContent>
       </Sheet>
     </>

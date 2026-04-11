@@ -1060,7 +1060,7 @@ router.post(
     } catch (err) {
       logError('Failed to flag message', {
         error: err.message,
-        guild: guildId,
+        guildId,
         conversationId,
         messageId,
       });

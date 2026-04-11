@@ -167,6 +167,7 @@ vi.mock('discord.js', () => {
 
 import { data, execute } from '../../src/commands/poll.js';
 import { getPool } from '../../src/db.js';
+import * as logger from '../../src/logger.js';
 import { isModerator } from '../../src/utils/permissions.js';
 
 /**
@@ -510,6 +511,32 @@ describe('poll command', () => {
       expect(interaction.editReply).toHaveBeenCalledWith(
         expect.objectContaining({
           content: expect.stringContaining('already closed'),
+        }),
+      );
+    });
+
+    it('should include guildId and channelId in warn log when close permission denied', async () => {
+      const poll = {
+        id: 99,
+        guild_id: 'guild-123',
+        author_id: 'other-user',
+        closed: false,
+      };
+      mockPool.query.mockResolvedValueOnce({ rows: [poll] });
+      isModerator.mockReturnValueOnce(false);
+
+      const interaction = createMockInteraction('close', { id: 99 });
+      // createMockInteraction already sets channelId: 'ch-456'
+
+      await execute(interaction);
+
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Poll close permission denied',
+        expect.objectContaining({
+          guildId: 'guild-123',
+          channelId: 'ch-456',
+          userId: 'user-789',
+          pollId: 99,
         }),
       );
     });

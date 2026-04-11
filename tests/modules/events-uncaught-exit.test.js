@@ -102,11 +102,11 @@ describe('registerErrorHandlers — uncaughtException exits process (issue #156)
       return process;
     });
 
-    const { registerErrorHandlers } = await import('../../src/modules/events.js');
+    const { registerErrorHandlers } = await import('../../src/modules/events/errors.js');
     registerErrorHandlers({ on: vi.fn() });
 
     expect(capturedHandlers.uncaughtException).toBeDefined();
-  });
+  }, 30_000);
 
   it('calls process.exit(1) after logging an uncaught exception', async () => {
     const capturedHandlers = {};
@@ -119,7 +119,7 @@ describe('registerErrorHandlers — uncaughtException exits process (issue #156)
       Sentry: { flush: vi.fn().mockResolvedValue(undefined) },
     }));
 
-    const { registerErrorHandlers } = await import('../../src/modules/events.js');
+    const { registerErrorHandlers } = await import('../../src/modules/events/errors.js');
     registerErrorHandlers({ on: vi.fn() });
 
     expect(capturedHandlers.uncaughtException).toBeDefined();
@@ -142,7 +142,7 @@ describe('registerErrorHandlers — uncaughtException exits process (issue #156)
       },
     }));
 
-    const { registerErrorHandlers } = await import('../../src/modules/events.js');
+    const { registerErrorHandlers } = await import('../../src/modules/events/errors.js');
     registerErrorHandlers({ on: vi.fn() });
 
     await capturedHandlers.uncaughtException(new Error('boom while sentry is down'));

@@ -9,7 +9,7 @@ import { SlashCommandBuilder } from 'discord.js';
 import { getPool } from '../db.js';
 import { info, error as logError } from '../logger.js';
 import { addAlias, listAliases, removeAlias } from '../modules/commandAliases.js';
-import { safeReply } from '../utils/safeSend.js';
+import { safeEditReply, safeReply } from '../utils/safeSend.js';
 
 /**
  * Discord limits command names to 1–32 lowercase letters, numbers, hyphens, underscores.
@@ -114,9 +114,11 @@ async function handleList(interaction) {
 }
 
 /**
- * Add a new alias for the current guild.
- * @param {import('discord.js').ChatInputCommandInteraction} interaction
- * @param {import('pg').Pool} pool
+ * Create a new command alias for the guild.
+ *
+ * Validates the requested alias and target command, persists the alias to the database,
+ * and sends an ephemeral reply indicating success or the reason for failure.
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - The invoking interaction; must include string options `alias` and `command` and be executed in a guild context.
  */
 async function handleAdd(interaction, pool) {
   const alias = interaction.options.getString('alias').toLowerCase().trim();
@@ -182,10 +184,11 @@ async function handleAdd(interaction, pool) {
       alias,
       targetCommand,
       guildId: interaction.guildId,
+      channelId: interaction.channelId,
       createdBy: interaction.user.tag,
     });
 
-    await interaction.editReply({
+    await safeEditReply(interaction, {
       content: `✅ Created alias \`/${alias}\` → \`/${targetCommand}\`.\nUsers can now use \`/${alias}\` in this server.`,
     });
   } catch (err) {
@@ -195,16 +198,19 @@ async function handleAdd(interaction, pool) {
       guildId: interaction.guildId,
       error: err.message,
     });
-    await interaction.editReply({
+    await safeEditReply(interaction, {
       content: `❌ Failed to create alias: ${err.message}`,
     });
   }
 }
 
 /**
- * Remove an alias for the current guild.
- * @param {import('discord.js').ChatInputCommandInteraction} interaction
- * @param {import('pg').Pool} pool
+ * Remove a guild-level command alias and notify the user.
+ *
+ * Attempts to remove the specified alias from the guild's alias store, sends an ephemeral reply
+ * with the result, and records success or failure in structured logs.
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - The command interaction that invoked the removal; used for options, guild context, replying, and actor identity.
+ * @param {import('pg').Pool} pool - PostgreSQL connection pool used to perform the alias removal.
  */
 async function handleRemove(interaction, pool) {
   const alias = interaction.options.getString('alias').toLowerCase().trim();
@@ -222,10 +228,11 @@ async function handleRemove(interaction, pool) {
     info('Alias removed', {
       alias,
       guildId: interaction.guildId,
+      channelId: interaction.channelId,
       removedBy: interaction.user.tag,
     });
 
-    await interaction.editReply({
+    await safeEditReply(interaction, {
       content: `✅ Alias \`/${alias}\` has been removed.`,
     });
   } catch (err) {
@@ -234,7 +241,7 @@ async function handleRemove(interaction, pool) {
       guildId: interaction.guildId,
       error: err.message,
     });
-    await interaction.editReply({
+    await safeEditReply(interaction, {
       content: `❌ ${err.message}`,
     });
   }

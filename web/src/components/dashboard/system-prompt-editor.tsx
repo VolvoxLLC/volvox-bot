@@ -1,11 +1,11 @@
 'use client';
 
+import { MessageSquareText } from 'lucide-react';
 import { useCallback, useId } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { inputClasses } from '@/components/dashboard/config-editor-utils';
 import { cn } from '@/lib/utils';
 import { SYSTEM_PROMPT_MAX_LENGTH } from '@/types/config';
 
-/** Threshold (percentage of max) at which the counter turns to a warning color. */
 const WARNING_THRESHOLD = 0.9;
 
 interface SystemPromptEditorProps {
@@ -20,17 +20,7 @@ interface SystemPromptEditorProps {
 }
 
 /**
- * Renders a card UI for editing and validating a system prompt with live character counting and visual feedback.
- *
- * The component displays a textarea bound to `value`, shows a character counter and an over-limit message when the
- * input exceeds `maxLength`, applies warning styling when near the threshold, and exposes updates through `onChange`.
- * It includes accessible attributes (aria-describedby, aria-invalid, polite live region) and supports a disabled state.
- *
- * @param value - Current system prompt text shown in the editor
- * @param onChange - Callback invoked with the updated text when the textarea value changes
- * @param maxLength - Maximum allowed characters for the prompt; defaults to the configured SYSTEM_PROMPT_MAX_LENGTH
- * @param disabled - If true, disables editing and dims the control
- * @returns The JSX element rendering the System Prompt editor card
+ * Renders a block UI for editing and validating a system prompt with live character counting and visual feedback.
  */
 export function SystemPromptEditor({
   value,
@@ -54,53 +44,81 @@ export function SystemPromptEditor({
   );
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">System Prompt</CardTitle>
-        <CardDescription id={descriptionId}>
-          The personality and instructions for the AI assistant.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-2">
+    <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl">
+      <div className="mb-4 space-y-1">
+        <h3 className="text-sm font-semibold tracking-wide text-foreground/90">System Prompt</h3>
+        <p
+          id={descriptionId}
+          className="text-[11px] text-muted-foreground/60 uppercase tracking-wider"
+        >
+          Define core identity, instructions, and behavior boundaries
+        </p>
+      </div>
+      <div className="space-y-4">
         <label htmlFor={id} className="sr-only">
           System prompt
         </label>
-        <textarea
-          id={id}
-          value={value}
-          onChange={handleChange}
-          disabled={disabled}
-          rows={12}
-          aria-describedby={`${descriptionId} ${counterId}`}
-          aria-invalid={isOverLimit || undefined}
-          className={cn(
-            'w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
-            isOverLimit && 'border-destructive focus-visible:ring-destructive',
-          )}
-          placeholder="Enter the system prompt for your bot..."
-        />
-        <div className="flex items-center justify-end gap-2 text-xs">
-          <output
-            id={counterId}
+        <div className="relative group/textarea">
+          <div className="absolute top-4 left-4 text-muted-foreground/30 group-focus-within/textarea:text-primary/40 transition-colors pointer-events-none">
+            <MessageSquareText className="h-5 w-5" />
+          </div>
+          <textarea
+            id={id}
+            value={value}
+            onChange={handleChange}
+            disabled={disabled}
+            rows={14}
+            aria-describedby={`${descriptionId} ${counterId}`}
+            aria-invalid={isOverLimit || undefined}
             className={cn(
-              'tabular-nums',
-              isOverLimit
-                ? 'font-medium text-destructive'
-                : isNearLimit
-                  ? 'text-yellow-500'
-                  : 'text-muted-foreground',
+              inputClasses,
+              'pl-12 pt-4 bg-muted/10 dark:bg-black/20 resize-none font-medium leading-relaxed',
+              isOverLimit &&
+                'border-destructive/50 focus-visible:ring-destructive/30 focus-visible:border-destructive/30 shadow-[inset_0_2px_8px_rgba(239,68,68,0.1)]',
+              disabled && 'opacity-40 grayscale-[0.5]',
             )}
-            aria-live="off"
-          >
-            {charCount.toLocaleString()} / {maxLength.toLocaleString()}
-          </output>
-          {isOverLimit && (
-            <span className="text-destructive" role="alert">
-              ({(charCount - maxLength).toLocaleString()} over limit)
-            </span>
-          )}
+            placeholder="Tell the AI who to be (e.g. 'You are a helpful and witty technical assistant...')"
+          />
         </div>
-      </CardContent>
-    </Card>
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-3">
+            {isOverLimit && (
+              <span
+                className="flex items-center gap-1.5 rounded-full bg-red-500/10 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest text-red-500 border border-red-500/20 shadow-sm"
+                role="alert"
+              >
+                <span className="h-1 w-1 rounded-full bg-red-500 animate-pulse" />
+                {(charCount - maxLength).toLocaleString()} over limit
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="h-1 w-32 bg-muted/30 dark:bg-black/40 rounded-full overflow-hidden shadow-inner">
+              <div
+                className={cn(
+                  'h-full transition-all duration-500',
+                  isOverLimit ? 'bg-red-500' : isNearLimit ? 'bg-yellow-500' : 'bg-primary/60',
+                )}
+                style={{ width: `${Math.min((charCount / maxLength) * 100, 100)}%` }}
+              />
+            </div>
+            <output
+              id={counterId}
+              className={cn(
+                'text-[10px] font-black uppercase tracking-widest tabular-nums',
+                isOverLimit
+                  ? 'text-red-500'
+                  : isNearLimit
+                    ? 'text-yellow-500'
+                    : 'text-muted-foreground/60',
+              )}
+              aria-live="off"
+            >
+              {charCount.toLocaleString()} / {maxLength.toLocaleString()}
+            </output>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

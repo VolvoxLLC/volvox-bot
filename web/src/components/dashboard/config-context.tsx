@@ -60,6 +60,9 @@ export interface ConfigContextValue {
   handleSearchSelect: (item: ConfigSearchItem) => void;
   handleSearchChange: (value: string) => void;
   activeCategoryId: ConfigCategoryId | null;
+  setActiveCategoryId: (id: ConfigCategoryId | null) => void;
+  activeTabId: ConfigFeatureId | null;
+  setActiveTabId: (id: ConfigFeatureId | null) => void;
 }
 
 const ConfigContext = createContext<ConfigContextValue | null>(null);
@@ -119,11 +122,19 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [focusFeatureId, setFocusFeatureId] = useState<ConfigFeatureId | null>(null);
   const [selectedSearchItemId, setSelectedSearchItemId] = useState<string | null>(null);
+  const [activeTabId, setActiveTabId] = useState<ConfigFeatureId | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
 
   // Derive active category from URL
   const activeCategoryId = useMemo(() => parseCategoryFromPathname(pathname), [pathname]);
+  const setActiveCategoryId = useCallback(
+    (id: ConfigCategoryId | null) => {
+      if (id) router.push(`/dashboard/settings/${id}`);
+      else router.push('/dashboard/settings');
+    },
+    [router],
+  );
 
   const updateDraftConfig = useCallback((updater: (prev: GuildConfig) => GuildConfig) => {
     setDraftConfig((prev) => updater((prev ?? {}) as GuildConfig));
@@ -140,6 +151,9 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     setGuildId(stored);
 
     function onGuildSelected(e: Event) {
+      // If the config-layout-shell guard cancelled the switch (unsaved changes
+      // and the user declined), honour that decision and skip the guild update.
+      if (e.defaultPrevented) return;
       const detail = (e as CustomEvent<string>).detail;
       setGuildId(detail);
     }
@@ -266,6 +280,24 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     );
   }, [activeCategory, searchQuery, matchedFeatureIds]);
 
+  // Sync activeTabId with category changes
+  useEffect(() => {
+    if (!activeCategory) {
+      setActiveTabId(null);
+      return;
+    }
+
+    // If current tab is not in the new category, or is filtered out by search, reset to first visible
+    if (
+      !activeTabId ||
+      !activeCategory.featureIds.includes(activeTabId) ||
+      !visibleFeatureIds.has(activeTabId)
+    ) {
+      const firstVisible = activeCategory.featureIds.find((id) => visibleFeatureIds.has(id));
+      setActiveTabId(firstVisible ?? activeCategory.featureIds[0] ?? null);
+    }
+  }, [activeCategory, visibleFeatureIds, activeTabId]);
+
   const selectedSearchItem = useMemo(
     () => searchResults.find((item) => item.id === selectedSearchItemId) ?? null,
     [searchResults, selectedSearchItemId],
@@ -315,6 +347,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       router.push(`/dashboard/settings/${item.categoryId}`);
       setFocusFeatureId(item.featureId);
       setSelectedSearchItemId(item.id);
+      setActiveTabId(item.featureId);
     },
     [router],
   );
@@ -596,6 +629,9 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       handleSearchSelect,
       handleSearchChange,
       activeCategoryId,
+      activeTabId,
+      setActiveTabId,
+      setActiveCategoryId,
     }),
     [
       guildId,
@@ -625,6 +661,8 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       handleSearchSelect,
       handleSearchChange,
       activeCategoryId,
+      activeTabId,
+      setActiveCategoryId,
     ],
   );
 
