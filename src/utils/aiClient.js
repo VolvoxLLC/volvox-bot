@@ -1,14 +1,14 @@
 /**
  * AI Client — Vercel AI SDK wrapper for the bot's AI inference needs.
  *
- * Replaces the old CLIProcess subprocess manager with direct SDK calls.
  * Supports multi-provider model selection via `provider:model` strings
- * (e.g. 'anthropic:claude-sonnet-4-6'). Bare model names default to Anthropic.
+ * (e.g. 'anthropic:claude-sonnet-4-6', 'minimax:MiniMax-M2.7').
+ * Bare model names default to Anthropic.
  *
- * Security note: Unlike the old buildEnv() which isolated subprocess environment
- * variables, the SDK runs in-process with access to all of process.env. This is
- * safe because the SDK only sends credentials we explicitly pass via `apiKey` —
- * it does not read arbitrary env vars or leak DISCORD_TOKEN, DATABASE_URL, etc.
+ * Providers using Anthropic-compatible API endpoints (like MiniMax) are
+ * routed through the Anthropic SDK with custom base URLs. The SDK runs
+ * in-process — only credentials we explicitly pass via apiKey/authToken
+ * are sent to the provider.
  */
 
 import { createHash } from 'node:crypto';
@@ -82,7 +82,7 @@ async function withRetry(fn, opts = {}) {
  * a per-model `baseUrl` override in config.
  */
 const KNOWN_BASE_URLS = {
-  minimax: 'https://api.minimax.io/anthropic',
+  minimax: 'https://api.minimax.io/anthropic/v1',
 };
 
 // ── Provider cache ──────────────────────────────────────────────────────────
@@ -133,7 +133,7 @@ function resolveModel(modelString, overrides = {}) {
     providerCache.set(
       cacheKey,
       createAnthropic({
-        apiKey,
+        ...(isAnthropic ? { apiKey } : { authToken: apiKey }),
         ...(baseUrl && { baseURL: baseUrl }),
       }),
     );
@@ -148,17 +148,22 @@ function resolveModel(modelString, overrides = {}) {
 /**
  * Build provider-specific options (e.g. thinking tokens).
  *
- * Currently all providers route through the Anthropic SDK, so options are
- * keyed as `anthropic`. When non-Anthropic SDK providers are added, this
- * function should map provider names to their SDK option keys.
+ * All providers currently route through the Anthropic SDK (`createAnthropic`),
+ * so options MUST be keyed as `anthropic` — this is the SDK key, not the
+ * logical provider name. If a non-Anthropic SDK is added in the future,
+ * this function should map provider names to their SDK option keys.
  *
- * @param {string} _providerName - Logical provider name (unused for now)
+ * @param {string} _providerName - Logical provider name (unused — SDK key is always 'anthropic')
  * @param {number} [thinking] - Thinking token budget (0 = disabled)
  * @returns {Object}
  */
 function buildProviderOptions(_providerName, thinking) {
   if (!thinking || thinking <= 0) return {};
   return { anthropic: { thinking: { type: 'enabled', budgetTokens: thinking } } };
+}
+
+function getProviderMetadata(providerMetadata, providerName) {
+  return providerMetadata?.[providerName] ?? providerMetadata?.anthropic ?? {};
 }
 
 /**
@@ -270,12 +275,14 @@ export async function generate(opts) {
     );
 
     const usage = result.totalUsage ?? result.usage ?? {};
-    const anthropicMeta = result.providerMetadata?.anthropic ?? {};
-    const cachedInputTokens = anthropicMeta.cacheReadInputTokens ?? 0;
+    const providerMeta = getProviderMetadata(result.providerMetadata, providerName);
+    const cachedInputTokens = providerMeta.cacheReadInputTokens ?? 0;
+    const cacheCreationInputTokens = providerMeta.cacheCreationInputTokens ?? 0;
     const costUsd = await calculateCost(providerName, modelId, {
       inputTokens: usage.inputTokens,
       outputTokens: usage.outputTokens,
       cachedInputTokens,
+      cacheCreationInputTokens,
     });
 
     return {
@@ -363,12 +370,14 @@ export async function stream(opts) {
     const sources = (await result.sources) ?? [];
     const providerMetadata = (await result.providerMetadata) ?? {};
 
-    const anthropicMeta = providerMetadata?.anthropic ?? {};
-    const cachedInputTokens = anthropicMeta.cacheReadInputTokens ?? 0;
+    const providerMeta = getProviderMetadata(providerMetadata, providerName);
+    const cachedInputTokens = providerMeta.cacheReadInputTokens ?? 0;
+    const cacheCreationInputTokens = providerMeta.cacheCreationInputTokens ?? 0;
     const costUsd = await calculateCost(providerName, modelId, {
       inputTokens: usage.inputTokens,
       outputTokens: usage.outputTokens,
       cachedInputTokens,
+      cacheCreationInputTokens,
     });
 
     return {

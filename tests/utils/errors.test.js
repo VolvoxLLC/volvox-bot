@@ -230,7 +230,7 @@ describe('getSuggestedNextSteps', () => {
   it('should return suggestion for NETWORK errors', () => {
     const err = new Error('fetch failed');
     const steps = getSuggestedNextSteps(err);
-    expect(steps).toContain('Anthropic API');
+    expect(steps).toContain('AI provider API');
   });
 
   it('should return suggestion for TIMEOUT errors', () => {
@@ -248,13 +248,13 @@ describe('getSuggestedNextSteps', () => {
   it('should return suggestion for API_UNAUTHORIZED errors', () => {
     const err = new Error('unauth');
     const steps = getSuggestedNextSteps(err, { status: 401 });
-    expect(steps).toContain('ANTHROPIC_API_KEY');
+    expect(steps).toContain('AI provider API key');
   });
 
   it('should return suggestion for API_NOT_FOUND errors', () => {
     const err = new Error('not found');
     const steps = getSuggestedNextSteps(err, { status: 404 });
-    expect(steps).toContain('Anthropic API');
+    expect(steps).toContain('AI provider API');
   });
 
   it('should return suggestion for API_SERVER_ERROR', () => {

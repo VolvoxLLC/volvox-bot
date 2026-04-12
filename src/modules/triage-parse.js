@@ -26,8 +26,13 @@ export function parseSDKResult(raw, channelId, label) {
   }
   const text = typeof raw === 'string' ? raw : JSON.stringify(raw);
 
-  // Strip markdown code fences if present
-  const stripped = text.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/, '');
+  // Strip markdown code fences if present. Some providers prepend blank lines
+  // before the fence, so trim outer whitespace before checking fence markers.
+  const stripped = text
+    .trim()
+    .replace(/^```(?:json)?\s*\n?/i, '')
+    .replace(/\n?```\s*$/i, '')
+    .trim();
 
   try {
     return JSON.parse(stripped);

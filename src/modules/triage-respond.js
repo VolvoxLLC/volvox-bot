@@ -350,9 +350,16 @@ export async function buildStatsAndLog(
   const targetEntry = snapshot.find((m) => classification.targetMessageIds?.includes(m.messageId));
   const targetUserId = targetEntry?.userId || null;
 
+  const classifyProvider = resolved.classifyModel?.split(':')[1]
+    ? resolved.classifyModel.split(':')[0]
+    : 'anthropic';
+  const respondProvider = resolved.respondModel?.split(':')[1]
+    ? resolved.respondModel.split(':')[0]
+    : 'anthropic';
+
   const stats = {
-    classify: extractStats(classifyMessage, resolved.classifyModel),
-    respond: extractStats(respondMessage, resolved.respondModel),
+    classify: extractStats(classifyMessage, resolved.classifyModel, classifyProvider),
+    respond: extractStats(respondMessage, resolved.respondModel, respondProvider),
     userId: targetUserId,
     searchCount,
   };

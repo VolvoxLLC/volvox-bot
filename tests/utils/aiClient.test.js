@@ -132,7 +132,7 @@ describe('generate', () => {
 
     expect(mockCreateAnthropic).toHaveBeenCalledWith(
       expect.objectContaining({
-        baseURL: 'https://api.minimax.io/anthropic',
+        baseURL: 'https://api.minimax.io/anthropic/v1',
       }),
     );
   });
@@ -145,7 +145,7 @@ describe('generate', () => {
       await generate({ model: 'codex:some-model', prompt: 'test' });
 
       expect(mockCreateAnthropic).toHaveBeenCalledWith(
-        expect.objectContaining({ apiKey: 'codex-key-123' }),
+        expect.objectContaining({ authToken: 'codex-key-123' }),
       );
     } finally {
       delete process.env.CODEX_API_KEY;
@@ -161,7 +161,7 @@ describe('generate', () => {
       await generate({ model: 'codex:some-model', prompt: 'test' });
 
       expect(mockCreateAnthropic).toHaveBeenCalledWith({
-        apiKey: 'codex-key',
+        authToken: 'codex-key',
         baseURL: 'https://codex.example.com/v1',
       });
     } finally {
@@ -178,7 +178,7 @@ describe('generate', () => {
       await generate({ model: 'newprovider:a-model', prompt: 'test' });
 
       expect(mockCreateAnthropic).toHaveBeenCalledWith(
-        expect.objectContaining({ apiKey: 'fallback-key' }),
+        expect.objectContaining({ authToken: 'fallback-key' }),
       );
     } finally {
       delete process.env.ANTHROPIC_API_KEY;
@@ -192,7 +192,7 @@ describe('generate', () => {
 
     expect(mockCreateAnthropic).toHaveBeenCalledWith(
       expect.objectContaining({
-        baseURL: 'https://api.minimax.io/anthropic',
+        baseURL: 'https://api.minimax.io/anthropic/v1',
       }),
     );
   });
@@ -350,6 +350,7 @@ describe('generate', () => {
       inputTokens: 100,
       outputTokens: 50,
       cachedInputTokens: 0,
+      cacheCreationInputTokens: 0,
     });
     expect(result.costUsd).toBe(0.042);
   });
@@ -589,6 +590,46 @@ describe('generate — edge cases', () => {
       inputTokens: 100,
       outputTokens: 50,
       cachedInputTokens: 75,
+      cacheCreationInputTokens: 0,
+    });
+  });
+
+  it('should extract cachedInputTokens using dynamic provider name from model string', async () => {
+    const result = makeGenerateResult({
+      providerMetadata: { minimax: { cacheReadInputTokens: 50 } },
+    });
+    mockGenerateText.mockResolvedValue(result);
+    mockCalculateCost.mockResolvedValue(0.003);
+
+    await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'cached provider' });
+
+    expect(mockCalculateCost).toHaveBeenCalledWith('minimax', 'MiniMax-M2.7', {
+      inputTokens: 100,
+      outputTokens: 50,
+      cachedInputTokens: 50,
+      cacheCreationInputTokens: 0,
+    });
+  });
+
+  it('should fall back to anthropic providerMetadata for Anthropic-compatible providers', async () => {
+    const result = makeGenerateResult({
+      providerMetadata: {
+        anthropic: {
+          cacheCreationInputTokens: 25,
+          cacheReadInputTokens: 50,
+        },
+      },
+    });
+    mockGenerateText.mockResolvedValue(result);
+    mockCalculateCost.mockResolvedValue(0.003);
+
+    await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'cached provider' });
+
+    expect(mockCalculateCost).toHaveBeenCalledWith('minimax', 'MiniMax-M2.7', {
+      inputTokens: 100,
+      outputTokens: 50,
+      cachedInputTokens: 50,
+      cacheCreationInputTokens: 25,
     });
   });
 });

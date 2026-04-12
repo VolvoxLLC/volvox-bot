@@ -58,6 +58,15 @@ describe('parseSDKResult', () => {
     expect(result.classification).toBe('triage');
   });
 
+  it('should strip markdown code fences with leading whitespace', () => {
+    const raw =
+      '\n\n```json\n{"responses":[{"targetMessageId":"m1","targetUser":"Alice","response":"Help text"}]}\n```\n';
+    const result = parseSDKResult(raw, 'ch1', 'Responder');
+    expect(result).not.toBeNull();
+    expect(result.responses).toHaveLength(1);
+    expect(result.responses[0].targetMessageId).toBe('m1');
+  });
+
   it('should strip ``` code fences without language hint', () => {
     const raw = '```\n{"classification":"off-topic","reasoning":"nope","targetMessageIds":[]}\n```';
     const result = parseSDKResult(raw, 'ch1', 'Classifier');

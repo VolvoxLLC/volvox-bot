@@ -41,7 +41,7 @@ vi.mock('../../src/utils/splitMessage.js', () => ({
 
 vi.mock('../../src/utils/debugFooter.js', () => ({
   buildDebugEmbed: vi.fn(() => ({ title: 'Debug' })),
-  extractStats: vi.fn((_msg, model) => ({
+  extractStats: vi.fn((_msg, model, _providerName) => ({
     model,
     promptTokens: 100,
     completionTokens: 50,

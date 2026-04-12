@@ -209,16 +209,16 @@ export function getSuggestedNextSteps(error, context = {}) {
   const errorType = classifyError(error, context);
 
   const suggestions = {
-    [ErrorType.NETWORK]: 'Make sure the Anthropic API is reachable.',
+    [ErrorType.NETWORK]: 'Make sure the AI provider API is reachable.',
 
     [ErrorType.TIMEOUT]: 'Try a shorter message or wait a moment before retrying.',
 
     [ErrorType.API_RATE_LIMIT]: 'Wait 60 seconds before trying again.',
 
     [ErrorType.API_UNAUTHORIZED]:
-      'Check the ANTHROPIC_API_KEY environment variable is set and valid.',
+      'Check that the AI provider API key is set and valid (ANTHROPIC_API_KEY or <PROVIDER>_API_KEY).',
 
-    [ErrorType.API_NOT_FOUND]: 'Verify the Anthropic API endpoint is reachable.',
+    [ErrorType.API_NOT_FOUND]: 'Verify the AI provider API endpoint is reachable.',
 
     [ErrorType.API_SERVER_ERROR]:
       'The service should recover automatically. If it persists, restart the AI service.',

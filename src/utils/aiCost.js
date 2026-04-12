@@ -2,7 +2,8 @@
  * AI Cost Calculation
  *
  * Calculates USD cost from token usage via the `token-costs` library,
- * which provides daily-updated pricing for Anthropic, OpenAI, Google, and OpenRouter.
+ * which provides daily-updated pricing for Anthropic, OpenAI, Google, and OpenRouter,
+ * plus local pricing for MiniMax models that are not yet in token-costs.
  *
  * Falls back to 0 on unknown models or network errors — never crashes the caller.
  */
@@ -11,6 +12,20 @@ import { warn } from '../logger.js';
 
 /** @type {Promise<import('token-costs').CostClient> | null} */
 let costClientPromise = null;
+
+// MiniMax's Anthropic-compatible endpoint is not covered by token-costs yet.
+// Prices are USD per 1M tokens from MiniMax docs, checked 2026-04-12:
+// https://platform.minimax.io/docs/api-reference/anthropic-api-compatible-cache
+const MINIMAX_PRICING = {
+  'minimax-m2.7': { input: 0.3, output: 1.2, cached: 0.06, cacheWrite: 0.375 },
+  'minimax-m2.7-highspeed': { input: 0.3, output: 2.4, cached: 0.06, cacheWrite: 0.375 },
+  'minimax-m2.5': { input: 0.3, output: 1.2, cached: 0.03, cacheWrite: 0.375 },
+  'minimax-m2.5-highspeed': { input: 0.3, output: 2.4, cached: 0.03, cacheWrite: 0.375 },
+  'minimax-m2.1': { input: 0.3, output: 1.2, cached: 0.03, cacheWrite: 0.375 },
+  'minimax-m2.1-highspeed': { input: 0.3, output: 2.4, cached: 0.03, cacheWrite: 0.375 },
+  'minimax-m2': { input: 0.3, output: 1.2, cached: 0.03, cacheWrite: 0.375 },
+  'minimax-m2-stable': { input: 0.3, output: 1.2, cached: 0.03, cacheWrite: 0.375 },
+};
 
 /**
  * Initialise the CostClient.
@@ -79,16 +94,52 @@ function normaliseModelId(modelId) {
   return stripped;
 }
 
+function normaliseMinimaxModelId(modelId) {
+  return modelId.toLowerCase();
+}
+
+function calculateMinimaxCost(modelId, usage = {}) {
+  const pricing = MINIMAX_PRICING[normaliseMinimaxModelId(modelId)];
+  if (!pricing) return null;
+
+  const inputTokens = usage.inputTokens ?? 0;
+  const outputTokens = usage.outputTokens ?? 0;
+  const cachedInputTokens = usage.cachedInputTokens ?? 0;
+  const cacheCreationInputTokens = usage.cacheCreationInputTokens ?? 0;
+  const cacheTokens = cachedInputTokens + cacheCreationInputTokens;
+
+  // SDK usage normally reports total input tokens including cache read/write.
+  // If a caller passes only uncached input tokens, keep them instead of going negative.
+  const regularInputTokens =
+    inputTokens >= cacheTokens ? inputTokens - cacheTokens : inputTokens;
+
+  return (
+    (regularInputTokens / 1_000_000) * pricing.input +
+    (cachedInputTokens / 1_000_000) * pricing.cached +
+    (cacheCreationInputTokens / 1_000_000) * pricing.cacheWrite +
+    (outputTokens / 1_000_000) * pricing.output
+  );
+}
+
 /**
  * Calculate USD cost from token usage.
  *
  * @param {string} provider - Provider name (e.g. 'anthropic', 'openai')
  * @param {string} modelId - Model ID (e.g. 'claude-sonnet-4-6' or 'claude-sonnet-4.6')
- * @param {{ inputTokens?: number, outputTokens?: number, cachedInputTokens?: number }} usage
+ * @param {Object} usage
+ * @param {number} [usage.inputTokens]
+ * @param {number} [usage.outputTokens]
+ * @param {number} [usage.cachedInputTokens]
+ * @param {number} [usage.cacheCreationInputTokens]
  * @returns {Promise<number>} Cost in USD (0 on failure)
  */
 export async function calculateCost(provider, modelId, usage) {
   try {
+    if (provider === 'minimax') {
+      const minimaxCost = calculateMinimaxCost(modelId, usage);
+      if (minimaxCost != null) return minimaxCost;
+    }
+
     const client = await getClient();
     const normalisedModel = provider === 'anthropic' ? normaliseModelId(modelId) : modelId;
 

@@ -147,6 +147,35 @@ describe('calculateCost', () => {
     });
     expect(mockCalc).toHaveBeenCalledWith('openai', 'gpt-4o-2025', expect.any(Object));
   });
+
+  it('should calculate MiniMax M2.7 cost from local pricing', async () => {
+    const mockCalc = vi.fn().mockResolvedValue({ totalCost: 999, stale: false });
+    _setCostClient({
+      listModels: vi.fn().mockResolvedValue([]),
+      calculateCost: mockCalc,
+    });
+
+    const cost = await calculateCost('minimax', 'MiniMax-M2.7', {
+      inputTokens: 10_000,
+      outputTokens: 5_000,
+      cachedInputTokens: 2_000,
+      cacheCreationInputTokens: 1_000,
+    });
+
+    expect(cost).toBeCloseTo(0.008595);
+    expect(mockCalc).not.toHaveBeenCalled();
+  });
+
+  it('should handle MiniMax usage where inputTokens excludes cache tokens', async () => {
+    const cost = await calculateCost('minimax', 'MiniMax-M2.7', {
+      inputTokens: 10,
+      outputTokens: 0,
+      cachedInputTokens: 500,
+      cacheCreationInputTokens: 1_000,
+    });
+
+    expect(cost).toBeCloseTo(0.000408);
+  });
 });
 
 describe('normaliseModelId — 3-segment versions', () => {

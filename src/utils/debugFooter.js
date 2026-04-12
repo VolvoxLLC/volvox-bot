@@ -60,11 +60,12 @@ function shortModel(model) {
  *  - cacheCreation {number} - Tokens consumed creating cache entries.
  *  - cacheRead {number} - Tokens consumed reading from cache.
  */
-function extractStats(result, model) {
+function extractStats(result, model, providerName = 'anthropic') {
   const usage = result?.usage || {};
 
-  // Anthropic-specific cache token stats live in providerMetadata, not in usage.
-  const anthropicMeta = result?.providerMetadata?.anthropic || {};
+  // Provider-specific cache token stats live in providerMetadata, not in usage.
+  const providerMeta =
+    result?.providerMetadata?.[providerName] || result?.providerMetadata?.anthropic || {};
 
   return {
     model: model || 'unknown',
@@ -72,8 +73,8 @@ function extractStats(result, model) {
     durationMs: result?.durationMs ?? 0,
     inputTokens: usage.inputTokens ?? 0,
     outputTokens: usage.outputTokens ?? 0,
-    cacheCreation: anthropicMeta.cacheCreationInputTokens ?? 0,
-    cacheRead: anthropicMeta.cacheReadInputTokens ?? 0,
+    cacheCreation: providerMeta.cacheCreationInputTokens ?? 0,
+    cacheRead: providerMeta.cacheReadInputTokens ?? 0,
   };
 }
 

@@ -155,7 +155,7 @@ describe('extractStats', () => {
     expect(stats.outputTokens).toBe(100);
   });
 
-  it('should extract cache tokens from providerMetadata.anthropic', () => {
+  it('should extract cache tokens from providerMetadata using default anthropic key', () => {
     const result = {
       costUsd: 0.003,
       durationMs: 150,
@@ -175,6 +175,43 @@ describe('extractStats', () => {
     expect(stats.outputTokens).toBe(200);
     expect(stats.cacheCreation).toBe(60);
     expect(stats.cacheRead).toBe(200);
+  });
+
+  it('should extract cache tokens using a non-anthropic provider name', () => {
+    const result = {
+      costUsd: 0.002,
+      durationMs: 100,
+      usage: {
+        inputTokens: 300,
+        outputTokens: 150,
+      },
+      providerMetadata: {
+        minimax: {
+          cacheCreationInputTokens: 40,
+          cacheReadInputTokens: 100,
+        },
+      },
+    };
+    const stats = extractStats(result, 'MiniMax-M2.7', 'minimax');
+    expect(stats.cacheCreation).toBe(40);
+    expect(stats.cacheRead).toBe(100);
+  });
+
+  it('should fall back to anthropic cache metadata for Anthropic-compatible providers', () => {
+    const result = {
+      costUsd: 0.001,
+      durationMs: 50,
+      usage: { inputTokens: 100, outputTokens: 50 },
+      providerMetadata: {
+        anthropic: {
+          cacheCreationInputTokens: 30,
+          cacheReadInputTokens: 70,
+        },
+      },
+    };
+    const stats = extractStats(result, 'model', 'minimax');
+    expect(stats.cacheCreation).toBe(30);
+    expect(stats.cacheRead).toBe(70);
   });
 
   it('should handle missing providerMetadata gracefully', () => {

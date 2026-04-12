@@ -163,7 +163,7 @@ async function fetchAndFormatMessages(channel, opts) {
 
 /**
  * Call Claude via Vercel AI SDK to summarize a conversation.
- * Uses ANTHROPIC_API_KEY for authentication.
+ * Uses the configured AI provider credentials.
  * @param {string} conversationText
  * @param {string} [systemPrompt] - Per-guild system prompt override
  * @returns {Promise<string>} Raw summary text from Claude
