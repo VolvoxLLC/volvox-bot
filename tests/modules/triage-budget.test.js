@@ -14,6 +14,7 @@ const { mockGenerate, mockStream } = vi.hoisted(() => ({
 vi.mock('../../src/utils/aiClient.js', () => ({
   generate: (...args) => mockGenerate(...args),
   stream: (...args) => mockStream(...args),
+  warmConnection: vi.fn().mockResolvedValue(undefined),
 }));
 
 const mockCheckGuildBudget = vi.fn();

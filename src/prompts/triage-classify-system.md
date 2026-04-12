@@ -22,8 +22,20 @@ Required schema:
   "reasoning": "brief explanation of your decision",
   "targetMessageIds": ["msg-XXX", ...],
   "recommendedAction": "warn" | "timeout" | "kick" | "ban" | "delete" | null,
-  "violatedRule": "Rule N: short name" | null
+  "violatedRule": "Rule N: short name" | null,
+  "needsThinking": true | false,
+  "needsSearch": true | false
 }
 
 The `recommendedAction` and `violatedRule` fields are required ONLY when
 classification is "moderate". Set both to null for all other classifications.
+
+The `needsThinking` and `needsSearch` fields are required for all non-ignore classifications:
+- `needsThinking`: set to `true` when the response requires multi-step reasoning, code debugging,
+  complex problem-solving, or nuanced analysis. Set to `false` for simple Q&A, factual lookups,
+  casual conversation, or social interaction. Default to `false` when uncertain.
+- `needsSearch`: set to `true` when the question needs up-to-date information (current events,
+  latest documentation, package versions, release dates, "what's new in X"), real-time data, or
+  external references the bot doesn't have. Set to `false` for general knowledge, opinions, code
+  help where context is provided, or social interaction. Default to `false` when uncertain.
+For "ignore" classifications, set both to `false`.

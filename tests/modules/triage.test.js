@@ -10,6 +10,7 @@ const { mockGenerate, mockStream } = vi.hoisted(() => ({
 vi.mock('../../src/utils/aiClient.js', () => ({
   generate: (...args) => mockGenerate(...args),
   stream: (...args) => mockStream(...args),
+  warmConnection: vi.fn().mockResolvedValue(undefined),
 }));
 
 // Mock discordCache to pass through to the underlying client.channels.fetch
@@ -1252,12 +1253,13 @@ describe('triage module', () => {
       expect(mockRemove).toHaveBeenCalledWith('bot-id');
     });
 
-    it('should transition 👀 → 🧠 → removed (thinking tokens configured)', async () => {
+    it('should transition 👀 → 🧠 → removed (classifier requests thinking)', async () => {
       const thinkConfig = makeConfig({ triage: { thinkingTokens: 1000 } });
       const classResult = {
         classification: 'respond',
         reasoning: 'test',
         targetMessageIds: ['msg-default'],
+        needsThinking: true,
       };
       const respondResult = {
         responses: [{ targetMessageId: 'msg-default', targetUser: 'testuser', response: 'Hi!' }],

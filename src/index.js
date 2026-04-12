@@ -60,6 +60,7 @@ import {
 } from './modules/warningEngine.js';
 import { closeRedisClient as closeRedis, initRedis } from './redis.js';
 import { pruneOldLogs } from './transports/postgres.js';
+import { preloadSDK } from './utils/aiClient.js';
 import { stopCacheCleanup } from './utils/cache.js';
 import { HealthMonitor } from './utils/health.js';
 import { loadCommandsFromDirectory } from './utils/loadCommands.js';
@@ -273,6 +274,9 @@ if (!token) {
  * Perform full application startup: initialize the database and optional PostgreSQL logging, load configuration and conversation history, start background services (conversation cleanup, memory checks, triage, tempban scheduler), register event handlers, load slash commands, and log the Discord client in.
  */
 async function startup() {
+  // Pre-warm AI SDK in background (non-blocking) — avoids 6s import delay on first AI request
+  preloadSDK();
+
   // Initialize database
   let dbPool = null;
   if (process.env.DATABASE_URL) {

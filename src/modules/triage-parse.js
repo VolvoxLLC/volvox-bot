@@ -57,6 +57,8 @@ export function parseSDKResult(raw, channelId, label) {
       reasoning: reasonMatch ? reasonMatch[1] : 'Recovered from truncated response',
       confidence: 0.5,
       targetMessageIds: [],
+      needsThinking: false,
+      needsSearch: false,
     };
     info(`${label}: recovered classification from truncated JSON`, { channelId, ...recovered });
     return recovered;
@@ -75,7 +77,7 @@ export function parseSDKResult(raw, channelId, label) {
  * Parse the classifier's JSON text output.
  * @param {Object} sdkMessage - Raw CLI result message
  * @param {string} channelId - For logging
- * @returns {Object|null} Parsed { classification, reasoning, targetMessageIds } or null
+ * @returns {Object|null} Parsed { classification, reasoning, targetMessageIds, needsThinking, needsSearch } or null
  */
 export function parseClassifyResult(sdkResult, channelId) {
   const parsed = parseSDKResult(sdkResult.text, channelId, 'Classifier');
@@ -90,6 +92,10 @@ export function parseClassifyResult(sdkResult, channelId) {
     });
     return null;
   }
+
+  // Normalize classifier hints (default false for backward compat / truncated responses)
+  parsed.needsThinking = parsed.needsThinking === true;
+  parsed.needsSearch = parsed.needsSearch === true;
 
   return parsed;
 }

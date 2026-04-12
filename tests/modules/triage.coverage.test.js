@@ -14,6 +14,7 @@ const { mockGenerate, mockStream } = vi.hoisted(() => ({
 vi.mock('../../src/utils/aiClient.js', () => ({
   generate: (...args) => mockGenerate(...args),
   stream: (...args) => mockStream(...args),
+  warmConnection: vi.fn().mockResolvedValue(undefined),
 }));
 
 // Mock discordCache to pass through to the underlying client.channels.fetch
@@ -89,7 +90,6 @@ vi.mock('../../src/modules/triage-buffer.js', async (importOriginal) => {
 });
 
 import { warn } from '../../src/logger.js';
-import { AIClientError } from '../../src/utils/errors.js';
 import {
   accumulateMessage,
   evaluateNow,
@@ -99,6 +99,7 @@ import {
 import { channelBuffers } from '../../src/modules/triage-buffer.js';
 import { checkTriggerWords } from '../../src/modules/triage-filter.js';
 import { parseClassifyResult, parseRespondResult } from '../../src/modules/triage-parse.js';
+import { AIClientError } from '../../src/utils/errors.js';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 

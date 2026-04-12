@@ -17,7 +17,7 @@
 
 import { debug, info, error as logError, warn } from '../logger.js';
 import { loadPrompt } from '../prompts/index.js';
-import { generate, stream } from '../utils/aiClient.js';
+import { generate, stream, warmConnection } from '../utils/aiClient.js';
 import { fetchChannelCached } from '../utils/discordCache.js';
 import { AIClientError } from '../utils/errors.js';
 import { checkGuildBudget } from '../utils/guildSpend.js';
@@ -96,11 +96,14 @@ const BUDGET_ALERT_COOLDOWN_MS = 60 * 60 * 1_000;
  *   memoryContext         // concatenated memory context for target users (may be empty string)
  * }` when classification produced actionable output; `null` if classification failed or is `'ignore'`. */
 async function runClassification(channelId, snapshot, evalConfig, evalClient, abortSignal) {
+  const timings = { start: Date.now() };
+
   const contextLimit = evalConfig.triage?.contextMessages ?? 10;
   const context =
     contextLimit > 0
       ? await fetchChannelContext(channelId, evalClient, snapshot, contextLimit)
       : [];
+  timings.contextFetched = Date.now();
 
   // Gather bot's recent responses in this channel for self-awareness
   const BOT_ACTIVITY_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
@@ -123,6 +126,8 @@ async function runClassification(channelId, snapshot, evalConfig, evalClient, ab
     prompt: classifyPrompt,
     abortSignal,
   });
+  timings.classifyDone = Date.now();
+
   const classification = parseClassifyResult(classifyMessage, channelId);
 
   if (!classification) {
@@ -135,6 +140,13 @@ async function runClassification(channelId, snapshot, evalConfig, evalClient, ab
     reasoning: classification.reasoning,
     targetCount: classification.targetMessageIds.length,
     totalCostUsd: classifyMessage.costUsd,
+  });
+
+  debug('runClassification timing', {
+    channelId,
+    contextFetchMs: timings.contextFetched - timings.start,
+    classifyApiMs: timings.classifyDone - timings.contextFetched,
+    totalMs: timings.classifyDone - timings.start,
   });
 
   // Never ignore when the bot is @mentioned — override classifier mistakes.
@@ -176,6 +188,7 @@ async function runClassification(channelId, snapshot, evalConfig, evalClient, ab
   }
 
   // Build memory context for target users
+  timings.memoryStart = Date.now();
   let memoryContext = '';
   if (classification.targetMessageIds?.length > 0) {
     const targetEntries = snapshot.filter((m) =>
@@ -208,6 +221,15 @@ async function runClassification(channelId, snapshot, evalConfig, evalClient, ab
     );
     memoryContext = memoryParts.filter(Boolean).join('');
   }
+  timings.memoryDone = Date.now();
+
+  debug('runClassification full timing', {
+    channelId,
+    contextFetchMs: timings.contextFetched - timings.start,
+    classifyApiMs: timings.classifyDone - timings.contextFetched,
+    memoryFetchMs: timings.memoryDone - timings.memoryStart,
+    totalMs: timings.memoryDone - timings.start,
+  });
 
   return { classification, classifyMessage, context, memoryContext, wasMentioned };
 }
@@ -282,6 +304,8 @@ async function runResponder(
   abortSignal = null,
   resolved = null,
 ) {
+  const timings = { start: Date.now() };
+
   const respondPrompt = buildRespondPrompt(
     context,
     snapshot,
@@ -291,9 +315,13 @@ async function runResponder(
   );
   debug('Responder prompt built', { channelId, promptLength: respondPrompt.length });
 
-  // Transition: remove 👀, add 🧠 or 💬 (shows current stage)
+  // Per-call overrides: thinking and tools are driven by the classifier's signals
   const resolvedConfig = resolved ?? resolveTriageConfig(evalConfig.triage || {});
-  const respondEmoji = resolvedConfig.thinkingTokens > 0 ? '\uD83E\uDDE0' : '\uD83D\uDCAC';
+  const thinkingForCall = classification.needsThinking ? resolvedConfig.thinkingTokens : 0;
+  const toolsForCall = classification.needsSearch ? ['WebSearch'] : [];
+
+  // Transition: remove 👀, add 🧠 or 💬 (shows current stage)
+  const respondEmoji = thinkingForCall > 0 ? '\uD83E\uDDE0' : '\uD83D\uDCAC';
   if (statusReactions && triggerMessageId) {
     removeReaction(evalClient, channelId, triggerMessageId, '\uD83D\uDC40');
     addReaction(evalClient, channelId, triggerMessageId, respondEmoji);
@@ -304,6 +332,8 @@ async function runResponder(
   let searchCount = 0;
   const respondMessage = await stream({
     ...responderConfig,
+    thinking: thinkingForCall,
+    tools: toolsForCall,
     prompt: respondPrompt,
     abortSignal,
     onChunk: async (toolName) => {
@@ -330,6 +360,7 @@ async function runResponder(
       }
     },
   });
+  timings.streamDone = Date.now();
 
   // Fallback: if server-side tool didn't emit onChunk events, check result.sources
   if (searchCount === 0 && respondMessage.sources?.length > 0) {
@@ -342,13 +373,19 @@ async function runResponder(
     return null;
   }
 
+  debug('runResponder timing', {
+    channelId,
+    promptBuildMs: timings.start, // already logged separately
+    streamApiMs: timings.streamDone - timings.start,
+  });
+
   info('Triage response generated', {
     channelId,
     responseCount: parsed.responses.length,
     totalCostUsd: respondMessage.costUsd,
   });
 
-  return { parsed, respondMessage, searchCount };
+  return { parsed, respondMessage, searchCount, respondEmoji };
 }
 
 /**
@@ -544,7 +581,7 @@ async function evaluateAndRespond(channelId, snapshot, evalConfig, evalClient, a
     );
     if (!respResult) return;
 
-    const { parsed, respondMessage, searchCount } = respResult;
+    const { parsed, respondMessage, searchCount, respondEmoji } = respResult;
 
     // B3: Budget enforcement — warn if responder cost exceeded its budget
     if (respondMessage.costUsd > resolved.respondBudget) {
@@ -595,7 +632,6 @@ async function evaluateAndRespond(channelId, snapshot, evalConfig, evalClient, a
 
     // Clean up status reactions — remove 💬/🧠 now that response is sent (🔍 stays as historical marker)
     if (statusReactions && triggerMessageId) {
-      const respondEmoji = resolved.thinkingTokens > 0 ? '\uD83E\uDDE0' : '\uD83D\uDCAC';
       removeReaction(evalClient, channelId, triggerMessageId, respondEmoji);
     }
 
@@ -687,16 +723,17 @@ export async function startTriage(discordClient, botConfig, monitor) {
     ...(resolved.classifyApiKey && { apiKey: resolved.classifyApiKey }),
   };
 
-  // Responder config — web search tool, thinking tokens, combined system prompt.
+  // Responder config — base config without thinking/tools (those are now per-call,
+  // driven by the classifier's needsThinking/needsSearch signals).
   // JSON output schema is always appended so it can't be lost when config overrides the personality.
   const baseSystem = botConfig.ai?.systemPrompt || loadPrompt('triage-respond-system');
   const jsonSchemaAppend = loadPrompt('triage-respond-schema');
   responderConfig = {
     model: resolved.respondModel,
     system: `${baseSystem}\n\n${jsonSchemaAppend}`,
-    thinking: resolved.thinkingTokens,
+    thinking: 0,
     timeout: resolved.timeout,
-    tools: ['WebSearch'],
+    tools: [],
     ...(resolved.respondBaseUrl && { baseUrl: resolved.respondBaseUrl }),
     ...(resolved.respondApiKey && { apiKey: resolved.respondApiKey }),
   };
@@ -708,6 +745,16 @@ export async function startTriage(discordClient, botConfig, monitor) {
     respondBaseUrl: resolved.respondBaseUrl || 'direct',
     intervalMs: triageConfig.defaultInterval ?? 0,
   });
+
+  // Pre-warm provider cache + TCP/TLS connections (best-effort, non-blocking)
+  warmConnection(resolved.classifyModel, {
+    ...(resolved.classifyBaseUrl && { baseUrl: resolved.classifyBaseUrl }),
+    ...(resolved.classifyApiKey && { apiKey: resolved.classifyApiKey }),
+  }).catch(() => {});
+  warmConnection(resolved.respondModel, {
+    ...(resolved.respondBaseUrl && { baseUrl: resolved.respondBaseUrl }),
+    ...(resolved.respondApiKey && { apiKey: resolved.respondApiKey }),
+  }).catch(() => {});
 }
 
 /**

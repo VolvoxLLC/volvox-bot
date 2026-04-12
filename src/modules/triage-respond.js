@@ -76,16 +76,16 @@ export async function fetchChannelContext(channelId, client, bufferSnapshot, lim
       channelTopic: channel.topic ?? null,
     });
 
-    // Fetch messages before the oldest buffered message (historical context)
+    // Fetch historical context + recent messages in parallel
     const oldest = bufferSnapshot[0];
     const historyOptions = { limit };
     if (oldest) historyOptions.before = oldest.messageId;
-    const historyFetched = await channel.messages.fetch(historyOptions);
-
-    // Also fetch the most recent messages (catches replies that arrived after
-    // the buffer started accumulating — fixes the "already being helped" blind spot)
     const RECENT_LIMIT = 5;
-    const recentFetched = await channel.messages.fetch({ limit: RECENT_LIMIT });
+
+    const [historyFetched, recentFetched] = await Promise.all([
+      channel.messages.fetch(historyOptions),
+      channel.messages.fetch({ limit: RECENT_LIMIT }),
+    ]);
 
     // Merge and deduplicate by messageId, excluding messages already in the buffer
     const bufferIds = new Set(bufferSnapshot.map((m) => m.messageId));

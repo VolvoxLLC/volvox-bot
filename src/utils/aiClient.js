@@ -12,11 +12,56 @@
  */
 
 import { createHash } from 'node:crypto';
-import { createAnthropic } from '@ai-sdk/anthropic';
-import { generateText, stepCountIs, streamText } from 'ai';
-import { error as logError, warn } from '../logger.js';
+import { debug, error as logError, warn } from '../logger.js';
 import { calculateCost } from './aiCost.js';
 import { AIClientError, isRetryable } from './errors.js';
+
+// ── Lazy SDK loading ────────────────────────────────────────────────────────
+
+/**
+ * Cached SDK modules after lazy load.
+ * @type {{ createAnthropic: Function, generateText: Function, streamText: Function, stepCountIs: Function } | null}
+ */
+let _sdkModules = null;
+
+/**
+ * In-flight SDK load promise (deduplicates concurrent calls).
+ * @type {Promise<typeof _sdkModules> | null}
+ */
+let _sdkLoadPromise = null;
+
+/**
+ * Lazy-load the Vercel AI SDK modules.
+ * First call triggers the import; subsequent calls return the cached promise.
+ * @returns {Promise<NonNullable<typeof _sdkModules>>}
+ */
+async function getSDK() {
+  if (_sdkModules) return _sdkModules;
+  if (!_sdkLoadPromise) {
+    _sdkLoadPromise = Promise.all([import('@ai-sdk/anthropic'), import('ai')]).then(
+      ([anthropicModule, aiModule]) => {
+        _sdkModules = {
+          createAnthropic: anthropicModule.createAnthropic,
+          generateText: aiModule.generateText,
+          streamText: aiModule.streamText,
+          stepCountIs: aiModule.stepCountIs,
+        };
+        return _sdkModules;
+      },
+    );
+  }
+  return _sdkLoadPromise;
+}
+
+/**
+ * Fire-and-forget SDK preload. Call at startup to warm the SDK in background.
+ * Does not block — the promise is not awaited.
+ */
+export function preloadSDK() {
+  getSDK().catch((err) => {
+    logError('SDK preload failed', { error: err.message });
+  });
+}
 
 // ── Retry helper ───────────────────────────────────────────────────────────
 
@@ -100,9 +145,11 @@ const providerCache = new Map();
  * @param {string} modelString - Model identifier, optionally prefixed with provider
  *   (e.g. 'anthropic:claude-sonnet-4-6' or bare 'claude-haiku-4-5').
  * @param {{ apiKey?: string, baseUrl?: string }} [overrides]
- * @returns {{ model: object, providerName: string, modelId: string, factory: object }}
+ * @returns {Promise<{ model: object, providerName: string, modelId: string, factory: object }>}
  */
-function resolveModel(modelString, overrides = {}) {
+async function resolveModel(modelString, overrides = {}) {
+  const { createAnthropic } = await getSDK();
+
   const colonIdx = modelString.indexOf(':');
   const providerName = colonIdx > 0 ? modelString.slice(0, colonIdx) : 'anthropic';
   const modelId = colonIdx > 0 ? modelString.slice(colonIdx + 1) : modelString;
@@ -153,12 +200,13 @@ function resolveModel(modelString, overrides = {}) {
  * logical provider name. If a non-Anthropic SDK is added in the future,
  * this function should map provider names to their SDK option keys.
  *
- * @param {string} _providerName - Logical provider name (unused — SDK key is always 'anthropic')
+ * @param {string} providerName - Logical provider name; thinking is only sent for 'anthropic' provider
  * @param {number} [thinking] - Thinking token budget (0 = disabled)
  * @returns {Object}
  */
-function buildProviderOptions(_providerName, thinking) {
+function buildProviderOptions(providerName, thinking) {
   if (!thinking || thinking <= 0) return {};
+  if (providerName !== 'anthropic') return {};
   return { anthropic: { thinking: { type: 'enabled', budgetTokens: thinking } } };
 }
 
@@ -251,13 +299,23 @@ export async function generate(opts) {
     baseUrl,
   } = opts;
 
-  const { model, providerName, modelId, factory } = resolveModel(modelString, { apiKey, baseUrl });
+  const timings = { start: Date.now() };
+
+  const [sdk, resolved] = await Promise.all([
+    getSDK(),
+    resolveModel(modelString, { apiKey, baseUrl }),
+  ]);
+  timings.sdkResolved = Date.now();
+
+  const { generateText, stepCountIs } = sdk;
+  const { model, providerName, modelId, factory } = resolved;
+
   const tools = buildTools(toolNames, providerName, factory);
   const providerOptions = buildProviderOptions(providerName, thinking);
   const hasTools = Object.keys(tools).length > 0;
 
   const { signal, cleanup } = createAbortController(timeout, externalSignal);
-  const start = Date.now();
+  timings.preApiCall = Date.now();
 
   try {
     const result = await withRetry(
@@ -273,6 +331,7 @@ export async function generate(opts) {
         }),
       { maxRetries: 3, signal },
     );
+    timings.apiComplete = Date.now();
 
     const usage = result.totalUsage ?? result.usage ?? {};
     const providerMeta = getProviderMetadata(result.providerMetadata, providerName);
@@ -285,11 +344,21 @@ export async function generate(opts) {
       cacheCreationInputTokens,
     });
 
+    const durationMs = Date.now() - timings.start;
+    debug('aiClient.generate timing breakdown', {
+      model: modelString,
+      sdkResolveMs: timings.sdkResolved - timings.start,
+      preApiSetupMs: timings.preApiCall - timings.sdkResolved,
+      apiCallMs: timings.apiComplete - timings.preApiCall,
+      postProcessMs: Date.now() - timings.apiComplete,
+      totalMs: durationMs,
+    });
+
     return {
       text: result.text,
       usage,
       costUsd,
-      durationMs: Date.now() - start,
+      durationMs,
       finishReason: result.finishReason,
       sources: result.sources ?? [],
       providerMetadata: result.providerMetadata ?? {},
@@ -327,13 +396,23 @@ export async function stream(opts) {
     onChunk: userOnChunk,
   } = opts;
 
-  const { model, providerName, modelId, factory } = resolveModel(modelString, { apiKey, baseUrl });
+  const timings = { start: Date.now() };
+
+  const [sdk, resolved] = await Promise.all([
+    getSDK(),
+    resolveModel(modelString, { apiKey, baseUrl }),
+  ]);
+  timings.sdkResolved = Date.now();
+
+  const { streamText, stepCountIs } = sdk;
+  const { model, providerName, modelId, factory } = resolved;
+
   const tools = buildTools(toolNames, providerName, factory);
   const providerOptions = buildProviderOptions(providerName, thinking);
   const hasTools = Object.keys(tools).length > 0;
 
   const { signal, cleanup } = createAbortController(timeout, externalSignal);
-  const start = Date.now();
+  timings.preApiCall = Date.now();
 
   try {
     const result = await withRetry(
@@ -362,9 +441,11 @@ export async function stream(opts) {
         }),
       { maxRetries: 3, signal },
     );
+    timings.streamStarted = Date.now();
 
     // Await final results from the stream
     const text = await result.text;
+    timings.streamComplete = Date.now();
     const usage = (await result.totalUsage) ?? (await result.usage) ?? {};
     const finishReason = await result.finishReason;
     const sources = (await result.sources) ?? [];
@@ -380,11 +461,22 @@ export async function stream(opts) {
       cacheCreationInputTokens,
     });
 
+    const durationMs = Date.now() - timings.start;
+    debug('aiClient.stream timing breakdown', {
+      model: modelString,
+      sdkResolveMs: timings.sdkResolved - timings.start,
+      preApiSetupMs: timings.preApiCall - timings.sdkResolved,
+      streamInitMs: timings.streamStarted - timings.preApiCall,
+      streamConsumeMs: timings.streamComplete - timings.streamStarted,
+      postProcessMs: Date.now() - timings.streamComplete,
+      totalMs: durationMs,
+    });
+
     return {
       text,
       usage,
       costUsd,
-      durationMs: Date.now() - start,
+      durationMs,
       finishReason,
       sources,
       providerMetadata,
@@ -405,4 +497,34 @@ export async function stream(opts) {
  */
 export function _clearProviderCache() {
   providerCache.clear();
+}
+
+/**
+ * Reset lazy-loaded SDK state (for testing).
+ */
+export function _resetSDK() {
+  _sdkModules = null;
+  _sdkLoadPromise = null;
+}
+
+/**
+ * Pre-warm the provider cache and TCP/TLS connection for a model.
+ *
+ * Call at startup (e.g. from startTriage) so the first real request
+ * doesn't pay the cold-connection penalty (~200ms).
+ *
+ * @param {string} modelString - Model identifier (e.g. 'minimax:MiniMax-M2.7')
+ * @param {{ apiKey?: string, baseUrl?: string }} [overrides]
+ */
+export async function warmConnection(modelString, overrides = {}) {
+  const { model, providerName } = await resolveModel(modelString, overrides);
+  // Establish TCP+TLS by making a lightweight request to the provider's base URL
+  const baseUrl = model.config?.baseURL;
+  if (baseUrl) {
+    try {
+      await fetch(baseUrl, { method: 'HEAD', signal: AbortSignal.timeout(5000) }).catch(() => {});
+    } catch {
+      // Swallow — warming is best-effort
+    }
+  }
 }

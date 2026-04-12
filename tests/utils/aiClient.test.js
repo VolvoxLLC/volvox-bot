@@ -210,16 +210,13 @@ describe('generate', () => {
     expect(call.tools).toBeUndefined();
   });
 
-  it('should use anthropic SDK key in providerOptions for non-anthropic providers', async () => {
+  it('should NOT send thinking params for non-anthropic providers', async () => {
     mockGenerateText.mockResolvedValue(makeGenerateResult());
 
     await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'think', thinking: 2048 });
 
     const call = mockGenerateText.mock.calls[0][0];
-    expect(call.providerOptions).toEqual({
-      anthropic: { thinking: { type: 'enabled', budgetTokens: 2048 } },
-    });
-    expect(call.providerOptions).not.toHaveProperty('minimax');
+    expect(call.providerOptions).toEqual({});
   });
 
   it('should cache non-anthropic providers separately from anthropic', async () => {

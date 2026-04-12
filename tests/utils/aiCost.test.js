@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../src/logger.js', () => ({
   debug: vi.fn(),
@@ -7,28 +7,42 @@ vi.mock('../../src/logger.js', () => ({
   error: vi.fn(),
 }));
 
-const { calculateCost, _setCostClient, _normaliseModelId } = await import(
-  '../../src/utils/aiCost.js'
-);
+const { calculateCost, _normaliseModelId, _pricingMap } = await import('../../src/utils/aiCost.js');
+
+describe('pricingMap', () => {
+  it('should load models from the pricing JSON', () => {
+    expect(_pricingMap.size).toBeGreaterThanOrEqual(23);
+  });
+
+  it('should have all keys lowercase', () => {
+    for (const key of _pricingMap.keys()) {
+      expect(key).toBe(key.toLowerCase());
+    }
+  });
+
+  it('should have all four price fields per model', () => {
+    for (const [key, entry] of _pricingMap) {
+      expect(entry).toHaveProperty('input');
+      expect(entry).toHaveProperty('output');
+      expect(entry).toHaveProperty('cacheRead');
+      expect(entry).toHaveProperty('cacheWrite');
+      expect(typeof entry.input).toBe('number');
+      expect(typeof entry.output).toBe('number');
+      expect(typeof entry.cacheRead).toBe('number');
+      expect(typeof entry.cacheWrite).toBe('number');
+    }
+  });
+});
 
 describe('normaliseModelId', () => {
-  it('should convert hyphenated version to dotted', () => {
-    expect(_normaliseModelId('claude-haiku-4-5')).toBe('claude-haiku-4.5');
-    expect(_normaliseModelId('claude-sonnet-4-6')).toBe('claude-sonnet-4.6');
-    expect(_normaliseModelId('claude-opus-4-5')).toBe('claude-opus-4.5');
-  });
-
   it('should strip date suffixes', () => {
-    expect(_normaliseModelId('claude-sonnet-4-5-20250929')).toBe('claude-sonnet-4.5');
-    expect(_normaliseModelId('claude-haiku-4-5-20250514')).toBe('claude-haiku-4.5');
+    expect(_normaliseModelId('claude-sonnet-4-5-20250929')).toBe('claude-sonnet-4-5');
+    expect(_normaliseModelId('claude-haiku-4-5-20250514')).toBe('claude-haiku-4-5');
   });
 
-  it('should leave single-version models unchanged', () => {
-    expect(_normaliseModelId('claude-opus-4')).toBe('claude-opus-4');
-  });
-
-  it('should leave already-dotted models unchanged', () => {
-    expect(_normaliseModelId('claude-sonnet-4.5')).toBe('claude-sonnet-4.5');
+  it('should leave models without date suffix unchanged', () => {
+    expect(_normaliseModelId('claude-opus-4-6')).toBe('claude-opus-4-6');
+    expect(_normaliseModelId('claude-sonnet-4')).toBe('claude-sonnet-4');
   });
 
   it('should handle unknown formats gracefully', () => {
@@ -38,215 +52,128 @@ describe('normaliseModelId', () => {
 });
 
 describe('calculateCost', () => {
-  afterEach(() => {
-    _setCostClient(null);
+  it('should calculate cost for an Anthropic model', () => {
+    const cost = calculateCost('anthropic', 'claude-sonnet-4-6', {
+      inputTokens: 1_000_000,
+      outputTokens: 1_000_000,
+    });
+    // 1M input * $3/M + 1M output * $15/M = $18
+    expect(cost).toBe(18);
   });
 
-  it('should return cost from a mock client', async () => {
-    _setCostClient({
-      listModels: vi.fn().mockResolvedValue([]),
-      calculateCost: vi.fn().mockResolvedValue({
-        totalCost: 0.0035,
-        inputCost: 0.001,
-        outputCost: 0.0025,
-        stale: false,
-      }),
+  it('should calculate cost for an OpenAI model', () => {
+    const cost = calculateCost('openai', 'gpt-4.1', {
+      inputTokens: 500_000,
+      outputTokens: 100_000,
     });
-
-    const cost = await calculateCost('anthropic', 'claude-haiku-4-5', {
-      inputTokens: 1000,
-      outputTokens: 500,
-    });
-    expect(cost).toBe(0.0035);
+    // 500k input * $2/M + 100k output * $8/M = $1 + $0.8 = $1.8
+    expect(cost).toBeCloseTo(1.8);
   });
 
-  it('should return 0 when model is unknown', async () => {
-    _setCostClient({
-      listModels: vi.fn().mockResolvedValue([]),
-      calculateCost: vi.fn().mockRejectedValue(new Error('Model not found')),
-    });
-
-    const cost = await calculateCost('anthropic', 'nonexistent-model', {
-      inputTokens: 100,
-      outputTokens: 50,
-    });
-    expect(cost).toBe(0);
-  });
-
-  it('should handle zero tokens', async () => {
-    _setCostClient({
-      listModels: vi.fn().mockResolvedValue([]),
-      calculateCost: vi.fn().mockResolvedValue({
-        totalCost: 0,
-        stale: false,
-      }),
-    });
-
-    const cost = await calculateCost('anthropic', 'claude-haiku-4.5', {});
-    expect(cost).toBe(0);
-  });
-
-  it('should handle missing usage fields', async () => {
-    const mockCalc = vi.fn().mockResolvedValue({ totalCost: 0, stale: false });
-    _setCostClient({
-      listModels: vi.fn().mockResolvedValue([]),
-      calculateCost: mockCalc,
-    });
-
-    await calculateCost('openai', 'gpt-4o', {});
-    expect(mockCalc).toHaveBeenCalledWith('openai', 'gpt-4o', {
-      inputTokens: 0,
-      outputTokens: 0,
-      cachedInputTokens: 0,
-    });
-  });
-
-  it('should warn on stale pricing data', async () => {
-    const { warn } = await import('../../src/logger.js');
-    _setCostClient({
-      listModels: vi.fn().mockResolvedValue([]),
-      calculateCost: vi.fn().mockResolvedValue({
-        totalCost: 0.005,
-        stale: true,
-      }),
-    });
-
-    const cost = await calculateCost('anthropic', 'claude-sonnet-4-6', {
-      inputTokens: 500,
-      outputTokens: 200,
-    });
-    expect(cost).toBe(0.005);
-    expect(warn).toHaveBeenCalledWith('Token pricing data is stale', expect.any(Object));
-  });
-
-  it('should normalise Anthropic model names before lookup', async () => {
-    const mockCalc = vi.fn().mockResolvedValue({ totalCost: 0.01, stale: false });
-    _setCostClient({
-      listModels: vi.fn().mockResolvedValue([]),
-      calculateCost: mockCalc,
-    });
-
-    await calculateCost('anthropic', 'claude-sonnet-4-5-20250929', {
-      inputTokens: 100,
-      outputTokens: 50,
-    });
-    // Should have normalised to dotted format
-    expect(mockCalc).toHaveBeenCalledWith('anthropic', 'claude-sonnet-4.5', expect.any(Object));
-  });
-
-  it('should NOT normalise non-Anthropic model names', async () => {
-    const mockCalc = vi.fn().mockResolvedValue({ totalCost: 0.01, stale: false });
-    _setCostClient({
-      listModels: vi.fn().mockResolvedValue([]),
-      calculateCost: mockCalc,
-    });
-
-    await calculateCost('openai', 'gpt-4o-2025', {
-      inputTokens: 100,
-      outputTokens: 50,
-    });
-    expect(mockCalc).toHaveBeenCalledWith('openai', 'gpt-4o-2025', expect.any(Object));
-  });
-
-  it('should calculate MiniMax M2.7 cost from local pricing', async () => {
-    const mockCalc = vi.fn().mockResolvedValue({ totalCost: 999, stale: false });
-    _setCostClient({
-      listModels: vi.fn().mockResolvedValue([]),
-      calculateCost: mockCalc,
-    });
-
-    const cost = await calculateCost('minimax', 'MiniMax-M2.7', {
+  it('should calculate cost for a MiniMax model', () => {
+    const cost = calculateCost('minimax', 'MiniMax-M2.7', {
       inputTokens: 10_000,
       outputTokens: 5_000,
       cachedInputTokens: 2_000,
       cacheCreationInputTokens: 1_000,
     });
-
+    // regularInput = 10000 - 2000 - 1000 = 7000
+    // 7000/1M * 0.3 + 2000/1M * 0.06 + 1000/1M * 0.375 + 5000/1M * 1.2
+    // = 0.0021 + 0.00012 + 0.000375 + 0.006 = 0.008595
     expect(cost).toBeCloseTo(0.008595);
-    expect(mockCalc).not.toHaveBeenCalled();
   });
 
-  it('should handle MiniMax usage where inputTokens excludes cache tokens', async () => {
-    const cost = await calculateCost('minimax', 'MiniMax-M2.7', {
+  it('should handle OpenAI models with zero cacheWrite correctly', () => {
+    const cost = calculateCost('openai', 'gpt-4.1-mini', {
+      inputTokens: 100_000,
+      outputTokens: 50_000,
+      cachedInputTokens: 20_000,
+      cacheCreationInputTokens: 0,
+    });
+    // regularInput = 100000 - 20000 = 80000
+    // 80000/1M * 0.4 + 20000/1M * 0.1 + 0 + 50000/1M * 1.6
+    // = 0.032 + 0.002 + 0 + 0.08 = 0.114
+    expect(cost).toBeCloseTo(0.114);
+  });
+
+  it('should resolve date-suffixed Anthropic models', () => {
+    const cost = calculateCost('anthropic', 'claude-sonnet-4-5-20250929', {
+      inputTokens: 1_000_000,
+      outputTokens: 0,
+    });
+    // Should resolve to claude-sonnet-4-5: 1M * $3/M = $3
+    expect(cost).toBe(3);
+  });
+
+  it('should be case-insensitive for model lookup', () => {
+    const cost = calculateCost('ANTHROPIC', 'Claude-Sonnet-4-6', {
+      inputTokens: 1_000_000,
+      outputTokens: 0,
+    });
+    expect(cost).toBe(3);
+  });
+
+  it('should return 0 for unknown models', async () => {
+    const { warn } = await import('../../src/logger.js');
+    const cost = calculateCost('anthropic', 'nonexistent-model', {
+      inputTokens: 100,
+      outputTokens: 50,
+    });
+    expect(cost).toBe(0);
+    expect(warn).toHaveBeenCalledWith(
+      'Unknown model for cost calculation, returning 0',
+      expect.objectContaining({ provider: 'anthropic', modelId: 'nonexistent-model' }),
+    );
+  });
+
+  it('should default missing usage fields to 0', () => {
+    const cost = calculateCost('anthropic', 'claude-haiku-4-5', {});
+    expect(cost).toBe(0);
+  });
+
+  it('should handle missing usage object', () => {
+    const cost = calculateCost('anthropic', 'claude-haiku-4-5');
+    expect(cost).toBe(0);
+  });
+
+  it('should handle inputTokens that exclude cache tokens (no negative)', () => {
+    const cost = calculateCost('minimax', 'MiniMax-M2.7', {
       inputTokens: 10,
       outputTokens: 0,
       cachedInputTokens: 500,
       cacheCreationInputTokens: 1_000,
     });
-
+    // inputTokens (10) < cacheTotal (1500), so regularInput = 10 (not subtracted)
+    // 10/1M * 0.3 + 500/1M * 0.06 + 1000/1M * 0.375 + 0
+    // = 0.000003 + 0.00003 + 0.000375 + 0 = 0.000408
     expect(cost).toBeCloseTo(0.000408);
   });
-});
 
-describe('normaliseModelId — 3-segment versions', () => {
-  it('should handle 3-segment version-first format (claude-3-5-sonnet)', () => {
-    expect(_normaliseModelId('claude-3-5-sonnet')).toBe('claude-3.5-sonnet');
-  });
-
-  it('should handle 3-segment with date suffix', () => {
-    expect(_normaliseModelId('claude-3-5-sonnet-20250929')).toBe('claude-3.5-sonnet');
-  });
-
-  it('should handle claude-3-5-haiku', () => {
-    expect(_normaliseModelId('claude-3-5-haiku')).toBe('claude-3.5-haiku');
-  });
-});
-
-describe('calculateCost — concurrent init (race condition fix)', () => {
-  afterEach(() => {
-    _setCostClient(null);
-  });
-
-  it('should share a single CostClient when calculateCost is called concurrently', async () => {
-    // Reset to null so initClient will be triggered
-    _setCostClient(null);
-
-    const mockClient = {
-      listModels: vi.fn().mockResolvedValue([]),
-      calculateCost: vi.fn().mockResolvedValue({ totalCost: 0.001, stale: false }),
-    };
-
-    // We can't easily test the actual init path with mocked dynamic import,
-    // but we can verify that setting one client via _setCostClient and then calling
-    // calculateCost concurrently results in only one client being used.
-    _setCostClient(mockClient);
-
-    const [c1, c2, c3] = await Promise.all([
-      calculateCost('anthropic', 'claude-haiku-4-5', { inputTokens: 100, outputTokens: 50 }),
-      calculateCost('anthropic', 'claude-sonnet-4-6', { inputTokens: 200, outputTokens: 100 }),
-      calculateCost('anthropic', 'claude-opus-4', { inputTokens: 300, outputTokens: 150 }),
-    ]);
-
-    // All three calls used the same client instance
-    expect(mockClient.calculateCost).toHaveBeenCalledTimes(3);
-    expect(c1).toBe(0.001);
-    expect(c2).toBe(0.001);
-    expect(c3).toBe(0.001);
-  });
-});
-
-describe('calculateCost — ClockMismatchError handling', () => {
-  afterEach(() => {
-    _setCostClient(null);
-  });
-
-  it('should log a warning when ClockMismatchError is caught', async () => {
-    const { warn } = await import('../../src/logger.js');
-
-    // Simulate a client that works after a clock mismatch would be resolved.
-    // The actual ClockMismatchError path is in initClient(); we test the
-    // resulting client still calculates cost correctly.
-    const lenientClient = {
-      listModels: vi.fn().mockResolvedValue([]),
-      calculateCost: vi.fn().mockResolvedValue({ totalCost: 0.002, stale: false }),
-    };
-    _setCostClient(lenientClient);
-
-    const cost = await calculateCost('anthropic', 'claude-haiku-4-5', {
-      inputTokens: 100,
-      outputTokens: 50,
+  it('should include cache read and write costs for Anthropic models', () => {
+    const cost = calculateCost('anthropic', 'claude-opus-4-6', {
+      inputTokens: 100_000,
+      outputTokens: 10_000,
+      cachedInputTokens: 50_000,
+      cacheCreationInputTokens: 20_000,
     });
-    expect(cost).toBe(0.002);
-    expect(lenientClient.calculateCost).toHaveBeenCalledTimes(1);
+    // regularInput = 100000 - 50000 - 20000 = 30000
+    // 30000/1M * 5.0 + 50000/1M * 0.5 + 20000/1M * 6.25 + 10000/1M * 25.0
+    // = 0.15 + 0.025 + 0.125 + 0.25 = 0.55
+    expect(cost).toBeCloseTo(0.55);
+  });
+});
+
+describe('calculateCost — concurrent calls', () => {
+  it('should handle concurrent calls correctly (no shared mutable state)', () => {
+    const results = [
+      calculateCost('anthropic', 'claude-haiku-4-5', { inputTokens: 100, outputTokens: 50 }),
+      calculateCost('openai', 'gpt-4.1', { inputTokens: 200, outputTokens: 100 }),
+      calculateCost('minimax', 'minimax-m2.7', { inputTokens: 300, outputTokens: 150 }),
+    ];
+
+    for (const cost of results) {
+      expect(typeof cost).toBe('number');
+      expect(cost).toBeGreaterThan(0);
+    }
   });
 });

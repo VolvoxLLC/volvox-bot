@@ -273,7 +273,8 @@ export function DiscordMarkdownEditor({
         rafIdsRef.current = rafIdsRef.current.filter((id) => id !== rafId);
         if (textareaRef.current) {
           textareaRef.current.focus();
-          textareaRef.current.setSelectionRange(result.cursorPos, result.cursorPos);
+          const pos = result.cursorPos ?? textareaRef.current.value.length;
+          textareaRef.current.setSelectionRange(pos, pos);
         }
       });
       rafIdsRef.current.push(rafId);
@@ -305,18 +306,12 @@ export function DiscordMarkdownEditor({
     if (!isMounted) return null;
     let html = parseDiscordMarkdown(value, variables.length > 0 ? variables : undefined);
     if (variableSamples) {
-      html = html.replace(
-        /data-variable="(\w+)">[^<]+<\/span>/g,
-        (match, name: string) => {
-          const sample = variableSamples[name];
-          if (sample === undefined) return match;
-          const escaped = sample
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
-          return `data-variable="${name}">${escaped}</span>`;
-        },
-      );
+      html = html.replace(/data-variable="(\w+)">[^<]+<\/span>/g, (match, name: string) => {
+        const sample = variableSamples[name];
+        if (sample === undefined) return match;
+        const escaped = sample.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        return `data-variable="${name}">${escaped}</span>`;
+      });
     }
     return renderPreviewContent(html);
   }, [value, isMounted, variableSamples]);
@@ -413,13 +408,8 @@ export function DiscordMarkdownEditor({
           />
         </div>
 
-        <section
-          className="border-t border-input px-3 py-2 md:border-t-0"
-          aria-label="Preview"
-        >
-          <div className="discord-preview max-w-none text-sm leading-relaxed">
-            {previewContent}
-          </div>
+        <section className="border-t border-input px-3 py-2 md:border-t-0" aria-label="Preview">
+          <div className="discord-preview max-w-none text-sm leading-relaxed">{previewContent}</div>
         </section>
       </div>
 
