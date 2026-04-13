@@ -416,6 +416,18 @@ describe('configValidation', () => {
       ).toEqual([]);
     });
 
+    it('should reject non-positive xpBonus amounts', () => {
+      const defaultActionErrors = validateSingleValue('xp.defaultActions', [
+        { type: 'xpBonus', amount: 0 },
+      ]);
+      const levelActionErrors = validateSingleValue('xp.levelActions', [
+        { level: 5, actions: [{ type: 'xpBonus', amount: -1 }] },
+      ]);
+
+      expect(defaultActionErrors.some((error) => error.includes('>= 1'))).toBe(true);
+      expect(levelActionErrors.some((error) => error.includes('>= 1'))).toBe(true);
+    });
+
     it('should accept explicit embed schemas for xp actions', () => {
       expect(
         validateSingleValue('xp.defaultActions', [

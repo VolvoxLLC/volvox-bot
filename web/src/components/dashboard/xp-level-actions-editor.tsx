@@ -171,8 +171,8 @@ function toSingleSelection(value?: string | null): string[] {
   return value ? [value] : [];
 }
 
-function fromSingleSelection(values: string[]): string {
-  return values[0] ?? '';
+function fromSingleSelection(values: string[]): string | undefined {
+  return values[0];
 }
 
 function resolveThumbnailType(embed?: XpActionEmbedConfig): EmbedConfig['thumbnailType'] {
@@ -267,7 +267,7 @@ function toBuilderConfig(
     thumbnailType,
     thumbnailUrl:
       thumbnailType === 'custom'
-        ? legacyThumbnail ?? (typeof embed?.thumbnailUrl === 'string' ? embed.thumbnailUrl : '')
+        ? (legacyThumbnail ?? (typeof embed?.thumbnailUrl === 'string' ? embed.thumbnailUrl : ''))
         : typeof embed?.thumbnailUrl === 'string'
           ? embed.thumbnailUrl
           : '',

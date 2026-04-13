@@ -115,7 +115,7 @@ const XP_ACTION_ITEM_SCHEMA = {
     },
     channelId: { type: 'string', nullable: true },
     emoji: { type: 'string', nullable: true },
-    amount: { type: 'number', nullable: true },
+    amount: { type: 'number', min: 1, nullable: true },
     prefix: { type: 'string', nullable: true },
     suffix: { type: 'string', nullable: true },
     url: { type: 'string', nullable: true },
