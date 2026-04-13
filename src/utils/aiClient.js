@@ -140,6 +140,21 @@ const KNOWN_BASE_URLS = {
 const providerCache = new Map();
 
 /**
+ * Detect whether an Anthropic credential should be sent as authToken.
+ * Standard API keys typically use the `sk-ant-` prefix; OAuth-style tokens
+ * may use known OAuth prefixes or be significantly longer.
+ *
+ * @param {string|undefined} credential
+ * @returns {boolean}
+ */
+function isAnthropicAuthToken(credential) {
+  if (!credential) return false;
+  if (credential.startsWith('oauth2_')) return true;
+  if (!credential.startsWith('sk-ant-') && credential.length > 128) return true;
+  return false;
+}
+
+/**
  * Parse a model string and resolve the provider instance + model object.
  *
  * @param {string} modelString - Model identifier, optionally prefixed with provider
@@ -180,7 +195,11 @@ async function resolveModel(modelString, overrides = {}) {
     providerCache.set(
       cacheKey,
       createAnthropic({
-        ...(isAnthropic ? { apiKey } : { authToken: apiKey }),
+        ...(isAnthropic
+          ? isAnthropicAuthToken(apiKey)
+            ? { authToken: apiKey }
+            : { apiKey }
+          : { authToken: apiKey }),
         ...(baseUrl && { baseURL: baseUrl }),
       }),
     );
@@ -251,8 +270,14 @@ function createAbortController(timeoutMs, externalSignal) {
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   let onExternalAbort;
-  if (externalSignal) {
-    onExternalAbort = () => controller.abort();
+  if (externalSignal?.aborted) {
+    clearTimeout(timer);
+    controller.abort();
+  } else if (externalSignal) {
+    onExternalAbort = () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
     externalSignal.addEventListener('abort', onExternalAbort, { once: true });
   }
 
@@ -366,7 +391,10 @@ export async function generate(opts) {
   } catch (err) {
     if (err instanceof AIClientError) throw err;
     if (signal.aborted) {
-      throw new AIClientError('Request timed out or was cancelled', 'timeout');
+      if (externalSignal?.aborted) {
+        throw new AIClientError('Request was cancelled', 'aborted');
+      }
+      throw new AIClientError('Request timed out', 'timeout');
     }
     throw new AIClientError(`API error: ${err.message}`, 'api', { statusCode: err.statusCode });
   } finally {
@@ -416,8 +444,8 @@ export async function stream(opts) {
 
   try {
     const result = await withRetry(
-      () =>
-        streamText({
+      async () => {
+        const streamResult = streamText({
           model,
           system,
           prompt,
@@ -438,25 +466,33 @@ export async function stream(opts) {
               }
             }
           },
-        }),
+        });
+
+        const text = await streamResult.text;
+        const usage = (await streamResult.totalUsage) ?? (await streamResult.usage) ?? {};
+        const finishReason = await streamResult.finishReason;
+        const sources = (await streamResult.sources) ?? [];
+        const providerMetadata = (await streamResult.providerMetadata) ?? {};
+
+        return {
+          text,
+          usage,
+          finishReason,
+          sources,
+          providerMetadata,
+        };
+      },
       { maxRetries: 3, signal },
     );
     timings.streamStarted = Date.now();
-
-    // Await final results from the stream
-    const text = await result.text;
     timings.streamComplete = Date.now();
-    const usage = (await result.totalUsage) ?? (await result.usage) ?? {};
-    const finishReason = await result.finishReason;
-    const sources = (await result.sources) ?? [];
-    const providerMetadata = (await result.providerMetadata) ?? {};
 
-    const providerMeta = getProviderMetadata(providerMetadata, providerName);
+    const providerMeta = getProviderMetadata(result.providerMetadata, providerName);
     const cachedInputTokens = providerMeta.cacheReadInputTokens ?? 0;
     const cacheCreationInputTokens = providerMeta.cacheCreationInputTokens ?? 0;
     const costUsd = await calculateCost(providerName, modelId, {
-      inputTokens: usage.inputTokens,
-      outputTokens: usage.outputTokens,
+      inputTokens: result.usage.inputTokens,
+      outputTokens: result.usage.outputTokens,
       cachedInputTokens,
       cacheCreationInputTokens,
     });
@@ -473,18 +509,21 @@ export async function stream(opts) {
     });
 
     return {
-      text,
-      usage,
+      text: result.text,
+      usage: result.usage,
       costUsd,
       durationMs,
-      finishReason,
-      sources,
-      providerMetadata,
+      finishReason: result.finishReason,
+      sources: result.sources,
+      providerMetadata: result.providerMetadata,
     };
   } catch (err) {
     if (err instanceof AIClientError) throw err;
     if (signal.aborted) {
-      throw new AIClientError('Request timed out or was cancelled', 'timeout');
+      if (externalSignal?.aborted) {
+        throw new AIClientError('Request was cancelled', 'aborted');
+      }
+      throw new AIClientError('Request timed out', 'timeout');
     }
     throw new AIClientError(`API error: ${err.message}`, 'api', { statusCode: err.statusCode });
   } finally {

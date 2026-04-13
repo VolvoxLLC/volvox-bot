@@ -127,6 +127,23 @@ describe('generate', () => {
     expect(mockCreateAnthropic).toHaveBeenCalled();
   });
 
+  it('should use authToken for anthropic OAuth credentials', async () => {
+    mockGenerateText.mockResolvedValue(makeGenerateResult());
+
+    await generate({ model: 'claude-haiku-4-5', prompt: 'test', apiKey: 'oauth2_test-token' });
+
+    expect(mockCreateAnthropic).toHaveBeenCalledWith({ authToken: 'oauth2_test-token' });
+  });
+
+  it('should use authToken for long anthropic credentials that are not standard api keys', async () => {
+    mockGenerateText.mockResolvedValue(makeGenerateResult());
+    const longToken = `token_${'x'.repeat(140)}`;
+
+    await generate({ model: 'claude-haiku-4-5', prompt: 'test', apiKey: longToken });
+
+    expect(mockCreateAnthropic).toHaveBeenCalledWith({ authToken: longToken });
+  });
+
   it('should resolve unknown providers via env var convention', async () => {
     mockGenerateText.mockResolvedValue(makeGenerateResult());
 
@@ -308,7 +325,7 @@ describe('generate', () => {
     expect(call.tools).toBeUndefined();
   });
 
-  it('should throw AIClientError with reason timeout on abort', async () => {
+  it('should throw AIClientError with reason timeout on internal timeout', async () => {
     mockGenerateText.mockImplementation(
       () => new Promise((_, reject) => setTimeout(() => reject(new Error('aborted')), 50)),
     );
@@ -321,7 +338,43 @@ describe('generate', () => {
       await generate({ model: 'claude-haiku-4-5', prompt: 'slow', timeout: 10 });
     } catch (err) {
       expect(err.reason).toBe('timeout');
+      expect(err.message).toBe('Request timed out');
     }
+  });
+
+  it('should throw AIClientError with reason aborted on external cancellation', async () => {
+    const controller = new AbortController();
+
+    mockGenerateText.mockImplementation(async () => {
+      controller.abort();
+      throw new Error('The operation was aborted');
+    });
+
+    await expect(
+      generate({
+        model: 'claude-haiku-4-5',
+        prompt: 'cancelled',
+        abortSignal: controller.signal,
+      }),
+    ).rejects.toMatchObject({ reason: 'aborted', message: 'Request was cancelled' });
+  });
+
+  it('should pass an already-aborted external signal through immediately', async () => {
+    const controller = new AbortController();
+    controller.abort();
+
+    mockGenerateText.mockImplementation(async ({ abortSignal }) => {
+      expect(abortSignal.aborted).toBe(true);
+      throw new Error('The operation was aborted');
+    });
+
+    await expect(
+      generate({
+        model: 'claude-haiku-4-5',
+        prompt: 'cancelled before start',
+        abortSignal: controller.signal,
+      }),
+    ).rejects.toMatchObject({ reason: 'aborted', message: 'Request was cancelled' });
   });
 
   it('should throw AIClientError with reason api on API errors', async () => {
@@ -406,7 +459,7 @@ describe('stream', () => {
     expect(toolCalls[0].name).toBe('web_search');
   });
 
-  it('should throw AIClientError on timeout', async () => {
+  it('should throw AIClientError with reason timeout on stream timeout', async () => {
     mockStreamText.mockReturnValue({
       ...makeStreamResult(),
       text: new Promise((_, reject) => setTimeout(() => reject(new Error('abort')), 50)),
@@ -414,7 +467,27 @@ describe('stream', () => {
 
     await expect(
       stream({ model: 'claude-haiku-4-5', prompt: 'slow', timeout: 10 }),
-    ).rejects.toThrow(AIClientError);
+    ).rejects.toMatchObject({ reason: 'timeout', message: 'Request timed out' });
+  });
+
+  it('should throw AIClientError with reason aborted on stream cancellation', async () => {
+    const controller = new AbortController();
+
+    mockStreamText.mockImplementation(() => {
+      controller.abort();
+      return {
+        ...makeStreamResult(),
+        text: Promise.reject(new Error('The operation was aborted')),
+      };
+    });
+
+    await expect(
+      stream({
+        model: 'claude-haiku-4-5',
+        prompt: 'cancelled',
+        abortSignal: controller.signal,
+      }),
+    ).rejects.toMatchObject({ reason: 'aborted', message: 'Request was cancelled' });
   });
 
   it('should throw AIClientError with reason api on non-abort error', async () => {
@@ -522,6 +595,23 @@ describe('withRetry', () => {
 
     expect(mockGenerateText).toHaveBeenCalledTimes(1);
   });
+
+  it('should retry when stream consumption fails with a retryable error', async () => {
+    const streamErr = new Error('stream interrupted');
+    streamErr.statusCode = 503;
+
+    mockStreamText
+      .mockReturnValueOnce({
+        ...makeStreamResult(),
+        text: Promise.reject(streamErr),
+      })
+      .mockReturnValueOnce(makeStreamResult({ text: Promise.resolve('retried stream') }));
+
+    const result = await stream({ model: 'claude-haiku-4-5', prompt: 'retry stream' });
+
+    expect(mockStreamText).toHaveBeenCalledTimes(2);
+    expect(result.text).toBe('retried stream');
+  });
 });
 
 // ── generate edge cases ────────────────────────────────────────────────────
@@ -538,29 +628,6 @@ describe('generate — edge cases', () => {
 
   afterEach(() => {
     _clearProviderCache();
-  });
-
-  it('should treat external abort as timeout', async () => {
-    // Simulate an external signal that aborts mid-request
-    const controller = new AbortController();
-
-    mockGenerateText.mockImplementation(async () => {
-      // Abort while the request is "in flight"
-      controller.abort();
-      throw new Error('The operation was aborted');
-    });
-
-    try {
-      await generate({
-        model: 'claude-haiku-4-5',
-        prompt: 'cancelled',
-        abortSignal: controller.signal,
-      });
-      expect.fail('should have thrown');
-    } catch (err) {
-      expect(err).toBeInstanceOf(AIClientError);
-      expect(err.reason).toBe('timeout');
-    }
   });
 
   it('should fall back to usage when totalUsage is undefined', async () => {
