@@ -155,8 +155,8 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1
       simple-icons:
-        specifier: ^16.15.0
-        version: 16.15.0
+        specifier: ^16.16.0
+        version: 16.16.0
       sonner:
         specifier: ^2.0.7
         version: 2.0.7(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -4690,8 +4690,8 @@ packages:
   simple-get@4.0.1:
     resolution: {integrity: sha512-brv7p5WgH0jmQJr1ZDDfKDOSeWWg+OVypG99A/5vYGPqJ6pxiaHLy8nxtFjBA7oMa01ebA9gfh1uMCFqOuXxvA==}
 
-  simple-icons@16.15.0:
-    resolution: {integrity: sha512-hOyY4Cdvh1D/FJa1Qx4nTvypCT2BoI3jpc4xjxVgwVh1Hmd9mnqBqBTziDytCj2f5UOAXCfdnwODiNv710aqkQ==}
+  simple-icons@16.16.0:
+    resolution: {integrity: sha512-H+Z29a0TrCw6mrG42V2aqHQaKdJCT87x5aojLlPiIXOf1lpMqnKFAR/jP5xkI5hLrVTCBWs33e9sOtyNWqCx1A==}
     engines: {node: '>=0.12.18'}
 
   slash@3.0.0:
@@ -4915,6 +4915,10 @@ packages:
 
   undici@8.0.2:
     resolution: {integrity: sha512-B9MeU5wuFhkFAuNeA19K2GDFcQXZxq33fL0nRy2Aq30wdufZbyyvxW3/ChaeipXVfy/wUweZyzovQGk39+9k2w==}
+    engines: {node: '>=22.19.0'}
+
+  undici@8.0.3:
+    resolution: {integrity: sha512-vTLEG/ceXgu/dMTQ8uNE2zgl7I7qEkx9l9tkz2H802AkgbBMvbmHMu4YqsrpGbUAMYKSQhCbmjsWMAeGu1dYXg==}
     engines: {node: '>=22.19.0'}
 
   universalify@0.1.2:
@@ -6397,7 +6401,7 @@ snapshots:
       '@qdrant/openapi-typescript-fetch': 1.2.6
       '@sevinf/maybe': 0.5.0
       typescript: 6.0.2
-      undici: 8.0.2
+      undici: 8.0.3
 
   '@qdrant/openapi-typescript-fetch@1.2.6': {}
 
@@ -9898,7 +9902,7 @@ snapshots:
       once: 1.4.0
       simple-concat: 1.0.1
 
-  simple-icons@16.15.0: {}
+  simple-icons@16.16.0: {}
 
   slash@3.0.0: {}
 
@@ -10107,6 +10111,8 @@ snapshots:
   undici@7.24.6: {}
 
   undici@8.0.2: {}
+
+  undici@8.0.3: {}
 
   universalify@0.1.2: {}
 
