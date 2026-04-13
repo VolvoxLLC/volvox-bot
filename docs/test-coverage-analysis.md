@@ -136,7 +136,7 @@ Several modules use database-level locking (`FOR UPDATE`, `FOR UPDATE SKIP LOCKE
 
 7. **Add DB failure tests across modules** — mock `pool.query()` rejections in ai, triage, moderation, warningEngine
 8. **Add concurrent operation tests** — verify locking semantics in moderation and triage
-9. **Add CLI timeout/parse failure tests** — verify triage handles broken AI responses gracefully
+9. **Add AI client timeout/parse failure tests** — verify triage handles broken AI responses gracefully
 10. **Add startup failure tests to `index.test.js`** — Redis failure, API server failure, state corruption
 
 ### Low Priority

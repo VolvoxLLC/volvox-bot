@@ -221,7 +221,7 @@ export function getSuggestedNextSteps(error, context = {}) {
     [ErrorType.API_NOT_FOUND]: 'Verify the AI provider API endpoint is reachable.',
 
     [ErrorType.API_SERVER_ERROR]:
-      'The service should recover automatically. If it persists, restart the AI service.',
+      'The provider should recover automatically. If it persists, check provider status and outbound connectivity.',
 
     [ErrorType.DISCORD_PERMISSION]:
       'Grant the bot appropriate permissions in Server Settings > Roles.',

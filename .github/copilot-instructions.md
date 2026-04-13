@@ -121,7 +121,7 @@ pnpm --prefix web test:coverage    # Run with coverage
 
 - Place bot tests in `tests/` mirroring the `src/` structure
 - Place web tests in `web/tests/` mirroring `web/src/`
-- Mock external dependencies (Discord.js, database, Redis, Claude SDK)
+- Mock external dependencies (Discord.js, database, Redis, Vercel AI SDK (`ai`, `@ai-sdk/anthropic`))
 - Use `vi.mock()` for module mocking; use `vi.fn()` for function stubs
 - Test timeout is 10 seconds
 

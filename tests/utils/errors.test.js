@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  AIClientError,
   classifyError,
   ErrorType,
   getSuggestedNextSteps,
@@ -344,19 +345,16 @@ describe('isRetryable', () => {
 
 describe('classifyError — AIClientError.reason', () => {
   it('should use AIClientError.reason for timeout classification', () => {
-    const { AIClientError } = require('../../src/utils/errors.js');
     const err = new AIClientError('Request timed out or was cancelled', 'timeout');
     expect(classifyError(err)).toBe(ErrorType.TIMEOUT);
   });
 
   it('should classify AIClientError with reason aborted as TIMEOUT', () => {
-    const { AIClientError } = require('../../src/utils/errors.js');
     const err = new AIClientError('Aborted', 'aborted');
     expect(classifyError(err)).toBe(ErrorType.TIMEOUT);
   });
 
   it('should fall through to status code checks for AIClientError with reason api', () => {
-    const { AIClientError } = require('../../src/utils/errors.js');
     const err = new AIClientError('API error: Bad request', 'api', { statusCode: 429 });
     expect(classifyError(err)).toBe(ErrorType.API_RATE_LIMIT);
   });

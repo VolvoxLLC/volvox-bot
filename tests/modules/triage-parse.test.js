@@ -134,7 +134,7 @@ describe('parseClassifyResult', () => {
 
   it('should return parsed classification on success', () => {
     const sdkMessage = {
-      text: '{"classification":"spam","reasoning":"it is spam","targetMessageIds":["m1"]}',
+      text: '{"classification":"spam","reasoning":"it is spam","targetMessageIds":["m1"],"needsThinking":true,"needsSearch":true}',
       finishReason: 'stop',
       costUsd: 0.001,
       durationMs: 50,
@@ -146,6 +146,8 @@ describe('parseClassifyResult', () => {
     expect(result).not.toBeNull();
     expect(result.classification).toBe('spam');
     expect(result.targetMessageIds).toEqual(['m1']);
+    expect(result.needsThinking).toBe(true);
+    expect(result.needsSearch).toBe(true);
   });
 
   it('should return null when text is empty string', () => {

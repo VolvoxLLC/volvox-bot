@@ -30,9 +30,7 @@ function normaliseModelId(modelId) {
   // Strip date suffix (e.g. '-20250514', '-20250929')
   const stripped = modelId.replace(/-\d{8}$/, '');
 
-  // Family-last: 'claude-sonnet-4-6' → 'claude-sonnet-4.6' (for dotted input)
-  // Not needed for our JSON keys (which use hyphens), but keeps compat if
-  // someone passes a dotted version like 'claude-sonnet-4.6'.
+  // Preserve the family/version format and only remove provider date suffixes.
   return stripped;
 }
 
