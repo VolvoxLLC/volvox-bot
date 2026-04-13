@@ -283,9 +283,7 @@ async function executeAction(message, client, result, autoModConfig, _guildConfi
       break;
 
     case 'delete':
-      if (!autoModConfig.autoDelete) {
-        await message.delete().catch(() => {});
-      }
+      await message.delete().catch(() => {});
       break;
 
     default:

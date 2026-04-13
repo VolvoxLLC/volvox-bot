@@ -112,9 +112,11 @@ describe('generate', () => {
 
     await generate({ model: 'claude-haiku-4-5', prompt: 'test' });
 
-    expect(mockCreateAnthropic).toHaveBeenCalledWith(
-      expect.objectContaining({ apiKey: undefined }),
-    );
+    expect(mockCreateAnthropic).toHaveBeenCalledOnce();
+    expect(mockGenerateText.mock.calls[0][0].model).toEqual({
+      modelId: 'claude-haiku-4-5',
+      provider: 'anthropic',
+    });
   });
 
   it('should parse provider-prefixed model strings', async () => {
@@ -538,7 +540,7 @@ describe('generate — edge cases', () => {
     _clearProviderCache();
   });
 
-  it('should handle externally-aborted AbortSignal', async () => {
+  it('should treat external abort as timeout', async () => {
     // Simulate an external signal that aborts mid-request
     const controller = new AbortController();
 

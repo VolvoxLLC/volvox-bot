@@ -458,7 +458,7 @@ describe('checkAiAutoMod', () => {
     expect(message.delete).toHaveBeenCalled();
   });
 
-  it('should NOT double-delete when autoDelete=true and action=delete', async () => {
+  it('should still run explicit delete action when autoDelete=true', async () => {
     mockGenerate.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.1, spam: 0.95, harassment: 0.1, reason: 'spam' }),
     );
@@ -475,9 +475,9 @@ describe('checkAiAutoMod', () => {
     const result = await checkAiAutoMod(message, client, guildConfig);
     expect(result.flagged).toBe(true);
     expect(result.action).toBe('delete');
-    // autoDelete already deletes the message before the switch; the 'delete' case
-    // should guard against calling delete again.
-    expect(message.delete).toHaveBeenCalledTimes(1);
+    // autoDelete deletes once before the switch, and the explicit delete action
+    // should still run its own delete attempt.
+    expect(message.delete).toHaveBeenCalledTimes(2);
   });
 
   it('should send flag embed to flagChannelId when configured', async () => {
