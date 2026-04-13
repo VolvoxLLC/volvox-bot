@@ -313,6 +313,7 @@ async function runResponder(
     evalConfig,
     memoryContext,
   );
+  timings.promptBuilt = Date.now();
   debug('Responder prompt built', { channelId, promptLength: respondPrompt.length });
 
   // Per-call overrides: thinking and tools are driven by the classifier's signals
@@ -345,7 +346,7 @@ async function runResponder(
           if (statusReactions && triggerMessageId) {
             addReaction(evalClient, channelId, triggerMessageId, '\uD83D\uDD0D');
           }
-          const ch = await evalClient.channels.fetch(channelId).catch(() => null);
+          const ch = await fetchChannelCached(evalClient, channelId).catch(() => null);
           if (ch) {
             try {
               await safeSend(ch, '\uD83D\uDD0D Searching the web for that \u2014 one moment...');
@@ -375,8 +376,8 @@ async function runResponder(
 
   debug('runResponder timing', {
     channelId,
-    promptBuildMs: timings.start, // already logged separately
-    streamApiMs: timings.streamDone - timings.start,
+    promptBuildMs: timings.promptBuilt - timings.start,
+    streamApiMs: timings.streamDone - timings.promptBuilt,
   });
 
   info('Triage response generated', {

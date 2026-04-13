@@ -17,7 +17,7 @@ export function resolveTriageConfig(triageConfig) {
   const classifyModel = triageConfig.classifyModel ?? 'claude-haiku-4-5';
 
   const respondModel =
-    triageConfig.respondModel ||
+    triageConfig.respondModel ??
     (typeof triageConfig.model === 'string' && triageConfig.model
       ? triageConfig.model
       : (triageConfig.models?.default ?? 'claude-sonnet-4-6'));

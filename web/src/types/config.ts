@@ -236,10 +236,10 @@ export interface TriageConfig {
   debugFooter: boolean;
   debugFooterLevel?: string | null;
   moderationLogChannel: string | null;
-  statusReactions?: boolean;
-  dailyBudgetUsd?: number;
-  confidenceThreshold?: number;
-  responseCooldownMs?: number;
+  statusReactions?: boolean | null;
+  dailyBudgetUsd?: number | null;
+  confidenceThreshold?: number | null;
+  responseCooldownMs?: number | null;
 }
 
 /** Generic enabled-flag section used by several community features. */
