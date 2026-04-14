@@ -130,7 +130,7 @@ const XP_LEVEL_ACTION_ENTRY_SCHEMA = {
   required: ['level', 'actions'],
   properties: {
     id: { type: 'string', nullable: true },
-    level: { type: 'number', min: 1, max: 1000 },
+    level: { type: 'number', integer: true, min: 1, max: 1000 },
     actions: {
       type: 'array',
       items: XP_ACTION_ITEM_SCHEMA,
@@ -422,7 +422,7 @@ export const CONFIG_SCHEMA = {
               type: 'object',
               required: ['level', 'message'],
               properties: {
-                level: { type: 'number', min: 1, max: 1000 },
+                level: { type: 'number', integer: true, min: 1, max: 1000 },
                 message: { type: 'string', minLength: 1, maxLength: 2000, pattern: '\\S' },
               },
             },
@@ -504,6 +504,9 @@ export function validateValue(value, schema, path) {
         }
         if (schema.max != null && value > schema.max) {
           errors.push(`${path}: must be <= ${schema.max}`);
+        }
+        if (schema.integer === true && !Number.isInteger(value)) {
+          errors.push(`${path}: must be an integer`);
         }
       }
       break;

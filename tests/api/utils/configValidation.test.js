@@ -396,6 +396,13 @@ describe('configValidation', () => {
       expect(errors.some((e) => e.includes('<= 1000'))).toBe(true);
     });
 
+    it('should reject fractional level action milestones', () => {
+      const errors = validateSingleValue('xp.levelActions', [
+        { level: 5.5, actions: [{ type: 'grantRole' }] },
+      ]);
+      expect(errors.some((e) => e.includes('must be an integer'))).toBe(true);
+    });
+
     it('should reject actions missing type', () => {
       const errors = validateSingleValue('xp.levelActions', [
         { level: 5, actions: [{ roleId: '123' }] },
@@ -500,6 +507,13 @@ describe('configValidation', () => {
         { level: 5, message: 'Second' },
       ]);
       expect(errors.some((e) => e.includes('duplicate value "5"'))).toBe(true);
+    });
+
+    it('should reject fractional xp.levelUpDm message levels', () => {
+      const errors = validateSingleValue('xp.levelUpDm.messages', [
+        { level: 5.5, message: 'Milestone' },
+      ]);
+      expect(errors.some((e) => e.includes('must be an integer'))).toBe(true);
     });
 
     it('should reject blank xp.levelUpDm override messages', () => {
