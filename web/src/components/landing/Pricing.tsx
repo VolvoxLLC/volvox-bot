@@ -73,7 +73,7 @@ function PlanName({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
       className={cn(
-        "text-foreground flex items-center gap-2 text-lg font-bold tracking-tight",
+        'text-foreground flex items-center gap-2 text-lg font-bold tracking-tight',
         className
       )}
       {...props}
