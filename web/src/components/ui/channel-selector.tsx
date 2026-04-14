@@ -34,6 +34,14 @@ export interface DiscordChannel {
 }
 
 // Discord channel types
+const CHANNEL_LOADING_SKELETONS = [
+  'channel-skeleton-1',
+  'channel-skeleton-2',
+  'channel-skeleton-3',
+  'channel-skeleton-4',
+  'channel-skeleton-5',
+] as const;
+
 const CHANNEL_TYPES = {
   GUILD_TEXT: 0,
   DM: 1,
@@ -368,8 +376,8 @@ export function ChannelSelector({
               <CommandEmpty className="py-8 text-center">
                 {loading ? (
                   <div className="flex flex-col gap-3 p-4">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <div key={`skeleton-${i}`} className="flex items-center gap-3 animate-pulse">
+                    {CHANNEL_LOADING_SKELETONS.map((skeletonId) => (
+                      <div key={skeletonId} className="flex items-center gap-3 animate-pulse">
                         <div className="h-8 w-8 rounded-lg bg-muted/50" />
                         <div className="h-4 flex-1 rounded bg-muted/50" />
                       </div>

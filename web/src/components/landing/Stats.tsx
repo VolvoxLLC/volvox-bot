@@ -3,8 +3,8 @@
 import { motion, useInView } from 'framer-motion';
 import { Activity, Clock, Terminal, TrendingUp, Users } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { AnimatedCounter, formatNumber } from './AnimatedCounter';
 import { cn } from '@/lib/utils';
+import { AnimatedCounter, formatNumber } from './AnimatedCounter';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -34,21 +34,24 @@ function formatUptime(seconds: number): string {
 const testimonials = [
   {
     id: 't1',
-    quote: "The neural chat synthesis is actually scary good. It's like having a senior dev in every channel.",
+    quote:
+      "The neural chat synthesis is actually scary good. It's like having a senior dev in every channel.",
     author: 'Alex Rivers',
     role: 'Lead Admin @ TechNode',
     initial: 'A',
   },
   {
     id: 't2',
-    quote: "Sentry mode caught a 500-user raid in under a second. I didn't even have to lift a finger.",
+    quote:
+      "Sentry mode caught a 500-user raid in under a second. I didn't even have to lift a finger.",
     author: 'Sarah Chen',
     role: 'Community Mgr @ Nexus',
     initial: 'S',
   },
   {
     id: 't3',
-    quote: 'Performance is unmatched. 12ms response times globally is a game changer for our scale.',
+    quote:
+      'Performance is unmatched. 12ms response times globally is a game changer for our scale.',
     author: 'Marcus Wright',
     role: 'CTO @ MetaStream',
     initial: 'M',
@@ -118,7 +121,6 @@ export function Stats() {
     >
       <div className="max-w-6xl mx-auto relative z-10">
         <div className="flex flex-col lg:flex-row gap-20 items-start">
-          
           {/* Left: Testimonials Column */}
           <div className="w-full lg:w-1/2 space-y-8">
             <motion.div
@@ -151,7 +153,9 @@ export function Stats() {
                       </p>
                       <div className="flex items-center justify-between mt-auto">
                         <div className="text-sm">
-                          <span className="font-semibold text-foreground block tracking-tight">{t.author}</span>
+                          <span className="font-semibold text-foreground block tracking-tight">
+                            {t.author}
+                          </span>
                           <span className="text-foreground/40 text-xs font-medium">{t.role}</span>
                         </div>
                         <TrendingUp className="w-4 h-4 text-foreground/20 group-hover:text-foreground/50 transition-colors" />
@@ -196,7 +200,9 @@ export function Stats() {
                       )}
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="text-xs text-foreground/60 font-semibold">{card.sublabel}</div>
+                      <div className="text-xs text-foreground/60 font-semibold">
+                        {card.sublabel}
+                      </div>
                       <div className="h-[1px] flex-1 bg-border/40" />
                       <Activity className="w-3 h-3 text-foreground/30 animate-pulse" />
                     </div>
@@ -215,7 +221,6 @@ export function Stats() {
               <div className="h-px flex-1 bg-border/50" />
             </motion.div>
           </div>
-
         </div>
       </div>
     </section>

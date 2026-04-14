@@ -105,18 +105,22 @@ export function DashboardShowcase() {
 
       const kpiCards = gsap.utils.toArray<HTMLElement>('.ds-kpi-strip');
       kpiCards.forEach((card, i) => {
-        gsap.fromTo(card, { y: 20, opacity: 0 }, {
-          y: 0,
-          opacity: 1,
-          duration: 0.6,
-          delay: i * 0.05,
-          ease: 'power2.out',
-          scrollTrigger: {
-            trigger: card,
-            start: 'top 95%',
-            toggleActions: 'play reverse play reverse',
+        gsap.fromTo(
+          card,
+          { y: 20, opacity: 0 },
+          {
+            y: 0,
+            opacity: 1,
+            duration: 0.6,
+            delay: i * 0.05,
+            ease: 'power2.out',
+            scrollTrigger: {
+              trigger: card,
+              start: 'top 95%',
+              toggleActions: 'play reverse play reverse',
+            },
           },
-        });
+        );
       });
     },
     { scope: sectionRef },
@@ -140,7 +144,6 @@ export function DashboardShowcase() {
       className="px-4 py-32 sm:px-6 lg:px-8 bg-background relative overflow-hidden"
     >
       <div className="mx-auto max-w-7xl relative z-10">
-        
         {/* Section Header */}
         <div className="ds-header flex flex-col items-center text-center mb-24 max-w-3xl mx-auto">
           <div className="flex items-center gap-3 mb-6 opacity-80">
@@ -152,14 +155,14 @@ export function DashboardShowcase() {
             Your server, at a glance
           </h2>
           <p className="text-lg text-foreground/50 max-w-xl font-medium leading-relaxed">
-            Absolute control over your community, engineered for scale and speed without the clutter.
+            Absolute control over your community, engineered for scale and speed without the
+            clutter.
           </p>
         </div>
 
         {/* ─── Minimal Dashboard Window ─── */}
         <div className="ds-window mx-auto max-w-6xl">
           <div className="bg-card/40 border border-border/80 rounded-[2rem] overflow-hidden shadow-sm backdrop-blur-3xl">
-            
             {/* Title Bar */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-border/40 bg-background/50">
               <div className="flex items-center gap-2">

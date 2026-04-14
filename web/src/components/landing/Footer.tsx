@@ -1,7 +1,6 @@
 'use client';
 
 import { useGSAP } from '@gsap/react';
-import { motion } from 'framer-motion';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Activity, ArrowRight, ChevronRight, Cpu, Terminal, Zap } from 'lucide-react';
@@ -122,7 +121,6 @@ export function Footer() {
         {/* ─── CTA MODULE ─── */}
         <div className="mb-32">
           <div className="bg-card border border-border/80 relative overflow-hidden rounded-[2.5rem] p-10 md:p-20 shadow-sm flex flex-col items-center text-center">
-            
             {/* Tactical Badge */}
             <div className="flex items-center gap-4 mb-8">
               <span className="text-[10px] font-mono font-bold uppercase tracking-[0.3em] text-foreground/40">
@@ -136,8 +134,8 @@ export function Footer() {
             </h2>
 
             <p className="text-base text-foreground/50 max-w-xl font-medium leading-relaxed mb-12">
-              Deploy the absolute synthesis of AI intelligence and community governance.
-              Experience the next generation of Discord management.
+              Deploy the absolute synthesis of AI intelligence and community governance. Experience
+              the next generation of Discord management.
             </p>
 
             {/* Action Node */}
@@ -274,15 +272,11 @@ export function Footer() {
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2 opacity-30 hover:opacity-100 transition-opacity">
               <Cpu className="w-3.5 h-3.5 text-foreground" />
-              <span className="text-[10px] uppercase tracking-widest font-bold">
-                Node_v2.4
-              </span>
+              <span className="text-[10px] uppercase tracking-widest font-bold">Node_v2.4</span>
             </div>
             <div className="flex items-center gap-2 opacity-30 hover:opacity-100 transition-opacity">
               <Activity className="w-3.5 h-3.5 text-foreground" />
-              <span className="text-[10px] uppercase tracking-widest font-bold">
-                Latency: 12ms
-              </span>
+              <span className="text-[10px] uppercase tracking-widest font-bold">Latency: 12ms</span>
             </div>
           </div>
         </div>

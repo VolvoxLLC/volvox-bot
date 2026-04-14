@@ -55,13 +55,56 @@ export function PrismaticBackground() {
   );
 }
 
+const dataThreadIds = [
+  'alpha',
+  'beta',
+  'gamma',
+  'delta',
+  'epsilon',
+  'zeta',
+  'eta',
+  'theta',
+] as const;
+
+const brandLetters = [
+  { id: 'brand-v-1', char: 'V' },
+  { id: 'brand-o-1', char: 'O' },
+  { id: 'brand-l-1', char: 'L' },
+  { id: 'brand-v-2', char: 'V' },
+  { id: 'brand-o-2', char: 'O' },
+  { id: 'brand-x-1', char: 'X' },
+] as const;
+
+const particleIds = [
+  'particle-01',
+  'particle-02',
+  'particle-03',
+  'particle-04',
+  'particle-05',
+  'particle-06',
+  'particle-07',
+  'particle-08',
+  'particle-09',
+  'particle-10',
+  'particle-11',
+  'particle-12',
+  'particle-13',
+  'particle-14',
+  'particle-15',
+  'particle-16',
+  'particle-17',
+  'particle-18',
+  'particle-19',
+  'particle-20',
+] as const;
+
 // ─── DATA THREADS ──────────────────────────────────────
 function DataThreads() {
   const threads = useMemo(
     () =>
-      Array.from({ length: 8 }).map((_, i) => ({
-        id: i,
-        left: `${10 + i * 11.5}%`,
+      dataThreadIds.map((id, index) => ({
+        id,
+        left: `${10 + index * 11.5}%`,
         delay: Math.random() * 5,
         duration: 8 + Math.random() * 10,
       })),
@@ -153,7 +196,17 @@ export function Hero() {
     { scope: sectionRef },
   );
 
-  const brand = 'VOLVOX';
+  const particles = useMemo(
+    () =>
+      particleIds.map((id) => ({
+        id,
+        x: (Math.random() - 0.5) * 600,
+        y: (Math.random() - 0.5) * 600,
+        duration: 15 + Math.random() * 15,
+        delay: Math.random() * 10,
+      })),
+    [],
+  );
 
   return (
     <section
@@ -183,9 +236,9 @@ export function Hero() {
             ref={titleRef}
             className="flex flex-wrap justify-center text-[18vw] md:text-[14vw] lg:text-[160px] font-black leading-[0.8] tracking-[-0.05em] text-foreground select-none"
           >
-            {brand.split('').map((char, i) => (
-              <span key={`char-${i}`} className="hero-char inline-block">
-                {char}
+            {brandLetters.map((letter) => (
+              <span key={letter.id} className="hero-char inline-block">
+                {letter.char}
               </span>
             ))}
           </h1>
@@ -236,20 +289,20 @@ export function Hero() {
 
       {/* Background Particles */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-10">
-        {Array.from({ length: 20 }).map((_, i) => (
+        {particles.map((particle) => (
           <motion.div
-            key={`particle-${i}`}
+            key={particle.id}
             initial={{ opacity: 0, scale: 0 }}
             animate={{
               opacity: [0, 0.3, 0],
               scale: [0, 1.2, 0],
-              x: [0, (Math.random() - 0.5) * 600],
-              y: [0, (Math.random() - 0.5) * 600],
+              x: [0, particle.x],
+              y: [0, particle.y],
             }}
             transition={{
-              duration: 15 + Math.random() * 15,
+              duration: particle.duration,
               repeat: Infinity,
-              delay: Math.random() * 10,
+              delay: particle.delay,
             }}
             className="absolute top-1/2 left-1/2 w-1 h-1 bg-foreground/30 dark:bg-white/30 rounded-full blur-[1px]"
           />

@@ -1,21 +1,21 @@
 'use client';
 
-import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Shield, Terminal, X, Zap } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { type ComponentProps, useState } from 'react';
 import { getBotInviteUrl } from '@/lib/discord';
+import { cn } from '@/lib/utils';
 
 // ─── Primitive Components provided by user ──────────────────────
 
-function Card({ className, ...props }: React.ComponentProps<'div'>) {
+function Card({ className, ...props }: ComponentProps<'div'>) {
   return (
     <div
       className={cn(
         'bg-card relative w-full rounded-[2rem] dark:bg-card flex flex-col',
         'p-1.5 shadow-xl backdrop-blur-xl',
         'border border-border/60 hover:border-border transition-colors',
-        className
+        className,
       )}
       {...props}
     />
@@ -27,14 +27,14 @@ function Header({
   children,
   glassEffect = true,
   ...props
-}: React.ComponentProps<'div'> & {
+}: ComponentProps<'div'> & {
   glassEffect?: boolean;
 }) {
   return (
     <div
       className={cn(
         'bg-muted/30 dark:bg-background/40 relative mb-2 rounded-[1.5rem] border border-border/40 p-6 flex-shrink-0',
-        className
+        className,
       )}
       {...props}
     >
@@ -44,8 +44,7 @@ function Header({
           aria-hidden="true"
           className="absolute inset-x-0 top-0 h-48 rounded-[inherit] pointer-events-none"
           style={{
-            background:
-              'linear-gradient(180deg, hsl(var(--primary)/2%) 0%, transparent 100%)',
+            background: 'linear-gradient(180deg, hsl(var(--primary)/2%) 0%, transparent 100%)',
           }}
         />
       )}
@@ -54,52 +53,45 @@ function Header({
   );
 }
 
-function Plan({ className, ...props }: React.ComponentProps<'div'>) {
+function Plan({ className, ...props }: ComponentProps<'div'>) {
   return (
-    <div
-      className={cn('mb-4 flex items-center justify-between gap-4', className)}
-      {...props}
-    />
+    <div className={cn('mb-4 flex items-center justify-between gap-4', className)} {...props} />
   );
 }
 
-function Description({ className, ...props }: React.ComponentProps<'p'>) {
-  return (
-    <p className={cn('text-foreground/50 text-sm font-medium', className)} {...props} />
-  );
+function Description({ className, ...props }: ComponentProps<'p'>) {
+  return <p className={cn('text-foreground/50 text-sm font-medium', className)} {...props} />;
 }
 
-function PlanName({ className, ...props }: React.ComponentProps<'div'>) {
+function PlanName({ className, ...props }: ComponentProps<'div'>) {
   return (
     <div
       className={cn(
         'text-foreground flex items-center gap-2 text-lg font-bold tracking-tight',
-        className
+        className,
       )}
       {...props}
     />
   );
 }
 
-function Badge({ className, ...props }: React.ComponentProps<'span'>) {
+function Badge({ className, ...props }: ComponentProps<'span'>) {
   return (
     <span
       className={cn(
         'border-primary/20 bg-primary/10 text-primary font-bold tracking-wider uppercase rounded-full border px-3 py-1 text-[10px]',
-        className
+        className,
       )}
       {...props}
     />
   );
 }
 
-function Price({ className, ...props }: React.ComponentProps<'div'>) {
-  return (
-    <div className={cn('mb-2 flex items-baseline gap-1.5', className)} {...props} />
-  );
+function Price({ className, ...props }: ComponentProps<'div'>) {
+  return <div className={cn('mb-2 flex items-baseline gap-1.5', className)} {...props} />;
 }
 
-function MainPrice({ className, ...props }: React.ComponentProps<'span'>) {
+function MainPrice({ className, ...props }: ComponentProps<'span'>) {
   return (
     <span
       className={cn('text-5xl font-black tracking-tighter text-foreground', className)}
@@ -108,67 +100,47 @@ function MainPrice({ className, ...props }: React.ComponentProps<'span'>) {
   );
 }
 
-function Period({ className, ...props }: React.ComponentProps<'span'>) {
+function Period({ className, ...props }: ComponentProps<'span'>) {
   return (
     <span
-      className={cn('text-foreground/40 font-bold uppercase tracking-widest text-[11px]', className)}
+      className={cn(
+        'text-foreground/40 font-bold uppercase tracking-widest text-[11px]',
+        className,
+      )}
       {...props}
     />
   );
 }
 
-function OriginalPrice({ className, ...props }: React.ComponentProps<'span'>) {
+function OriginalPrice({ className, ...props }: ComponentProps<'span'>) {
   return (
     <span
       className={cn(
         'text-foreground/30 mr-2 text-xl font-bold line-through relative top-[-2px]',
-        className
+        className,
       )}
       {...props}
     />
   );
 }
 
-function Body({ className, ...props }: React.ComponentProps<'div'>) {
+function Body({ className, ...props }: ComponentProps<'div'>) {
   return <div className={cn('space-y-6 p-6 flex flex-col flex-1', className)} {...props} />;
 }
 
-function List({ className, ...props }: React.ComponentProps<'ul'>) {
+function List({ className, ...props }: ComponentProps<'ul'>) {
   return <ul className={cn('space-y-4 mb-8', className)} {...props} />;
 }
 
-function ListItem({ className, ...props }: React.ComponentProps<'li'>) {
+function ListItem({ className, ...props }: ComponentProps<'li'>) {
   return (
     <li
       className={cn(
         'text-foreground/70 font-medium flex items-center gap-3 text-[14px]',
-        className
+        className,
       )}
       {...props}
     />
-  );
-}
-
-function Separator({
-  children = 'Upgrade to access',
-  className,
-  ...props
-}: React.ComponentProps<'div'> & {
-  children?: string;
-  className?: string;
-}) {
-  return (
-    <div
-      className={cn(
-        'text-foreground/40 uppercase tracking-widest font-bold flex items-center gap-4 text-[10px] my-6',
-        className
-      )}
-      {...props}
-    >
-      <span className="bg-border/60 h-[1px] flex-1" />
-      <span className="shrink-0">{children}</span>
-      <span className="bg-border/60 h-[1px] flex-1" />
-    </div>
   );
 }
 
@@ -185,9 +157,8 @@ export function Pricing() {
       <div className="absolute inset-0 z-0 pointer-events-none opacity-20 hidden md:block">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,hsl(var(--primary)/0.15)_0%,transparent_50%)]" />
       </div>
-      
+
       <div className="max-w-6xl mx-auto relative z-10 flex flex-col items-center">
-        
         <div className="text-center mb-16">
           <div className="flex items-center justify-center gap-3 mb-6 opacity-80">
             <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-foreground/40">
@@ -199,11 +170,17 @@ export function Pricing() {
             System Access Tiers
           </h2>
           <p className="text-lg text-foreground/50 max-w-xl mx-auto font-medium leading-relaxed mb-10">
-            Scale without limits. Establish perfect governance and save compounding hours in community management.
+            Scale without limits. Establish perfect governance and save compounding hours in
+            community management.
           </p>
 
           <div className="flex items-center justify-center gap-6">
-            <span className={cn('text-[11px] font-mono tracking-widest font-bold transition-colors', !isAnnual ? 'text-primary' : 'text-foreground/30')}>
+            <span
+              className={cn(
+                'text-[11px] font-mono tracking-widest font-bold transition-colors',
+                !isAnnual ? 'text-primary' : 'text-foreground/30',
+              )}
+            >
               MONTHLY
             </span>
             <button
@@ -219,7 +196,12 @@ export function Pricing() {
                 className="w-6 h-6 rounded-full bg-primary shadow-sm"
               />
             </button>
-            <span className={cn('text-[11px] font-mono tracking-widest font-bold transition-colors', isAnnual ? 'text-primary' : 'text-foreground/30')}>
+            <span
+              className={cn(
+                'text-[11px] font-mono tracking-widest font-bold transition-colors',
+                isAnnual ? 'text-primary' : 'text-foreground/30',
+              )}
+            >
               ANNUAL
             </span>
           </div>
@@ -227,7 +209,6 @@ export function Pricing() {
 
         {/* Pricing Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl">
-          
           {/* Card: Standard */}
           <Card className="max-w-none">
             <Header glassEffect={false}>
@@ -241,7 +222,7 @@ export function Pricing() {
                 </span>
               </Plan>
               <Description>For side projects that might actually ship.</Description>
-              
+
               <div className="mt-8">
                 <Price>
                   <MainPrice>$0</MainPrice>
@@ -260,8 +241,7 @@ export function Pricing() {
                   Core command modules
                 </ListItem>
                 <ListItem>
-                  <Check className="w-4 h-4 text-primary shrink-0" />
-                  1 Discord server
+                  <Check className="w-4 h-4 text-primary shrink-0" />1 Discord server
                 </ListItem>
                 <ListItem>
                   <Check className="w-4 h-4 text-primary shrink-0" />
@@ -315,14 +295,14 @@ export function Pricing() {
                 <Badge>Recommended</Badge>
               </Plan>
               <Description>Deploy the absolute synthesis of AI intelligence.</Description>
-              
+
               <div className="mt-8">
                 <Price>
                   {isAnnual && <OriginalPrice>$14.99</OriginalPrice>}
                   <MainPrice>${isAnnual ? '115' : '14.99'}</MainPrice>
                   <Period>/{isAnnual ? 'year' : 'mo'}</Period>
                 </Price>
-                
+
                 <div className="h-5 flex items-center">
                   {isAnnual ? (
                     <motion.div
@@ -389,7 +369,6 @@ export function Pricing() {
               </div>
             </Body>
           </Card>
-
         </div>
       </div>
     </section>

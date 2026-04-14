@@ -12,7 +12,30 @@ interface Feature {
   readonly preview: React.ReactNode;
   readonly size: 'small' | 'medium' | 'large';
   readonly className?: string;
+  readonly animationOrder: number;
 }
+
+const liveInsightBars = [
+  { id: 'activity-40', height: 40, delayOrder: 0 },
+  { id: 'activity-75', height: 75, delayOrder: 1 },
+  { id: 'activity-55', height: 55, delayOrder: 2 },
+  { id: 'activity-90', height: 90, delayOrder: 3 },
+  { id: 'activity-65', height: 65, delayOrder: 4 },
+  { id: 'activity-85', height: 85, delayOrder: 5 },
+  { id: 'activity-45', height: 45, delayOrder: 6 },
+  { id: 'activity-70', height: 70, delayOrder: 7 },
+] as const;
+
+const coreEngineCells = [
+  'core-alpha',
+  'core-beta',
+  'core-gamma',
+  'core-delta',
+  'core-epsilon',
+  'core-zeta',
+  'core-eta',
+  'core-theta',
+] as const;
 
 const features: readonly Feature[] = [
   {
@@ -22,6 +45,7 @@ const features: readonly Feature[] = [
       'Multi-turn, context-aware conversations powered by Claude. Synthesis of intelligence directly in your channels.',
     size: 'large',
     className: 'md:col-span-2 lg:col-span-2',
+    animationOrder: 0,
     preview: (
       <div className="space-y-4 text-[13px] font-medium leading-relaxed">
         <div className="flex gap-3 text-foreground/40">
@@ -45,6 +69,7 @@ const features: readonly Feature[] = [
       'Autonomous moderation that identifies and neutralizes raids with surgical precision.',
     size: 'medium',
     className: 'md:col-span-1 lg:col-span-1',
+    animationOrder: 1,
     preview: (
       <div className="space-y-4">
         <div className="flex items-center justify-between text-[11px] bg-destructive/10 px-3 py-2 rounded-lg border border-destructive/20">
@@ -69,14 +94,15 @@ const features: readonly Feature[] = [
     description: 'Real-time analytics and server health metrics visualized instantly.',
     size: 'medium',
     className: 'md:col-span-1 lg:col-span-1',
+    animationOrder: 2,
     preview: (
       <div className="flex items-end gap-2 h-20 px-1">
-        {[40, 75, 55, 90, 65, 85, 45, 70].map((h, i) => (
+        {liveInsightBars.map((bar) => (
           <motion.div
-            key={`bar-${i}`}
+            key={bar.id}
             initial={{ height: 0 }}
-            whileInView={{ height: `${h}%` }}
-            transition={{ delay: i * 0.05, duration: 0.8, ease: 'circOut' }}
+            whileInView={{ height: `${bar.height}%` }}
+            transition={{ delay: bar.delayOrder * 0.05, duration: 0.8, ease: 'circOut' }}
             className="flex-1 rounded-[3px] bg-primary/20"
           />
         ))}
@@ -89,17 +115,20 @@ const features: readonly Feature[] = [
     description: 'Built for scale. Minimal latency across all global regions.',
     size: 'small',
     className: 'md:col-span-1 lg:col-span-1',
+    animationOrder: 3,
     preview: (
       <div className="flex items-center justify-center py-2 h-full">
         <div className="w-full h-12 bg-card rounded-xl border border-border/50 flex flex-col justify-center px-5">
           <div className="flex items-center justify-between w-full">
-             <div className="flex items-center gap-2">
-                <Globe className="w-4 h-4 text-foreground/40" />
-                <span className="text-[11px] font-semibold text-foreground/60 uppercase font-sans tracking-widest">Global</span>
-             </div>
-             <span className="text-[11px] font-black tracking-wider text-foreground/40 uppercase font-mono">
-                12ms
-             </span>
+            <div className="flex items-center gap-2">
+              <Globe className="w-4 h-4 text-foreground/40" />
+              <span className="text-[11px] font-semibold text-foreground/60 uppercase font-sans tracking-widest">
+                Global
+              </span>
+            </div>
+            <span className="text-[11px] font-black tracking-wider text-foreground/40 uppercase font-mono">
+              12ms
+            </span>
           </div>
         </div>
       </div>
@@ -111,13 +140,11 @@ const features: readonly Feature[] = [
     description: 'Highly optimized architecture designed for 99.99% uptime.',
     size: 'small',
     className: 'md:col-span-1 lg:col-span-1',
+    animationOrder: 4,
     preview: (
       <div className="grid grid-cols-4 gap-2 opacity-50 h-full content-center">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div
-            key={`core-i-${i}`}
-            className="h-6 rounded-full bg-foreground/5 border border-border/60"
-          />
+        {coreEngineCells.map((cellId) => (
+          <div key={cellId} className="h-6 rounded-full bg-foreground/5 border border-border/60" />
         ))}
       </div>
     ),
@@ -126,11 +153,9 @@ const features: readonly Feature[] = [
 
 function FeatureCard({
   feature,
-  index,
   shouldReduceMotion,
 }: {
   readonly feature: Feature;
-  readonly index: number;
   readonly shouldReduceMotion: boolean;
 }) {
   return (
@@ -140,7 +165,7 @@ function FeatureCard({
       viewport={{ once: true, margin: '-50px' }}
       transition={{
         duration: 0.6,
-        delay: shouldReduceMotion ? 0 : index * 0.05,
+        delay: shouldReduceMotion ? 0 : feature.animationOrder * 0.05,
         ease: [0.21, 1.02, 0.47, 0.98],
       }}
       className={cn(
@@ -149,13 +174,13 @@ function FeatureCard({
       )}
     >
       <div className="relative z-10">
-        <div
-          className="inline-flex items-center justify-center w-12 h-12 rounded-[14px] mb-6 bg-secondary/50 border border-border/50 text-muted-foreground transition-colors group-hover:text-primary group-hover:bg-secondary/70"
-        >
+        <div className="inline-flex items-center justify-center w-12 h-12 rounded-[14px] mb-6 bg-secondary/50 border border-border/50 text-muted-foreground transition-colors group-hover:text-primary group-hover:bg-secondary/70">
           <feature.icon className="w-[22px] h-[22px]" aria-hidden="true" />
         </div>
 
-        <h3 className="text-[22px] font-bold tracking-tight text-foreground mb-3">{feature.title}</h3>
+        <h3 className="text-[22px] font-bold tracking-tight text-foreground mb-3">
+          {feature.title}
+        </h3>
         <p className="text-[15px] leading-relaxed text-foreground/50 mb-8 font-medium max-w-sm">
           {feature.description}
         </p>
@@ -174,7 +199,6 @@ export function FeatureGrid() {
   return (
     <section className="relative py-32 px-4 sm:px-6 lg:px-8 bg-background overflow-hidden border-t border-border/30">
       <div className="mx-auto max-w-6xl relative z-10">
-        
         <div className="flex flex-col mb-24 max-w-3xl">
           <div className="flex items-center gap-3 mb-6 opacity-80">
             <div className="w-8 h-[1px] bg-primary/40" />
@@ -184,20 +208,21 @@ export function FeatureGrid() {
           </div>
 
           <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground mb-6 leading-tight">
-            Everything you need,<br />
+            Everything you need,
+            <br />
             <span className="text-foreground/40">re-engineered.</span>
           </h2>
           <p className="text-lg text-foreground/50 max-w-xl font-medium leading-relaxed">
-            Volvox consolidates your entire community stack into a single, high-performance architecture.
+            Volvox consolidates your entire community stack into a single, high-performance
+            architecture.
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6">
-          {features.map((feature, index) => (
+          {features.map((feature) => (
             <FeatureCard
               key={feature.title}
               feature={feature}
-              index={index}
               shouldReduceMotion={shouldReduceMotion}
             />
           ))}

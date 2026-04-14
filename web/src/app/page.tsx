@@ -25,7 +25,6 @@ const Stats = dynamic(
 export default function LandingPage() {
   return (
     <div className="flex min-h-screen flex-col bg-background selection:bg-primary/20">
-      
       {/* Dynamic Navbar */}
       <LandingNavbar />
 

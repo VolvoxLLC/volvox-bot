@@ -68,10 +68,11 @@ test.describe('Mobile Navigation', () => {
   });
 
   test('opens the mobile menu on toggle click', async ({ page }) => {
-    const toggleButton = page.getByLabel('Toggle menu');
+    const toggleButton = page.getByLabel('Open menu');
     await toggleButton.click();
-    const mobileNav = page.locator('#mobile-nav');
+    const mobileNav = page.getByRole('dialog');
     await expect(mobileNav).toBeVisible();
+    await expect(mobileNav.getByRole('heading', { name: 'Menu' })).toBeVisible();
     await expect(mobileNav.getByText('Features')).toBeVisible();
     await expect(mobileNav.getByText('Pricing')).toBeVisible();
     await expect(mobileNav.getByText('Dashboard')).toBeVisible();
@@ -89,7 +90,7 @@ test.describe('Hero Section', () => {
     await expect(page.getByText('BOT', { exact: true })).toBeVisible();
     await expect(
       page.getByText(
-        'The absolute synthesis of community intelligence, robust moderation, and dynamic architectural scale.',
+        'The absolute synthesis of community intelligence, robust moderation, and seamless scale.',
       ),
     ).toBeVisible();
   });
@@ -147,8 +148,8 @@ test.describe('Pricing Section', () => {
   });
 
   test('shows pricing copy', async ({ page }) => {
-    await expect(page.getByText('Core bot features')).toBeVisible();
-    await expect(page.getByText('Community support')).toBeVisible();
+    await expect(page.getByText('Core command modules')).toBeVisible();
+    await expect(page.getByText('Priority Technical Support')).toBeVisible();
   });
 });
 
@@ -160,7 +161,7 @@ test.describe('Comparison Table', () => {
 
   test('renders comparison table with updated rows', async ({ page }) => {
     await expect(page.getByRole('heading', { name: /Engineered for Superiority/i })).toBeVisible();
-    const table = page.locator('[role="table"]');
+    const table = page.locator('table[aria-label="Feature comparison"]');
     const features = [
       'AI Neural Chat',
       'AI Moderation',
@@ -203,9 +204,9 @@ test.describe('Footer', () => {
 
   test('shows footer link sections', async ({ page }) => {
     const footer = page.locator('footer');
-    await expect(footer.getByText('SYSTEM_CORE')).toBeVisible();
+    await expect(footer.getByText('SYSTEM CORE')).toBeVisible();
     await expect(footer.getByText('RESOURCES')).toBeVisible();
-    await expect(footer.getByText('LEGAL_PROTOCOL')).toBeVisible();
+    await expect(footer.getByText('LEGAL PROTOCOL')).toBeVisible();
   });
 
   test('has social links', async ({ page }) => {

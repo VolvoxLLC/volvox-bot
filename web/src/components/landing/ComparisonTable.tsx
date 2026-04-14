@@ -75,17 +75,19 @@ function CellValueDisplay({ value, isVolvox }: Readonly<{ value: CellValue; isVo
       <div
         className={cn(
           'mx-auto flex h-6 w-6 items-center justify-center rounded-full',
-          isVolvox ? 'bg-primary/10 text-primary shadow-[0_0_12px_hsl(var(--primary)/0.1)]' : 'bg-foreground/5 text-foreground/50',
+          isVolvox
+            ? 'bg-primary/10 text-primary shadow-[0_0_12px_hsl(var(--primary)/0.1)]'
+            : 'bg-foreground/5 text-foreground/50',
         )}
       >
-        <Check className='h-[14px] w-[14px] stroke-[3px]' />
+        <Check className="h-[14px] w-[14px] stroke-[3px]" />
       </div>
     );
   }
   if (value === false) {
     return (
-      <div className='mx-auto flex h-6 w-6 items-center justify-center rounded-full bg-foreground/5 text-foreground/40'>
-        <X className='h-4 w-4 stroke-[2.5px]' />
+      <div className="mx-auto flex h-6 w-6 items-center justify-center rounded-full bg-foreground/5 text-foreground/40">
+        <X className="h-4 w-4 stroke-[2.5px]" />
       </div>
     );
   }
@@ -93,7 +95,9 @@ function CellValueDisplay({ value, isVolvox }: Readonly<{ value: CellValue; isVo
     <span
       className={cn(
         'rounded-md px-2 py-1 font-mono text-[10px] font-black uppercase tracking-widest transition-colors',
-        isVolvox ? 'bg-primary/10 text-primary shadow-[0_0_12px_hsl(var(--primary)/0.05)]' : 'bg-foreground/5 text-foreground/70',
+        isVolvox
+          ? 'bg-primary/10 text-primary shadow-[0_0_12px_hsl(var(--primary)/0.05)]'
+          : 'bg-foreground/5 text-foreground/70',
       )}
     >
       {value}
@@ -131,7 +135,7 @@ function ComparisonRow({
   const glowBg = useTransform(
     [mouseX, mouseY, glowOpacity],
     ([x, y, opacity]) =>
-      `radial-gradient(600px circle at ${x}px ${y}px, hsl(var(--foreground) / ${0.03 * (opacity as number)}), transparent 80%)`
+      `radial-gradient(600px circle at ${x}px ${y}px, hsl(var(--foreground) / ${0.03 * (opacity as number)}), transparent 80%)`,
   );
 
   return (
@@ -158,9 +162,7 @@ function ComparisonRow({
           <span className="text-[14px] font-semibold tracking-tight text-foreground/90">
             {row.feature}
           </span>
-          <span className="text-[12px] font-medium text-foreground/40">
-            {row.description}
-          </span>
+          <span className="text-[12px] font-medium text-foreground/40">{row.description}</span>
         </div>
         {row.highlight && (
           <div className="absolute left-0 top-1/2 h-8 w-1 -translate-y-1/2 rounded-r-full bg-primary/60" />
@@ -191,60 +193,59 @@ export function ComparisonTable() {
   }, []);
 
   return (
-    <section className='relative bg-background px-4 py-32 sm:px-6 lg:px-8 border-t border-border/30'>
-      <div className='relative z-10 mx-auto max-w-4xl'>
-        
-        <div className='mb-20 flex flex-col items-center text-center'>
+    <section className="relative bg-background px-4 py-32 sm:px-6 lg:px-8 border-t border-border/30">
+      <div className="relative z-10 mx-auto max-w-4xl">
+        <div className="mb-20 flex flex-col items-center text-center">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
-            className='mb-8 inline-flex items-center gap-3 rounded-full border border-border/60 bg-card px-4 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-foreground/60 shadow-sm'
+            className="mb-8 inline-flex items-center gap-3 rounded-full border border-border/60 bg-card px-4 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-foreground/60 shadow-sm"
           >
             [BENCHMARK_ANALYSIS]
           </motion.div>
 
-          <h2 className='mb-6 text-4xl font-bold leading-tight tracking-tight text-foreground md:text-5xl'>
+          <h2 className="mb-6 text-4xl font-bold leading-tight tracking-tight text-foreground md:text-5xl">
             Engineered for superiority
           </h2>
-          <p className='max-w-xl text-lg font-medium text-foreground/50'>
-            Volvox isn't just another bot. It's a complete architectural overhaul of community governance.
+          <p className="max-w-xl text-lg font-medium text-foreground/50">
+            Volvox isn't just another bot. It's a complete architectural overhaul of community
+            governance.
           </p>
         </div>
 
-        <div className='overflow-hidden rounded-[2rem] border border-border/80 bg-card shadow-sm'>
-          <div className='overflow-x-auto scrollbar-none'>
+        <div className="overflow-hidden rounded-[2rem] border border-border/80 bg-card shadow-sm">
+          <div className="overflow-x-auto scrollbar-none">
             <table
-              role='table'
-              aria-label='Feature comparison'
-              className='min-w-[700px] w-full table-fixed border-separate border-spacing-0'
+              aria-label="Feature comparison"
+              className="min-w-[700px] w-full table-fixed border-separate border-spacing-0"
             >
               <colgroup>
-                <col className='w-[35%]' />
-                <col className='w-[16.25%]' />
-                <col className='w-[16.25%]' />
-                <col className='w-[16.25%]' />
-                <col className='w-[16.25%]' />
+                <col className="w-[35%]" />
+                <col className="w-[16.25%]" />
+                <col className="w-[16.25%]" />
+                <col className="w-[16.25%]" />
+                <col className="w-[16.25%]" />
               </colgroup>
               <thead>
-                <tr className='border-b border-border/60 bg-muted/40'>
-                  <th className='px-6 py-5 text-left font-sans text-[11px] font-bold uppercase tracking-widest text-foreground/40'>
+                <tr className="border-b border-border/60 bg-muted/40">
+                  <th className="px-6 py-5 text-left font-sans text-[11px] font-bold uppercase tracking-widest text-foreground/40">
                     Feature
                   </th>
-                  <th className='border-x border-border/30 bg-background/50 px-3 py-5 text-center'>
-                    <div className='flex flex-col items-center gap-1'>
-                      <span className='font-sans text-[12px] font-bold uppercase tracking-widest text-foreground'>
+                  <th className="border-x border-border/30 bg-background/50 px-3 py-5 text-center">
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="font-sans text-[12px] font-bold uppercase tracking-widest text-foreground">
                         Volvox
                       </span>
                     </div>
                   </th>
-                  <th className='px-3 py-5 text-center font-sans text-[11px] font-bold uppercase tracking-widest text-foreground/40'>
+                  <th className="px-3 py-5 text-center font-sans text-[11px] font-bold uppercase tracking-widest text-foreground/40">
                     MEE6
                   </th>
-                  <th className='px-3 py-5 text-center font-sans text-[11px] font-bold uppercase tracking-widest text-foreground/40'>
+                  <th className="px-3 py-5 text-center font-sans text-[11px] font-bold uppercase tracking-widest text-foreground/40">
                     DYNO
                   </th>
-                  <th className='px-3 py-5 text-center font-sans text-[11px] font-bold uppercase tracking-widest text-foreground/40'>
+                  <th className="px-3 py-5 text-center font-sans text-[11px] font-bold uppercase tracking-widest text-foreground/40">
                     CARL-BOT
                   </th>
                 </tr>
@@ -261,21 +262,21 @@ export function ComparisonTable() {
               </tbody>
             </table>
 
-            <div className='flex min-w-[700px] items-center justify-between border-t border-border/60 bg-background px-6 py-4'>
-              <div className='flex items-center gap-2 font-mono text-[10px] font-medium tracking-wide text-foreground/40'>
-                <Info className='h-3.5 w-3.5 opacity-60' />
+            <div className="flex min-w-[700px] items-center justify-between border-t border-border/60 bg-background px-6 py-4">
+              <div className="flex items-center gap-2 font-mono text-[10px] font-medium tracking-wide text-foreground/40">
+                <Info className="h-3.5 w-3.5 opacity-60" />
                 Validated: {localDate}
               </div>
-              <div className='flex items-center gap-6'>
-                <div className='flex items-center gap-2'>
-                  <Zap className='h-3.5 w-3.5 text-primary opacity-80' />
-                  <span className='font-mono text-[10px] font-bold uppercase text-foreground/50'>
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <Zap className="h-3.5 w-3.5 text-primary opacity-80" />
+                  <span className="font-mono text-[10px] font-bold uppercase text-foreground/50">
                     High_Speed
                   </span>
                 </div>
-                <div className='flex items-center gap-2'>
-                  <Shield className='h-3.5 w-3.5 text-foreground/40' />
-                  <span className='font-mono text-[10px] font-bold uppercase text-foreground/50'>
+                <div className="flex items-center gap-2">
+                  <Shield className="h-3.5 w-3.5 text-foreground/40" />
+                  <span className="font-mono text-[10px] font-bold uppercase text-foreground/50">
                     Zero_Trust
                   </span>
                 </div>
@@ -283,7 +284,6 @@ export function ComparisonTable() {
             </div>
           </div>
         </div>
-
       </div>
     </section>
   );

@@ -1,13 +1,20 @@
 'use client';
 
 import { motion, useMotionValueEvent, useScroll } from 'framer-motion';
-import { Menu, X } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { InviteButton } from '@/components/landing/InviteButton';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from '@/components/ui/sheet';
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { cn } from '@/lib/utils';
 
@@ -41,7 +48,7 @@ export function LandingNavbar() {
       <div
         className={cn(
           'fixed inset-x-0 top-0 z-40 h-24 pointer-events-none select-none transition-opacity duration-500 md:h-48',
-          isMobile ? 'opacity-100' : scrolled ? 'opacity-0' : 'opacity-100'
+          isMobile ? 'opacity-100' : scrolled ? 'opacity-0' : 'opacity-100',
         )}
       >
         <div className="absolute inset-0 backdrop-blur-[4px] [mask-image:linear-gradient(to_bottom,black_0%,transparent_100%)]" />
@@ -53,7 +60,7 @@ export function LandingNavbar() {
       <header
         className={cn(
           'fixed inset-x-0 top-0 z-50 flex justify-center transition-all duration-500 pointer-events-none',
-          isMobile ? 'pt-0' : scrolled ? 'pt-2' : 'pt-0'
+          isMobile ? 'pt-0' : scrolled ? 'pt-2' : 'pt-0',
         )}
       >
         <motion.nav
@@ -63,7 +70,8 @@ export function LandingNavbar() {
             width: !isMobile && scrolled ? 'min(90%, 950px)' : '100%',
             borderRadius: !isMobile && scrolled ? '9999px' : '0px',
             y: 0,
-            backgroundColor: !isMobile && scrolled ? 'hsl(var(--background) / 0.05)' : 'transparent',
+            backgroundColor:
+              !isMobile && scrolled ? 'hsl(var(--background) / 0.05)' : 'transparent',
             borderColor: !isMobile && scrolled ? 'hsl(var(--border) / 0.1)' : 'transparent',
           }}
           transition={{ type: 'spring', stiffness: 300, damping: 30 }}
@@ -71,7 +79,7 @@ export function LandingNavbar() {
             'pointer-events-auto relative flex items-center justify-between px-4 py-3 md:py-3 transition-all',
             !isMobile && scrolled
               ? 'border backdrop-blur-[20px] saturate-[180%] bg-card/60 dark:bg-card/40'
-              : 'border-transparent bg-transparent'
+              : 'border-transparent bg-transparent',
           )}
           style={{
             boxShadow:
@@ -94,12 +102,18 @@ export function LandingNavbar() {
                 layout
                 className="relative h-8 w-8 overflow-hidden rounded-full border border-white/10 drop-shadow-md transition-colors group-hover:border-primary/50 md:h-9 md:w-9"
               >
-                <Image src="/icon-192.png" alt="Volvox Logo" fill className="object-cover" sizes="36px" />
+                <Image
+                  src="/icon-192.png"
+                  alt="Volvox Logo"
+                  fill
+                  className="object-cover"
+                  sizes="36px"
+                />
               </motion.div>
               <span
                 className={cn(
                   'text-lg font-bold tracking-tight text-foreground transition-opacity duration-300 md:text-xl',
-                  !isMobile && scrolled && 'md:block hidden'
+                  !isMobile && scrolled && 'md:block hidden',
                 )}
               >
                 Volvox
@@ -164,9 +178,14 @@ export function LandingNavbar() {
                   <Menu className="h-5 w-5" />
                 </button>
               </SheetTrigger>
-              <SheetContent side="top" className="rounded-b-[2rem] p-6 shadow-2xl border-b border-border/10 outline-none">
+              <SheetContent
+                side="top"
+                className="rounded-b-[2rem] p-6 shadow-2xl border-b border-border/10 outline-none"
+              >
                 <SheetHeader className="mb-6">
-                  <SheetTitle className="text-left font-bold tracking-tight text-xl">Menu</SheetTitle>
+                  <SheetTitle className="text-left font-bold tracking-tight text-xl">
+                    Menu
+                  </SheetTitle>
                 </SheetHeader>
                 <div className="flex flex-col gap-2">
                   <SheetClose asChild>

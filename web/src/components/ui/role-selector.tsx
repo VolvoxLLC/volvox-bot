@@ -22,6 +22,13 @@ export interface DiscordRole {
   color: number;
 }
 
+const ROLE_LOADING_SKELETONS = [
+  'role-skeleton-1',
+  'role-skeleton-2',
+  'role-skeleton-3',
+  'role-skeleton-4',
+] as const;
+
 interface RoleSelectorProps {
   guildId: string;
   selected: string[];
@@ -215,8 +222,8 @@ export function RoleSelector({
               <CommandEmpty className="py-8 text-center">
                 {loading ? (
                   <div className="flex flex-col gap-3 p-4">
-                    {Array.from({ length: 4 }).map((_, i) => (
-                      <div key={`skeleton-${i}`} className="flex items-center gap-3 animate-pulse">
+                    {ROLE_LOADING_SKELETONS.map((skeletonId) => (
+                      <div key={skeletonId} className="flex items-center gap-3 animate-pulse">
                         <div className="h-4 w-4 rounded-full bg-muted/50" />
                         <div className="h-4 flex-1 rounded bg-muted/50" />
                       </div>
