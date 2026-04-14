@@ -2,7 +2,6 @@
 
 import { motion, useMotionValueEvent, useScroll } from 'framer-motion';
 import { Menu, X } from 'lucide-react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { InviteButton } from '@/components/landing/InviteButton';
