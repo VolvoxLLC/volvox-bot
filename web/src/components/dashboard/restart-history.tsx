@@ -11,6 +11,13 @@ interface RestartHistoryProps {
 }
 
 const MAX_RESTARTS = 20;
+const RESTART_SKELETON_ROWS = [
+  'restart-skeleton-1',
+  'restart-skeleton-2',
+  'restart-skeleton-3',
+  'restart-skeleton-4',
+  'restart-skeleton-5',
+] as const;
 
 function formatTimestamp(iso: string): string {
   try {
@@ -71,8 +78,8 @@ export function RestartHistory({ health, loading }: RestartHistoryProps) {
             </thead>
             <tbody className="divide-y divide-white/5">
               {loading && !health ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i}>
+                RESTART_SKELETON_ROWS.map((rowId) => (
+                  <tr key={rowId}>
                     <td className="py-4">
                       <Skeleton className="h-4 w-32 rounded bg-white/5" />
                     </td>
