@@ -233,9 +233,11 @@ export function LandingNavbar() {
                   <Button variant="outline" className="h-12 w-full rounded-full" asChild>
                     <Link href="/login">Sign In</Link>
                   </Button>
-                  <div className="w-full h-12 [&>a]:w-full [&>button]:w-full [&>a]:h-full [&>button]:h-full [&>a]:rounded-full [&>button]:rounded-full flex">
-                    <InviteButton size="lg" />
-                  </div>
+                  <SheetClose asChild>
+                    <div className="w-full h-12 [&>a]:w-full [&>button]:w-full [&>a]:h-full [&>button]:h-full [&>a]:rounded-full [&>button]:rounded-full flex">
+                      <InviteButton size="lg" />
+                    </div>
+                  </SheetClose>
                 </div>
               </SheetContent>
             </Sheet>

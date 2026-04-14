@@ -358,13 +358,14 @@ export function Pricing() {
                     DEPLOY OVERCLOCKED
                   </a>
                 ) : (
-                  <div
-                    aria-disabled="true"
+                  <button
+                    type="button"
+                    disabled
                     className="flex items-center justify-center gap-2 text-background text-sm font-bold tracking-wide uppercase h-14 w-full rounded-xl bg-muted/60 text-foreground transition-colors border border-border opacity-60 cursor-not-allowed"
                   >
                     <Shield className="w-4 h-4 opacity-40 shrink-0" />
                     DEPLOY OVERCLOCKED
-                  </div>
+                  </button>
                 )}
               </div>
             </Body>

@@ -73,8 +73,10 @@ describe('Pricing', () => {
   it('should link tiers to bot invite URL', () => {
     render(<Pricing />);
     const links = screen.getAllByRole('link', { name: /INITIALIZE|DEPLOY/i });
-    expect(links.length).toBeGreaterThan(0);
-    expect(links[0]).toHaveAttribute('href', 'https://discord.com/invite/bot');
+    expect(links).toHaveLength(2);
+    for (const link of links) {
+      expect(link).toHaveAttribute('href', 'https://discord.com/invite/bot');
+    }
   });
 
   it('should render CTA text without links when no invite URL', () => {
@@ -82,5 +84,6 @@ describe('Pricing', () => {
     render(<Pricing />);
     expect(screen.getByText('INITIALIZE STANDARD')).toBeInTheDocument();
     expect(screen.getByText('DEPLOY OVERCLOCKED')).toBeInTheDocument();
+    expect(screen.queryAllByRole('link', { name: /INITIALIZE|DEPLOY/i })).toHaveLength(0);
   });
 });
