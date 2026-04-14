@@ -368,7 +368,7 @@ export function Pricing() {
                   href={botInviteUrl || '#'}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-center h-14 rounded-xl bg-primary text-primary-foreground shadow-[0_0_20px_rgba(var(--primary),0.2)] font-bold tracking-widest text-xs uppercase hover:bg-primary/90 transition-all active:scale-[0.98]"
+                  className="flex items-center justify-center h-14 rounded-xl bg-primary text-primary-foreground shadow-[0_0_20px_hsl(var(--primary)/0.2)] font-bold tracking-widest text-xs uppercase hover:bg-primary/90 transition-all active:scale-[0.98]"
                 >
                   DEPLOY OVERCLOCKED
                 </a>
