@@ -84,7 +84,7 @@ importers:
     dependencies:
       '@gsap/react':
         specifier: ^2.1.2
-        version: 2.1.2(gsap@3.14.2)(react@19.2.5)
+        version: 2.1.2(gsap@3.15.0)(react@19.2.5)
       '@paper-design/shaders-react':
         specifier: ^0.0.75
         version: 0.0.75(@types/react@19.2.14)(react@19.2.5)
@@ -125,8 +125,8 @@ importers:
         specifier: ^12.38.0
         version: 12.38.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       gsap:
-        specifier: ^3.14.2
-        version: 3.14.2
+        specifier: ^3.15.0
+        version: 3.15.0
       lucide-react:
         specifier: ^1.8.0
         version: 1.8.0(react@19.2.5)
@@ -3470,8 +3470,8 @@ packages:
   groq-sdk@0.3.0:
     resolution: {integrity: sha512-Cdgjh4YoSBE2X4S9sxPGXaAy1dlN4bRtAaDZ3cnq+XsxhhN9WSBeHF64l7LWwuD5ntmw7YC5Vf4Ff1oHCg1LOg==}
 
-  gsap@3.14.2:
-    resolution: {integrity: sha512-P8/mMxVLU7o4+55+1TCnQrPmgjPKnwkzkXOK1asnR9Jg2lna4tEY5qBJjMmAaOBDDZWtlRjBXjLa0w53G/uBLA==}
+  gsap@3.15.0:
+    resolution: {integrity: sha512-dMW4CWBTUK1AEEDeZc1g4xpPGIrSf9fJF960qbTZmN/QwZIWY5wgliS6JWl9/25fpTGJrMRtSjGtOmPnfjZB+A==}
 
   has-flag@4.0.0:
     resolution: {integrity: sha512-EykJT/Q1KjTWctppgIAgfSO0tKVuZUjhgMr17kqTumMl6Afv3EISleU7qZUzoXDFTAHTDC4NOoG/ZxU3EvlMPQ==}
@@ -5833,9 +5833,9 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@gsap/react@2.1.2(gsap@3.14.2)(react@19.2.5)':
+  '@gsap/react@2.1.2(gsap@3.15.0)(react@19.2.5)':
     dependencies:
-      gsap: 3.14.2
+      gsap: 3.15.0
       react: 19.2.5
 
   '@img/colour@1.1.0':
@@ -8601,7 +8601,7 @@ snapshots:
     transitivePeerDependencies:
       - encoding
 
-  gsap@3.14.2: {}
+  gsap@3.15.0: {}
 
   has-flag@4.0.0: {}
 

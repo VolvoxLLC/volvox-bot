@@ -5,15 +5,12 @@ async function scrollSectionIntoView(page: import('@playwright/test').Page, sele
   await page.locator(selector).locator(':scope > *').first().waitFor({ state: 'visible' });
 }
 
-async function expectScrollAfterClick(
-  page: import('@playwright/test').Page,
+async function expectSectionAfterClick(
   locator: import('@playwright/test').Locator,
+  section: import('@playwright/test').Locator,
 ) {
-  const scrollBefore = await page.evaluate(() => window.scrollY);
   await locator.click();
-  await page.waitForFunction((prevY) => window.scrollY > prevY, scrollBefore, { timeout: 5000 });
-  const scrollAfter = await page.evaluate(() => window.scrollY);
-  expect(scrollAfter).toBeGreaterThan(scrollBefore);
+  await expect(section).toBeInViewport();
 }
 
 test.describe('Header', () => {
@@ -54,9 +51,9 @@ test.describe('Desktop Navigation', () => {
 
   test('nav buttons scroll the page', async ({ page }) => {
     const desktopNav = page.locator('header nav').first();
-    await expectScrollAfterClick(page, desktopNav.getByText('Features'));
+    await expectSectionAfterClick(desktopNav.getByText('Features'), page.locator('#features'));
     await page.goto('/');
-    await expectScrollAfterClick(page, desktopNav.getByText('Pricing'));
+    await expectSectionAfterClick(desktopNav.getByText('Pricing'), page.locator('#pricing'));
   });
 });
 
