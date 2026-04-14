@@ -288,14 +288,23 @@ export function Pricing() {
               </List>
 
               <div className="mt-auto pt-4">
-                <a
-                  href={botInviteUrl || '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center h-14 rounded-xl bg-muted/60 text-foreground font-bold tracking-widest text-xs uppercase hover:bg-muted transition-colors border border-border"
-                >
-                  INITIALIZE STANDARD
-                </a>
+                {botInviteUrl ? (
+                  <a
+                    href={botInviteUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center h-14 rounded-xl bg-muted/60 text-foreground font-bold tracking-widest text-xs uppercase hover:bg-muted transition-colors border border-border"
+                  >
+                    INITIALIZE STANDARD
+                  </a>
+                ) : (
+                  <div
+                    aria-disabled="true"
+                    className="flex items-center justify-center h-14 rounded-xl bg-muted/60 text-foreground font-bold tracking-widest text-xs uppercase transition-colors border border-border opacity-60 cursor-not-allowed"
+                  >
+                    INITIALIZE STANDARD
+                  </div>
+                )}
               </div>
             </Body>
           </Card>
