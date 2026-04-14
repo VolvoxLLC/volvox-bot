@@ -6,11 +6,22 @@ async function scrollSectionIntoView(page: import('@playwright/test').Page, sele
 }
 
 async function expectSectionAfterClick(
+  page: import('@playwright/test').Page,
   locator: import('@playwright/test').Locator,
   section: import('@playwright/test').Locator,
 ) {
   await locator.click();
-  await expect(section).toBeInViewport();
+  // Wait for smooth scroll to complete, then assert section is visible
+  await page.waitForFunction(
+    (selector) => {
+      const el = document.querySelector(selector);
+      if (!el) return false;
+      const rect = el.getBoundingClientRect();
+      return rect.top < window.innerHeight && rect.bottom > 0;
+    },
+  section.toString(),
+    { timeout: 5000 },
+  );
 }
 
 test.describe('Header', () => {
@@ -52,10 +63,12 @@ test.describe('Desktop Navigation', () => {
   test('nav buttons scroll the page', async ({ page }) => {
     const desktopNav = page.locator('header nav').first();
     await expectSectionAfterClick(
+      page,
       desktopNav.getByText('Features'),
       page.getByRole('heading', { name: /Everything you need/i }),
     );
     await expectSectionAfterClick(
+      page,
       desktopNav.getByText('Pricing'),
       page.getByRole('heading', { name: /System Access Tiers/i }),
     );
