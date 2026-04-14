@@ -41,7 +41,7 @@ export function LandingNavbar() {
       <div
         className={cn(
           'fixed inset-x-0 top-0 z-40 h-24 pointer-events-none select-none transition-opacity duration-500 md:h-48',
-          isMobile ? 'opacity-100' : scrolled ? 'opacity-0' : 'opacity-0'
+          isMobile ? 'opacity-100' : scrolled ? 'opacity-0' : 'opacity-100'
         )}
       >
         <div className="absolute inset-0 backdrop-blur-[4px] [mask-image:linear-gradient(to_bottom,black_0%,transparent_100%)]" />
