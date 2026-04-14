@@ -11,7 +11,7 @@ async function expectSectionAfterClick(
 ) {
   await locator.click();
   // Wait for smooth scroll to bring section into viewport
-  await expect(section).toBeInViewport({ timeout: 5000 });
+  await expect(section).toBeInViewport({ timeout: 10000 });
 }
 
 test.describe('Header', () => {

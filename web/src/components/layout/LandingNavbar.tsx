@@ -37,7 +37,7 @@ export function LandingNavbar() {
   const scrollToSection = useCallback((id: string) => {
     const element = document.getElementById(id);
     if (!element) return;
-    const navbarHeight = 100;
+    const navbarHeight = window.innerWidth >= 768 ? 192 : 96;
     const top = element.getBoundingClientRect().top + window.scrollY - navbarHeight;
     const isReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     window.scrollTo({ top, behavior: isReduced ? 'auto' : 'smooth' });
