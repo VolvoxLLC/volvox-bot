@@ -51,9 +51,14 @@ test.describe('Desktop Navigation', () => {
 
   test('nav buttons scroll the page', async ({ page }) => {
     const desktopNav = page.locator('header nav').first();
-    await expectSectionAfterClick(desktopNav.getByText('Features'), page.locator('#features'));
-    await page.goto('/');
-    await expectSectionAfterClick(desktopNav.getByText('Pricing'), page.locator('#pricing'));
+    await expectSectionAfterClick(
+      desktopNav.getByText('Features'),
+      page.getByRole('heading', { name: /Everything you need/i }),
+    );
+    await expectSectionAfterClick(
+      desktopNav.getByText('Pricing'),
+      page.getByRole('heading', { name: /System Access Tiers/i }),
+    );
   });
 });
 
