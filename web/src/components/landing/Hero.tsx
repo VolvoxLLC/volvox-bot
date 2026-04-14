@@ -200,10 +200,11 @@ export function Hero() {
     () =>
       particleIds.map((id) => ({
         id,
-        x: (Math.random() - 0.5) * 600,
-        y: (Math.random() - 0.5) * 600,
-        duration: 15 + Math.random() * 15,
-        delay: Math.random() * 10,
+        // Deterministic positions from particle id to avoid SSR hydration mismatch
+        x: ((id * 7919 + 1234) % 600) - 300,
+        y: ((id * 6271 + 5678) % 600) - 300,
+        duration: 15 + ((id * 3571) % 15),
+        delay: (id * 2909) % 10,
       })),
     [],
   );

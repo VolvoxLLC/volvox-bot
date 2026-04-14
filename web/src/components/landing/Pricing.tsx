@@ -150,7 +150,7 @@ export function Pricing() {
   const [isAnnual, setIsAnnual] = useState(false);
   const botInviteUrl = getBotInviteUrl();
 
-  const toggleBilling = () => setIsAnnual(!isAnnual);
+  const toggleBilling = () => setIsAnnual((prev) => !prev);
 
   return (
     <section className="relative px-4 py-32 w-full min-h-screen mx-auto bg-background border-t border-border/30">
