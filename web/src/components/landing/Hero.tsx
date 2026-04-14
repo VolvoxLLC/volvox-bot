@@ -198,13 +198,13 @@ export function Hero() {
 
   const particles = useMemo(
     () =>
-      particleIds.map((id) => ({
+      particleIds.map((id, i) => ({
         id,
-        // Deterministic positions from particle id to avoid SSR hydration mismatch
-        x: ((id * 7919 + 1234) % 600) - 300,
-        y: ((id * 6271 + 5678) % 600) - 300,
-        duration: 15 + ((id * 3571) % 15),
-        delay: (id * 2909) % 10,
+        // Deterministic positions from index to avoid SSR hydration mismatch
+        x: ((i * 7919 + 1234) % 600) - 300,
+        y: ((i * 6271 + 5678) % 600) - 300,
+        duration: 15 + ((i * 3571) % 15),
+        delay: (i * 2909) % 10,
       })),
     [],
   );

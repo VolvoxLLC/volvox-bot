@@ -50,7 +50,8 @@ test.describe('Desktop Navigation', () => {
     await expect(desktopNav.getByText('Compare')).toBeVisible();
   });
 
-  test('nav buttons scroll the page', async ({ page }) => {
+  test('nav buttons scroll the page', async ({ page, browserName }) => {
+    test.skip(browserName === 'chromium' && page.viewportSize()?.width! < 768, 'Desktop-only navigation test');
     const desktopNav = page.locator('header nav').first();
     await expectSectionAfterClick(
       desktopNav.getByText('Features'),
