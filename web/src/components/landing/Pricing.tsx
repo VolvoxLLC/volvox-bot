@@ -203,29 +203,23 @@ export function Pricing() {
           </p>
 
           <div className="flex items-center justify-center gap-6">
-            <span className={cn("text-[11px] font-mono tracking-widest font-bold transition-colors", !isAnnual ? "text-primary" : "text-foreground/30")}>
+            <span className={cn('text-[11px] font-mono tracking-widest font-bold transition-colors', !isAnnual ? 'text-primary' : 'text-foreground/30')}>
               MONTHLY
             </span>
-            <div
-              role="button"
-              tabIndex={0}
+            <button
+              type="button"
               aria-label="Toggle annual billing"
-              className="relative w-14 h-8 bg-card border border-border/80 rounded-full p-1 cursor-pointer"
+              aria-pressed={isAnnual}
+              className="relative w-14 h-8 bg-card border border-border/80 rounded-full p-1 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary ring-offset-background transition-all"
               onClick={toggleBilling}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  toggleBilling();
-                }
-              }}
             >
               <motion.div
                 animate={{ x: isAnnual ? 24 : 0 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                 className="w-6 h-6 rounded-full bg-primary shadow-sm"
               />
-            </div>
-            <span className={cn("text-[11px] font-mono tracking-widest font-bold transition-colors", isAnnual ? "text-primary" : "text-foreground/30")}>
+            </button>
+            <span className={cn('text-[11px] font-mono tracking-widest font-bold transition-colors', isAnnual ? 'text-primary' : 'text-foreground/30')}>
               ANNUAL
             </span>
           </div>
@@ -373,14 +367,25 @@ export function Pricing() {
               </List>
 
               <div className="mt-auto pt-4 relative z-10">
-                <a
-                  href={botInviteUrl || '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center h-14 rounded-xl bg-primary text-primary-foreground shadow-[0_0_20px_hsl(var(--primary)/0.2)] font-bold tracking-widest text-xs uppercase hover:bg-primary/90 transition-all active:scale-[0.98]"
-                >
-                  DEPLOY OVERCLOCKED
-                </a>
+                {botInviteUrl ? (
+                  <a
+                    href={botInviteUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 text-background text-sm font-bold tracking-wide uppercase h-14 w-full rounded-xl bg-primary text-primary-foreground shadow-[0_0_20px_hsl(var(--primary)/0.2)] hover:bg-primary/90 transition-all active:scale-[0.98]"
+                  >
+                    <Shield className="w-4 h-4 opacity-80" />
+                    DEPLOY OVERCLOCKED
+                  </a>
+                ) : (
+                  <div
+                    aria-disabled="true"
+                    className="flex items-center justify-center gap-2 text-background text-sm font-bold tracking-wide uppercase h-14 w-full rounded-xl bg-muted/60 text-foreground transition-colors border border-border opacity-60 cursor-not-allowed"
+                  >
+                    <Shield className="w-4 h-4 opacity-40 shrink-0" />
+                    DEPLOY OVERCLOCKED
+                  </div>
+                )}
               </div>
             </Body>
           </Card>

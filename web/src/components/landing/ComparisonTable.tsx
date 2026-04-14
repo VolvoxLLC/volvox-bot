@@ -75,7 +75,7 @@ function CellValueDisplay({ value, isVolvox }: Readonly<{ value: CellValue; isVo
       <div
         className={cn(
           'mx-auto flex h-6 w-6 items-center justify-center rounded-full',
-          isVolvox ? 'bg-primary/10 text-primary' : 'text-foreground/20'
+          isVolvox ? 'bg-primary/10 text-primary shadow-[0_0_12px_hsl(var(--primary)/0.1)]' : 'bg-foreground/5 text-foreground/50'
         )}
       >
         <Check className="h-[14px] w-[14px] stroke-[3px]" />
@@ -84,16 +84,16 @@ function CellValueDisplay({ value, isVolvox }: Readonly<{ value: CellValue; isVo
   }
   if (value === false) {
     return (
-      <div className="mx-auto flex h-6 w-6 items-center justify-center rounded-full text-foreground/10">
-        <X className="h-4 w-4 stroke-[2px]" />
+      <div className="mx-auto flex h-6 w-6 items-center justify-center rounded-full bg-foreground/5 text-foreground/40">
+        <X className="h-4 w-4 stroke-[2.5px]" />
       </div>
     );
   }
   return (
     <span
       className={cn(
-        'rounded-md px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-widest',
-        isVolvox ? 'text-primary' : 'text-foreground/40'
+        'rounded-md px-2 py-1 font-mono text-[10px] font-black uppercase tracking-widest transition-colors',
+        isVolvox ? 'bg-primary/10 text-primary shadow-[0_0_12px_hsl(var(--primary)/0.05)]' : 'bg-foreground/5 text-foreground/70'
       )}
     >
       {value}

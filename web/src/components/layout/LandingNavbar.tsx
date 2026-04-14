@@ -32,7 +32,8 @@ export function LandingNavbar() {
     if (!element) return;
     const navbarHeight = 100;
     const top = element.getBoundingClientRect().top + window.scrollY - navbarHeight;
-    window.scrollTo({ top, behavior: 'smooth' });
+    const isReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.scrollTo({ top, behavior: isReduced ? 'auto' : 'smooth' });
   }, []);
 
   return (
@@ -82,7 +83,11 @@ export function LandingNavbar() {
           {/* Logo Section */}
           <div className="relative z-10 flex shrink-0 items-center justify-center rounded-full pl-1 outline-none">
             <button
-              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              type="button"
+              onClick={() => {
+                const isReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                window.scrollTo({ top: 0, behavior: isReduced ? 'auto' : 'smooth' });
+              }}
               className="group flex cursor-pointer items-center gap-2 outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-full ring-offset-background"
             >
               <motion.div
@@ -105,24 +110,28 @@ export function LandingNavbar() {
           {/* Desktop Navigation */}
           <div className="hidden flex-1 justify-center items-center gap-1 md:flex px-4 overflow-hidden">
             <button
+              type="button"
               onClick={() => scrollToSection('features')}
               className="inline-block px-3 py-2 text-sm font-medium text-foreground/70 transition-colors hover:bg-muted/50 hover:text-foreground active:scale-95 rounded-full shrink-0"
             >
               Features
             </button>
             <button
+              type="button"
               onClick={() => scrollToSection('pricing')}
               className="inline-block px-3 py-2 text-sm font-medium text-foreground/70 transition-colors hover:bg-muted/50 hover:text-foreground active:scale-95 rounded-full shrink-0"
             >
               Pricing
             </button>
             <button
+              type="button"
               onClick={() => scrollToSection('dashboard')}
               className="inline-block px-3 py-2 text-sm font-medium text-foreground/70 transition-colors hover:bg-muted/50 hover:text-foreground active:scale-95 rounded-full shrink-0"
             >
               Dashboard
             </button>
             <button
+              type="button"
               onClick={() => scrollToSection('compare')}
               className="inline-block px-3 py-2 text-sm font-medium text-foreground/70 transition-colors hover:bg-muted/50 hover:text-foreground active:scale-95 rounded-full shrink-0"
             >
@@ -148,6 +157,7 @@ export function LandingNavbar() {
             <Sheet>
               <SheetTrigger asChild>
                 <button
+                  type="button"
                   className="flex items-center justify-center rounded-full p-2 text-foreground/70 transition-colors hover:bg-muted/50 hover:text-foreground md:hidden outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   aria-label="Open menu"
                 >
@@ -161,6 +171,7 @@ export function LandingNavbar() {
                 <div className="flex flex-col gap-2">
                   <SheetClose asChild>
                     <button
+                      type="button"
                       onClick={() => scrollToSection('features')}
                       className="flex w-full items-center justify-between rounded-xl p-4 text-left font-medium text-foreground transition-colors hover:bg-muted/50"
                     >
@@ -169,6 +180,7 @@ export function LandingNavbar() {
                   </SheetClose>
                   <SheetClose asChild>
                     <button
+                      type="button"
                       onClick={() => scrollToSection('pricing')}
                       className="flex w-full items-center justify-between rounded-xl p-4 text-left font-medium text-foreground transition-colors hover:bg-muted/50"
                     >
@@ -177,6 +189,7 @@ export function LandingNavbar() {
                   </SheetClose>
                   <SheetClose asChild>
                     <button
+                      type="button"
                       onClick={() => scrollToSection('dashboard')}
                       className="flex w-full items-center justify-between rounded-xl p-4 text-left font-medium text-foreground transition-colors hover:bg-muted/50"
                     >
@@ -185,6 +198,7 @@ export function LandingNavbar() {
                   </SheetClose>
                   <SheetClose asChild>
                     <button
+                      type="button"
                       onClick={() => scrollToSection('compare')}
                       className="flex w-full items-center justify-between rounded-xl p-4 text-left font-medium text-foreground transition-colors hover:bg-muted/50"
                     >
