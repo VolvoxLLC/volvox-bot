@@ -195,10 +195,12 @@ export function OnboardingGrowthCategory() {
         xp: { ...prev.xp, enabled: v },
       }));
   } else if (activeTab === 'xp-level-actions') {
-    isCurrentFeatureEnabled = draftConfig.xp?.enabled ?? false;
+    isCurrentFeatureEnabled =
+      (draftConfig.xp?.enabled ?? false) || (draftConfig.reputation?.enabled ?? false);
     handleToggleCurrentFeature = (v) =>
       updateDraftConfig((prev) => ({
         ...prev,
+        reputation: { ...prev.reputation, enabled: v },
         xp: { ...prev.xp, enabled: v },
       }));
   } else if (activeTab === 'tldr-afk') {

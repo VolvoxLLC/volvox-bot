@@ -294,6 +294,8 @@ export interface XpActionEmbedField {
 export type XpActionEmbedThumbnailType = 'none' | 'user_avatar' | 'server_icon' | 'custom';
 
 export interface XpActionEmbedConfig {
+  // The dashboard writes thumbnailType/thumbnailUrl, footerText/footerIconUrl, imageUrl, and
+  // showTimestamp. Runtime normalization still accepts legacy thumbnail/footer/image/timestamp aliases.
   color?: string;
   title?: string;
   description?: string;

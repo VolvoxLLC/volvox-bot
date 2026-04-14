@@ -673,8 +673,12 @@ export function XpLevelActionsEditor({
   saving,
   updateDraftConfig,
 }: XpLevelActionsEditorProps) {
-  const rawLevelActions = draftConfig.xp?.levelActions ?? [];
-  const rawDefaultActions = draftConfig.xp?.defaultActions ?? [];
+  const rawLevelActions = Array.isArray(draftConfig.xp?.levelActions)
+    ? draftConfig.xp.levelActions
+    : [];
+  const rawDefaultActions = Array.isArray(draftConfig.xp?.defaultActions)
+    ? draftConfig.xp.defaultActions
+    : [];
   const levelEntries = useMemo(() => rawLevelActions.map(normalizeDraftEntry), [rawLevelActions]);
   const defaultActions = useMemo(
     () => rawDefaultActions.map(normalizeDraftAction),
@@ -687,7 +691,11 @@ export function XpLevelActionsEditor({
       ...prev,
       xp: {
         ...prev.xp,
-        levelActions: updater((prev.xp?.levelActions ?? []).map(normalizeDraftEntry)),
+        levelActions: updater(
+          (Array.isArray(prev.xp?.levelActions) ? prev.xp.levelActions : []).map(
+            normalizeDraftEntry,
+          ),
+        ),
       },
     }));
   };
