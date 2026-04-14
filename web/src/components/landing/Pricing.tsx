@@ -191,7 +191,7 @@ export function Pricing() {
         <div className="text-center mb-16">
           <div className="flex items-center justify-center gap-3 mb-6 opacity-80">
             <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-foreground/40">
-              [QUOTA_ARRANGEMENT]
+              QUOTA ARRANGEMENT
             </span>
           </div>
 
