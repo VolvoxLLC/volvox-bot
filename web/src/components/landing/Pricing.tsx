@@ -44,7 +44,7 @@ function Header({
           aria-hidden="true"
           className="absolute inset-x-0 top-0 h-48 rounded-[inherit] pointer-events-none"
           style={{
-            background: 'linear-gradient(180deg, hsl(var(--primary)/2%) 0%, transparent 100%)',
+            background: 'linear-gradient(180deg, hsl(var(--primary) / 2%) 0%, transparent 100%)',
           }}
         />
       )}
@@ -272,12 +272,13 @@ export function Pricing() {
                     INITIALIZE STANDARD
                   </a>
                 ) : (
-                  <div
-                    aria-disabled="true"
+                  <button
+                    type="button"
+                    disabled
                     className="flex items-center justify-center h-14 rounded-xl bg-muted/60 text-foreground font-bold tracking-widest text-xs uppercase transition-colors border border-border opacity-60 cursor-not-allowed"
                   >
                     INITIALIZE STANDARD
-                  </div>
+                  </button>
                 )}
               </div>
             </Body>

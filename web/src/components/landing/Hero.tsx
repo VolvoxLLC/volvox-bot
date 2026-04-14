@@ -105,8 +105,8 @@ function DataThreads() {
       dataThreadIds.map((id, index) => ({
         id,
         left: `${10 + index * 11.5}%`,
-        delay: Math.random() * 5,
-        duration: 8 + Math.random() * 10,
+        delay: (index * 2927) % 5,
+        duration: 8 + ((index * 3511) % 10),
       })),
     [],
   );
