@@ -86,8 +86,8 @@ importers:
         specifier: ^2.1.2
         version: 2.1.2(gsap@3.14.2)(react@19.2.5)
       '@paper-design/shaders-react':
-        specifier: ^0.0.74
-        version: 0.0.74(@types/react@19.2.14)(react@19.2.5)
+        specifier: ^0.0.75
+        version: 0.0.75(@types/react@19.2.14)(react@19.2.5)
       '@radix-ui/react-avatar':
         specifier: ^1.1.11
         version: 1.1.11(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -1249,8 +1249,8 @@ packages:
   '@panva/hkdf@1.2.1':
     resolution: {integrity: sha512-6oclG6Y3PiDFcoyk8srjLfVKyMfVCKJ27JwNPViuXziFpmdz+MZnZN/aKY0JGXgYuO/VghU0jcOAZgWXZ1Dmrw==}
 
-  '@paper-design/shaders-react@0.0.74':
-    resolution: {integrity: sha512-p9ud9widOGQjrVBiNvGNrr0ICKkytFj4bkLd3dRKaNOHZreUYj76yaQQS+Monlpz3BuLiI/4Tvikbrs8gcJUVw==}
+  '@paper-design/shaders-react@0.0.75':
+    resolution: {integrity: sha512-s8EcUHpmWkbSFjrXwBLkej/SoaJux3h1eLR/53a4t9ReXPMsyItZpAR+30PMwUhbp+zJQ3+BNia44DO2/8jmtA==}
     peerDependencies:
       '@types/react': ^18 || ^19
       react: ^18 || ^19
@@ -1258,8 +1258,8 @@ packages:
       '@types/react':
         optional: true
 
-  '@paper-design/shaders@0.0.74':
-    resolution: {integrity: sha512-8w8HJasgkRc6qb9cyQ8IWYrO66FEawCVkRhWXsrOetqZKHibONXN4em/hGEcgThY+b5mED4oplU/GglVdUH+uw==}
+  '@paper-design/shaders@0.0.75':
+    resolution: {integrity: sha512-fBCxeqK791Jin0MatZgNQEsn+zIBVBLVz7P0WUqRv8Ho0nmUx1zhOe3NR7mmbeXcmexGgR7U3YP3cYgyOCLVNQ==}
 
   '@paralleldrive/cuid2@2.3.1':
     resolution: {integrity: sha512-XO7cAxhnTZl0Yggq6jOgjiOHhbgcO4NqFqwSmQpjK3b6TEE6Uj/jfSk6wzYyemh3+I0sHirKSetjQwn5cZktFw==}
@@ -6335,14 +6335,14 @@ snapshots:
 
   '@panva/hkdf@1.2.1': {}
 
-  '@paper-design/shaders-react@0.0.74(@types/react@19.2.14)(react@19.2.5)':
+  '@paper-design/shaders-react@0.0.75(@types/react@19.2.14)(react@19.2.5)':
     dependencies:
-      '@paper-design/shaders': 0.0.74
+      '@paper-design/shaders': 0.0.75
       react: 19.2.5
     optionalDependencies:
       '@types/react': 19.2.14
 
-  '@paper-design/shaders@0.0.74': {}
+  '@paper-design/shaders@0.0.75': {}
 
   '@paralleldrive/cuid2@2.3.1':
     dependencies:
