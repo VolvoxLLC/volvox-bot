@@ -545,9 +545,9 @@ export function PerformanceDashboard() {
                 {[...(data?.responseTimes ?? [])]
                   .reverse()
                   .slice(0, 20)
-                  .map((s) => (
+                  .map((s, i) => (
                     <tr
-                      key={`${s.timestamp}-${s.type}-${s.name}-${s.durationMs}`}
+                      key={`perf-row-${i}-${s.timestamp}`}
                       className="transition-colors hover:bg-muted/30"
                     >
                       <td className="py-2 text-muted-foreground/60 tabular-nums">

@@ -186,11 +186,7 @@ function ComparisonRow({
 
 export function ComparisonTable() {
   const shouldReduceMotion = useReducedMotion() ?? false;
-  const [localDate, setLocalDate] = useState('');
-
-  useEffect(() => {
-    setLocalDate(new Date().toLocaleDateString());
-  }, []);
+  const [localDate] = useState(() => new Date().toLocaleDateString());
 
   return (
     <section className="relative bg-background px-4 py-32 sm:px-6 lg:px-8 border-t border-border/30">
