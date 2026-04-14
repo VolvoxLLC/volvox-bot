@@ -11,7 +11,6 @@ import { BentoConversations } from './bento/BentoConversations';
 import { BentoKpi } from './bento/BentoKpi';
 import { BentoModeration } from './bento/BentoModeration';
 import type { DailyActivityPoint } from './bento/bento-data';
-import { SectionHeader } from './SectionHeader';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -28,10 +27,6 @@ interface BotStats {
   cachedAt: string;
 }
 
-/**
- * Landing page "THE PRODUCT" section.
- * A floating dashboard window mockup with live data cards arranged inside.
- */
 export function DashboardShowcase() {
   const sectionRef = useRef<HTMLElement>(null);
   const [stats, setStats] = useState<BotStats | null>(null);
@@ -75,10 +70,9 @@ export function DashboardShowcase() {
         return;
       }
 
-      // Header entrance
       gsap.fromTo(
         '.ds-header',
-        { y: 50, opacity: 0 },
+        { y: 30, opacity: 0 },
         {
           y: 0,
           opacity: 1,
@@ -92,16 +86,14 @@ export function DashboardShowcase() {
         },
       );
 
-      // The entire dashboard window rises up with perspective
       gsap.fromTo(
         '.ds-window',
-        { y: 120, opacity: 0, rotateX: 8, scale: 0.92 },
+        { y: 40, opacity: 0, scale: 0.98 },
         {
           y: 0,
           opacity: 1,
-          rotateX: 0,
           scale: 1,
-          duration: 1.2,
+          duration: 1,
           ease: 'power3.out',
           scrollTrigger: {
             trigger: '.ds-window',
@@ -111,37 +103,20 @@ export function DashboardShowcase() {
         },
       );
 
-      // KPI strip slides in from the right
-      // Use gsap.utils.toArray to target each card individually and clamp x
-      // so they don't fly off-screen on narrow (mobile) viewports.
       const kpiCards = gsap.utils.toArray<HTMLElement>('.ds-kpi-strip');
       kpiCards.forEach((card, i) => {
-        // On mobile (<640 px) animate from below instead of from the side
-        const isMobile = window.innerWidth < 640;
-        gsap.fromTo(card, isMobile ? { y: 30, opacity: 0 } : { x: 60, opacity: 0 }, {
-          x: 0,
+        gsap.fromTo(card, { y: 20, opacity: 0 }, {
           y: 0,
           opacity: 1,
-          duration: 0.7,
-          delay: i * 0.08,
-          ease: 'power3.out',
+          duration: 0.6,
+          delay: i * 0.05,
+          ease: 'power2.out',
           scrollTrigger: {
             trigger: card,
-            start: 'top 92%',
+            start: 'top 95%',
             toggleActions: 'play reverse play reverse',
           },
         });
-      });
-
-      // Gentle parallax on scroll past
-      gsap.to('.ds-window', {
-        scrollTrigger: {
-          trigger: sectionRef.current,
-          start: 'top top',
-          end: 'bottom top',
-          scrub: true,
-        },
-        y: -50,
       });
     },
     { scope: sectionRef },
@@ -162,44 +137,45 @@ export function DashboardShowcase() {
   return (
     <section
       ref={sectionRef}
-      className="px-4 py-32 sm:px-6 lg:px-8 bg-background overflow-hidden relative"
+      className="px-4 py-32 sm:px-6 lg:px-8 bg-background relative overflow-hidden"
     >
-      {/* Ambient glow */}
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70vw] h-[60vh] bg-gradient-to-br from-primary/10 via-secondary/5 to-transparent blur-[160px] pointer-events-none" />
-
       <div className="mx-auto max-w-7xl relative z-10">
+        
         {/* Section Header */}
-        <div className="ds-header mb-20">
-          <SectionHeader
-            label="THE PRODUCT"
-            labelColor="primary"
-            title="Your server, at a glance"
-            subtitle="Absolute control over your community, engineered for scale and speed."
-          />
+        <div className="ds-header flex flex-col items-center text-center mb-24 max-w-3xl mx-auto">
+          <div className="flex items-center gap-3 mb-6 opacity-80">
+            <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-foreground/40">
+              Control Center
+            </span>
+          </div>
+          <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground mb-6 leading-tight">
+            Your server, at a glance
+          </h2>
+          <p className="text-lg text-foreground/50 max-w-xl font-medium leading-relaxed">
+            Absolute control over your community, engineered for scale and speed without the clutter.
+          </p>
         </div>
 
-        {/* ─── Floating Dashboard Window ─── */}
-        <div className="ds-window perspective-1000 preserve-3d">
-          {/* Main Dashboard Container */}
-          <div className="glass-morphism-premium rounded-3xl overflow-hidden relative group">
-            <div className="glass-reflection group-hover:translate-x-full transition-transform duration-1000 ease-in-out opacity-20" />
-
+        {/* ─── Minimal Dashboard Window ─── */}
+        <div className="ds-window mx-auto max-w-6xl">
+          <div className="bg-card/40 border border-border/80 rounded-[2rem] overflow-hidden shadow-sm backdrop-blur-3xl">
+            
             {/* Title Bar */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border/50 bg-muted/40 backdrop-blur-md">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border/40 bg-background/50">
               <div className="flex items-center gap-2">
-                <div className="flex gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-destructive/60" />
-                  <div className="w-3 h-3 rounded-full bg-accent/60" />
-                  <div className="w-3 h-3 rounded-full bg-primary/60" />
+                <div className="flex gap-2">
+                  <div className="w-3 h-3 rounded-full bg-border" />
+                  <div className="w-3 h-3 rounded-full bg-border" />
+                  <div className="w-3 h-3 rounded-full bg-border" />
                 </div>
               </div>
-              <div className="flex items-center gap-2 px-6 py-1.5 rounded-xl bg-background/50 border border-border/50 shadow-inner">
-                <Monitor className="w-3.5 h-3.5 text-muted-foreground/60" />
-                <span className="text-[11px] text-muted-foreground/50 font-mono font-medium tracking-tight">
+              <div className="flex items-center gap-2 px-5 py-1.5 rounded-full bg-card border border-border/80 shadow-sm">
+                <Monitor className="w-[14px] h-[14px] text-muted-foreground/60" />
+                <span className="text-[11px] text-muted-foreground font-mono font-medium tracking-tight">
                   dashboard.volvox.bot
                 </span>
               </div>
-              <div className="w-16 hidden sm:block" /> {/* Spacer for symmetry */}
+              <div className="w-16 hidden sm:block" />
             </div>
 
             {/* Dashboard Content */}
@@ -235,29 +211,23 @@ export function DashboardShowcase() {
                 </div>
               </div>
 
-              {/* Main Content: Chart + Side Panel */}
+              {/* Main Content */}
               <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-                {/* Chart (spans 3) */}
-                <div className="lg:col-span-3 min-h-[320px]">
+                <div className="lg:col-span-3">
                   <BentoChart dailyActivity={stats?.dailyActivity} />
                 </div>
-
-                {/* Side stack (spans 2) */}
                 <div className="lg:col-span-2 grid grid-cols-1 gap-4">
                   <BentoModeration />
                   <BentoConversations />
                 </div>
               </div>
 
-              {/* Bottom: AI Chat full width */}
+              {/* Bottom AI Chat */}
               <div className="w-full">
                 <BentoAIChat />
               </div>
             </div>
           </div>
-
-          {/* Realistic shadow & reflection */}
-          <div className="mx-12 h-20 bg-gradient-to-b from-foreground/[0.03] to-transparent rounded-b-[4rem] blur-2xl -mt-6 pointer-events-none" />
         </div>
       </div>
     </section>

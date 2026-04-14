@@ -10,10 +10,10 @@ import { getBotInviteUrl } from '@/lib/discord';
 
 gsap.registerPlugin(ScrollTrigger);
 
-// ─── BACKGROUND ─────────────────────────────────────────
+// ─── AMBIENT BACKGROUND ──────────────────────────────────
 export function PrismaticBackground() {
   return (
-    <div className="absolute inset-0 -z-10 bg-background overflow-hidden">
+    <div className="absolute inset-0 -z-10 bg-background overflow-hidden relative">
       {/* Prismatic Shard */}
       <div className="hero-parallax-deep absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[180%] h-[500px] -rotate-12 bg-gradient-to-r from-primary/20 via-secondary/15 to-transparent blur-[120px] opacity-40 dark:opacity-30 pointer-events-none" />
 
@@ -37,7 +37,6 @@ export function PrismaticBackground() {
           className="w-full h-full opacity-50"
           aria-hidden="true"
         >
-          <title>Noise Texture</title>
           <filter id="noiseFilter">
             <feTurbulence
               type="fractalNoise"
@@ -50,7 +49,7 @@ export function PrismaticBackground() {
         </svg>
       </div>
 
-      {/* Vignette */}
+      {/* Fading Vignette */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_30%,hsl(var(--background))_100%)] pointer-events-none" />
     </div>
   );
@@ -74,7 +73,7 @@ function DataThreads() {
       {threads.map((t) => (
         <div
           key={`thread-${t.id}`}
-          className="absolute top-0 bottom-0 w-[1px] bg-foreground/[0.03] dark:bg-white/[0.03]"
+          className="absolute top-0 bottom-0 w-[1px] bg-foreground/[0.06] dark:bg-white/[0.02]"
           style={{ left: t.left }}
         >
           <motion.div
@@ -86,7 +85,7 @@ function DataThreads() {
               ease: 'linear',
               delay: t.delay,
             }}
-            className="absolute left-1/2 -translate-x-1/2 w-[2px] h-24 bg-gradient-to-b from-transparent via-primary/40 to-transparent blur-[1px]"
+            className="absolute left-1/2 -translate-x-1/2 w-[3px] h-32 bg-gradient-to-b from-transparent via-primary to-transparent blur-[1px]"
           />
         </div>
       ))}
@@ -105,38 +104,37 @@ export function Hero() {
     offset: ['start start', 'end start'],
   });
 
-  const opacity = useTransform(scrollYProgress, [0, 0.4], [1, 0]);
-  const scale = useTransform(scrollYProgress, [0, 0.4], [1, 0.95]);
+  const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
+  const scale = useTransform(scrollYProgress, [0, 0.5], [1, 0.98]);
 
   useGSAP(
     () => {
-      // Entrance Sequence
       const tl = gsap.timeline();
 
       tl.fromTo(
         '.hero-char',
-        { y: 120, opacity: 0, filter: 'blur(20px)' },
-        { y: 0, opacity: 1, filter: 'blur(0px)', duration: 1.5, stagger: 0.08, ease: 'expo.out' },
+        { y: 40, opacity: 0 },
+        { y: 0, opacity: 1, duration: 1.2, stagger: 0.05, ease: 'power3.out' },
       );
 
       tl.fromTo(
         '.hero-engine',
-        { opacity: 0, letterSpacing: '0.2em' },
-        { opacity: 1, letterSpacing: '1.2em', duration: 1.8, ease: 'power2.out' },
-        '-=1.2',
+        { opacity: 0, letterSpacing: '0em' },
+        { opacity: 1, letterSpacing: '0.8em', duration: 1.5, ease: 'power2.out' },
+        '-=1.0',
       );
 
       tl.fromTo(
         '.hero-sub',
-        { y: 30, opacity: 0 },
-        { y: 0, opacity: 0.6, duration: 1.2, ease: 'power3.out' },
-        '-=1.4',
+        { y: 20, opacity: 0 },
+        { y: 0, opacity: 1, duration: 1, ease: 'power3.out' },
+        '-=1.2',
       );
 
       tl.fromTo(
         '.hero-console',
-        { scaleX: 0, opacity: 0, filter: 'blur(10px)' },
-        { scaleX: 1, opacity: 1, filter: 'blur(0px)', duration: 1, ease: 'expo.inOut' },
+        { y: 20, opacity: 0 },
+        { y: 0, opacity: 1, duration: 1, ease: 'expo.out' },
         '-=0.8',
       );
 
@@ -160,7 +158,7 @@ export function Hero() {
   return (
     <section
       ref={sectionRef}
-      className="relative min-h-[110vh] bg-background overflow-hidden flex flex-col items-center justify-center pt-20"
+      className="relative min-h-[90vh] bg-background justify-center flex flex-col items-center pt-[10vw] overflow-hidden"
     >
       <PrismaticBackground />
       <DataThreads />
@@ -168,22 +166,22 @@ export function Hero() {
       {/* Hero Content */}
       <motion.div
         style={{ opacity, scale }}
-        className="relative z-20 flex flex-col items-center max-w-7xl px-4 w-full"
+        className="relative z-20 flex flex-col items-center max-w-5xl px-4 w-full mt-10 md:mt-0"
       >
         {/* Top Label */}
-        <div className="flex items-center gap-4 mb-16 opacity-30 dark:opacity-20">
-          <div className="h-[1px] w-8 bg-foreground/40" />
-          <span className="text-[9px] font-black uppercase tracking-[0.6em] text-foreground">
-            System Architecture v2.4.0
+        <div className="flex items-center gap-4 mb-12 opacity-50">
+          <div className="h-[1px] w-6 bg-foreground" />
+          <span className="text-[10px] font-semibold uppercase tracking-[0.3em] text-foreground font-mono">
+            Architecture v2.4.0
           </span>
-          <div className="h-[1px] w-8 bg-foreground/40" />
+          <div className="h-[1px] w-6 bg-foreground" />
         </div>
 
         {/* Main Title Group */}
-        <div className="relative mb-8 text-center">
+        <div className="relative mb-8 text-center flex flex-col items-center">
           <h1
             ref={titleRef}
-            className="flex flex-wrap justify-center text-[20vw] md:text-[14vw] lg:text-[180px] font-black leading-[0.75] tracking-[-0.07em] text-foreground select-none"
+            className="flex flex-wrap justify-center text-[18vw] md:text-[14vw] lg:text-[160px] font-black leading-[0.8] tracking-[-0.05em] text-foreground select-none"
           >
             {brand.split('').map((char, i) => (
               <span key={`char-${i}`} className="hero-char inline-block">
@@ -191,35 +189,31 @@ export function Hero() {
               </span>
             ))}
           </h1>
-          <div className="hero-engine mt-6 text-[2.5vw] md:text-[1.2vw] lg:text-[14px] font-mono text-primary font-bold uppercase tracking-[1.2em] opacity-0 text-center w-full">
+          <div className="hero-engine mt-6 text-[14px] md:text-[14px] lg:text-[16px] font-mono text-primary font-bold uppercase tracking-[1.2em] opacity-0 text-center w-full">
             BOT
           </div>
         </div>
 
         {/* Subtitle */}
-        <p className="hero-sub text-foreground/70 dark:text-white/70 text-base md:text-lg lg:text-xl max-w-xl text-center font-light leading-relaxed mb-20 tracking-tight">
-          The absolute synthesis of community intelligence, robust moderation, and dynamic
-          architectural scale.
+        <p className="hero-sub text-foreground/50 text-base md:text-lg max-w-md text-center font-medium leading-relaxed mb-16 tracking-tight">
+          The absolute synthesis of community intelligence, robust moderation, and seamless scale.
         </p>
 
         {/* Console CTA */}
-        <div className="hero-console w-full max-w-2xl origin-center">
-          <div className="group relative p-[1px] rounded-2xl overflow-hidden">
-            {/* Border Gradient */}
-            <div className="absolute inset-0 bg-gradient-to-r from-primary/30 via-secondary/30 to-primary/30 opacity-40 group-hover:opacity-100 transition-opacity duration-700" />
-
-            <div className="relative bg-card/80 dark:bg-[#0A0A0A]/80 backdrop-blur-3xl rounded-[15px] p-2 flex items-center shadow-2xl border border-border/50">
-              <div className="flex items-center justify-center w-12 h-12 text-primary/40 group-hover:text-primary transition-colors duration-500">
-                <Command className="w-5 h-5" />
+        <div className="hero-console w-full max-w-xl origin-top px-2 sm:px-0">
+          <div className="relative group p-[1px] rounded-[1.5rem] sm:rounded-2xl overflow-hidden bg-border/40 hover:bg-border/80 transition-colors duration-500">
+            <div className="relative bg-card rounded-[calc(1.5rem-1px)] sm:rounded-[15px] p-1.5 sm:p-2 flex items-center shadow-sm">
+              <div className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 text-foreground/80 shrink-0">
+                <Command className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
 
-              <div className="flex-1 font-mono text-lg sm:text-2xl tracking-tighter pl-2 flex items-center overflow-hidden">
-                <span className="text-primary font-bold mr-3">/summon</span>
-                <span className="text-foreground/60">volvox_</span>
+              <div className="flex-1 font-mono text-[15px] sm:text-lg tracking-tighter pl-1 sm:pl-2 flex items-center overflow-hidden whitespace-nowrap">
+                <span className="text-foreground font-semibold mr-2 sm:mr-3">/summon</span>
+                <span className="text-primary">volvox bot</span>
                 <motion.div
                   animate={{ opacity: [1, 0] }}
                   transition={{ duration: 0.8, repeat: Infinity }}
-                  className="w-[2px] h-6 bg-primary ml-1"
+                  className="w-[2px] h-4 sm:h-5 bg-foreground/30 ml-1.5 sm:ml-2"
                 />
               </div>
 
@@ -228,11 +222,11 @@ export function Hero() {
                   href={botInviteUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="relative group/btn flex items-center gap-2 px-8 h-12 bg-foreground text-background font-black uppercase tracking-widest text-[10px] rounded-xl overflow-hidden transition-all hover:scale-[1.03] active:scale-95 shadow-[0_0_20px_rgba(0,0,0,0.1)] dark:shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_30px_rgba(0,0,0,0.2)] dark:hover:shadow-[0_0_30px_rgba(255,255,255,0.2)]"
+                  className="flex items-center gap-2 px-4 sm:px-6 h-10 sm:h-12 bg-foreground text-background font-bold tracking-wide text-[11px] sm:text-[13px] rounded-xl sm:rounded-xl overflow-hidden transition-transform hover:scale-[1.02] active:scale-95 shadow-sm shrink-0"
                 >
-                  <Bot className="w-4 h-4" />
-                  <span className="relative z-10 hidden sm:inline">Add to Server</span>
-                  <span className="relative z-10 sm:hidden">Add</span>
+                  <Bot className="w-3.5 h-3.5 sm:w-4 h-4" />
+                  <span className="hidden sm:inline">Add to Server</span>
+                  <span className="sm:hidden">Add</span>
                 </a>
               )}
             </div>
@@ -241,7 +235,7 @@ export function Hero() {
       </motion.div>
 
       {/* Background Particles */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-10">
         {Array.from({ length: 20 }).map((_, i) => (
           <motion.div
             key={`particle-${i}`}
@@ -257,13 +251,13 @@ export function Hero() {
               repeat: Infinity,
               delay: Math.random() * 10,
             }}
-            className="absolute top-1/2 left-1/2 w-1 h-1 bg-foreground/40 dark:bg-white/40 rounded-full blur-[1px]"
+            className="absolute top-1/2 left-1/2 w-1 h-1 bg-foreground/30 dark:bg-white/30 rounded-full blur-[1px]"
           />
         ))}
       </div>
 
       {/* Bottom Gradient Fade */}
-      <div className="absolute bottom-0 left-0 right-0 h-[35vh] bg-gradient-to-t from-background via-background/80 to-transparent z-30 pointer-events-none" />
+      <div className="absolute bottom-0 left-0 right-0 h-[20vh] bg-gradient-to-t from-background to-transparent z-30 pointer-events-none" />
     </section>
   );
 }
