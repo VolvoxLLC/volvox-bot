@@ -97,9 +97,24 @@ describe('buildPayload', () => {
     );
 
     expect(payload.embeds[0].toJSON().footer).toEqual({
-      text: '​',
+      text: '\u200b',
       icon_url: 'https://example.com/footer.png',
     });
+  });
+
+  it("truncates footer text to Discord's 2048 character limit", () => {
+    const payload = buildPayload(
+      {
+        type: 'announce',
+        format: 'embed',
+        embed: {
+          footer: 'x'.repeat(2050),
+        },
+      },
+      {},
+    );
+
+    expect(payload.embeds[0].toJSON().footer?.text).toHaveLength(2048);
   });
 
   it('skips empty footers when no text or icon remain after rendering', () => {

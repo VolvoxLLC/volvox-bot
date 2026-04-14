@@ -8,6 +8,7 @@ import { warn } from '../../logger.js';
 import { renderTemplate } from '../../utils/templateEngine.js';
 
 const MAX_EMBED_FIELDS = 25;
+const MAX_FOOTER_TEXT_LENGTH = 2048;
 
 function renderFooter(footer, templateContext) {
   if (!footer) {
@@ -16,9 +17,11 @@ function renderFooter(footer, templateContext) {
 
   const footerConfig =
     typeof footer === 'string'
-      ? { text: renderTemplate(footer, templateContext) }
+      ? {
+          text: renderTemplate(footer, templateContext).slice(0, MAX_FOOTER_TEXT_LENGTH),
+        }
       : {
-          text: renderTemplate(footer.text ?? '', templateContext),
+          text: renderTemplate(footer.text ?? '', templateContext).slice(0, MAX_FOOTER_TEXT_LENGTH),
           iconURL: footer.iconURL ? renderTemplate(footer.iconURL, templateContext) : undefined,
         };
 
@@ -31,7 +34,7 @@ function renderFooter(footer, templateContext) {
 
   return {
     ...footerConfig,
-    text: hasText ? footerConfig.text : '​',
+    text: hasText ? footerConfig.text : '\u200b',
   };
 }
 
@@ -70,8 +73,9 @@ export function buildPayload(action, templateContext) {
 
       embed.addFields(
         embedConfig.fields.slice(0, MAX_EMBED_FIELDS).map((field) => ({
-          name: renderTemplate(field.name || '​', templateContext).slice(0, 256) || '​',
-          value: renderTemplate(field.value || '​', templateContext).slice(0, 1024) || '​',
+          name: renderTemplate(field.name || '\u200b', templateContext).slice(0, 256) || '\u200b',
+          value:
+            renderTemplate(field.value || '\u200b', templateContext).slice(0, 1024) || '\u200b',
           inline: Boolean(field.inline),
         })),
       );
