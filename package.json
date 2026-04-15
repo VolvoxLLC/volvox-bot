@@ -62,7 +62,7 @@
     "node": ">=22.0.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.11",
+    "@biomejs/biome": "^2.4.12",
     "@changesets/cli": "^2.30.0",
     "@vitest/coverage-v8": "^4.1.1",
     "supertest": "^7.2.2",
