@@ -186,7 +186,7 @@ export function Pricing() {
             initial={{ opacity: 0, scale: 0.9 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
-            transition={{ delay: 0.2 }}
+           
             className="flex items-center justify-center gap-3 mb-6 opacity-80"
           >
             <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-foreground/40">
@@ -278,37 +278,37 @@ export function Pricing() {
 
             <Body>
               <List className="stagger-fade-in">
-                <ListItem transition={{ delay: 0.1 }}>
+                <ListItem>
                   <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
                     <Check className="h-3 w-3 stroke-[3px]" />
                   </div>
                   Core command modules
                 </ListItem>
-                <ListItem transition={{ delay: 0.15 }}>
+                <ListItem>
                   <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
                     <Check className="h-3 w-3 stroke-[3px]" />
                   </div>
                   1 Discord server
                 </ListItem>
-                <ListItem transition={{ delay: 0.2 }}>
+                <ListItem>
                   <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
                     <Check className="h-3 w-3 stroke-[3px]" />
                   </div>
                   Basic configuration dashboard
                 </ListItem>
-                <ListItem transition={{ delay: 0.25 }}>
+                <ListItem>
                   <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
                     <Check className="h-3 w-3 stroke-[3px]" />
                   </div>
                   Standard execution priority
                 </ListItem>
-                <ListItem className="opacity-40 grayscale" transition={{ delay: 0.3 }}>
+                <ListItem className="opacity-40 grayscale">
                   <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-foreground/5 text-foreground/40">
                     <X className="h-3 w-3" />
                   </div>
                   AI setup and moderation
                 </ListItem>
-                <ListItem className="opacity-40 grayscale" transition={{ delay: 0.35 }}>
+                <ListItem className="opacity-40 grayscale">
                   <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-foreground/5 text-foreground/40">
                     <X className="h-3 w-3" />
                   </div>
@@ -381,37 +381,37 @@ export function Pricing() {
 
             <Body>
               <List className="stagger-fade-in">
-                <ListItem transition={{ delay: 0.1 }}>
+                <ListItem>
                   <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary shadow-[0_0_10px_hsl(var(--primary)/0.2)]">
                     <Check className="h-3 w-3 stroke-[3px]" />
                   </div>
                   All Standard bot features
                 </ListItem>
-                <ListItem transition={{ delay: 0.15 }}>
+                <ListItem>
                   <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary shadow-[0_0_10px_hsl(var(--primary)/0.2)]">
                     <Check className="h-3 w-3 stroke-[3px]" />
                   </div>
                   Up to 3 Discord servers
                 </ListItem>
-                <ListItem transition={{ delay: 0.2 }}>
+                <ListItem>
                   <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary shadow-[0_0_10px_hsl(var(--primary)/0.2)]">
                     <Check className="h-3 w-3 stroke-[3px]" />
                   </div>
                   AI setup and moderation
                 </ListItem>
-                <ListItem transition={{ delay: 0.25 }}>
+                <ListItem>
                   <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary shadow-[0_0_10px_hsl(var(--primary)/0.2)]">
                     <Check className="h-3 w-3 stroke-[3px]" />
                   </div>
                   Real-time Dashboard Analytics
                 </ListItem>
-                <ListItem transition={{ delay: 0.3 }}>
+                <ListItem>
                   <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary shadow-[0_0_10px_hsl(var(--primary)/0.2)]">
                     <Check className="h-3 w-3 stroke-[3px]" />
                   </div>
                   Prioritized Command Execution
                 </ListItem>
-                <ListItem transition={{ delay: 0.35 }}>
+                <ListItem>
                   <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary shadow-[0_0_10px_hsl(var(--primary)/0.2)]">
                     <Check className="h-3 w-3 stroke-[3px]" />
                   </div>
