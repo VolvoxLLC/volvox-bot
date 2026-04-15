@@ -16,7 +16,7 @@ if (typeof window !== 'undefined') {
   gsap.registerPlugin(ScrollTrigger);
 }
 
-export type { DailyActivityPoint } from './bento-data';
+export type { DailyActivityPoint } from './bento/bento-data';
 
 interface BotStats {
   servers: number;

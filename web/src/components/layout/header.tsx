@@ -238,7 +238,7 @@ export function Header() {
                 width={192}
                 height={192}
                 sizes="36px"
-                className="h-full w-full drop-shadow-sm rounded-inherit"
+                className="h-full w-full drop-shadow-sm rounded-[inherit]"
               />
             </div>
           </div>

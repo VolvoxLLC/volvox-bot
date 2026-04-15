@@ -23,7 +23,7 @@ const ComparisonTable = dynamic(
     })),
   {
     ssr: false,
-    loading: () => <div className="min-h-[600px] bg-background border-t border-border/30" aria-hidden="true" />,
+    loading: () => <div className="min-h-[600px] bg-background" aria-hidden="true" />,
   },
 );
 
@@ -31,7 +31,7 @@ const Stats = dynamic(
   () => import('@/components/landing/Stats').then((m) => ({ default: m.Stats })),
   {
     ssr: false,
-    loading: () => <div className="min-h-[800px] bg-background border-t border-border/30" aria-hidden="true" />,
+    loading: () => <div className="min-h-[800px] bg-background" aria-hidden="true" />,
   },
 );
 

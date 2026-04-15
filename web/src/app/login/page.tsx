@@ -1,12 +1,12 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { ArrowRight, Bot, Shield, Globe, Command, Sparkles } from 'lucide-react';
+import { ArrowRight, Bot, Shield, Globe } from 'lucide-react';
 import NextImage from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn, useSession } from 'next-auth/react';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect } from 'react';
 import { PrismaticBackground } from '@/components/landing/Hero';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
@@ -15,11 +15,6 @@ function LoginForm() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const rawCallbackUrl = searchParams.get('callbackUrl');
   const callbackUrl =

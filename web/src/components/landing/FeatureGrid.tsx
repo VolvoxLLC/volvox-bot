@@ -1,6 +1,5 @@
 'use client';
 
-/** [FORCED_RECOMPILE_V2] - Resolving persistent reference errors */
 import * as React from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import type { LucideIcon } from 'lucide-react';
@@ -51,8 +50,8 @@ const features: readonly Feature[] = [
     preview: (
       <div className="space-y-4 text-[13px] font-medium leading-relaxed">
         <div className="flex gap-3 text-foreground/40">
-          <span className="font-mono opacity-50 shrink-0" suppressHydrationWarning>usr</span>
-          <span className="font-mono opacity-30 truncate" suppressHydrationWarning>~ [mod-core] scan initialized...</span>
+          <span className="font-mono opacity-50 shrink-0">usr</span>
+          <span className="font-mono opacity-30 truncate">~ [mod-core] scan initialized...</span>
         </div>
         <div className="flex gap-3 text-primary bg-primary/[0.03] p-4 rounded-xl border border-primary/10">
           <Sparkles className="w-4 h-4 shrink-0 mt-0.5 opacity-70" />

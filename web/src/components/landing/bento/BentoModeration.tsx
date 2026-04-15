@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, useInView, useReducedMotion } from 'framer-motion';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { MODERATION_POOL, shuffleAndPick, TIMESTAMP_POOL, type ModerationItem } from './bento-data';
 
 const severityColors = {

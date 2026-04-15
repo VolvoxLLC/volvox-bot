@@ -245,7 +245,7 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
                                 icon={TabIcon}
                                 isActive={isTabActive}
                                 onClick={() => {
-                                  setActiveTabId(tab.id as ConfigFeatureId);
+                                  setActiveTabId(tab.id);
                                   onNavClick?.();
                                 }}
                                 className="scale-[0.98] origin-left"

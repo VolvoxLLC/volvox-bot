@@ -21,8 +21,8 @@ import type { MutualGuild } from '@/types/discord';
 import { useGuildDirectory } from './guild-directory-context';
 
 interface ServerSelectorProps {
-  className?: string;
-  onSelect?: () => void;
+  readonly className?: string;
+  readonly onSelect?: () => void;
 }
 
 function formatServerCount(count: number, label: string): string {
@@ -30,7 +30,7 @@ function formatServerCount(count: number, label: string): string {
 }
 
 /** Compact guild icon + name row used in both sections of the dropdown. */
-function GuildRow({ guild }: { guild: MutualGuild }) {
+function GuildRow({ guild }: { readonly guild: MutualGuild }) {
   return (
     <>
       {guild.icon ? (

@@ -42,7 +42,7 @@ export function BentoKpi({ value, label, loading, color, icon: Icon }: BentoKpiP
     setMounted(true);
   }, []);
 
-  const shouldReduceMotion = mounted ? (reducedMotion ?? false) : false;
+  const shouldReduceMotion = mounted ? (reducedMotion ?? false) : (reducedMotion ?? true);
 
   return (
     <div className="group relative rounded-2xl border border-border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/5 overflow-hidden h-full flex flex-col">

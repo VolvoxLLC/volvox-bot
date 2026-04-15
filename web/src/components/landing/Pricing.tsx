@@ -209,9 +209,8 @@ export function Pricing() {
             <span
               className={cn(
                 'text-[11px] font-mono tracking-widest font-bold transition-all duration-300',
-                !isAnnual ? 'text-primary scale-110' : 'text-foreground/20 scale-100',
+                isAnnual ? 'text-foreground/20 scale-100' : 'text-primary scale-110',
               )}
-              suppressHydrationWarning
             >
               MONTHLY
             </span>
@@ -234,7 +233,6 @@ export function Pricing() {
                 'text-[11px] font-mono tracking-widest font-bold transition-all duration-300',
                 isAnnual ? 'text-primary scale-110' : 'text-foreground/20 scale-100',
               )}
-              suppressHydrationWarning
             >
               ANNUAL
             </span>
@@ -264,7 +262,7 @@ export function Pricing() {
                   <Terminal className="w-5 h-5 text-foreground/40" />
                   Standard
                 </PlanName>
-                <span className="text-[10px] font-mono font-bold tracking-[0.2em] text-foreground/20 uppercase" suppressHydrationWarning>
+                <span className="text-[10px] font-mono font-bold tracking-[0.2em] text-foreground/20 uppercase">
                   MOD-01
                 </span>
               </Plan>
