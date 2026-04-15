@@ -22,7 +22,6 @@ import { usePathname } from 'next/navigation';
 import type { ComponentType } from 'react';
 import { useConfigContext } from '@/components/dashboard/config-context';
 import { CONFIG_NAVIGATION } from '@/components/dashboard/config-workspace/navigation';
-import type { ConfigFeatureId } from '@/components/dashboard/config-workspace/types';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
 import { cn } from '@/lib/utils';
 import { ServerSelector } from './server-selector';
@@ -81,11 +80,18 @@ interface SidebarItemProps {
   className?: string;
 }
 
-/** 
+/**
  * Modular sidebar item that can render as a Link or a button.
  * Encapsulates the core visual language of the dashboard sidebar.
  */
-function SidebarItem({ name, icon: Icon, isActive, href, onClick, className }: SidebarItemProps) {
+function SidebarItem({
+  name,
+  icon: Icon,
+  isActive,
+  href,
+  onClick,
+  className,
+}: Readonly<SidebarItemProps>) {
   const content = (
     <>
       {/* Icon Box */}
@@ -127,15 +133,15 @@ function SidebarItem({ name, icon: Icon, isActive, href, onClick, className }: S
     isActive
       ? 'bg-primary/10 hover:bg-primary/20 text-primary shadow-[inset_0_1px_2px_hsl(var(--foreground)/0.1),inset_0_0_0_1px_hsl(var(--primary)/0.15)] ring-1 ring-primary/5'
       : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground hover:shadow-[inset_0_1px_1px_hsl(var(--foreground)/0.05)]',
-    className
+    className,
   );
 
   if (href) {
     return (
-      <Link 
-        href={href} 
-        onClick={onClick} 
-        className={sharedStyles} 
+      <Link
+        href={href}
+        onClick={onClick}
+        className={sharedStyles}
         aria-current={isActive ? 'page' : undefined}
       >
         {content}

@@ -228,7 +228,7 @@ export function ServerSelector({ className, onSelect }: ServerSelectorProps) {
                 {manageable.map((guild) => (
                   <DropdownMenuItem
                     key={guild.id}
-                    onClick={() => {
+                    onSelect={() => {
                       if (selectedGuild?.id === guild.id) {
                         onSelect?.();
                         return;
@@ -268,10 +268,10 @@ export function ServerSelector({ className, onSelect }: ServerSelectorProps) {
                         key={guild.id}
                         asChild
                         className="rounded-[20px] border border-transparent transition-all hover:bg-muted/40 hover:border-border/40 active:scale-[0.98]"
+                        onSelect={onSelect}
                       >
                         <Link
                           href={`/community/${guild.id}`}
-                          onClick={onSelect}
                           className="flex items-center gap-3 w-full"
                         >
                           <GuildRow guild={guild} />

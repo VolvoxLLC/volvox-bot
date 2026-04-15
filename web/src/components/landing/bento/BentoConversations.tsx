@@ -2,7 +2,12 @@
 
 import { motion, useInView, useReducedMotion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
-import { CONVERSATION_POOL, shuffleAndPick, TIMESTAMP_POOL, type ConversationItem } from './bento-data';
+import {
+  CONVERSATION_POOL,
+  type ConversationItem,
+  shuffleAndPick,
+  TIMESTAMP_POOL,
+} from './bento-data';
 
 const avatarColorMap = {
   purple: 'bg-secondary/30 text-secondary',
@@ -29,12 +34,14 @@ export function BentoConversations() {
   useEffect(() => {
     const picked = shuffleAndPick(CONVERSATION_POOL, 3);
     const timestamps = shuffleAndPick(TIMESTAMP_POOL, 3);
-    setItems(picked.map((item, i) => ({
-      ...item,
-      messages: Math.floor(4 + Math.random() * 14),
-      tokens: `${(0.8 + Math.random() * 4).toFixed(1)}k`,
-      timestamp: timestamps[i],
-    })));
+    setItems(
+      picked.map((item, i) => ({
+        ...item,
+        messages: Math.floor(4 + Math.random() * 14),
+        tokens: `${(0.8 + Math.random() * 4).toFixed(1)}k`,
+        timestamp: timestamps[i],
+      })),
+    );
   }, []);
 
   return (

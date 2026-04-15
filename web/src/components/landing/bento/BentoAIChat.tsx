@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion, useInView, useReducedMotion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
-import { AI_CHAT_POOL, pickRandom, type AIChatItem } from './bento-data';
+import { AI_CHAT_POOL, type AIChatItem, pickRandom } from './bento-data';
 
 /**
  * AI Chat cell for the bento grid.

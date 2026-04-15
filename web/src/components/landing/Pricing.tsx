@@ -86,7 +86,7 @@ function Badge({ className, ...props }: ComponentProps<'span'>) {
     <span
       className={cn(
         'border-primary/30 bg-primary/10 text-primary font-bold tracking-wider uppercase rounded-full border px-3 py-1 text-[10px]',
-        'shadow-[0_0_15px_rgba(var(--primary),0.1)]',
+        'shadow-[0_0_15px_hsl(var(--primary)/0.1)]',
         className,
       )}
       {...props}
@@ -140,12 +140,9 @@ function List({ className, ...props }: ComponentProps<'ul'>) {
   return <ul className={cn('space-y-4 mb-8', className)} {...props} />;
 }
 
-function ListItem({ className, children, ...props }: ComponentProps<typeof motion.li>) {
+function ListItem({ className, children, ...props }: ComponentProps<'li'>) {
   return (
-    <motion.li
-      initial={{ opacity: 0, x: -5 }}
-      whileInView={{ opacity: 1, x: 0 }}
-      viewport={{ once: true }}
+    <li
       className={cn(
         'text-foreground/70 font-medium flex items-center gap-3 text-[14px]',
         className,
@@ -153,7 +150,7 @@ function ListItem({ className, children, ...props }: ComponentProps<typeof motio
       {...props}
     >
       {children}
-    </motion.li>
+    </li>
   );
 }
 
@@ -225,7 +222,7 @@ export function Pricing() {
               <motion.div
                 animate={{ x: isAnnual ? 24 : 0 }}
                 transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                className="relative w-6 h-6 rounded-full bg-primary shadow-[0_0_15px_rgba(var(--primary),0.3)] z-10"
+                className="relative w-6 h-6 rounded-full bg-primary shadow-[0_0_15px_hsl(var(--primary)/0.3)] z-10"
               />
             </button>
             <span
@@ -385,37 +382,37 @@ export function Pricing() {
             <Body>
               <List className="stagger-fade-in">
                 <ListItem transition={{ delay: 0.1 }}>
-                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary shadow-[0_0_10px_rgba(var(--primary),0.2)]">
+                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary shadow-[0_0_10px_hsl(var(--primary)/0.2)]">
                     <Check className="h-3 w-3 stroke-[3px]" />
                   </div>
                   All Standard bot features
                 </ListItem>
                 <ListItem transition={{ delay: 0.15 }}>
-                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary shadow-[0_0_10px_rgba(var(--primary),0.2)]">
+                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary shadow-[0_0_10px_hsl(var(--primary)/0.2)]">
                     <Check className="h-3 w-3 stroke-[3px]" />
                   </div>
                   Up to 3 Discord servers
                 </ListItem>
                 <ListItem transition={{ delay: 0.2 }}>
-                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary shadow-[0_0_10px_rgba(var(--primary),0.2)]">
+                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary shadow-[0_0_10px_hsl(var(--primary)/0.2)]">
                     <Check className="h-3 w-3 stroke-[3px]" />
                   </div>
                   AI setup and moderation
                 </ListItem>
                 <ListItem transition={{ delay: 0.25 }}>
-                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary shadow-[0_0_10px_rgba(var(--primary),0.2)]">
+                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary shadow-[0_0_10px_hsl(var(--primary)/0.2)]">
                     <Check className="h-3 w-3 stroke-[3px]" />
                   </div>
                   Real-time Dashboard Analytics
                 </ListItem>
                 <ListItem transition={{ delay: 0.3 }}>
-                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary shadow-[0_0_10px_rgba(var(--primary),0.2)]">
+                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary shadow-[0_0_10px_hsl(var(--primary)/0.2)]">
                     <Check className="h-3 w-3 stroke-[3px]" />
                   </div>
                   Prioritized Command Execution
                 </ListItem>
                 <ListItem transition={{ delay: 0.35 }}>
-                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary shadow-[0_0_10px_rgba(var(--primary),0.2)]">
+                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary shadow-[0_0_10px_hsl(var(--primary)/0.2)]">
                     <Check className="h-3 w-3 stroke-[3px]" />
                   </div>
                   Priority Technical Support

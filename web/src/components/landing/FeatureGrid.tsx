@@ -1,9 +1,9 @@
 'use client';
 
-import * as React from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import type { LucideIcon } from 'lucide-react';
 import { Activity, Cpu, Globe, Lock, MessageSquare, Shield, Sparkles, Zap } from 'lucide-react';
+import * as React from 'react';
 import { cn } from '@/lib/utils';
 
 interface Feature {
@@ -202,7 +202,7 @@ export function FeatureGrid() {
     setMounted(true);
   }, []);
 
-  const shouldReduceMotion = mounted ? (reducedMotion ?? false) : false;
+  const shouldReduceMotion = mounted ? (reducedMotion ?? false) : (reducedMotion ?? true);
 
   return (
     <section className="relative py-32 px-4 sm:px-6 lg:px-8 bg-background overflow-hidden">

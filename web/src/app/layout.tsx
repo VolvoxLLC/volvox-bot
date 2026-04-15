@@ -11,7 +11,7 @@ const manrope = Manrope({
 
 const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
-  variable: '--font-mono',
+  variable: '--font-jetbrains-mono',
 });
 
 export const metadata: Metadata = {
@@ -35,7 +35,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`font-sans ${manrope.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
+      <body
+        className={`font-sans ${manrope.variable} ${jetbrainsMono.variable}`}
+        suppressHydrationWarning
+      >
         <Providers>{children}</Providers>
       </body>
     </html>

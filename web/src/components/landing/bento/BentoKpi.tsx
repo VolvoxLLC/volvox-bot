@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
 import { useReducedMotion } from 'framer-motion';
 import type { LucideIcon } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { AnimatedCounter, formatNumber } from '../AnimatedCounter';
 
 interface BentoKpiProps {

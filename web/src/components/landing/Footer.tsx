@@ -125,7 +125,10 @@ export function Footer() {
           <div className="bg-card border border-border/80 relative overflow-hidden rounded-[2.5rem] p-10 md:p-20 shadow-sm flex flex-col items-center text-center">
             {/* Tactical Badge */}
             <div className="flex items-center gap-4 mb-8">
-              <span className="text-[10px] font-mono font-bold uppercase tracking-[0.3em] text-foreground/40" suppressHydrationWarning>
+              <span
+                className="text-[10px] font-mono font-bold uppercase tracking-[0.3em] text-foreground/40"
+                suppressHydrationWarning
+              >
                 [SYSTEM_READY]
               </span>
             </div>
@@ -169,7 +172,10 @@ export function Footer() {
             </div>
 
             {/* Tactical ID */}
-            <div className="absolute bottom-6 right-8 text-[9px] font-mono text-foreground/20 tracking-[0.2em] hidden md:block" suppressHydrationWarning>
+            <div
+              className="absolute bottom-6 right-8 text-[9px] font-mono text-foreground/20 tracking-[0.2em] hidden md:block"
+              suppressHydrationWarning
+            >
               BUILD_REF: VOLVOX_2.4.0_STABLE
             </div>
           </div>

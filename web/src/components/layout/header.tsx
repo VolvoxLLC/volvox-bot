@@ -227,7 +227,7 @@ export function Header() {
       <div className="mx-auto flex h-12 md:h-14 w-full items-center gap-2 md:gap-4 px-2 md:px-4">
         <MobileSidebar />
         <div className="flex min-w-0 shrink-0 items-center gap-2 md:gap-3.5">
-          <div 
+          <div
             className="group relative flex h-8 w-8 md:h-9 md:w-9 items-center justify-center rounded-xl md:rounded-2xl bg-gradient-to-br from-primary/80 to-secondary/80 p-[1px] shadow-lg shadow-primary/5 transition-all hover:scale-105 active:scale-95"
             style={{ WebkitMaskImage: '-webkit-radial-gradient(white, black)' }}
           >
@@ -369,9 +369,9 @@ export function Header() {
                 align="end"
                 className="w-56 p-2 rounded-[28px] backdrop-blur-3xl border-t border-border/20 bg-gradient-to-b from-popover/95 to-popover/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_32px_64px_-16px_rgba(0,0,0,0.6)]"
               >
-                 <DropdownMenuPage id="main">
-                  <DropdownMenuItem 
-                    onClick={() => refresh()} 
+                <DropdownMenuPage id="main">
+                  <DropdownMenuItem
+                    onClick={() => refresh()}
                     disabled={loading}
                     className="hidden md:flex"
                   >

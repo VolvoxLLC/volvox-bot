@@ -91,22 +91,25 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
     return null;
   }, [hoveredIndex, points, dailyActivity, hasRealData]);
 
-  const handleMouseMove = useCallback((e: MouseEvent<SVGSVGElement>) => {
-    if (!hasRealData) return;
-    const svg = e.currentTarget;
-    const rect = svg.getBoundingClientRect();
-    const mouseX = ((e.clientX - rect.left) / rect.width) * 220;
-    let closestIdx = 0;
-    let closestDist = Infinity;
-    for (let i = 0; i < points.length; i++) {
-      const dist = Math.abs(points[i].x - mouseX);
-      if (dist < closestDist) {
-        closestDist = dist;
-        closestIdx = i;
+  const handleMouseMove = useCallback(
+    (e: MouseEvent<SVGSVGElement>) => {
+      if (!hasRealData) return;
+      const svg = e.currentTarget;
+      const rect = svg.getBoundingClientRect();
+      const mouseX = ((e.clientX - rect.left) / rect.width) * 220;
+      let closestIdx = 0;
+      let closestDist = Infinity;
+      for (let i = 0; i < points.length; i++) {
+        const dist = Math.abs(points[i].x - mouseX);
+        if (dist < closestDist) {
+          closestDist = dist;
+          closestIdx = i;
+        }
       }
-    }
-    setHoveredIndex(closestIdx);
-  }, [hasRealData, points]);
+      setHoveredIndex(closestIdx);
+    },
+    [hasRealData, points],
+  );
 
   const handleMouseLeave = useCallback(() => setHoveredIndex(null), []);
 
@@ -174,13 +177,39 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
           )}
           {hoveredIndex !== null && points[hoveredIndex] && (
             <>
-              <line x1={points[hoveredIndex].x} y1={0} x2={points[hoveredIndex].x} y2={140} stroke="hsl(var(--primary))" strokeOpacity="0.2" strokeWidth="1" strokeDasharray="2 2" />
-              <circle cx={points[hoveredIndex].x} cy={points[hoveredIndex].y} r="4" fill="hsl(var(--primary))" stroke="hsl(var(--card))" strokeWidth="2" />
+              <line
+                x1={points[hoveredIndex].x}
+                y1={0}
+                x2={points[hoveredIndex].x}
+                y2={140}
+                stroke="hsl(var(--primary))"
+                strokeOpacity="0.2"
+                strokeWidth="1"
+                strokeDasharray="2 2"
+              />
+              <circle
+                cx={points[hoveredIndex].x}
+                cy={points[hoveredIndex].y}
+                r="4"
+                fill="hsl(var(--primary))"
+                stroke="hsl(var(--card))"
+                strokeWidth="2"
+              />
             </>
           )}
-          {hasRealData && points.map((p, i) => (
-            <rect key={`hit-${p.x}-${p.y}`} x={p.x - 220 / points.length / 2} y={0} width={220 / points.length} height={140} fill="transparent" onMouseEnter={() => setHoveredIndex(i)} style={{ cursor: 'pointer' }} />
-          ))}
+          {hasRealData &&
+            points.map((p, i) => (
+              <rect
+                key={`hit-${p.x}-${p.y}`}
+                x={p.x - 220 / points.length / 2}
+                y={0}
+                width={220 / points.length}
+                height={140}
+                fill="transparent"
+                onMouseEnter={() => setHoveredIndex(i)}
+                style={{ cursor: 'pointer' }}
+              />
+            ))}
         </svg>
 
         {tooltipData && (
@@ -194,15 +223,24 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
           >
             <div className="font-medium text-foreground mb-0.5">{tooltipData.label}</div>
             <div className="flex flex-col gap-0.5">
-              <span className="text-muted-foreground"><span className="inline-block w-1.5 h-1.5 rounded-full bg-primary mr-1 align-middle" />{tooltipData.messages.toLocaleString()} messages</span>
-              <span className="text-muted-foreground"><span className="inline-block w-1.5 h-1.5 rounded-full bg-secondary mr-1 align-middle" />{tooltipData.aiRequests.toLocaleString()} AI</span>
+              <span className="text-muted-foreground">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary mr-1 align-middle" />
+                {tooltipData.messages.toLocaleString()} messages
+              </span>
+              <span className="text-muted-foreground">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-secondary mr-1 align-middle" />
+                {tooltipData.aiRequests.toLocaleString()} AI
+              </span>
             </div>
           </div>
         )}
       </div>
 
       {dayLabels && mounted && (
-        <div className="flex justify-between text-[9px] text-muted-foreground mb-2 px-0.5" suppressHydrationWarning>
+        <div
+          className="flex justify-between text-[9px] text-muted-foreground mb-2 px-0.5"
+          suppressHydrationWarning
+        >
           {dayLabels.map((label, i) => (
             <span key={`day-${label}-${i}`}>{label}</span>
           ))}
@@ -213,12 +251,14 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
         <span className="flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-primary" />
           Messages
-          {hasRealData && ` (${dailyActivity.reduce((sum, d) => sum + d.messages, 0).toLocaleString()})`}
+          {hasRealData &&
+            ` (${dailyActivity.reduce((sum, d) => sum + d.messages, 0).toLocaleString()})`}
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-secondary" />
           AI Responses
-          {hasRealData && ` (${dailyActivity.reduce((sum, d) => sum + d.aiRequests, 0).toLocaleString()})`}
+          {hasRealData &&
+            ` (${dailyActivity.reduce((sum, d) => sum + d.aiRequests, 0).toLocaleString()})`}
         </span>
       </div>
     </div>

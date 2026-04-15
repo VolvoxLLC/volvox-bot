@@ -227,7 +227,10 @@ export function Hero() {
         {/* Top Label */}
         <div className="flex items-center gap-4 mb-12 opacity-50">
           <div className="h-[1px] w-6 bg-foreground" />
-          <span className="text-[10px] font-semibold uppercase tracking-[0.3em] text-foreground font-mono" suppressHydrationWarning>
+          <span
+            className="text-[10px] font-semibold uppercase tracking-[0.3em] text-foreground font-mono"
+            suppressHydrationWarning
+          >
             Architecture v2.4.0
           </span>
           <div className="h-[1px] w-6 bg-foreground" />
@@ -245,7 +248,10 @@ export function Hero() {
               </span>
             ))}
           </h1>
-          <div className="hero-engine mt-6 text-[14px] md:text-[14px] lg:text-[16px] font-mono text-primary font-bold uppercase tracking-[1.2em] opacity-0 text-center w-full" suppressHydrationWarning>
+          <div
+            className="hero-engine mt-6 text-[14px] md:text-[14px] lg:text-[16px] font-mono text-primary font-bold uppercase tracking-[1.2em] opacity-0 text-center w-full"
+            suppressHydrationWarning
+          >
             BOT
           </div>
         </div>
@@ -263,7 +269,10 @@ export function Hero() {
                 <Command className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
 
-              <div className="flex-1 font-mono text-[15px] sm:text-lg tracking-tighter pl-1 sm:pl-2 flex items-center overflow-hidden whitespace-nowrap" suppressHydrationWarning>
+              <div
+                className="flex-1 font-mono text-[15px] sm:text-lg tracking-tighter pl-1 sm:pl-2 flex items-center overflow-hidden whitespace-nowrap"
+                suppressHydrationWarning
+              >
                 <span className="text-foreground font-semibold mr-2 sm:mr-3">/summon</span>
                 <span className="text-primary">volvox bot</span>
                 <motion.div
