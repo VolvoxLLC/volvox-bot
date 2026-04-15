@@ -3,6 +3,7 @@
 import { motion, useReducedMotion } from 'framer-motion';
 import type { LucideIcon } from 'lucide-react';
 import { Activity, Cpu, Globe, Lock, MessageSquare, Shield, Sparkles, Zap } from 'lucide-react';
+import * as React from 'react';
 import { cn } from '@/lib/utils';
 
 interface Feature {
@@ -50,7 +51,7 @@ const features: readonly Feature[] = [
       <div className="space-y-4 text-[13px] font-medium leading-relaxed">
         <div className="flex gap-3 text-foreground/40">
           <span className="font-mono opacity-50 shrink-0">usr</span>
-          <span className="text-foreground/70">Summarize the recent community update.</span>
+          <span className="font-mono opacity-30 truncate">~ [mod-core] scan initialized...</span>
         </div>
         <div className="flex gap-3 text-primary bg-primary/[0.03] p-4 rounded-xl border border-primary/10">
           <Sparkles className="w-4 h-4 shrink-0 mt-0.5 opacity-70" />
@@ -194,10 +195,17 @@ function FeatureCard({
 }
 
 export function FeatureGrid() {
-  const shouldReduceMotion = useReducedMotion() ?? false;
+  const [mounted, setMounted] = React.useState(false);
+  const reducedMotion = useReducedMotion();
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const shouldReduceMotion = mounted ? (reducedMotion ?? false) : (reducedMotion ?? true);
 
   return (
-    <section className="relative py-32 px-4 sm:px-6 lg:px-8 bg-background overflow-hidden border-t border-border/30">
+    <section className="relative py-32 px-4 sm:px-6 lg:px-8 bg-background overflow-hidden">
       <div className="mx-auto max-w-6xl relative z-10">
         <div className="flex flex-col mb-24 max-w-3xl">
           <div className="flex items-center gap-3 mb-6 opacity-80">

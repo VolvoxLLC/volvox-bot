@@ -4,22 +4,35 @@ import dynamic from 'next/dynamic';
 import { FeatureGrid, Footer, Hero, Pricing } from '@/components/landing';
 import { LandingNavbar } from '@/components/layout/LandingNavbar';
 
-// Below-fold sections lazy-loaded for performance
+// Lower-fold sections lazy-loaded with fixed skeletons to prevent scroll-jump
 const DashboardShowcase = dynamic(
   () =>
     import('@/components/landing/DashboardShowcase').then((m) => ({
       default: m.DashboardShowcase,
     })),
-  { ssr: false },
+  {
+    ssr: false,
+    loading: () => <div className="min-h-[1000px] bg-background" aria-hidden="true" />,
+  },
 );
+
 const ComparisonTable = dynamic(
   () =>
-    import('@/components/landing/ComparisonTable').then((m) => ({ default: m.ComparisonTable })),
-  { ssr: false },
+    import('@/components/landing/ComparisonTable').then((m) => ({
+      default: m.ComparisonTable,
+    })),
+  {
+    ssr: false,
+    loading: () => <div className="min-h-[600px] bg-background" aria-hidden="true" />,
+  },
 );
+
 const Stats = dynamic(
   () => import('@/components/landing/Stats').then((m) => ({ default: m.Stats })),
-  { ssr: false },
+  {
+    ssr: false,
+    loading: () => <div className="min-h-[800px] bg-background" aria-hidden="true" />,
+  },
 );
 
 export default function LandingPage() {
@@ -52,7 +65,9 @@ export default function LandingPage() {
       </div>
 
       {/* Stats / Testimonials Section */}
-      <Stats />
+      <div id="stats">
+        <Stats />
+      </div>
 
       {/* Footer CTA */}
       <Footer />

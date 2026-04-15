@@ -12,7 +12,9 @@ import { BentoKpi } from './bento/BentoKpi';
 import { BentoModeration } from './bento/BentoModeration';
 import type { DailyActivityPoint } from './bento/bento-data';
 
-gsap.registerPlugin(ScrollTrigger);
+if (typeof globalThis.window !== 'undefined') {
+  gsap.registerPlugin(ScrollTrigger);
+}
 
 export type { DailyActivityPoint } from './bento/bento-data';
 

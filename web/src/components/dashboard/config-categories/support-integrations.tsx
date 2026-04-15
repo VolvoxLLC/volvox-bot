@@ -45,7 +45,7 @@ export function SupportIntegrationsCategory() {
       {/* Tickets Layout */}
       {activeTab === 'tickets' && (
         <div className="space-y-6">
-          <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-6">
+          <div className="p-4 sm:p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-6">
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <div className="space-y-2 md:col-span-2">
                 <label
@@ -219,7 +219,7 @@ export function SupportIntegrationsCategory() {
       {/* GitHub Feed Layout */}
       {activeTab === 'github-feed' && (
         <div className="space-y-6">
-          <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-6">
+          <div className="p-4 sm:p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-6">
             <div className="space-y-2">
               <label
                 htmlFor="feed-channel-id"
