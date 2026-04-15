@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useReducedMotion } from 'framer-motion';
 import type { LucideIcon } from 'lucide-react';
 import { AnimatedCounter, formatNumber } from '../AnimatedCounter';
@@ -34,7 +35,14 @@ const colorMap = {
  */
 export function BentoKpi({ value, label, loading, color, icon: Icon }: BentoKpiProps) {
   const theme = colorMap[color];
-  const shouldReduceMotion = useReducedMotion() ?? false;
+  const [mounted, setMounted] = useState(false);
+  const reducedMotion = useReducedMotion();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const shouldReduceMotion = mounted ? (reducedMotion ?? false) : false;
 
   return (
     <div className="group relative rounded-2xl border border-border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/5 overflow-hidden h-full flex flex-col">

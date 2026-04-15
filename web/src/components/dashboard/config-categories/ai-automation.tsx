@@ -162,7 +162,7 @@ export function AiAutomationCategory() {
           />
 
           {guildId && (
-            <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl">
+            <div className="p-4 sm:p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl">
               <div className="mb-4 space-y-1">
                 <h3 className="text-sm font-semibold tracking-wide text-foreground/90">
                   Response Boundaries
@@ -433,7 +433,7 @@ export function AiAutomationCategory() {
           </div>
 
           <div className="grid lg:grid-cols-2 gap-6">
-            <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl">
+            <div className="p-4 sm:p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl">
               <div className="mb-6 space-y-1">
                 <h3 className="text-sm font-semibold tracking-wide text-foreground/90">
                   Daily Limits
@@ -482,7 +482,7 @@ export function AiAutomationCategory() {
               </div>
             </div>
 
-            <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl">
+            <div className="p-4 sm:p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl">
               <div className="mb-6 space-y-1">
                 <h3 className="text-sm font-semibold tracking-wide text-foreground/90">
                   Operational Modes
@@ -531,7 +531,7 @@ export function AiAutomationCategory() {
 
       {/* Memory Layout */}
       {activeTab === 'memory' && (
-        <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-6">
+        <div className="p-4 sm:p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-6">
           <div className="space-y-3">
             <label
               htmlFor="max-context-memories"

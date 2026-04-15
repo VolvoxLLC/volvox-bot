@@ -12,9 +12,11 @@ import { BentoKpi } from './bento/BentoKpi';
 import { BentoModeration } from './bento/BentoModeration';
 import type { DailyActivityPoint } from './bento/bento-data';
 
-gsap.registerPlugin(ScrollTrigger);
+if (typeof window !== 'undefined') {
+  gsap.registerPlugin(ScrollTrigger);
+}
 
-export type { DailyActivityPoint } from './bento/bento-data';
+export type { DailyActivityPoint } from './bento-data';
 
 interface BotStats {
   servers: number;
@@ -174,7 +176,7 @@ export function DashboardShowcase() {
               </div>
               <div className="flex items-center gap-2 px-5 py-1.5 rounded-full bg-card border border-border/80 shadow-sm">
                 <Monitor className="w-[14px] h-[14px] text-muted-foreground/60" />
-                <span className="text-[11px] text-muted-foreground font-mono font-medium tracking-tight">
+                <span className="text-[11px] text-muted-foreground font-mono font-medium tracking-tight" suppressHydrationWarning>
                   dashboard.volvox.bot
                 </span>
               </div>

@@ -14,7 +14,8 @@ function Card({ className, ...props }: ComponentProps<'div'>) {
       className={cn(
         'bg-card relative w-full rounded-[2rem] dark:bg-card flex flex-col',
         'p-1.5 shadow-xl backdrop-blur-xl',
-        'border border-border/60 hover:border-border transition-colors',
+        'border border-border/60 hover:border-primary/30 transition-all duration-500',
+        'hover:shadow-2xl hover:shadow-primary/5 hover:-translate-y-1',
         className,
       )}
       {...props}
@@ -34,18 +35,23 @@ function Header({
     <div
       className={cn(
         'bg-muted/30 dark:bg-background/40 relative mb-2 rounded-[1.5rem] border border-border/40 p-6 flex-shrink-0',
+        'shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] overflow-hidden',
         className,
       )}
       {...props}
     >
       {/* Top glass gradient */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: 'linear-gradient(180deg, hsl(var(--primary) / 5%) 0%, transparent 100%)',
+        }}
+      />
       {glassEffect && (
         <div
           aria-hidden="true"
-          className="absolute inset-x-0 top-0 h-48 rounded-[inherit] pointer-events-none"
-          style={{
-            background: 'linear-gradient(180deg, hsl(var(--primary) / 2%) 0%, transparent 100%)',
-          }}
+          className="absolute -top-24 -left-24 h-48 w-48 bg-primary/10 blur-[80px] rounded-full pointer-events-none"
         />
       )}
       {children}
@@ -79,7 +85,8 @@ function Badge({ className, ...props }: ComponentProps<'span'>) {
   return (
     <span
       className={cn(
-        'border-primary/20 bg-primary/10 text-primary font-bold tracking-wider uppercase rounded-full border px-3 py-1 text-[10px]',
+        'border-primary/30 bg-primary/10 text-primary font-bold tracking-wider uppercase rounded-full border px-3 py-1 text-[10px]',
+        'shadow-[0_0_15px_rgba(var(--primary),0.1)]',
         className,
       )}
       {...props}
@@ -100,9 +107,10 @@ function MainPrice({ className, ...props }: ComponentProps<'span'>) {
   );
 }
 
-function Period({ className, ...props }: ComponentProps<'span'>) {
+function Period({ className, ...props }: ComponentProps<typeof motion.span>) {
   return (
-    <span
+    <motion.span
+      layout
       className={cn(
         'text-foreground/40 font-bold uppercase tracking-widest text-[11px]',
         className,
@@ -132,15 +140,20 @@ function List({ className, ...props }: ComponentProps<'ul'>) {
   return <ul className={cn('space-y-4 mb-8', className)} {...props} />;
 }
 
-function ListItem({ className, ...props }: ComponentProps<'li'>) {
+function ListItem({ className, children, ...props }: ComponentProps<typeof motion.li>) {
   return (
-    <li
+    <motion.li
+      initial={{ opacity: 0, x: -5 }}
+      whileInView={{ opacity: 1, x: 0 }}
+      viewport={{ once: true }}
       className={cn(
         'text-foreground/70 font-medium flex items-center gap-3 text-[14px]',
         className,
       )}
       {...props}
-    />
+    >
+      {children}
+    </motion.li>
   );
 }
 
@@ -153,18 +166,36 @@ export function Pricing() {
   const toggleBilling = () => setIsAnnual((prev) => !prev);
 
   return (
-    <section className="relative px-4 py-32 w-full min-h-screen mx-auto bg-background border-t border-border/30">
+    <section className="relative px-4 py-32 w-full min-h-screen mx-auto bg-background overflow-hidden">
+      {/* Prismatic Shards Background */}
+      <div className="absolute inset-0 pointer-events-none z-0">
+        <div className="absolute top-1/4 -left-20 w-[600px] h-[300px] -rotate-12 bg-gradient-to-r from-primary/10 via-background to-transparent blur-[120px] opacity-20" />
+        <div className="absolute bottom-1/4 -right-20 w-[600px] h-[300px] rotate-12 bg-gradient-to-l from-primary/10 via-background to-transparent blur-[120px] opacity-20" />
+      </div>
+
       <div className="absolute inset-0 z-0 pointer-events-none opacity-20 hidden md:block">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,hsl(var(--primary)/0.15)_0%,transparent_50%)]" />
       </div>
 
-      <div className="max-w-6xl mx-auto relative z-10 flex flex-col items-center">
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.8, ease: 'easeOut' }}
+        className="max-w-6xl mx-auto relative z-10 flex flex-col items-center"
+      >
         <div className="text-center mb-16">
-          <div className="flex items-center justify-center gap-3 mb-6 opacity-80">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.2 }}
+            className="flex items-center justify-center gap-3 mb-6 opacity-80"
+          >
             <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-foreground/40">
               QUOTA ARRANGEMENT
             </span>
-          </div>
+          </motion.div>
 
           <h2 className="text-4xl md:text-5xl font-black text-foreground mb-6 leading-tight tracking-tight">
             System Access Tiers
@@ -174,12 +205,13 @@ export function Pricing() {
             community management.
           </p>
 
-          <div className="flex items-center justify-center gap-6">
+          <div className="flex items-center justify-center gap-6 mb-4">
             <span
               className={cn(
-                'text-[11px] font-mono tracking-widest font-bold transition-colors',
-                !isAnnual ? 'text-primary' : 'text-foreground/30',
+                'text-[11px] font-mono tracking-widest font-bold transition-all duration-300',
+                !isAnnual ? 'text-primary scale-110' : 'text-foreground/20 scale-100',
               )}
+              suppressHydrationWarning
             >
               MONTHLY
             </span>
@@ -187,28 +219,43 @@ export function Pricing() {
               type="button"
               aria-label="Toggle annual billing"
               aria-pressed={isAnnual}
-              className="relative w-14 h-8 bg-card border border-border/80 rounded-full p-1 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary ring-offset-background transition-all"
+              className="relative w-14 h-8 bg-card border border-border/80 rounded-full p-1 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary ring-offset-background transition-all group"
               onClick={toggleBilling}
             >
+              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
               <motion.div
                 animate={{ x: isAnnual ? 24 : 0 }}
-                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                className="w-6 h-6 rounded-full bg-primary shadow-sm"
+                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                className="relative w-6 h-6 rounded-full bg-primary shadow-[0_0_15px_rgba(var(--primary),0.3)] z-10"
               />
             </button>
             <span
               className={cn(
-                'text-[11px] font-mono tracking-widest font-bold transition-colors',
-                isAnnual ? 'text-primary' : 'text-foreground/30',
+                'text-[11px] font-mono tracking-widest font-bold transition-all duration-300',
+                isAnnual ? 'text-primary scale-110' : 'text-foreground/20 scale-100',
               )}
+              suppressHydrationWarning
             >
               ANNUAL
             </span>
           </div>
+          <div className="h-6">
+            {isAnnual && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-[10px] font-black text-primary underline decoration-primary/30 underline-offset-4 tracking-[0.2em] uppercase"
+              >
+                Save up to 35% Yearly
+              </motion.div>
+            )}
+          </div>
         </div>
 
         {/* Pricing Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl relative">
+          {/* Back-glow for Overclocked */}
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1/2 h-full bg-primary/20 blur-[120px] pointer-events-none opacity-20 sm:opacity-30" />
           {/* Card: Standard */}
           <Card className="max-w-none">
             <Header glassEffect={false}>
@@ -217,7 +264,7 @@ export function Pricing() {
                   <Terminal className="w-5 h-5 text-foreground/40" />
                   Standard
                 </PlanName>
-                <span className="text-[10px] font-mono font-bold tracking-[0.2em] text-foreground/20 uppercase">
+                <span className="text-[10px] font-mono font-bold tracking-[0.2em] text-foreground/20 uppercase" suppressHydrationWarning>
                   MOD-01
                 </span>
               </Plan>
@@ -235,28 +282,41 @@ export function Pricing() {
             </Header>
 
             <Body>
-              <List>
-                <ListItem>
-                  <Check className="w-4 h-4 text-primary shrink-0" />
+              <List className="stagger-fade-in">
+                <ListItem transition={{ delay: 0.1 }}>
+                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <Check className="h-3 w-3 stroke-[3px]" />
+                  </div>
                   Core command modules
                 </ListItem>
-                <ListItem>
-                  <Check className="w-4 h-4 text-primary shrink-0" />1 Discord server
+                <ListItem transition={{ delay: 0.15 }}>
+                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <Check className="h-3 w-3 stroke-[3px]" />
+                  </div>
+                  1 Discord server
                 </ListItem>
-                <ListItem>
-                  <Check className="w-4 h-4 text-primary shrink-0" />
+                <ListItem transition={{ delay: 0.2 }}>
+                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <Check className="h-3 w-3 stroke-[3px]" />
+                  </div>
                   Basic configuration dashboard
                 </ListItem>
-                <ListItem>
-                  <Check className="w-4 h-4 text-primary shrink-0" />
+                <ListItem transition={{ delay: 0.25 }}>
+                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <Check className="h-3 w-3 stroke-[3px]" />
+                  </div>
                   Standard execution priority
                 </ListItem>
-                <ListItem className="opacity-50">
-                  <X className="w-4 h-4 text-foreground/40 shrink-0" />
+                <ListItem className="opacity-40 grayscale" transition={{ delay: 0.3 }}>
+                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-foreground/5 text-foreground/40">
+                    <X className="h-3 w-3" />
+                  </div>
                   AI setup and moderation
                 </ListItem>
-                <ListItem className="opacity-50">
-                  <X className="w-4 h-4 text-foreground/40 shrink-0" />
+                <ListItem className="opacity-40 grayscale" transition={{ delay: 0.35 }}>
+                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-foreground/5 text-foreground/40">
+                    <X className="h-3 w-3" />
+                  </div>
                   Real-time Dashboard Analytics
                 </ListItem>
               </List>
@@ -285,7 +345,12 @@ export function Pricing() {
           </Card>
 
           {/* Card: Overclocked */}
-          <Card className="max-w-none border-primary/20 relative overflow-hidden bg-background">
+          <Card className="max-w-none border-primary/40 relative overflow-hidden bg-background group/card">
+            {/* Animated Gradient Border Layer */}
+            <div className="absolute inset-0 p-[2px] rounded-[inherit] pointer-events-none">
+              <div className="absolute inset-0 rounded-[inherit] bg-gradient-to-br from-primary/40 via-transparent to-primary/40 opacity-0 group-hover/card:opacity-100 transition-opacity duration-700" />
+            </div>
+
             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent pointer-events-none" />
             <Header glassEffect={true} className="border-primary/20 bg-primary/5">
               <Plan>
@@ -320,29 +385,41 @@ export function Pricing() {
             </Header>
 
             <Body>
-              <List>
-                <ListItem>
-                  <Check className="w-4 h-4 text-primary shrink-0" />
+              <List className="stagger-fade-in">
+                <ListItem transition={{ delay: 0.1 }}>
+                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary shadow-[0_0_10px_rgba(var(--primary),0.2)]">
+                    <Check className="h-3 w-3 stroke-[3px]" />
+                  </div>
                   All Standard bot features
                 </ListItem>
-                <ListItem>
-                  <Check className="w-4 h-4 text-primary shrink-0" />
+                <ListItem transition={{ delay: 0.15 }}>
+                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary shadow-[0_0_10px_rgba(var(--primary),0.2)]">
+                    <Check className="h-3 w-3 stroke-[3px]" />
+                  </div>
                   Up to 3 Discord servers
                 </ListItem>
-                <ListItem>
-                  <Check className="w-4 h-4 text-primary shrink-0" />
+                <ListItem transition={{ delay: 0.2 }}>
+                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary shadow-[0_0_10px_rgba(var(--primary),0.2)]">
+                    <Check className="h-3 w-3 stroke-[3px]" />
+                  </div>
                   AI setup and moderation
                 </ListItem>
-                <ListItem>
-                  <Check className="w-4 h-4 text-primary shrink-0" />
+                <ListItem transition={{ delay: 0.25 }}>
+                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary shadow-[0_0_10px_rgba(var(--primary),0.2)]">
+                    <Check className="h-3 w-3 stroke-[3px]" />
+                  </div>
                   Real-time Dashboard Analytics
                 </ListItem>
-                <ListItem>
-                  <Check className="w-4 h-4 text-primary shrink-0" />
+                <ListItem transition={{ delay: 0.3 }}>
+                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary shadow-[0_0_10px_rgba(var(--primary),0.2)]">
+                    <Check className="h-3 w-3 stroke-[3px]" />
+                  </div>
                   Prioritized Command Execution
                 </ListItem>
-                <ListItem>
-                  <Check className="w-4 h-4 text-primary shrink-0" />
+                <ListItem transition={{ delay: 0.35 }}>
+                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary shadow-[0_0_10px_rgba(var(--primary),0.2)]">
+                    <Check className="h-3 w-3 stroke-[3px]" />
+                  </div>
                   Priority Technical Support
                 </ListItem>
               </List>
@@ -372,7 +449,7 @@ export function Pricing() {
             </Body>
           </Card>
         </div>
-      </div>
+      </motion.div>
     </section>
   );
 }

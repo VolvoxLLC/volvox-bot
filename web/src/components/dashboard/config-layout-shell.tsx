@@ -115,7 +115,7 @@ function ConfigLayoutInner({ children }: { children: ReactNode }) {
   // ── No guild selected ──────────────────────────────────────────
   if (!guildId) {
     return (
-      <div className="group relative overflow-hidden rounded-[32px] border border-border bg-card/40 p-8 backdrop-blur-3xl shadow-2xl">
+      <div className="group relative overflow-hidden rounded-[24px] border border-border bg-card/40 p-6 md:p-8 backdrop-blur-3xl shadow-2xl">
         <div className="absolute inset-0 bg-gradient-to-b from-white/[0.03] to-transparent pointer-events-none" />
         <div className="relative z-10 text-center py-12">
           <h2 className="text-xl font-black tracking-tight text-foreground">Settings</h2>
@@ -162,7 +162,7 @@ function ConfigLayoutInner({ children }: { children: ReactNode }) {
 
   // ── Editor UI ──────────────────────────────────────────────────
   return (
-    <div className="relative px-4 md:px-0">
+    <div className="relative md:px-0">
       {/* Main Feature Content */}
       <div className="space-y-8">{children}</div>
 

@@ -71,21 +71,24 @@ interface SidebarProps {
   onNavClick?: () => void;
 }
 
-/** Renders a single sidebar navigation link with an active-state indicator pill. */
-function renderNavItem(item: NavItem, isActive: boolean, onNavClick?: () => void) {
-  return (
-    <Link
-      key={item.name}
-      href={item.href}
-      onClick={onNavClick}
-      aria-current={isActive ? 'page' : undefined}
-      className={cn(
-        'group relative flex items-center gap-3 rounded-[16px] px-2 py-2 transition-all duration-300',
-        isActive
-          ? 'bg-primary/10 hover:bg-primary/20 text-primary shadow-[inset_0_1px_2px_hsl(var(--foreground)/0.1),inset_0_0_0_1px_hsl(var(--primary)/0.15)] ring-1 ring-primary/5'
-          : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground hover:shadow-[inset_0_1px_1px_hsl(var(--foreground)/0.05)]',
-      )}
-    >
+/** Props for the unified sidebar navigation item */
+interface SidebarItemProps {
+  name: string;
+  icon: ComponentType<{ className?: string }>;
+  isActive: boolean;
+  href?: string;
+  onClick?: () => void;
+  className?: string;
+}
+
+/** 
+ * Modular sidebar item that can render as a Link or a button.
+ * Encapsulates the core visual language of the dashboard sidebar.
+ */
+function SidebarItem({ name, icon: Icon, isActive, href, onClick, className }: SidebarItemProps) {
+  const content = (
+    <>
+      {/* Icon Box */}
       <div
         className={cn(
           'flex h-7 w-7 items-center justify-center rounded-lg transition-all duration-300',
@@ -94,27 +97,70 @@ function renderNavItem(item: NavItem, isActive: boolean, onNavClick?: () => void
             : 'bg-muted/30 ring-1 ring-border group-hover:bg-muted/50 group-hover:text-foreground group-hover:ring-border/60',
         )}
       >
-        <item.icon
+        <Icon
           className={cn('h-3.5 w-3.5', isActive && 'drop-shadow-[0_0_4px_hsl(var(--primary)/0.4)]')}
         />
       </div>
 
+      {/* Label */}
       <span
         className={cn(
           'truncate text-[12.5px] font-bold tracking-tight transition-colors duration-300',
           isActive ? 'text-foreground' : 'group-hover:text-foreground',
         )}
       >
-        {item.name}
+        {name}
       </span>
 
+      {/* Active Pill Indicator */}
       {isActive && (
         <div className="ml-auto relative flex h-4 w-4 items-center justify-center">
           <div className="absolute h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary))]" />
           <div className="absolute h-3 w-3 rounded-full bg-primary/20 animate-pulse" />
         </div>
       )}
-    </Link>
+    </>
+  );
+
+  const sharedStyles = cn(
+    'group relative flex items-center gap-3 rounded-[16px] px-2 py-2 transition-all duration-300 text-left',
+    isActive
+      ? 'bg-primary/10 hover:bg-primary/20 text-primary shadow-[inset_0_1px_2px_hsl(var(--foreground)/0.1),inset_0_0_0_1px_hsl(var(--primary)/0.15)] ring-1 ring-primary/5'
+      : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground hover:shadow-[inset_0_1px_1px_hsl(var(--foreground)/0.05)]',
+    className
+  );
+
+  if (href) {
+    return (
+      <Link 
+        href={href} 
+        onClick={onClick} 
+        className={sharedStyles} 
+        aria-current={isActive ? 'page' : undefined}
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <button type="button" onClick={onClick} className={cn(sharedStyles, 'w-full')}>
+      {content}
+    </button>
+  );
+}
+
+/** Backward compatibility helper for standard nav groups */
+function renderNavItem(item: NavItem, isActive: boolean, onNavClick?: () => void) {
+  return (
+    <SidebarItem
+      key={item.name}
+      name={item.name}
+      icon={item.icon}
+      isActive={isActive}
+      href={item.href}
+      onClick={onNavClick}
+    />
   );
 }
 
@@ -151,11 +197,11 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
           </Link>
         ) : (
           /* Server Selector island */
-          <ServerSelector />
+          <ServerSelector onSelect={onNavClick} />
         )}
       </div>
 
-      <div className="px-4 py-4 flex flex-col gap-5">
+      <div className="px-4 py-4 flex flex-col gap-5 flex-1">
         {isSettingsMode ? (
           /* Settings Navigation Tree */
           <div className="space-y-4 shrink-0">
@@ -165,36 +211,18 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
 
               return (
                 <div key={category.id} className="space-y-1.5">
-                  <button
-                    type="button"
+                  <SidebarItem
+                    name={category.label}
+                    icon={Icon}
+                    isActive={isActive}
                     onClick={() => {
                       setActiveCategoryId(category.id);
                       if (category.tabs.length > 0) {
                         setActiveTabId(category.tabs[0].id);
                       }
+                      onNavClick?.();
                     }}
-                    className={cn(
-                      'group relative flex w-full items-center gap-3 rounded-[18px] p-2 transition-all duration-300',
-                      isActive
-                        ? 'bg-primary/5 text-primary shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] border border-primary/20'
-                        : 'text-muted-foreground hover:bg-muted/30 hover:text-foreground border border-transparent',
-                    )}
-                  >
-                    <div
-                      className={cn(
-                        'flex h-8 w-8 items-center justify-center rounded-xl transition-all duration-300',
-                        isActive
-                          ? 'bg-primary/20 text-primary shadow-sm'
-                          : 'bg-muted/40 text-muted-foreground/60 group-hover:bg-muted/60 group-hover:text-foreground',
-                      )}
-                    >
-                      <Icon className="h-4 w-4" />
-                    </div>
-                    <span className="text-xs font-bold truncate">{category.label}</span>
-                    {isActive && (
-                      <div className="ml-auto h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary))]" />
-                    )}
-                  </button>
+                  />
 
                   <AnimatePresence>
                     {isActive && category.tabs.length > 0 && (
@@ -211,27 +239,17 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
                             const TabIcon = tab.icon;
 
                             return (
-                              <button
-                                type="button"
+                              <SidebarItem
                                 key={tab.id}
-                                onClick={() => setActiveTabId(tab.id as ConfigFeatureId)}
-                                className={cn(
-                                  'flex items-center gap-2.5 px-3 py-2 rounded-xl text-[11.5px] font-semibold transition-all duration-200',
-                                  isTabActive
-                                    ? 'bg-primary/20 text-primary'
-                                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/40',
-                                )}
-                              >
-                                <TabIcon
-                                  className={cn(
-                                    'h-3.5 w-3.5',
-                                    isTabActive ? 'text-primary' : 'text-muted-foreground/50',
-                                  )}
-                                />
-                                <span className={cn('truncate', isTabActive ? 'font-bold' : '')}>
-                                  {tab.label}
-                                </span>
-                              </button>
+                                name={tab.label}
+                                icon={TabIcon}
+                                isActive={isTabActive}
+                                onClick={() => {
+                                  setActiveTabId(tab.id as ConfigFeatureId);
+                                  onNavClick?.();
+                                }}
+                                className="scale-[0.98] origin-left"
+                              />
                             );
                           })}
                         </div>

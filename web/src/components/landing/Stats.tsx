@@ -62,12 +62,13 @@ const testimonials = [
 
 export function Stats() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const isInView = useInView(containerRef, { once: true, margin: '-100px' });
-
+  const inView = useInView(containerRef, { once: true, margin: '-100px' });
+  const [mounted, setMounted] = useState(false);
   const [stats, setStats] = useState<BotStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setMounted(true);
     const fetchStats = async () => {
       try {
         const res = await fetch('/api/stats');
@@ -82,6 +83,8 @@ export function Stats() {
     };
     fetchStats();
   }, []);
+
+  const isInView = mounted ? inView : false;
 
   const s = stats ?? {
     servers: 0,
@@ -116,7 +119,7 @@ export function Stats() {
 
   return (
     <section
-      className="py-32 px-4 sm:px-6 lg:px-8 bg-background relative overflow-hidden border-t border-border/30"
+      className="py-32 px-4 sm:px-6 lg:px-8 bg-background relative overflow-hidden"
       ref={containerRef}
     >
       <div className="max-w-6xl mx-auto relative z-10">

@@ -2,7 +2,7 @@
 
 import { motion, useInView, useReducedMotion } from 'framer-motion';
 import type { MouseEvent } from 'react';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DailyActivityPoint } from './bento-data';
 import { generateChartHeights } from './bento-data';
 
@@ -21,29 +21,27 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
   const isInView = useInView(ref, { once: true });
   const shouldReduceMotion = useReducedMotion() ?? false;
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [mounted, setMounted] = useState(false);
+  // Using a truly static initial state to avoid any SSR calculation mismatch
+  const [heights, setHeights] = useState([30, 30, 30, 30, 30, 30, 30]);
 
-  const fallbackHeights = useMemo(() => generateChartHeights(), []);
+  useEffect(() => {
+    setMounted(true);
+    if (dailyActivity && dailyActivity.length > 0) {
+      const values = dailyActivity.map((d) => d.messages);
+      const max = Math.max(...values, 1);
+      const min = Math.min(...values);
+      const range = max - min || 1;
+      const normalized = values.map((v) => 30 + ((v - min) / range) * 65);
+      setHeights(normalized.length === 1 ? [normalized[0], normalized[0]] : normalized);
+    } else {
+      setHeights(generateChartHeights());
+    }
+  }, [dailyActivity]);
 
   const hasRealData = dailyActivity && dailyActivity.length > 0;
 
-  // Convert real data or fallback to normalized heights (30-95 range)
-  // Pad single data points to 7 so the chart always renders a full line
-  const heights = useMemo(() => {
-    if (!hasRealData) return fallbackHeights;
-
-    const values = dailyActivity.map((d) => d.messages);
-    const max = Math.max(...values, 1);
-    const min = Math.min(...values);
-    const range = max - min || 1;
-    const normalized = values.map((v) => 30 + ((v - min) / range) * 65);
-
-    // If fewer than 2 points, pad to 2 with the same height so the line is visible (not 7, we only need 2)
-    if (normalized.length === 1) {
-      return [normalized[0], normalized[0]];
-    }
-    return normalized;
-  }, [dailyActivity, hasRealData, fallbackHeights]);
-
+  // memoize geometry based on current heights (starts as flat line)
   const points = useMemo(() => {
     const width = 220;
     const height = 140;
@@ -60,9 +58,7 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
     return points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
   }, [points]);
 
-  const areaPath = useMemo(() => {
-    return `${linePath} L220,140 L0,140 Z`;
-  }, [linePath]);
+  const areaPath = useMemo(() => `${linePath} L220,140 L0,140 Z`, [linePath]);
 
   // Day labels from real data
   const dayLabels = useMemo(() => {
@@ -76,7 +72,6 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
   // Tooltip content for hovered point
   const tooltipData = useMemo(() => {
     if (hoveredIndex === null) return null;
-    // Clamp hoveredIndex to valid range
     const maxIndex = hasRealData && dailyActivity ? dailyActivity.length - 1 : points.length - 1;
     const clampedIndex = Math.min(hoveredIndex, maxIndex);
     const point = points[clampedIndex];
@@ -96,33 +91,25 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
     return null;
   }, [hoveredIndex, points, dailyActivity, hasRealData]);
 
-  const handleMouseMove = useCallback(
-    (e: MouseEvent<SVGSVGElement>) => {
-      if (!hasRealData) return;
-      const svg = e.currentTarget;
-      const rect = svg.getBoundingClientRect();
-      const mouseX = ((e.clientX - rect.left) / rect.width) * 220;
-
-      // Find closest point
-      let closestIdx = 0;
-      let closestDist = Infinity;
-      for (let i = 0; i < points.length; i++) {
-        const dist = Math.abs(points[i].x - mouseX);
-        if (dist < closestDist) {
-          closestDist = dist;
-          closestIdx = i;
-        }
+  const handleMouseMove = useCallback((e: MouseEvent<SVGSVGElement>) => {
+    if (!hasRealData) return;
+    const svg = e.currentTarget;
+    const rect = svg.getBoundingClientRect();
+    const mouseX = ((e.clientX - rect.left) / rect.width) * 220;
+    let closestIdx = 0;
+    let closestDist = Infinity;
+    for (let i = 0; i < points.length; i++) {
+      const dist = Math.abs(points[i].x - mouseX);
+      if (dist < closestDist) {
+        closestDist = dist;
+        closestIdx = i;
       }
-      setHoveredIndex(closestIdx);
-    },
-    [hasRealData, points],
-  );
+    }
+    setHoveredIndex(closestIdx);
+  }, [hasRealData, points]);
 
-  const handleMouseLeave = useCallback(() => {
-    setHoveredIndex(null);
-  }, []);
+  const handleMouseLeave = useCallback(() => setHoveredIndex(null), []);
 
-  /** Calculate tooltip translateX based on position to avoid edge clipping */
   const getTooltipTranslateX = (x: number): string => {
     if (x > 160) return '-100%';
     if (x < 60) return '0%';
@@ -164,7 +151,7 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
             d={areaPath}
             fill="url(#bento-area-fill)"
             initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0 }}
-            animate={isInView ? { opacity: 1 } : {}}
+            animate={isInView && mounted ? { opacity: 1 } : {}}
             transition={{ duration: 1, delay: 0.3 }}
           />
           <motion.path
@@ -174,11 +161,10 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
             strokeWidth="1.5"
             strokeLinecap="round"
             initial={shouldReduceMotion ? {} : { pathLength: 0 }}
-            animate={isInView ? { pathLength: 1 } : {}}
+            animate={isInView && mounted ? { pathLength: 1 } : {}}
             transition={{ duration: 1, ease: 'easeOut' }}
           />
-          {/* Default end dot (hidden when hovering) */}
-          {isInView && hoveredIndex === null && (
+          {isInView && mounted && hoveredIndex === null && (
             <circle
               cx={points[points.length - 1]?.x ?? 220}
               cy={points[points.length - 1]?.y ?? 10}
@@ -186,47 +172,17 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
               fill="hsl(var(--primary))"
             />
           )}
-          {/* Hover indicator line + dot */}
           {hoveredIndex !== null && points[hoveredIndex] && (
             <>
-              <line
-                x1={points[hoveredIndex].x}
-                y1={0}
-                x2={points[hoveredIndex].x}
-                y2={140}
-                stroke="hsl(var(--primary))"
-                strokeOpacity="0.2"
-                strokeWidth="1"
-                strokeDasharray="2 2"
-              />
-              <circle
-                cx={points[hoveredIndex].x}
-                cy={points[hoveredIndex].y}
-                r="4"
-                fill="hsl(var(--primary))"
-                stroke="hsl(var(--card))"
-                strokeWidth="2"
-              />
+              <line x1={points[hoveredIndex].x} y1={0} x2={points[hoveredIndex].x} y2={140} stroke="hsl(var(--primary))" strokeOpacity="0.2" strokeWidth="1" strokeDasharray="2 2" />
+              <circle cx={points[hoveredIndex].x} cy={points[hoveredIndex].y} r="4" fill="hsl(var(--primary))" stroke="hsl(var(--card))" strokeWidth="2" />
             </>
           )}
-          {/* Invisible hit areas for each data point */}
-          {hasRealData &&
-            points.map((p, i) => (
-              // biome-ignore lint/a11y/noStaticElementInteractions: SVG hit zone
-              <rect
-                key={`hit-${p.x}-${p.y}`}
-                x={p.x - 220 / points.length / 2}
-                y={0}
-                width={220 / points.length}
-                height={140}
-                fill="transparent"
-                onMouseEnter={() => setHoveredIndex(i)}
-                style={{ cursor: 'pointer' }}
-              />
-            ))}
+          {hasRealData && points.map((p, i) => (
+            <rect key={`hit-${p.x}-${p.y}`} x={p.x - 220 / points.length / 2} y={0} width={220 / points.length} height={140} fill="transparent" onMouseEnter={() => setHoveredIndex(i)} style={{ cursor: 'pointer' }} />
+          ))}
         </svg>
 
-        {/* Tooltip */}
         {tooltipData && (
           <div
             className="absolute pointer-events-none z-10 rounded-lg border border-border bg-card px-2.5 py-1.5 shadow-lg text-[10px]"
@@ -238,24 +194,16 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
           >
             <div className="font-medium text-foreground mb-0.5">{tooltipData.label}</div>
             <div className="flex flex-col gap-0.5">
-              <span className="text-muted-foreground">
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary mr-1 align-middle" />
-                {tooltipData.messages.toLocaleString()} messages
-              </span>
-              <span className="text-muted-foreground">
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-secondary mr-1 align-middle" />
-                {tooltipData.aiRequests.toLocaleString()} AI
-              </span>
+              <span className="text-muted-foreground"><span className="inline-block w-1.5 h-1.5 rounded-full bg-primary mr-1 align-middle" />{tooltipData.messages.toLocaleString()} messages</span>
+              <span className="text-muted-foreground"><span className="inline-block w-1.5 h-1.5 rounded-full bg-secondary mr-1 align-middle" />{tooltipData.aiRequests.toLocaleString()} AI</span>
             </div>
           </div>
         )}
       </div>
 
-      {/* Day labels when real data is available */}
-      {dayLabels && (
-        <div className="flex justify-between text-[9px] text-muted-foreground mb-2 px-0.5">
+      {dayLabels && mounted && (
+        <div className="flex justify-between text-[9px] text-muted-foreground mb-2 px-0.5" suppressHydrationWarning>
           {dayLabels.map((label, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: day labels can repeat
             <span key={`day-${label}-${i}`}>{label}</span>
           ))}
         </div>
@@ -265,15 +213,12 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
         <span className="flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-primary" />
           Messages
-          {hasRealData &&
-            ` (${dailyActivity.reduce((sum, d) => sum + d.messages, 0).toLocaleString()})`}
+          {hasRealData && ` (${dailyActivity.reduce((sum, d) => sum + d.messages, 0).toLocaleString()})`}
         </span>
-        {/* Legend shows "AI Responses" for mock preview consistency; only messages data is rendered in the chart */}
         <span className="flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-secondary" />
           AI Responses
-          {hasRealData &&
-            ` (${dailyActivity.reduce((sum, d) => sum + d.aiRequests, 0).toLocaleString()})`}
+          {hasRealData && ` (${dailyActivity.reduce((sum, d) => sum + d.aiRequests, 0).toLocaleString()})`}
         </span>
       </div>
     </div>

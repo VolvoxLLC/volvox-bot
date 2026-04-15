@@ -48,7 +48,7 @@ export function CommunityToolsCategory() {
       {/* Community Tools Layout */}
       {activeTabId === 'community-tools' && (
         <div className="space-y-6">
-          <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-4">
+          <div className="p-4 sm:p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-4">
             <div className="mb-4 space-y-1">
               <h3 className="text-sm font-semibold tracking-wide text-foreground/90">
                 Standard Commands
@@ -119,7 +119,7 @@ export function CommunityToolsCategory() {
       {/* Bot Presence Layout */}
       {activeTabId === 'bot-status' && (
         <div className="space-y-6">
-          <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl">
+          <div className="p-4 sm:p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl">
             <div className="mb-4 space-y-1">
               <h3 className="text-sm font-semibold tracking-wide text-foreground/90">Appearance</h3>
               <p className="text-[11px] text-muted-foreground/60 uppercase tracking-wider">
@@ -156,7 +156,7 @@ export function CommunityToolsCategory() {
             </div>
           </div>
 
-          <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-6">
+          <div className="p-4 sm:p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-6">
             <div className="mb-4 space-y-1">
               <h3 className="text-sm font-semibold tracking-wide text-foreground/90">
                 Status Rotation

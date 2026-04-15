@@ -185,11 +185,18 @@ function ComparisonRow({
 }
 
 export function ComparisonTable() {
-  const shouldReduceMotion = useReducedMotion() ?? false;
+  const [mounted, setMounted] = useState(false);
+  const reducedMotion = useReducedMotion();
   const [localDate] = useState(() => new Date().toLocaleDateString());
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const shouldReduceMotion = mounted ? (reducedMotion ?? false) : false;
+
   return (
-    <section className="relative bg-background px-4 py-32 sm:px-6 lg:px-8 border-t border-border/30">
+    <section className="relative bg-background px-4 py-32 sm:px-6 lg:px-8">
       <div className="relative z-10 mx-auto max-w-4xl">
         <div className="mb-20 flex flex-col items-center text-center">
           <motion.div

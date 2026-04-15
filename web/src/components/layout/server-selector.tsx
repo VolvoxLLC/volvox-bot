@@ -22,6 +22,7 @@ import { useGuildDirectory } from './guild-directory-context';
 
 interface ServerSelectorProps {
   className?: string;
+  onSelect?: () => void;
 }
 
 function formatServerCount(count: number, label: string): string {
@@ -48,7 +49,7 @@ function GuildRow({ guild }: { guild: MutualGuild }) {
   );
 }
 
-export function ServerSelector({ className }: ServerSelectorProps) {
+export function ServerSelector({ className, onSelect }: ServerSelectorProps) {
   const [selectedGuild, setSelectedGuild] = useState<MutualGuild | null>(null);
   const { error, guilds, loading, refreshGuilds } = useGuildDirectory();
 
@@ -228,8 +229,12 @@ export function ServerSelector({ className }: ServerSelectorProps) {
                   <DropdownMenuItem
                     key={guild.id}
                     onClick={() => {
-                      if (selectedGuild?.id === guild.id) return;
+                      if (selectedGuild?.id === guild.id) {
+                        onSelect?.();
+                        return;
+                      }
                       selectGuild(guild);
+                      onSelect?.();
                     }}
                     className={cn(
                       'rounded-[20px] transition-all active:scale-[0.98]',
@@ -266,6 +271,7 @@ export function ServerSelector({ className }: ServerSelectorProps) {
                       >
                         <Link
                           href={`/community/${guild.id}`}
+                          onClick={onSelect}
                           className="flex items-center gap-3 w-full"
                         >
                           <GuildRow guild={guild} />

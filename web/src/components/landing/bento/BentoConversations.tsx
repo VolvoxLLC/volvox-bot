@@ -1,14 +1,20 @@
 'use client';
 
 import { motion, useInView, useReducedMotion } from 'framer-motion';
-import { useMemo, useRef } from 'react';
-import { CONVERSATION_POOL, shuffleAndPick, TIMESTAMP_POOL } from './bento-data';
+import { useEffect, useRef, useState } from 'react';
+import { CONVERSATION_POOL, shuffleAndPick, TIMESTAMP_POOL, type ConversationItem } from './bento-data';
 
 const avatarColorMap = {
   purple: 'bg-secondary/30 text-secondary',
   green: 'bg-primary/30 text-primary',
   orange: 'bg-accent/30 text-accent',
 } as const;
+
+interface BentoConversationItem extends ConversationItem {
+  messages: number;
+  tokens: string;
+  timestamp: string;
+}
 
 /**
  * Conversations list cell for the bento grid.
@@ -18,16 +24,17 @@ export function BentoConversations() {
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, { once: true });
   const shouldReduceMotion = useReducedMotion() ?? false;
+  const [items, setItems] = useState<BentoConversationItem[]>([]);
 
-  const items = useMemo(() => {
+  useEffect(() => {
     const picked = shuffleAndPick(CONVERSATION_POOL, 3);
     const timestamps = shuffleAndPick(TIMESTAMP_POOL, 3);
-    return picked.map((item, i) => ({
+    setItems(picked.map((item, i) => ({
       ...item,
       messages: Math.floor(4 + Math.random() * 14),
       tokens: `${(0.8 + Math.random() * 4).toFixed(1)}k`,
       timestamp: timestamps[i],
-    }));
+    })));
   }, []);
 
   return (
@@ -36,10 +43,10 @@ export function BentoConversations() {
       className="rounded-2xl border border-border bg-card p-4 transition-transform duration-200 hover:-translate-y-0.5 h-full"
     >
       <div className="text-sm font-semibold text-foreground mb-3">Conversations</div>
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3" suppressHydrationWarning>
         {items.map((item, i) => (
           <motion.div
-            key={item.question}
+            key={`${item.question}-${item.timestamp}`}
             className="flex items-center gap-2.5"
             initial={shouldReduceMotion ? {} : { opacity: 0, y: 8 }}
             animate={isInView ? { opacity: 1, y: 0 } : {}}

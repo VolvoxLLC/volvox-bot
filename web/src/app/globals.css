@@ -6,6 +6,7 @@
 /* Manrope for body, JetBrains Mono for display/code (loaded in layout.tsx) */
 @theme {
   --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-mono: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 
   /* Existing shadcn colors */
   --color-border: hsl(var(--border));
@@ -118,30 +119,40 @@
 
   .dark {
     /* Muted Dark Mode — Warm, Olive/Sage tinted off-blacks */
-    --background: 80 8% 6%;         /* #0F100E */
-    --foreground: 80 10% 85%;       /* #D9DCD6 */
-    --card: 80 8% 9%;               /* #161715 */
-    --card-foreground: 80 10% 85%;  
-    --popover: 80 8% 10%;           /* #181A16 */
+    --background: 80 8% 6%;
+    /* #0F100E */
+    --foreground: 80 10% 85%;
+    /* #D9DCD6 */
+    --card: 80 8% 9%;
+    /* #161715 */
+    --card-foreground: 80 10% 85%;
+    --popover: 80 8% 10%;
+    /* #181A16 */
     --popover-foreground: 80 10% 85%;
-    
+
     /* Core brand - soft sage green */
-    --primary: 90 20% 65%;          /* #9BB28A muted olive/sage */
+    --primary: 90 20% 65%;
+    /* #9BB28A muted olive/sage */
     --primary-foreground: 90 30% 10%;
-    
-    --secondary: 85 8% 13%;         /* #1F211C */
+
+    --secondary: 85 8% 13%;
+    /* #1F211C */
     --secondary-foreground: 85 15% 75%;
-    
-    --muted: 80 8% 12%;             /* #1C1E1A */
-    --muted-foreground: 80 5% 55%;  /* #888C85 */
-    
-    --accent: 85 8% 15%;            /* #242621 */
+
+    --muted: 80 8% 12%;
+    /* #1C1E1A */
+    --muted-foreground: 80 5% 55%;
+    /* #888C85 */
+
+    --accent: 85 8% 15%;
+    /* #242621 */
     --accent-foreground: 85 10% 90%;
-    
+
     --destructive: 0 60% 55%;
     --destructive-foreground: 0 0% 100%;
-    
-    --border: 80 8% 16%;            /* #262923 */
+
+    --border: 80 8% 16%;
+    /* #262923 */
     --input: 80 8% 14%;
     --ring: 80 8% 25%;
 
@@ -194,9 +205,12 @@
 }
 
 @keyframes metallic-shift {
-  0%, 100% {
+
+  0%,
+  100% {
     background-position: 0% 50%;
   }
+
   50% {
     background-position: 100% 50%;
   }
@@ -231,7 +245,10 @@
 /* ─── Bento Grid Utilities ────────────────────────────────────────────────── */
 
 /* Replacing old glowing cards with clean Bento UI */
-.glow-card, .kpi-card, .feature-card, .settings-card {
+.glow-card,
+.kpi-card,
+.feature-card,
+.settings-card {
   position: relative;
   overflow: hidden;
   border: 1px solid hsl(var(--border) / 0.5);
@@ -240,13 +257,17 @@
   border-radius: var(--radius-lg);
 }
 
-.glow-card:hover, .kpi-card:hover, .settings-card:hover {
+.glow-card:hover,
+.kpi-card:hover,
+.settings-card:hover {
   border-color: hsl(var(--primary) / 0.2);
   transform: translateY(-1px);
   box-shadow: 0 4px 20px -8px rgba(0, 0, 0, 0.1);
 }
 
-.dark .glow-card:hover, .dark .kpi-card:hover, .dark .settings-card:hover {
+.dark .glow-card:hover,
+.dark .kpi-card:hover,
+.dark .settings-card:hover {
   border-color: hsl(var(--primary) / 0.15);
   box-shadow: 0 4px 24px -8px rgba(0, 0, 0, 0.5);
 }
@@ -259,14 +280,16 @@
 
 /* ─── Clean Glass / Surfaces ──────────────────────────────────────────────── */
 
-.glass-morphism-premium, .dashboard-chip {
+.glass-morphism-premium,
+.dashboard-chip {
   background: hsl(var(--card) / 0.85);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid hsl(var(--border) / 0.4);
 }
 
-.dark .glass-morphism-premium, .dark .dashboard-chip {
+.dark .glass-morphism-premium,
+.dark .dashboard-chip {
   background: hsl(var(--card) / 0.6);
   border: 1px solid hsl(var(--border) / 0.5);
   box-shadow: inset 0 1px 0 hsl(var(--foreground) / 0.02);
@@ -295,6 +318,7 @@
     opacity: 0;
     transform: translateY(4px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -306,6 +330,7 @@
 .neon-pulse {
   position: relative;
 }
+
 .neon-pulse::before {
   content: '';
   position: absolute;
@@ -318,8 +343,15 @@
 }
 
 @keyframes pulse-border {
-  0%, 100% { opacity: 0; }
-  50% { opacity: 1; }
+
+  0%,
+  100% {
+    opacity: 0;
+  }
+
+  50% {
+    opacity: 1;
+  }
 }
 
 .status-dot-live {
@@ -341,8 +373,15 @@
 }
 
 @keyframes pulse-ring {
-  0% { transform: scale(1); opacity: 1; }
-  100% { transform: scale(2); opacity: 0; }
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
 }
 
 /* ─── Floating Nav ────────────────────────────────────────────────────────── */
@@ -369,26 +408,52 @@
 
 /* ─── Typography & Utilities ──────────────────────────────────────────────── */
 
-.text-gradient-primary, .text-gradient-vibrant {
+.text-gradient-primary,
+.text-gradient-vibrant {
   background: linear-gradient(135deg, hsl(var(--foreground)), hsl(var(--muted-foreground)));
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
-.stagger-fade-in > * {
+.stagger-fade-in>* {
   animation: stagger-item 400ms ease-out both;
 }
-.stagger-fade-in > *:nth-child(1) { animation-delay: 0ms; }
-.stagger-fade-in > *:nth-child(2) { animation-delay: 60ms; }
-.stagger-fade-in > *:nth-child(3) { animation-delay: 120ms; }
-.stagger-fade-in > *:nth-child(4) { animation-delay: 180ms; }
-.stagger-fade-in > *:nth-child(5) { animation-delay: 240ms; }
-.stagger-fade-in > *:nth-child(6) { animation-delay: 300ms; }
+
+.stagger-fade-in>*:nth-child(1) {
+  animation-delay: 0ms;
+}
+
+.stagger-fade-in>*:nth-child(2) {
+  animation-delay: 60ms;
+}
+
+.stagger-fade-in>*:nth-child(3) {
+  animation-delay: 120ms;
+}
+
+.stagger-fade-in>*:nth-child(4) {
+  animation-delay: 180ms;
+}
+
+.stagger-fade-in>*:nth-child(5) {
+  animation-delay: 240ms;
+}
+
+.stagger-fade-in>*:nth-child(6) {
+  animation-delay: 300ms;
+}
 
 @keyframes stagger-item {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Terminal cursor blink animation */
@@ -425,6 +490,7 @@
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
+
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
@@ -432,21 +498,29 @@
 /* ─── Reduced motion ──────────────────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
+
   .text-aurora,
   .neon-pulse::before,
   .status-dot-live::after,
   .terminal-cursor,
   .dashboard-fade-in,
-  .stagger-fade-in > * {
+  .stagger-fade-in>* {
     animation: none !important;
     opacity: 1;
     transform: none;
   }
-  
-  .glow-card, .kpi-card, .settings-card, .feature-card {
+
+  .glow-card,
+  .kpi-card,
+  .settings-card,
+  .feature-card {
     transition: none !important;
   }
-  .glow-card:hover, .kpi-card:hover, .settings-card:hover, .feature-card:hover {
+
+  .glow-card:hover,
+  .kpi-card:hover,
+  .settings-card:hover,
+  .feature-card:hover {
     transform: none !important;
   }
 }
