@@ -186,7 +186,6 @@ export function Pricing() {
             initial={{ opacity: 0, scale: 0.9 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
-           
             className="flex items-center justify-center gap-3 mb-6 opacity-80"
           >
             <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-foreground/40">
