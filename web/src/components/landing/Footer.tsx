@@ -72,6 +72,34 @@ export function Footer() {
     () => {
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
+      const tl = gsap.timeline({
+        scrollTrigger: {
+          trigger: '.cta-module',
+          start: 'top 80%',
+          toggleActions: 'play none none none',
+        },
+      });
+
+      tl.fromTo(
+        '.cta-label',
+        { opacity: 0, y: 10 },
+        { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' },
+      );
+
+      tl.fromTo(
+        '.cta-module > div:first-child',
+        { opacity: 0, scale: 0.98, y: 20 },
+        { opacity: 1, scale: 1, y: 0, duration: 0.8, ease: 'expo.out' },
+        '-=0.4',
+      );
+
+      tl.fromTo(
+        '.cta-buttons',
+        { opacity: 0, y: 10 },
+        { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' },
+        '-=0.4',
+      );
+
       gsap.fromTo(
         contentRef.current,
         { opacity: 0, y: 50 },
@@ -121,62 +149,75 @@ export function Footer() {
 
       <div ref={contentRef} className="relative z-10 max-w-6xl mx-auto px-6 opacity-0">
         {/* ─── CTA MODULE ─── */}
-        <div className="mb-32">
-          <div className="bg-card border border-border/80 relative overflow-hidden rounded-[2.5rem] p-10 md:p-20 shadow-sm flex flex-col items-center text-center">
-            {/* Tactical Badge */}
-            <div className="flex items-center gap-4 mb-8">
-              <span
-                className="text-[10px] font-mono font-bold uppercase tracking-[0.3em] text-foreground/40"
-                suppressHydrationWarning
-              >
-                [SYSTEM_READY]
-              </span>
-            </div>
+        <div className="cta-module mb-32 relative">
+          {/* Prismatic Background for CTA */}
+          <div className="absolute inset-0 -z-10 overflow-hidden rounded-[2rem]">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[300px] -rotate-12 bg-gradient-to-r from-primary/15 via-secondary/10 to-transparent blur-[100px] opacity-50 dark:opacity-40 pointer-events-none" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_40%,hsl(var(--background))_100%)] pointer-events-none" />
+          </div>
 
-            <h2 className="text-4xl md:text-6xl font-black tracking-tight text-foreground mb-6 leading-tight">
-              Your community, <br />
-              <span className="text-foreground/40">re-engineered.</span>
-            </h2>
-
-            <p className="text-base text-foreground/50 max-w-xl font-medium leading-relaxed mb-12">
-              Deploy the absolute synthesis of AI intelligence and community governance. Experience
-              the next generation of Discord management.
-            </p>
-
-            {/* Action Node */}
-            <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
-              {botInviteUrl ? (
-                <Link
-                  href={botInviteUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group relative px-8 py-4 w-full sm:w-auto rounded-xl bg-foreground text-background font-bold tracking-wide text-sm flex items-center justify-center gap-3 transition-transform hover:scale-[1.02] active:scale-95 shadow-sm"
+          {/* Glassmorphic Card */}
+          <div className="relative group p-[1px] rounded-[1.5rem] overflow-hidden bg-border/20 hover:bg-border/40 transition-colors duration-500">
+            <div className="relative bg-card/60 backdrop-blur-xl rounded-[calc(1.5rem-1px)] p-8 md:p-12">
+              {/* Top Label */}
+              <div className="cta-label flex items-center justify-center gap-4 mb-8 opacity-50">
+                <div className="h-[1px] w-6 bg-foreground" />
+                <span
+                  className="text-[10px] font-bold uppercase tracking-[0.3em] text-foreground font-mono"
+                  suppressHydrationWarning
                 >
-                  <Zap className="w-4 h-4 fill-current opacity-80" />
-                  <span>Initialize Bot</span>
-                  <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1 opacity-70" />
+                  System Ready v4.1
+                </span>
+                <div className="h-[1px] w-6 bg-foreground" />
+              </div>
+
+              {/* Heading */}
+              <div className="text-center mb-8">
+                <h2 className="text-4xl md:text-5xl font-black tracking-tight text-foreground mb-3 leading-tight">
+                  Your community, <span className="text-foreground/25">re-engineered.</span>
+                </h2>
+                <p className="text-sm text-foreground/40 max-w-md mx-auto font-medium leading-relaxed">
+                  Deploy the absolute synthesis of AI intelligence and community governance.
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="cta-buttons flex flex-col sm:flex-row items-center justify-center gap-3">
+                {botInviteUrl ? (
+                  <Link
+                    href={botInviteUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group relative flex items-center gap-2.5 px-6 py-3 rounded-xl bg-foreground text-background font-bold tracking-wide text-xs overflow-hidden transition-all hover:scale-[1.02] active:scale-95"
+                  >
+                    <Zap className="w-3.5 h-3.5 fill-current opacity-80" />
+                    <span>Initialize Bot</span>
+                    <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1 opacity-70" />
+                  </Link>
+                ) : (
+                  <div className="px-6 py-3 rounded-xl bg-muted border border-border text-foreground/40 font-mono text-[11px] tracking-widest uppercase">
+                    [Locked]
+                  </div>
+                )}
+
+                <Link
+                  href="/login"
+                  className="cta-dashboard flex items-center gap-2.5 px-6 py-3 rounded-xl border border-border/50 bg-background/40 text-foreground font-bold tracking-wide text-xs transition-all hover:bg-background/80 hover:border-border"
+                >
+                  <Terminal className="w-3.5 h-3.5 opacity-60" />
+                  <span>Dashboard</span>
                 </Link>
-              ) : (
-                <div className="px-8 py-4 rounded-xl bg-muted border border-border text-foreground/40 font-mono text-[11px] tracking-widest uppercase inline-block">
-                  [OVERSIGHT_LOCKED]
-                </div>
-              )}
+              </div>
 
-              <Link
-                href="/login"
-                className="px-8 py-4 w-full sm:w-auto rounded-xl border border-border/60 bg-background text-foreground font-bold tracking-wide text-sm flex items-center justify-center gap-3 transition-colors hover:bg-muted"
-              >
-                <Terminal className="w-4 h-4 opacity-70" />
-                <span>Dashboard</span>
-              </Link>
-            </div>
-
-            {/* Tactical ID */}
-            <div
-              className="absolute bottom-6 right-8 text-[9px] font-mono text-foreground/20 tracking-[0.2em] hidden md:block"
-              suppressHydrationWarning
-            >
-              BUILD_REF: VOLVOX_2.4.0_STABLE
+              {/* Decorative Element */}
+              <div className="cta-decor absolute bottom-4 right-4 md:bottom-6 md:right-6 opacity-20 group-hover:opacity-40 transition-opacity">
+                <span
+                  className="text-[9px] font-mono text-foreground tracking-[0.15em]"
+                  suppressHydrationWarning
+                >
+                  VOLVOX_2.4.0
+                </span>
+              </div>
             </div>
           </div>
         </div>

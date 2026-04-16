@@ -486,7 +486,7 @@ export function PerformanceDashboard() {
               Command & API response times (500ms buckets)
             </p>
           </div>
-          <div className="h-[250px] w-full">
+          <div className="latency-distribution-chart h-[250px] w-full">
             {rtHistogram.length === 0 ? (
               <div className="flex h-full items-center justify-center text-xs text-muted-foreground/40 italic">
                 No samples yet...
