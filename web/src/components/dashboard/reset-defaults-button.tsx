@@ -12,7 +12,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { cn } from '@/lib/utils';
 
 interface DiscardChangesButtonProps {
   /** Called when the user confirms the reset. */
@@ -49,15 +48,15 @@ export function DiscardChangesButton({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <button
+        <Button
           type="button"
           disabled={disabled}
           className="flex h-8 items-center gap-1.5 rounded-xl border border-white/10 bg-background/40 px-3 text-[10px] font-black uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.06] hover:text-foreground active:scale-95 backdrop-blur-xl disabled:opacity-50 whitespace-nowrap"
         >
-          <Undo2 className="h-3 w-3 opacity-60" />
+          <Undo2 aria-hidden="true" className="h-3 w-3 opacity-60" />
           <span className="hidden sm:inline">Discard Changes</span>
           <span className="sm:hidden">Discard</span>
-        </button>
+        </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
