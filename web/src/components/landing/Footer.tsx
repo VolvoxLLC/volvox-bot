@@ -72,7 +72,7 @@ export function Footer() {
     () => {
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         gsap.set('.cta-label', { opacity: 1 });
-        gsap.set('.cta-module > div:first-child', { opacity: 1, scale: 1 });
+        gsap.set('.cta-card', { opacity: 1, scale: 1 });
         gsap.set('.cta-buttons', { opacity: 1 });
         if (contentRef.current) {
           gsap.set(contentRef.current, { opacity: 1, y: 0 });
@@ -95,7 +95,7 @@ export function Footer() {
       );
 
       tl.fromTo(
-        '.cta-module > div:first-child',
+        '.cta-card',
         { opacity: 0, scale: 0.98, y: 20 },
         { opacity: 1, scale: 1, y: 0, duration: 0.8, ease: 'expo.out' },
         '-=0.4',
@@ -165,10 +165,10 @@ export function Footer() {
           </div>
 
           {/* Glassmorphic Card */}
-          <div className="relative group p-[1px] rounded-[1.5rem] overflow-hidden bg-border/20 hover:bg-border/40 transition-colors duration-500">
+          <div className="cta-card relative group p-[1px] rounded-[1.5rem] overflow-hidden bg-border/20 hover:bg-border/40 transition-colors duration-500">
             <div className="relative bg-card/60 backdrop-blur-xl rounded-[calc(1.5rem-1px)] p-8 md:p-12">
               {/* Top Label */}
-              <div className="cta-label flex items-center justify-center gap-4 mb-8 opacity-50">
+              <div className="cta-label flex items-center justify-center gap-4 mb-8">
                 <div className="h-[1px] w-6 bg-foreground" />
                 <span
                   className="text-[10px] font-bold uppercase tracking-[0.3em] text-foreground font-mono"
