@@ -106,7 +106,8 @@ export function Stats() {
   useGSAP(
     () => {
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        gsap.set('.stats-label', { opacity: 1 });
+        gsap.set('.stats-label-primary', { opacity: 0.5 });
+        gsap.set('.stats-label-secondary', { opacity: 0.3 });
         gsap.set('.stats-title', { opacity: 1 });
         gsap.set('.stat-card', { opacity: 1 });
         gsap.set('.testimonial-item', { opacity: 1 });
@@ -122,9 +123,16 @@ export function Stats() {
       });
 
       tl.fromTo(
-        '.stats-label',
+        '.stats-label-primary',
         { opacity: 0, y: 10 },
-        { opacity: 1, y: 0, duration: 0.8, ease: 'power2.out' },
+        { opacity: 0.5, y: 0, duration: 0.8, ease: 'power2.out' },
+      );
+
+      tl.fromTo(
+        '.stats-label-secondary',
+        { opacity: 0, y: 10 },
+        { opacity: 0.3, y: 0, duration: 0.8, ease: 'power2.out' },
+        '-=0.6',
       );
 
       tl.fromTo(
@@ -192,7 +200,7 @@ export function Stats() {
 
       <div className="max-w-6xl mx-auto relative z-10" ref={containerRef}>
         {/* Top Label */}
-        <div className="stats-label flex items-center gap-4 mb-8 opacity-50 justify-center">
+        <div className="stats-label-primary flex items-center gap-4 mb-8 opacity-50 justify-center">
           <div className="h-[1px] w-4 bg-foreground" />
           <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-foreground font-mono">
             Network Status v4.1
@@ -261,7 +269,7 @@ export function Stats() {
 
           {/* Right: Testimonials - More compact & sleek */}
           <div className="w-full lg:w-[45%] flex flex-col">
-            <div className="stats-label flex items-center gap-3 mb-10 opacity-30">
+            <div className="stats-label-secondary flex items-center gap-3 mb-10 opacity-30">
               <span className="text-[9px] font-black uppercase tracking-widest text-foreground font-mono">
                 User Consensus
               </span>
