@@ -165,14 +165,6 @@ export function Pricing() {
   return (
     <section className="relative px-4 py-32 w-full min-h-screen mx-auto bg-background overflow-hidden">
       {/* Prismatic Shards Background */}
-      <div className="absolute inset-0 pointer-events-none z-0">
-        <div className="absolute top-1/4 -left-20 w-[600px] h-[300px] -rotate-12 bg-gradient-to-r from-primary/10 via-background to-transparent blur-[120px] opacity-20" />
-        <div className="absolute bottom-1/4 -right-20 w-[600px] h-[300px] rotate-12 bg-gradient-to-l from-primary/10 via-background to-transparent blur-[120px] opacity-20" />
-      </div>
-
-      <div className="absolute inset-0 z-0 pointer-events-none opacity-20 hidden md:block">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,hsl(var(--primary)/0.15)_0%,transparent_50%)]" />
-      </div>
 
       <motion.div
         initial={{ opacity: 0, y: 30 }}

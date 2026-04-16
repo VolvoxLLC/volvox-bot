@@ -39,68 +39,6 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  bot:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    init: true
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    ports:
-      - "6968:6968"
-    volumes:
-      - botdata:/app/data
-    env_file:
-      - .env
-    environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/volvoxbot
-      DATABASE_SSL: "false"
-      REDIS_URL: redis://redis:6379
-      PORT: "6968"
-      BOT_API_PORT: "6968"
-      DASHBOARD_URL: http://localhost:6969
-      DISABLE_PROMPT_CACHING: "1"
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  web:
-    build:
-      context: ./web
-      dockerfile: Dockerfile
-      args:
-        NEXT_PUBLIC_DISCORD_CLIENT_ID: ${NEXT_PUBLIC_DISCORD_CLIENT_ID}
-    restart: unless-stopped
-    init: true
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    ports:
-      - "6969:6969"
-    env_file:
-      - .env
-    environment:
-      PORT: "6969"
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/volvoxbot
-      DATABASE_SSL: "false"
-      REDIS_URL: redis://redis:6379
-      NEXTAUTH_URL: http://localhost:6969
-      BOT_API_URL: http://bot:6968
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-
 volumes:
   pgdata:
   redisdata:
-  botdata:
