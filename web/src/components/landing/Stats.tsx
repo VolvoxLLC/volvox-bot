@@ -105,6 +105,14 @@ export function Stats() {
 
   useGSAP(
     () => {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        gsap.set('.stats-label', { opacity: 1 });
+        gsap.set('.stats-title', { opacity: 1 });
+        gsap.set('.stat-card', { opacity: 1 });
+        gsap.set('.testimonial-item', { opacity: 1 });
+        return;
+      }
+
       const tl = gsap.timeline({
         scrollTrigger: {
           trigger: sectionRef.current,

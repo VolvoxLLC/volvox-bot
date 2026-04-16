@@ -210,15 +210,16 @@ function LoginForm() {
             {/* Mobile: Automatic Infinite Marquee */}
             <div className="md:hidden w-full overflow-hidden [mask-image:linear-gradient(to_right,transparent,white_15%,white_85%,transparent)]">
               {prefersReducedMotion ? (
-                <div className="flex gap-3 px-4">
+                <div className="flex gap-3 px-4 overflow-x-auto snap-x snap-mandatory scrollbar-none">
                   {features.map((f) => (
-                    <FeatureItem
-                      key={f.label}
-                      icon={f.icon}
-                      label={f.label}
-                      sub={f.sub}
-                      className="min-w-[240px]"
-                    />
+                    <div key={f.label} className="snap-start shrink-0">
+                      <FeatureItem
+                        icon={f.icon}
+                        label={f.label}
+                        sub={f.sub}
+                        className="min-w-[240px]"
+                      />
+                    </div>
                   ))}
                 </div>
               ) : (

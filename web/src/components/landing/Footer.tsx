@@ -70,7 +70,15 @@ export function Footer() {
 
   useGSAP(
     () => {
-      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        gsap.set('.cta-label', { opacity: 1 });
+        gsap.set('.cta-module > div:first-child', { opacity: 1, scale: 1 });
+        gsap.set('.cta-buttons', { opacity: 1 });
+        if (contentRef.current) {
+          gsap.set(contentRef.current, { opacity: 1, y: 0 });
+        }
+        return;
+      }
 
       const tl = gsap.timeline({
         scrollTrigger: {
