@@ -26,39 +26,45 @@ export function FloatingSaveIsland() {
   if (!showIsland) return null;
 
   return (
-    <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-in slide-in-from-bottom-8 fade-in duration-300">
+    <div className="fixed bottom-4 sm:bottom-6 left-1/2 z-50 -translate-x-1/2 animate-in slide-in-from-bottom-8 fade-in duration-300 w-[calc(100%-2rem)] sm:w-auto">
       <div
         className={cn(
-          'flex items-center gap-3 rounded-[24px] border border-white/10 bg-card/80 px-5 py-3 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.08)] backdrop-blur-3xl transition-all',
+          'flex items-center justify-between sm:justify-start gap-2 sm:gap-3 rounded-[24px] border border-white/10 bg-card/80 px-3 sm:px-5 py-2 sm:py-3 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.08)] backdrop-blur-3xl transition-all',
           hasValidationErrors && 'ring-1 ring-inset ring-destructive/40',
         )}
       >
         {/* Status indicator */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <div
             className={cn(
-              'h-2 w-2 rounded-full shadow-lg',
+              'h-2 w-2 rounded-full shadow-lg shrink-0',
               hasChanges
                 ? 'bg-yellow-500 shadow-yellow-500/40 animate-pulse'
                 : 'bg-emerald-500 shadow-emerald-500/40',
             )}
           />
-          <span className="text-[11px] font-bold text-muted-foreground/80 whitespace-nowrap">
+          <span className="text-[10px] sm:text-[11px] font-bold text-muted-foreground/80 whitespace-nowrap">
             {hasChanges ? (
               <>
                 <span className="text-yellow-500">{changedCategoryCount}</span>{' '}
-                {changedCategoryCount === 1 ? 'category' : 'categories'} modified
+                <span className="hidden sm:inline">
+                  {changedCategoryCount === 1 ? 'category' : 'categories'} modified
+                </span>
+                <span className="sm:hidden">modified</span>
               </>
             ) : (
-              'Just saved — undo?'
+              <>
+                <span className="hidden sm:inline">Just saved — undo?</span>
+                <span className="sm:hidden">Saved</span>
+              </>
             )}
           </span>
         </div>
 
-        <div className="h-5 w-[1px] bg-white/10 mx-1" />
+        <div className="h-5 w-[1px] bg-white/10 mx-0.5 sm:mx-1 shrink-0" />
 
         {/* Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           {/* Undo (only after save with no new changes) */}
           {prevSavedConfig && !hasChanges && (
             <button
@@ -88,14 +94,21 @@ export function FloatingSaveIsland() {
               onClick={openDiffModal}
               disabled={saving || hasValidationErrors}
               className={cn(
-                'flex h-8 items-center gap-1.5 rounded-xl px-4 text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 shadow-lg',
+                'flex h-8 items-center gap-1.5 rounded-xl px-3 sm:px-4 text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 shadow-lg shrink-0 whitespace-nowrap',
                 hasValidationErrors
                   ? 'bg-muted text-muted-foreground cursor-not-allowed'
                   : 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/30',
               )}
             >
               {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-              {saving ? 'Saving' : 'Save Changes'}
+              {saving ? (
+                'Saving'
+              ) : (
+                <>
+                  <span className="hidden sm:inline">Save Changes</span>
+                  <span className="sm:hidden">Save</span>
+                </>
+              )}
             </button>
           )}
         </div>
