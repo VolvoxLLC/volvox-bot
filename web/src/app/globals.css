@@ -497,11 +497,11 @@
 
 /* ─── Recharts cursor fix ──────────────────────────────────────────────────── */
 
-.recharts-tooltip-cursor {
+.latency-distribution-chart .recharts-tooltip-cursor {
   fill: transparent !important;
 }
 
-.recharts-default-tooltip {
+.latency-distribution-chart .recharts-default-tooltip {
   cursor: default !important;
 }
 
