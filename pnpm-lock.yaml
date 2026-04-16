@@ -16,8 +16,8 @@ importers:
   .:
     dependencies:
       '@anthropic-ai/claude-code':
-        specifier: ^2.1.109
-        version: 2.1.109
+        specifier: ^2.1.110
+        version: 2.1.110
       '@sentry/node':
         specifier: ^10.48.0
         version: 10.48.0
@@ -225,8 +225,8 @@ packages:
     resolution: {integrity: sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==}
     engines: {node: '>=10'}
 
-  '@anthropic-ai/claude-code@2.1.109':
-    resolution: {integrity: sha512-jVy1TcNWzFP/PFbrVfKYNSWoxXe4HJw7wjnZxR72S+X/kSG4Q1d1gVrUsr4Ej7udHBSaCiStqkOI0vGiy9aKlg==}
+  '@anthropic-ai/claude-code@2.1.110':
+    resolution: {integrity: sha512-H+SIbTIQlsVEhtS/+l3088uUMjGnOPigUl8PaYVE85z8mMnS0RIsy0R4QKGKIYQW/5iYjyUj+jPf5WhI0lvxLQ==}
     engines: {node: '>=18.0.0'}
     hasBin: true
 
@@ -3723,8 +3723,8 @@ packages:
   kuler@2.0.0:
     resolution: {integrity: sha512-Xq9nH7KlWZmXAtodXDDRE7vs6DU1gTU8zYDHDiWLSip45Egwq3plLHzPn27NgvzL2r1LMPC1vdqh98sQxtqj4A==}
 
-  langsmith@0.5.19:
-    resolution: {integrity: sha512-5tFoETuFMvGkbPGsINNlIE4Ab86CsPhdPOQZCGwNt/NX0h5NDKQLKOWS/G2XcRUBOQl4mCNbrayUvUTWaIRsCg==}
+  langsmith@0.5.20:
+    resolution: {integrity: sha512-ULhLM8RswvQDXufLtNtvclHrWCBx8Cb5UPI6lAZC+8Dq59iHsVPz/3Ac9khWNm1VIvChRsuykixD/WrmzuuA3Q==}
     peerDependencies:
       '@opentelemetry/api': '*'
       '@opentelemetry/exporter-trace-otlp-proto': '*'
@@ -5240,7 +5240,7 @@ snapshots:
 
   '@alloc/quick-lru@5.2.0': {}
 
-  '@anthropic-ai/claude-code@2.1.109':
+  '@anthropic-ai/claude-code@2.1.110':
     optionalDependencies:
       '@img/sharp-darwin-arm64': 0.34.5
       '@img/sharp-darwin-x64': 0.34.5
@@ -5987,7 +5987,7 @@ snapshots:
       camelcase: 6.3.0
       decamelize: 1.2.0
       js-tiktoken: 1.0.21
-      langsmith: 0.5.19(@opentelemetry/api@1.9.1)(@opentelemetry/sdk-trace-base@2.6.1(@opentelemetry/api@1.9.1))(openai@4.104.0(encoding@0.1.13)(ws@8.20.0)(zod@3.25.76))(ws@8.20.0)
+      langsmith: 0.5.20(@opentelemetry/api@1.9.1)(@opentelemetry/sdk-trace-base@2.6.1(@opentelemetry/api@1.9.1))(openai@4.104.0(encoding@0.1.13)(ws@8.20.0)(zod@3.25.76))(ws@8.20.0)
       mustache: 4.2.0
       p-queue: 6.6.2
       p-retry: 4.6.2
@@ -8887,7 +8887,7 @@ snapshots:
 
   kuler@2.0.0: {}
 
-  langsmith@0.5.19(@opentelemetry/api@1.9.1)(@opentelemetry/sdk-trace-base@2.6.1(@opentelemetry/api@1.9.1))(openai@4.104.0(encoding@0.1.13)(ws@8.20.0)(zod@3.25.76))(ws@8.20.0):
+  langsmith@0.5.20(@opentelemetry/api@1.9.1)(@opentelemetry/sdk-trace-base@2.6.1(@opentelemetry/api@1.9.1))(openai@4.104.0(encoding@0.1.13)(ws@8.20.0)(zod@3.25.76))(ws@8.20.0):
     dependencies:
       p-queue: 6.6.2
       uuid: 10.0.0
