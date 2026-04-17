@@ -73,17 +73,29 @@ function makeStreamResult(overrides = {}) {
 // ── Tests ───────────────────────────────────────────────────────────────────
 
 describe('generate', () => {
+  let originalAnthropicKey;
+
   beforeEach(() => {
     _clearProviderCache();
     mockGenerateText.mockReset();
     mockStreamText.mockReset();
     mockCalculateCost.mockReset();
     mockCreateAnthropic.mockClear();
-    mockCalculateCost.mockResolvedValue(0.001);
+    // calculateCost is SYNCHRONOUS — use mockReturnValue, not mockResolvedValue.
+    mockCalculateCost.mockReturnValue(0.001);
+    // The resolver now loud-fails without a provider-specific key; guarantee
+    // one exists for the default anthropic happy path.
+    originalAnthropicKey = process.env.ANTHROPIC_API_KEY;
+    process.env.ANTHROPIC_API_KEY = 'sk-ant-test-key';
   });
 
   afterEach(() => {
     _clearProviderCache();
+    if (originalAnthropicKey === undefined) {
+      delete process.env.ANTHROPIC_API_KEY;
+    } else {
+      process.env.ANTHROPIC_API_KEY = originalAnthropicKey;
+    }
   });
 
   it('should call generateText with resolved model and return result', async () => {
@@ -146,14 +158,36 @@ describe('generate', () => {
 
   it('should resolve unknown providers via env var convention', async () => {
     mockGenerateText.mockResolvedValue(makeGenerateResult());
+    process.env.MINIMAX_API_KEY = 'minimax-key';
 
-    await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'test' });
+    try {
+      await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'test' });
 
-    expect(mockCreateAnthropic).toHaveBeenCalledWith(
-      expect.objectContaining({
-        baseURL: 'https://api.minimax.io/anthropic/v1',
-      }),
-    );
+      expect(mockCreateAnthropic).toHaveBeenCalledWith(
+        expect.objectContaining({
+          baseURL: 'https://api.minimax.io/anthropic/v1',
+        }),
+      );
+    } finally {
+      delete process.env.MINIMAX_API_KEY;
+    }
+  });
+
+  it('should loud-fail for an unknown provider with no matching env var', async () => {
+    mockGenerateText.mockResolvedValue(makeGenerateResult());
+    // Ensure no XYZ_API_KEY exists — the fallback to ANTHROPIC_API_KEY has
+    // been removed deliberately so we do not leak the Anthropic credential
+    // to a foreign endpoint.
+    delete process.env.XYZ_API_KEY;
+
+    await expect(generate({ model: 'xyz:some-model', prompt: 'test' })).rejects.toMatchObject({
+      reason: 'api',
+      message: expect.stringContaining('XYZ_API_KEY'),
+    });
+
+    // Provider factory should NOT have been invoked — we fail before
+    // constructing the client.
+    expect(mockCreateAnthropic).not.toHaveBeenCalled();
   });
 
   it('should pick up <PROVIDER>_API_KEY env var for non-anthropic providers', async () => {
@@ -189,62 +223,67 @@ describe('generate', () => {
     }
   });
 
-  it('should fall back to ANTHROPIC_API_KEY for providers without their own key', async () => {
+  it('should use known base URL default for minimax when only MINIMAX_API_KEY is set', async () => {
     mockGenerateText.mockResolvedValue(makeGenerateResult());
-    process.env.ANTHROPIC_API_KEY = 'fallback-key';
+    process.env.MINIMAX_API_KEY = 'minimax-key';
 
     try {
-      await generate({ model: 'newprovider:a-model', prompt: 'test' });
+      await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'test' });
 
       expect(mockCreateAnthropic).toHaveBeenCalledWith(
-        expect.objectContaining({ authToken: 'fallback-key' }),
+        expect.objectContaining({
+          baseURL: 'https://api.minimax.io/anthropic/v1',
+        }),
       );
     } finally {
-      delete process.env.ANTHROPIC_API_KEY;
+      delete process.env.MINIMAX_API_KEY;
     }
-  });
-
-  it('should use known base URL default for minimax when no env var set', async () => {
-    mockGenerateText.mockResolvedValue(makeGenerateResult());
-
-    await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'test' });
-
-    expect(mockCreateAnthropic).toHaveBeenCalledWith(
-      expect.objectContaining({
-        baseURL: 'https://api.minimax.io/anthropic/v1',
-      }),
-    );
   });
 
   it('should NOT include WebSearch tools for non-anthropic providers', async () => {
     mockGenerateText.mockResolvedValue(makeGenerateResult());
+    process.env.MINIMAX_API_KEY = 'minimax-key';
 
-    await generate({
-      model: 'minimax:MiniMax-M2.7',
-      prompt: 'search',
-      tools: ['WebSearch'],
-    });
+    try {
+      await generate({
+        model: 'minimax:MiniMax-M2.7',
+        prompt: 'search',
+        tools: ['WebSearch'],
+      });
 
-    const call = mockGenerateText.mock.calls[0][0];
-    expect(call.tools).toBeUndefined();
+      const call = mockGenerateText.mock.calls[0][0];
+      expect(call.tools).toBeUndefined();
+    } finally {
+      delete process.env.MINIMAX_API_KEY;
+    }
   });
 
   it('should NOT send thinking params for non-anthropic providers', async () => {
     mockGenerateText.mockResolvedValue(makeGenerateResult());
+    process.env.MINIMAX_API_KEY = 'minimax-key';
 
-    await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'think', thinking: 2048 });
+    try {
+      await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'think', thinking: 2048 });
 
-    const call = mockGenerateText.mock.calls[0][0];
-    expect(call.providerOptions).toEqual({});
+      const call = mockGenerateText.mock.calls[0][0];
+      expect(call.providerOptions).toEqual({});
+    } finally {
+      delete process.env.MINIMAX_API_KEY;
+    }
   });
 
   it('should cache non-anthropic providers separately from anthropic', async () => {
     mockGenerateText.mockResolvedValue(makeGenerateResult());
+    process.env.MINIMAX_API_KEY = 'minimax-key';
 
-    await generate({ model: 'claude-haiku-4-5', prompt: 'test1' });
-    await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'test2' });
+    try {
+      await generate({ model: 'claude-haiku-4-5', prompt: 'test1' });
+      await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'test2' });
 
-    expect(mockCreateAnthropic).toHaveBeenCalledTimes(2);
+      expect(mockCreateAnthropic).toHaveBeenCalledTimes(2);
+    } finally {
+      delete process.env.MINIMAX_API_KEY;
+    }
   });
 
   it('should cache provider instances by config tuple', async () => {
@@ -394,7 +433,7 @@ describe('generate', () => {
 
   it('should calculate cost via aiCost module', async () => {
     mockGenerateText.mockResolvedValue(makeGenerateResult());
-    mockCalculateCost.mockResolvedValue(0.042);
+    mockCalculateCost.mockReturnValue(0.042);
 
     const result = await generate({ model: 'claude-sonnet-4-6', prompt: 'expensive' });
 
@@ -409,17 +448,27 @@ describe('generate', () => {
 });
 
 describe('stream', () => {
+  let originalAnthropicKey;
+
   beforeEach(() => {
     _clearProviderCache();
     mockGenerateText.mockReset();
     mockStreamText.mockReset();
     mockCalculateCost.mockReset();
     mockCreateAnthropic.mockClear();
-    mockCalculateCost.mockResolvedValue(0.002);
+    // calculateCost is SYNCHRONOUS — use mockReturnValue.
+    mockCalculateCost.mockReturnValue(0.002);
+    originalAnthropicKey = process.env.ANTHROPIC_API_KEY;
+    process.env.ANTHROPIC_API_KEY = 'sk-ant-test-key';
   });
 
   afterEach(() => {
     _clearProviderCache();
+    if (originalAnthropicKey === undefined) {
+      delete process.env.ANTHROPIC_API_KEY;
+    } else {
+      process.env.ANTHROPIC_API_KEY = originalAnthropicKey;
+    }
   });
 
   it('should call streamText and await final results', async () => {
@@ -539,17 +588,26 @@ describe('stream', () => {
 // ── withRetry tests (via generate/stream) ──────────────────────────────────
 
 describe('withRetry', () => {
+  let originalAnthropicKey;
+
   beforeEach(() => {
     _clearProviderCache();
     mockGenerateText.mockReset();
     mockStreamText.mockReset();
     mockCalculateCost.mockReset();
     mockCreateAnthropic.mockClear();
-    mockCalculateCost.mockResolvedValue(0.001);
+    mockCalculateCost.mockReturnValue(0.001);
+    originalAnthropicKey = process.env.ANTHROPIC_API_KEY;
+    process.env.ANTHROPIC_API_KEY = 'sk-ant-test-key';
   });
 
   afterEach(() => {
     _clearProviderCache();
+    if (originalAnthropicKey === undefined) {
+      delete process.env.ANTHROPIC_API_KEY;
+    } else {
+      process.env.ANTHROPIC_API_KEY = originalAnthropicKey;
+    }
   });
 
   it('should retry on 429 then succeed', async () => {
@@ -617,17 +675,26 @@ describe('withRetry', () => {
 // ── generate edge cases ────────────────────────────────────────────────────
 
 describe('generate — edge cases', () => {
+  let originalAnthropicKey;
+
   beforeEach(() => {
     _clearProviderCache();
     mockGenerateText.mockReset();
     mockStreamText.mockReset();
     mockCalculateCost.mockReset();
     mockCreateAnthropic.mockClear();
-    mockCalculateCost.mockResolvedValue(0.001);
+    mockCalculateCost.mockReturnValue(0.001);
+    originalAnthropicKey = process.env.ANTHROPIC_API_KEY;
+    process.env.ANTHROPIC_API_KEY = 'sk-ant-test-key';
   });
 
   afterEach(() => {
     _clearProviderCache();
+    if (originalAnthropicKey === undefined) {
+      delete process.env.ANTHROPIC_API_KEY;
+    } else {
+      process.env.ANTHROPIC_API_KEY = originalAnthropicKey;
+    }
   });
 
   it('should fall back to usage when totalUsage is undefined', async () => {
@@ -648,7 +715,7 @@ describe('generate — edge cases', () => {
       providerMetadata: { anthropic: { cacheReadInputTokens: 75 } },
     });
     mockGenerateText.mockResolvedValue(result);
-    mockCalculateCost.mockResolvedValue(0.005);
+    mockCalculateCost.mockReturnValue(0.005);
 
     await generate({ model: 'claude-sonnet-4-6', prompt: 'cached' });
 
@@ -665,16 +732,21 @@ describe('generate — edge cases', () => {
       providerMetadata: { minimax: { cacheReadInputTokens: 50 } },
     });
     mockGenerateText.mockResolvedValue(result);
-    mockCalculateCost.mockResolvedValue(0.003);
+    mockCalculateCost.mockReturnValue(0.003);
+    process.env.MINIMAX_API_KEY = 'minimax-key';
 
-    await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'cached provider' });
+    try {
+      await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'cached provider' });
 
-    expect(mockCalculateCost).toHaveBeenCalledWith('minimax', 'MiniMax-M2.7', {
-      inputTokens: 100,
-      outputTokens: 50,
-      cachedInputTokens: 50,
-      cacheCreationInputTokens: 0,
-    });
+      expect(mockCalculateCost).toHaveBeenCalledWith('minimax', 'MiniMax-M2.7', {
+        inputTokens: 100,
+        outputTokens: 50,
+        cachedInputTokens: 50,
+        cacheCreationInputTokens: 0,
+      });
+    } finally {
+      delete process.env.MINIMAX_API_KEY;
+    }
   });
 
   it('should fall back to anthropic providerMetadata for Anthropic-compatible providers', async () => {
@@ -687,15 +759,20 @@ describe('generate — edge cases', () => {
       },
     });
     mockGenerateText.mockResolvedValue(result);
-    mockCalculateCost.mockResolvedValue(0.003);
+    mockCalculateCost.mockReturnValue(0.003);
+    process.env.MINIMAX_API_KEY = 'minimax-key';
 
-    await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'cached provider' });
+    try {
+      await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'cached provider' });
 
-    expect(mockCalculateCost).toHaveBeenCalledWith('minimax', 'MiniMax-M2.7', {
-      inputTokens: 100,
-      outputTokens: 50,
-      cachedInputTokens: 50,
-      cacheCreationInputTokens: 25,
-    });
+      expect(mockCalculateCost).toHaveBeenCalledWith('minimax', 'MiniMax-M2.7', {
+        inputTokens: 100,
+        outputTokens: 50,
+        cachedInputTokens: 50,
+        cacheCreationInputTokens: 25,
+      });
+    } finally {
+      delete process.env.MINIMAX_API_KEY;
+    }
   });
 });

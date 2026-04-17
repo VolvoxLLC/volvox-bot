@@ -11,7 +11,6 @@
  * are sent to the provider.
  */
 
-import { createHash } from 'node:crypto';
 import { debug, error as logError, warn } from '../logger.js';
 import { calculateCost } from './aiCost.js';
 import { AIClientError, isRetryable } from './errors.js';
@@ -86,12 +85,14 @@ async function withRetry(fn, opts = {}) {
       // Don't retry if aborted or on last attempt
       if (signal?.aborted || attempt === maxRetries - 1) throw err;
 
-      // Don't retry non-transient errors
-      if (!isRetryable(err, { statusCode: err.statusCode })) throw err;
+      // Don't retry non-transient errors. SDKs vary: Vercel AI SDK uses
+      // `statusCode`, others use `status`. Normalize to cover both.
+      const status = err.status ?? err.statusCode;
+      if (!isRetryable(err, { status })) throw err;
 
       // Calculate delay: min(1000 * 2^attempt, 15_000) + jitter
       const retryAfter =
-        err.statusCode === 429 ? (parseFloat(err.headers?.['retry-after']) || 0) * 1000 : 0;
+        status === 429 ? (parseFloat(err.headers?.['retry-after']) || 0) * 1000 : 0;
       const exponential = Math.min(1000 * 2 ** attempt, 15_000);
       const jitter = Math.random() * 1000;
       const delay = Math.max(exponential + jitter, retryAfter);
@@ -169,23 +170,32 @@ async function resolveModel(modelString, overrides = {}) {
   const providerName = colonIdx > 0 ? modelString.slice(0, colonIdx) : 'anthropic';
   const modelId = colonIdx > 0 ? modelString.slice(colonIdx + 1) : modelString;
 
-  const keyHash = overrides.apiKey
-    ? createHash('sha256').update(overrides.apiKey).digest('hex').slice(0, 12)
-    : 'default';
-  const cacheKey = `${providerName}:${keyHash}:${overrides.baseUrl ?? 'default'}`;
+  // Cache key uses the raw apiKey as a discriminator. Safe because the Map
+  // lives in-process and is never serialized, logged, or exported. Using the
+  // raw key avoids node:crypto for a non-security discriminator (CodeQL
+  // flagged the prior SHA-256 as "insecure password hash").
+  const cacheKey = `${providerName}\x00${overrides.apiKey ?? ''}\x00${overrides.baseUrl ?? ''}`;
 
   if (!providerCache.has(cacheKey)) {
-    // Resolve credentials by convention. Anthropic uses its own env var
+    // Resolve credentials by convention. Anthropic uses ANTHROPIC_API_KEY
     // directly; other providers follow the <PROVIDER>_API_KEY /
-    // <PROVIDER>_BASE_URL convention, falling back to ANTHROPIC_API_KEY.
+    // <PROVIDER>_BASE_URL convention. We deliberately do NOT fall back to
+    // ANTHROPIC_API_KEY for non-Anthropic providers — that would leak our
+    // Anthropic credentials to a third-party endpoint.
     const isAnthropic = providerName === 'anthropic';
     const envPrefix = providerName.toUpperCase();
 
     const apiKey =
       overrides.apiKey ||
-      (isAnthropic ? process.env.ANTHROPIC_API_KEY : undefined) ||
-      process.env[`${envPrefix}_API_KEY`] ||
-      process.env.ANTHROPIC_API_KEY;
+      (isAnthropic ? process.env.ANTHROPIC_API_KEY : process.env[`${envPrefix}_API_KEY`]);
+
+    if (!apiKey) {
+      const envVar = isAnthropic ? 'ANTHROPIC_API_KEY' : `${envPrefix}_API_KEY`;
+      throw new AIClientError(
+        `Missing API key for provider '${providerName}'. Set ${envVar} or pass an apiKey override.`,
+        'api',
+      );
+    }
 
     const baseUrl =
       overrides.baseUrl ||
@@ -362,7 +372,7 @@ export async function generate(opts) {
     const providerMeta = getProviderMetadata(result.providerMetadata, providerName);
     const cachedInputTokens = providerMeta.cacheReadInputTokens ?? 0;
     const cacheCreationInputTokens = providerMeta.cacheCreationInputTokens ?? 0;
-    const costUsd = await calculateCost(providerName, modelId, {
+    const costUsd = calculateCost(providerName, modelId, {
       inputTokens: usage.inputTokens,
       outputTokens: usage.outputTokens,
       cachedInputTokens,
@@ -396,7 +406,9 @@ export async function generate(opts) {
       }
       throw new AIClientError('Request timed out', 'timeout');
     }
-    throw new AIClientError(`API error: ${err.message}`, 'api', { statusCode: err.statusCode });
+    throw new AIClientError(`API error: ${err.message}`, 'api', {
+      statusCode: err.status ?? err.statusCode,
+    });
   } finally {
     cleanup();
   }
@@ -490,7 +502,7 @@ export async function stream(opts) {
     const providerMeta = getProviderMetadata(result.providerMetadata, providerName);
     const cachedInputTokens = providerMeta.cacheReadInputTokens ?? 0;
     const cacheCreationInputTokens = providerMeta.cacheCreationInputTokens ?? 0;
-    const costUsd = await calculateCost(providerName, modelId, {
+    const costUsd = calculateCost(providerName, modelId, {
       inputTokens: result.usage.inputTokens,
       outputTokens: result.usage.outputTokens,
       cachedInputTokens,
@@ -525,7 +537,9 @@ export async function stream(opts) {
       }
       throw new AIClientError('Request timed out', 'timeout');
     }
-    throw new AIClientError(`API error: ${err.message}`, 'api', { statusCode: err.statusCode });
+    throw new AIClientError(`API error: ${err.message}`, 'api', {
+      statusCode: err.status ?? err.statusCode,
+    });
   } finally {
     cleanup();
   }
@@ -556,7 +570,7 @@ export function _resetSDK() {
  * @param {{ apiKey?: string, baseUrl?: string }} [overrides]
  */
 export async function warmConnection(modelString, overrides = {}) {
-  const { model, providerName } = await resolveModel(modelString, overrides);
+  const { model } = await resolveModel(modelString, overrides);
   // Establish TCP+TLS by making a lightweight request to the provider's base URL
   const baseUrl = model.config?.baseURL;
   if (baseUrl) {

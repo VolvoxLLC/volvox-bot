@@ -75,11 +75,17 @@ export function calculateCost(provider, modelId, usage = {}) {
   const outputTokens = usage.outputTokens ?? 0;
   const cachedInputTokens = usage.cachedInputTokens ?? 0;
   const cacheCreationInputTokens = usage.cacheCreationInputTokens ?? 0;
-  const cacheTotal = cachedInputTokens + cacheCreationInputTokens;
 
-  // SDK usage normally reports total input tokens including cache read/write.
-  // If a caller passes only uncached input tokens, keep them instead of going negative.
-  const regularInputTokens = inputTokens >= cacheTotal ? inputTokens - cacheTotal : inputTokens;
+  // Contract: `inputTokens` is ALWAYS the total input count reported by the
+  // SDK — it includes both cache-read and cache-creation tokens. Callers that
+  // pre-subtracted cache tokens would be double-counting and must be fixed at
+  // the source rather than compensated for here.
+  // Clamp at 0 to defend against provider metadata mismatches without silently
+  // hiding them (they'll surface via the callers' usage dashboards).
+  const regularInputTokens = Math.max(
+    0,
+    inputTokens - cachedInputTokens - cacheCreationInputTokens,
+  );
 
   return (
     (regularInputTokens / 1_000_000) * pricing.input +
