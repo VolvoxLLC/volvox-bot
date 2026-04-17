@@ -1,6 +1,7 @@
 /**
  * Triage Result Parsers
- * Parse and validate JSON results from classifier and responder CLI processes.
+ * Parse and validate JSON results returned by the Vercel AI SDK classifier
+ * and responder calls.
  */
 
 import { info, warn } from '../logger.js';
@@ -75,7 +76,7 @@ export function parseSDKResult(raw, channelId, label) {
 
 /**
  * Parse the classifier's JSON text output.
- * @param {Object} sdkMessage - Raw CLI result message
+ * @param {Object} sdkResult - Vercel AI SDK result object (has `.text`, `.finishReason`, etc.)
  * @param {string} channelId - For logging
  * @returns {Object|null} Parsed { classification, reasoning, targetMessageIds, needsThinking, needsSearch } or null
  */
@@ -110,7 +111,7 @@ export function parseClassifyResult(sdkResult, channelId) {
  * accumulation time, and splitMessage() in triage-respond.js handles chunking
  * for any edge cases before sending to Discord.
  *
- * @param {Object} sdkMessage - Raw CLI result message
+ * @param {Object} sdkResult - Vercel AI SDK result object (has `.text`, `.finishReason`, etc.)
  * @param {string} channelId - For logging
  * @returns {Object|null} Parsed { responses: [...] } or null
  */

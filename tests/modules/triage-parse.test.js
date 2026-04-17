@@ -163,6 +163,41 @@ describe('parseClassifyResult', () => {
     const result = parseClassifyResult(sdkMessage, 'ch1');
     expect(result).toBeNull();
   });
+
+  it('should coerce non-boolean needsThinking/needsSearch to false', () => {
+    // Defensive normalisation: if the model returns truthy-but-non-boolean
+    // values (e.g. "true" string, 1, null), we must not forward them to the
+    // responder — downstream code uses strict boolean checks.
+    const sdkMessage = {
+      text: '{"classification":"respond","reasoning":"r","targetMessageIds":[],"needsThinking":"true","needsSearch":1}',
+      finishReason: 'stop',
+      costUsd: 0,
+      durationMs: 0,
+      usage: { inputTokens: 10, outputTokens: 10 },
+      sources: [],
+      providerMetadata: { anthropic: {} },
+    };
+    const result = parseClassifyResult(sdkMessage, 'ch1');
+    expect(result).not.toBeNull();
+    expect(result.needsThinking).toBe(false);
+    expect(result.needsSearch).toBe(false);
+  });
+
+  it('should default needsThinking/needsSearch to false when absent', () => {
+    const sdkMessage = {
+      text: '{"classification":"respond","reasoning":"r","targetMessageIds":[]}',
+      finishReason: 'stop',
+      costUsd: 0,
+      durationMs: 0,
+      usage: { inputTokens: 10, outputTokens: 10 },
+      sources: [],
+      providerMetadata: { anthropic: {} },
+    };
+    const result = parseClassifyResult(sdkMessage, 'ch1');
+    expect(result).not.toBeNull();
+    expect(result.needsThinking).toBe(false);
+    expect(result.needsSearch).toBe(false);
+  });
 });
 
 describe('parseRespondResult', () => {

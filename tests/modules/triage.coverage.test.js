@@ -277,9 +277,27 @@ describe('triage module coverage', () => {
       await expect(
         evaluateNow('ch-timeout', makeTriageConfig(), mockClient),
       ).resolves.toBeUndefined();
+      // evaluateAndRespond warns once with structured { channelId, reason }
+      // before rethrowing; evaluateNow catches and silently returns.
       expect(warn).toHaveBeenCalledWith(
-        expect.stringContaining('Triage evaluation aborted (timeout)'),
-        expect.any(Object),
+        'Triage evaluation aborted',
+        expect.objectContaining({ reason: 'timeout' }),
+      );
+    });
+
+    it('handles AIClientError aborted from classifier silently', async () => {
+      // Aborted happens when evaluateNow cancels a superseded run. Must be
+      // treated the same as timeout — no user-visible error, no crash.
+      mockGenerate.mockRejectedValue(new AIClientError('Aborted', 'aborted'));
+
+      const msg = makeDiscordMessage('ch-aborted', 'hello');
+      await accumulateMessage(msg, makeTriageConfig());
+      await expect(
+        evaluateNow('ch-aborted', makeTriageConfig(), mockClient),
+      ).resolves.toBeUndefined();
+      expect(warn).toHaveBeenCalledWith(
+        'Triage evaluation aborted',
+        expect.objectContaining({ reason: 'aborted' }),
       );
     });
   });

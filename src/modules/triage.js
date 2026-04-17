@@ -65,10 +65,55 @@ let config = null;
 /** @type {Object|null} */
 let healthMonitor = null;
 
-/** @type {Object|null} AI SDK config for classification calls */
-let classifierConfig = null;
-/** @type {Object|null} AI SDK config for response generation calls */
-let responderConfig = null;
+// System prompts are loaded once at startup since they're static; per-call
+// provider/model/key/baseUrl overrides are resolved per-eval from the live
+// guild config so admin changes take effect without a restart.
+/** @type {string|null} Classifier system prompt */
+let classifySystemPrompt = null;
+/** @type {string|null} Default responder system prompt */
+let respondSystemDefault = null;
+/** @type {string|null} Responder JSON schema appendix */
+let respondJsonSchemaAppend = null;
+
+/**
+ * Build per-call AI SDK config for the classifier from an effective guild config.
+ * Picks up per-guild model/timeout/apiKey/baseUrl overrides on every eval.
+ * @param {Object} evalConfig - Effective guild config
+ * @param {Object} [resolved] - Pre-resolved triage config (avoids double resolution)
+ * @returns {Object} AI SDK call config
+ */
+function buildClassifierConfig(evalConfig, resolved) {
+  const r = resolved ?? resolveTriageConfig(evalConfig.triage || {});
+  return {
+    model: r.classifyModel,
+    system: classifySystemPrompt,
+    thinking: 0,
+    timeout: r.timeout,
+    ...(r.classifyBaseUrl && { baseUrl: r.classifyBaseUrl }),
+    ...(r.classifyApiKey && { apiKey: r.classifyApiKey }),
+  };
+}
+
+/**
+ * Build per-call AI SDK config for the responder from an effective guild config.
+ * Picks up per-guild model/timeout/apiKey/baseUrl/systemPrompt overrides on every eval.
+ * @param {Object} evalConfig - Effective guild config
+ * @param {Object} [resolved] - Pre-resolved triage config (avoids double resolution)
+ * @returns {Object} AI SDK call config
+ */
+function buildResponderConfig(evalConfig, resolved) {
+  const r = resolved ?? resolveTriageConfig(evalConfig.triage || {});
+  const baseSystem = evalConfig.ai?.systemPrompt || respondSystemDefault;
+  return {
+    model: r.respondModel,
+    system: `${baseSystem}\n\n${respondJsonSchemaAppend}`,
+    thinking: 0,
+    timeout: r.timeout,
+    tools: [],
+    ...(r.respondBaseUrl && { baseUrl: r.respondBaseUrl }),
+    ...(r.respondApiKey && { apiKey: r.respondApiKey }),
+  };
+}
 
 // ── Budget alert throttle ────────────────────────────────────────────────────
 // Track the last time a budget-exceeded alert was posted per guild so we don't
@@ -121,8 +166,9 @@ async function runClassification(channelId, snapshot, evalConfig, evalClient, ab
     promptLength: classifyPrompt.length,
     promptSnippet: classifyPrompt.slice(0, 500),
   });
+  const classifyCfg = buildClassifierConfig(evalConfig);
   const classifyMessage = await generate({
-    ...classifierConfig,
+    ...classifyCfg,
     prompt: classifyPrompt,
     abortSignal,
   });
@@ -318,6 +364,7 @@ async function runResponder(
 
   // Per-call overrides: thinking and tools are driven by the classifier's signals
   const resolvedConfig = resolved ?? resolveTriageConfig(evalConfig.triage || {});
+  const responderCfg = buildResponderConfig(evalConfig, resolvedConfig);
   const thinkingForCall = classification.needsThinking ? resolvedConfig.thinkingTokens : 0;
   const toolsForCall = classification.needsSearch ? ['WebSearch'] : [];
 
@@ -332,7 +379,7 @@ async function runResponder(
   let searchNotified = false;
   let searchCount = 0;
   const respondMessage = await stream({
-    ...responderConfig,
+    ...responderCfg,
     thinking: thinkingForCall,
     tools: toolsForCall,
     prompt: respondPrompt,
@@ -431,7 +478,7 @@ function extractMemories(snapshot, parsed) {
  * @param {Array<Object>} snapshot - A snapshot of buffered messages for the channel.
  * @param {Object} evalConfig - Effective triage configuration to use for this evaluation.
  * @param {import('discord.js').Client} evalClient - Discord client used to fetch channels and send messages.
- * @throws {AIClientError} When a classifier/responder CLI process times out; the error is rethrown.
+ * @throws {AIClientError} When the classifier/responder AIClient call times out or is aborted; rethrown so the caller can no-op cleanly.
  */
 async function evaluateAndRespond(channelId, snapshot, evalConfig, evalClient, abortSignal) {
   const snapshotIds = new Set(snapshot.map((m) => m.messageId));
@@ -639,8 +686,11 @@ async function evaluateAndRespond(channelId, snapshot, evalConfig, evalClient, a
     // Step 4: Extract memories (fire-and-forget)
     extractMemories(snapshot, parsed);
   } catch (err) {
-    if (err instanceof AIClientError && err.reason === 'timeout') {
-      warn('Triage evaluation aborted (timeout)', { channelId });
+    // Abort and timeout are silent no-ops — the caller (evaluateNow) may have
+    // intentionally superseded this evaluation, or the provider cut us off.
+    // Either way, this is routine and must NOT surface a user-visible error.
+    if (err instanceof AIClientError && (err.reason === 'timeout' || err.reason === 'aborted')) {
+      warn('Triage evaluation aborted', { channelId, reason: err.reason });
       throw err;
     }
 
@@ -710,34 +760,15 @@ export async function startTriage(discordClient, botConfig, monitor) {
   config = botConfig;
   healthMonitor = monitor;
 
+  // Load static prompts once; per-call model/timeout/apiKey/baseUrl are
+  // resolved per evaluation from the live guild config so admin changes
+  // take effect without restarting.
+  classifySystemPrompt = loadPrompt('triage-classify-system');
+  respondSystemDefault = loadPrompt('triage-respond-system');
+  respondJsonSchemaAppend = loadPrompt('triage-respond-schema');
+
   const triageConfig = botConfig.triage || {};
   const resolved = resolveTriageConfig(triageConfig);
-
-  // Classifier config — no tools, no thinking
-  const classifySystem = loadPrompt('triage-classify-system');
-  classifierConfig = {
-    model: resolved.classifyModel,
-    system: classifySystem,
-    thinking: 0,
-    timeout: resolved.timeout,
-    ...(resolved.classifyBaseUrl && { baseUrl: resolved.classifyBaseUrl }),
-    ...(resolved.classifyApiKey && { apiKey: resolved.classifyApiKey }),
-  };
-
-  // Responder config — base config without thinking/tools (those are now per-call,
-  // driven by the classifier's needsThinking/needsSearch signals).
-  // JSON output schema is always appended so it can't be lost when config overrides the personality.
-  const baseSystem = botConfig.ai?.systemPrompt || loadPrompt('triage-respond-system');
-  const jsonSchemaAppend = loadPrompt('triage-respond-schema');
-  responderConfig = {
-    model: resolved.respondModel,
-    system: `${baseSystem}\n\n${jsonSchemaAppend}`,
-    thinking: 0,
-    timeout: resolved.timeout,
-    tools: [],
-    ...(resolved.respondBaseUrl && { baseUrl: resolved.respondBaseUrl }),
-    ...(resolved.respondApiKey && { apiKey: resolved.respondApiKey }),
-  };
 
   info('Triage configured', {
     classifyModel: resolved.classifyModel,
@@ -759,11 +790,12 @@ export async function startTriage(discordClient, botConfig, monitor) {
 }
 
 /**
- * Clear all timers, abort in-flight evaluations, close CLI processes, and reset state.
+ * Clear all timers, abort in-flight evaluations, and reset state.
  */
 export function stopTriage() {
-  classifierConfig = null;
-  responderConfig = null;
+  classifySystemPrompt = null;
+  respondSystemDefault = null;
+  respondJsonSchemaAppend = null;
 
   for (const [, buf] of channelBuffers) {
     if (buf.timer) {
@@ -956,8 +988,11 @@ export async function evaluateNow(channelId, evalConfig, evalClient, evalMonitor
       abortController.signal,
     );
   } catch (err) {
-    if (err instanceof AIClientError && err.reason === 'timeout') {
-      warn('Triage evaluation aborted (timeout)', { channelId });
+    // Both timeout and aborted are silent no-ops here. An abort is almost
+    // always us cancelling a superseded run in the guard above; a timeout
+    // was already warned once inside evaluateAndRespond. No need to log
+    // it as an error or notify the channel.
+    if (err instanceof AIClientError && (err.reason === 'timeout' || err.reason === 'aborted')) {
       return;
     }
     logError('Triage evaluation error', { channelId, error: err.message });
