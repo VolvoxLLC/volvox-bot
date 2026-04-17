@@ -39,6 +39,7 @@ interface MembersState {
   setSortOrder: (order: SortOrder) => void;
   resetPagination: () => void;
   resetAll: () => void;
+  refresh: (guildId: string) => Promise<'ok' | 'unauthorized' | 'error'>;
 
   // Actions — data fetching
   fetchMembers: (opts: {
@@ -67,7 +68,7 @@ const initialState = {
 
 let latestMembersRequestId = 0;
 
-export const useMembersStore = create<MembersState>((set) => ({
+export const useMembersStore = create<MembersState>((set, get) => ({
   ...initialState,
 
   setMembers: (members) => set({ members }),
@@ -92,6 +93,19 @@ export const useMembersStore = create<MembersState>((set) => ({
     ++latestMembersRequestId;
     set({
       ...initialState,
+    });
+  },
+
+  refresh: async (guildId) => {
+    const state = get();
+    state.resetPagination();
+    return await state.fetchMembers({
+      guildId,
+      search: state.debouncedSearch,
+      sortColumn: state.sortColumn,
+      sortOrder: state.sortOrder,
+      after: null,
+      append: false,
     });
   },
 

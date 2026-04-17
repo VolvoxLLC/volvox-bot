@@ -16,8 +16,13 @@ export const data = new SlashCommandBuilder()
 export const adminOnly = true;
 
 /**
- * Execute the history command
- * @param {import('discord.js').ChatInputCommandInteraction} interaction
+ * Fetches and displays up to 25 moderation cases for the specified user in the guild.
+ *
+ * If no cases are found, edits the ephemeral reply to indicate no history. On success,
+ * edits the ephemeral reply with an embed listing the cases and an action summary, and logs the view. On error,
+ * logs the error and edits the reply with a failure message.
+ *
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - The command interaction for `/history`; must include the `user` option and be invoked in a guild.
  */
 export async function execute(interaction) {
   try {
@@ -64,6 +69,7 @@ export async function execute(interaction) {
 
     info('History viewed', {
       guildId: interaction.guild.id,
+      channelId: interaction.channelId,
       target: user.tag,
       moderator: interaction.user.tag,
       caseCount: rows.length,

@@ -2,10 +2,9 @@
 
 import { Hash, Loader2, Megaphone, RotateCcw, Search, StickyNote } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-
+import { inputClasses } from '@/components/dashboard/config-editor-utils';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type { GuildConfig } from '@/lib/config-utils';
 import { cn } from '@/lib/utils';
 import type { ChannelMode } from '@/types/config';
@@ -41,12 +40,12 @@ function ModeSelector({
   mode,
   onChange,
   disabled,
-  isDefault,
+  ariaLabelContext,
 }: {
   mode: ChannelMode;
   onChange: (mode: ChannelMode) => void;
   disabled: boolean;
-  isDefault: boolean;
+  ariaLabelContext: string;
 }) {
   const modes: { value: ChannelMode; label: string }[] = [
     { value: 'off', label: 'Off' },
@@ -56,19 +55,19 @@ function ModeSelector({
 
   function activeClasses(m: ChannelMode) {
     if (mode !== m)
-      return 'bg-transparent text-muted-foreground hover:bg-muted/60 border border-border';
+      return 'bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted/10 border-transparent';
     switch (m) {
       case 'off':
-        return 'bg-destructive/10 text-destructive border border-destructive/30 font-medium';
+        return 'bg-background dark:bg-zinc-800/80 text-destructive shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.05)] border-border dark:border-white/10 font-bold';
       case 'mention':
-        return 'bg-primary/10 text-primary border border-primary/30 font-medium';
+        return 'bg-background dark:bg-zinc-800/80 text-primary shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.05)] border-border dark:border-white/10 font-bold';
       case 'vibe':
-        return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-medium';
+        return 'bg-background dark:bg-zinc-800/80 text-emerald-500 shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.05)] border-border dark:border-white/10 font-bold';
     }
   }
 
   return (
-    <div className="flex shrink-0 rounded-md overflow-hidden divide-x divide-border">
+    <div className="flex shrink-0 p-1.5 rounded-2xl bg-muted/40 dark:bg-black/40 border border-border dark:border-white/5 backdrop-blur-md shadow-inner">
       {modes.map(({ value, label }) => (
         <button
           key={value}
@@ -76,13 +75,13 @@ function ModeSelector({
           onClick={() => onChange(value)}
           disabled={disabled}
           className={cn(
-            'px-3 py-1 text-xs transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
+            'px-4 py-1.5 text-[10px] font-black uppercase tracking-widest transition-all duration-300 cursor-pointer rounded-xl border',
             activeClasses(value),
           )}
           aria-pressed={mode === value}
+          aria-label={`${ariaLabelContext} - ${label} mode`}
         >
           {label}
-          {isDefault && value === mode && <span className="ml-1 opacity-60">✓</span>}
         </button>
       ))}
     </div>
@@ -100,14 +99,6 @@ function ChannelIcon({ type }: { type: number }) {
     default:
       return <Hash className="h-3.5 w-3.5 text-muted-foreground shrink-0" />;
   }
-}
-
-// ── Mode dot indicator ────────────────────────────────────────────────────
-
-function ModeDot({ mode }: { mode: ChannelMode }) {
-  const color =
-    mode === 'off' ? 'bg-destructive' : mode === 'vibe' ? 'bg-emerald-500' : 'bg-primary';
-  return <span className={cn('inline-block h-1.5 w-1.5 rounded-full shrink-0', color)} />;
 }
 
 // ── Props ─────────────────────────────────────────────────────────────────
@@ -277,42 +268,59 @@ export function ChannelModeSection({
   );
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Per-Channel AI Mode</CardTitle>
-        <CardDescription>
-          Set the AI response mode per channel. Channels using the default inherit the setting
-          below.
+    <div className="space-y-4">
+      <CardHeader className="px-4 pt-4 pb-6">
+        <div className="flex items-center gap-2">
+          <div className="h-px w-8 bg-primary/40" />
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/60">
+            Intelli-Response
+          </span>
+        </div>
+        <CardTitle className="text-2xl font-black tracking-tight text-foreground">
+          Per-Channel AI Mode
+        </CardTitle>
+        <CardDescription className="text-xs font-medium text-muted-foreground max-w-lg leading-relaxed mt-1.5">
+          Configure response behavior for specific channels. Use overrides to define unique
+          interaction patterns outside the global default.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <div className="space-y-6 p-4">
         {/* Default mode */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-md border bg-muted/30 px-4 py-3">
-          <div>
-            <p className="text-sm font-medium">Default mode for all channels</p>
-            <p className="text-xs text-muted-foreground">
-              Channels without an override inherit this mode.
-            </p>
+        <div className="relative group overflow-hidden rounded-[24px] border border-border bg-muted/10 dark:bg-white/[0.02] p-5 shadow-2xl transition-all duration-500 hover:bg-muted/20 dark:hover:bg-white/[0.04] backdrop-blur-md">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
+          <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <p className="text-sm font-black tracking-tight text-foreground/90">
+                Global Fallback Mode
+              </p>
+              <p className="text-xs font-medium text-muted-foreground leading-relaxed">
+                Channels without explicit overrides will use this response behavior.
+              </p>
+            </div>
+            <ModeSelector
+              mode={defaultMode}
+              onChange={onDefaultModeChange}
+              disabled={saving}
+              ariaLabelContext="Global fallback"
+            />
           </div>
-          <ModeSelector
-            mode={defaultMode}
-            onChange={onDefaultModeChange}
-            disabled={saving}
-            isDefault={false}
-          />
         </div>
 
-        <hr className="border-border" />
+        <div className="h-px w-full bg-gradient-to-r from-transparent via-border to-transparent" />
 
         {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-          <Input
+        <div className="relative group">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40 group-focus-within:text-primary transition-colors pointer-events-none" />
+          <input
             placeholder="Search channels..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
             disabled={saving || loading}
+            aria-label="Search channels by name"
+            className={cn(
+              inputClasses,
+              'pl-11 h-12 bg-muted/10 dark:bg-black/20 focus:bg-muted/20 dark:focus:bg-black/40',
+            )}
           />
         </div>
 
@@ -344,8 +352,8 @@ export function ChannelModeSection({
               <div key={cat.id ?? '__uncategorized__'} className="space-y-1">
                 {/* Category header */}
                 <div className="flex items-center justify-between px-1 py-1">
-                  <p className="text-xs font-semibold text-muted-foreground tracking-wider flex items-center gap-1.5">
-                    <span>📁</span>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+                    <span className="opacity-40">📁</span>
                     {cat.name}
                   </p>
                   {hasCategoryOverrides && (
@@ -367,7 +375,7 @@ export function ChannelModeSection({
                 </div>
 
                 {/* Channels */}
-                <div className="rounded-md border overflow-hidden divide-y divide-border">
+                <div className="rounded-[24px] border border-border dark:border-white/5 bg-background dark:bg-white/[0.01] overflow-hidden shadow-sm">
                   {cat.channels.map((ch) => {
                     const override = channelModes[ch.id] as ChannelMode | null | undefined;
                     const effectiveMode: ChannelMode = override ?? defaultMode;
@@ -376,13 +384,31 @@ export function ChannelModeSection({
                     return (
                       <div
                         key={ch.id}
-                        className="flex flex-col gap-2 px-3 py-2 sm:flex-row sm:items-center sm:justify-between bg-card hover:bg-muted/30 transition-colors"
+                        className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between border-b border-border/50 dark:border-white/[0.03] last:border-0 hover:bg-muted/10 transition-all duration-300"
                       >
                         {/* Channel name */}
-                        <div className="flex items-center gap-2 min-w-0">
-                          <ChannelIcon type={ch.type} />
-                          <span className="text-sm truncate">{ch.name}</span>
-                          {isOverridden && <ModeDot mode={effectiveMode} />}
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div
+                            className={cn(
+                              'flex h-8 w-8 items-center justify-center rounded-lg border border-border shadow-inner transition-colors',
+                              isOverridden
+                                ? 'bg-primary/10 text-primary'
+                                : 'bg-muted/20 text-muted-foreground/60',
+                            )}
+                          >
+                            <ChannelIcon type={ch.type} />
+                          </div>
+                          <span
+                            className={cn(
+                              'text-xs font-bold tracking-tight truncate',
+                              isOverridden ? 'text-foreground' : 'text-muted-foreground',
+                            )}
+                          >
+                            {ch.name}
+                          </span>
+                          {isOverridden && (
+                            <div className="flex h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary)/0.5)]" />
+                          )}
                         </div>
 
                         {/* Controls */}
@@ -391,7 +417,7 @@ export function ChannelModeSection({
                             mode={effectiveMode}
                             onChange={(m) => handleChannelMode(ch.id, m)}
                             disabled={saving}
-                            isDefault={!isOverridden}
+                            ariaLabelContext={`Channel #${ch.name}`}
                           />
                         </div>
                       </div>
@@ -406,18 +432,18 @@ export function ChannelModeSection({
         {hasOverrides && (
           <div className="flex justify-end pt-2">
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
               onClick={onResetAll}
               disabled={saving}
-              className="gap-1.5 text-muted-foreground"
+              className="h-8 rounded-xl px-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 hover:text-destructive hover:bg-destructive/5 group transition-all"
             >
-              <RotateCcw className="h-3.5 w-3.5" />
-              Reset all to default
+              <RotateCcw className="h-3 w-3 mr-2 group-hover:rotate-[-120deg] transition-transform" />
+              Reset All Overrides
             </Button>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

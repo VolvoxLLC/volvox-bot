@@ -286,186 +286,192 @@ router.get(
  *       "503":
  *         $ref: "#/components/responses/ServiceUnavailable"
  */
-router.get('/:id/members', membersRateLimit, requireGuildModerator, validateGuild, async (req, res) => {
-  const limit = parseLimit(req.query.limit);
-  const after = req.query.after || undefined;
-  const search = req.query.search || undefined;
-  const sort = req.query.sort || 'joined';
-  const order = req.query.order === 'asc' ? 'asc' : 'desc';
+router.get(
+  '/:id/members',
+  membersRateLimit,
+  requireGuildModerator,
+  validateGuild,
+  async (req, res) => {
+    const limit = parseLimit(req.query.limit);
+    const after = req.query.after || undefined;
+    const search = req.query.search || undefined;
+    const sort = req.query.sort || 'joined';
+    const order = req.query.order === 'asc' ? 'asc' : 'desc';
 
-  try {
-    const guild = req.guild;
-    const pool = safeGetPool();
-    if (!pool) {
-      return res.status(503).json({ error: 'Database unavailable' });
-    }
-    const xpConfig = getXpConfig(guild.id);
+    try {
+      const guild = req.guild;
+      const pool = safeGetPool();
+      if (!pool) {
+        return res.status(503).json({ error: 'Database unavailable' });
+      }
+      const xpConfig = getXpConfig(guild.id);
 
-    // Fetch members — use Discord server-side search when a query is provided
-    // (searches all guild members by username/nickname prefix), otherwise use
-    // cursor-based listing.  Sort is applied after enrichment and is scoped to
-    // the returned page; it does NOT globally sort all guild members.
-    //
-    // TODO: Server-side member search accuracy — Discord's guild.members.search()
-    // only searches the bot's in-memory member cache (populated by the GUILD_MEMBERS
-    // privileged intent). For large guilds (100k+ members) the cache is incomplete.
-    // For full coverage, consider: (a) adding a members DB table populated from
-    // guildMemberAdd events + bulk sync on startup, or (b) using the Discord HTTP
-    // API directly with the Search Guild Members endpoint which searches all members.
-    let memberList;
-    let paginationCursor = null;
-    if (search) {
-      const searchResults = await guild.members.search({ query: search, limit });
-      memberList = Array.from(searchResults.values());
-      // Discord search does not support cursor pagination
-    } else {
-      const fetchOptions = { limit, after };
-      const discordPage = await guild.members.list(fetchOptions);
-      memberList = Array.from(discordPage.values());
-      const lastMember = Array.from(discordPage.values()).pop();
-      paginationCursor = lastMember ? lastMember.id : null;
-    }
+      // Fetch members — use Discord server-side search when a query is provided
+      // (searches all guild members by username/nickname prefix), otherwise use
+      // cursor-based listing.  Sort is applied after enrichment and is scoped to
+      // the returned page; it does NOT globally sort all guild members.
+      //
+      // TODO: Server-side member search accuracy — Discord's guild.members.search()
+      // only searches the bot's in-memory member cache (populated by the GUILD_MEMBERS
+      // privileged intent). For large guilds (100k+ members) the cache is incomplete.
+      // For full coverage, consider: (a) adding a members DB table populated from
+      // guildMemberAdd events + bulk sync on startup, or (b) using the Discord HTTP
+      // API directly with the Search Guild Members endpoint which searches all members.
+      let memberList;
+      let paginationCursor = null;
+      if (search) {
+        const searchResults = await guild.members.search({ query: search, limit });
+        memberList = Array.from(searchResults.values());
+        // Discord search does not support cursor pagination
+      } else {
+        const fetchOptions = { limit, after };
+        const discordPage = await guild.members.list(fetchOptions);
+        memberList = Array.from(discordPage.values());
+        const lastMember = Array.from(discordPage.values()).pop();
+        paginationCursor = lastMember ? lastMember.id : null;
+      }
 
-    const userIds = memberList.map((m) => m.id);
+      const userIds = memberList.map((m) => m.id);
 
-    // Try to load per-user enrichment data from cache first, then batch-fetch DB for misses.
-    // Cache key per user: `member:enrichment:{guildId}:{userId}` — TTL.MEMBERS (60 s).
-    const enrichmentCacheKeys = userIds.map((id) => `member:enrichment:${guild.id}:${id}`);
-    const cachedEnrichments = await Promise.all(enrichmentCacheKeys.map((k) => cacheGet(k)));
+      // Try to load per-user enrichment data from cache first, then batch-fetch DB for misses.
+      // Cache key per user: `member:enrichment:{guildId}:{userId}` — TTL.MEMBERS (60 s).
+      const enrichmentCacheKeys = userIds.map((id) => `member:enrichment:${guild.id}:${id}`);
+      const cachedEnrichments = await Promise.all(enrichmentCacheKeys.map((k) => cacheGet(k)));
 
-    // Determine which users still need DB enrichment
-    const uncachedUserIds = userIds.filter((_, i) => cachedEnrichments[i] === null);
+      // Determine which users still need DB enrichment
+      const uncachedUserIds = userIds.filter((_, i) => cachedEnrichments[i] === null);
 
-    let statsRows = [];
-    let repRows = [];
-    let warningsRows = [];
+      let statsRows = [];
+      let repRows = [];
+      let warningsRows = [];
 
-    if (uncachedUserIds.length > 0) {
-      // Batch-fetch enrichment data only for cache-miss users
-      const [statsResult, repResult, warningsResult] = await Promise.all([
-        pool.query(
-          `SELECT user_id, messages_sent, days_active, last_active
+      if (uncachedUserIds.length > 0) {
+        // Batch-fetch enrichment data only for cache-miss users
+        const [statsResult, repResult, warningsResult] = await Promise.all([
+          pool.query(
+            `SELECT user_id, messages_sent, days_active, last_active
                FROM user_stats
                WHERE guild_id = $1 AND user_id = ANY($2)`,
-          [guild.id, uncachedUserIds],
-        ),
-        pool.query(
-          `SELECT user_id, xp, level
+            [guild.id, uncachedUserIds],
+          ),
+          pool.query(
+            `SELECT user_id, xp, level
                FROM reputation
                WHERE guild_id = $1 AND user_id = ANY($2)`,
-          [guild.id, uncachedUserIds],
-        ),
-        pool.query(
-          `SELECT target_id, COUNT(*)::integer AS count
+            [guild.id, uncachedUserIds],
+          ),
+          pool.query(
+            `SELECT target_id, COUNT(*)::integer AS count
                FROM mod_cases
                WHERE guild_id = $1 AND target_id = ANY($2) AND action = 'warn'
                GROUP BY target_id`,
-          [guild.id, uncachedUserIds],
-        ),
-      ]);
-      statsRows = statsResult.rows;
-      repRows = repResult.rows;
-      warningsRows = warningsResult.rows;
-    }
+            [guild.id, uncachedUserIds],
+          ),
+        ]);
+        statsRows = statsResult.rows;
+        repRows = repResult.rows;
+        warningsRows = warningsResult.rows;
+      }
 
-    const statsMap = new Map(statsRows.map((r) => [r.user_id, r]));
-    const repMap = new Map(repRows.map((r) => [r.user_id, r]));
-    const warningsMap = new Map(warningsRows.map((r) => [r.target_id, r.count]));
+      const statsMap = new Map(statsRows.map((r) => [r.user_id, r]));
+      const repMap = new Map(repRows.map((r) => [r.user_id, r]));
+      const warningsMap = new Map(warningsRows.map((r) => [r.target_id, r.count]));
 
-    // Persist freshly-fetched enrichment data to cache (fire-and-forget)
-    const cacheWrites = [];
-    for (let i = 0; i < userIds.length; i++) {
-      if (cachedEnrichments[i] !== null) continue; // already cached
-      const userId = userIds[i];
-      const stats = statsMap.get(userId) || {};
-      const rep = repMap.get(userId) || {};
-      const warnings = warningsMap.get(userId) || 0;
-      const xp = rep.xp ?? 0;
-      const enrichment = {
-        messages_sent: stats.messages_sent ?? 0,
-        days_active: stats.days_active ?? 0,
-        last_active: stats.last_active ?? null,
-        xp,
-        level: computeLevel(xp, xpConfig.levelThresholds),
-        warning_count: warnings,
-      };
-      cacheWrites.push(cacheSet(enrichmentCacheKeys[i], enrichment, TTL.MEMBERS).catch(() => {}));
-    }
-    // Write to cache without blocking the response
-    Promise.all(cacheWrites).catch(() => {});
+      // Persist freshly-fetched enrichment data to cache (fire-and-forget)
+      const cacheWrites = [];
+      for (let i = 0; i < userIds.length; i++) {
+        if (cachedEnrichments[i] !== null) continue; // already cached
+        const userId = userIds[i];
+        const stats = statsMap.get(userId) || {};
+        const rep = repMap.get(userId) || {};
+        const warnings = warningsMap.get(userId) || 0;
+        const xp = rep.xp ?? 0;
+        const enrichment = {
+          messages_sent: stats.messages_sent ?? 0,
+          days_active: stats.days_active ?? 0,
+          last_active: stats.last_active ?? null,
+          xp,
+          level: computeLevel(xp, xpConfig.levelThresholds),
+          warning_count: warnings,
+        };
+        cacheWrites.push(cacheSet(enrichmentCacheKeys[i], enrichment, TTL.MEMBERS).catch(() => {}));
+      }
+      // Write to cache without blocking the response
+      Promise.all(cacheWrites).catch(() => {});
 
-    // Build enriched member objects by merging Discord data with enrichment (cache or DB)
-    const enriched = memberList.map((m, i) => {
-      const repXp = repMap.get(m.id)?.xp ?? 0;
-      const enrichment = cachedEnrichments[i] ?? {
-        messages_sent: statsMap.get(m.id)?.messages_sent ?? 0,
-        days_active: statsMap.get(m.id)?.days_active ?? 0,
-        last_active: statsMap.get(m.id)?.last_active ?? null,
-        xp: repXp,
-        level: computeLevel(repXp, xpConfig.levelThresholds),
-        warning_count: warningsMap.get(m.id) ?? 0,
-      };
+      // Build enriched member objects by merging Discord data with enrichment (cache or DB)
+      const enriched = memberList.map((m, i) => {
+        const repXp = repMap.get(m.id)?.xp ?? 0;
+        const enrichment = cachedEnrichments[i] ?? {
+          messages_sent: statsMap.get(m.id)?.messages_sent ?? 0,
+          days_active: statsMap.get(m.id)?.days_active ?? 0,
+          last_active: statsMap.get(m.id)?.last_active ?? null,
+          xp: repXp,
+          level: computeLevel(repXp, xpConfig.levelThresholds),
+          warning_count: warningsMap.get(m.id) ?? 0,
+        };
 
-      return {
-        id: m.id,
-        username: m.user.username,
-        displayName: m.displayName,
-        avatar: m.user.displayAvatarURL(),
-        roles: Array.from(m.roles.cache.values()).map((r) => ({ id: r.id, name: r.name })),
-        joinedAt: m.joinedAt,
-        messages_sent: enrichment.messages_sent,
-        days_active: enrichment.days_active,
-        last_active: enrichment.last_active,
-        xp: enrichment.xp,
-        level: enrichment.level,
-        warning_count: enrichment.warning_count,
-      };
-    });
-
-    // Sort
-    const validSorts = ['messages', 'xp', 'warnings', 'joined'];
-    if (validSorts.includes(sort)) {
-      enriched.sort((a, b) => {
-        let aVal, bVal;
-        switch (sort) {
-          case 'messages':
-            aVal = a.messages_sent;
-            bVal = b.messages_sent;
-            break;
-          case 'xp':
-            aVal = a.xp;
-            bVal = b.xp;
-            break;
-          case 'warnings':
-            aVal = a.warning_count;
-            bVal = b.warning_count;
-            break;
-          case 'joined':
-            aVal = a.joinedAt ? new Date(a.joinedAt).getTime() : 0;
-            bVal = b.joinedAt ? new Date(b.joinedAt).getTime() : 0;
-            break;
-        }
-        return order === 'asc' ? aVal - bVal : bVal - aVal;
+        return {
+          id: m.id,
+          username: m.user.username,
+          displayName: m.displayName,
+          avatar: m.user.displayAvatarURL(),
+          roles: Array.from(m.roles.cache.values()).map((r) => ({ id: r.id, name: r.name })),
+          joinedAt: m.joinedAt,
+          messages_sent: enrichment.messages_sent,
+          days_active: enrichment.days_active,
+          last_active: enrichment.last_active,
+          xp: enrichment.xp,
+          level: enrichment.level,
+          warning_count: enrichment.warning_count,
+        };
       });
-    }
 
-    const response = {
-      members: enriched,
-      nextAfter: paginationCursor,
-      total: guild.memberCount,
-    };
-    // When search is active, include filtered count so the UI can show accurate
-    // totals.  Because Discord search caps results at `limit`, the count may be
-    // truncated for very broad queries.
-    if (search) {
-      response.filteredTotal = enriched.length;
+      // Sort
+      const validSorts = ['messages', 'xp', 'warnings', 'joined'];
+      if (validSorts.includes(sort)) {
+        enriched.sort((a, b) => {
+          let aVal, bVal;
+          switch (sort) {
+            case 'messages':
+              aVal = a.messages_sent;
+              bVal = b.messages_sent;
+              break;
+            case 'xp':
+              aVal = a.xp;
+              bVal = b.xp;
+              break;
+            case 'warnings':
+              aVal = a.warning_count;
+              bVal = b.warning_count;
+              break;
+            case 'joined':
+              aVal = a.joinedAt ? new Date(a.joinedAt).getTime() : 0;
+              bVal = b.joinedAt ? new Date(b.joinedAt).getTime() : 0;
+              break;
+          }
+          return order === 'asc' ? aVal - bVal : bVal - aVal;
+        });
+      }
+
+      const response = {
+        members: enriched,
+        nextAfter: paginationCursor,
+        total: guild.memberCount,
+      };
+      // When search is active, include filtered count so the UI can show accurate
+      // totals.  Because Discord search caps results at `limit`, the count may be
+      // truncated for very broad queries.
+      if (search) {
+        response.filteredTotal = enriched.length;
+      }
+      res.json(response);
+    } catch (err) {
+      logError('Failed to fetch enriched members', { error: err.message, guildId: req.params.id });
+      res.status(500).json({ error: 'Failed to fetch members' });
     }
-    res.json(response);
-  } catch (err) {
-    logError('Failed to fetch enriched members', { error: err.message, guild: req.params.id });
-    res.status(500).json({ error: 'Failed to fetch members' });
-  }
-});
+  },
+);
 
 // ─── GET /:id/members/:userId — Member detail ────────────────────────────────
 

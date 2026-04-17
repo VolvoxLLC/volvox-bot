@@ -19,6 +19,13 @@ export const data = new SlashCommandBuilder()
     sub.setName('setup').setDescription('Post rules agreement and role menu onboarding panels'),
   );
 
+/**
+ * Handles the `/welcome setup` command by posting the configured onboarding panels (rules agreement and role menu) into the target guild channels.
+ *
+ * The command is restricted to administrators or guild moderators; it edits an ephemeral reply summarizing which panels were posted or why they were not, and logs the execution metadata.
+ *
+ * @param {import('discord.js').CommandInteraction} interaction - The interaction invoking the command, used to read guild configuration, send messages, and reply to the user.
+ */
 export async function execute(interaction) {
   await interaction.deferReply({ ephemeral: true });
 
@@ -75,6 +82,7 @@ export async function execute(interaction) {
 
   info('Welcome setup command executed', {
     guildId: interaction.guildId,
+    channelId: interaction.channelId,
     userId: interaction.user.id,
   });
 }

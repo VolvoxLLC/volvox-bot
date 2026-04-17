@@ -11,7 +11,7 @@ import { info, error as logError, warn } from '../logger.js';
 import { getConfig } from '../modules/config.js';
 import { getNextCronRun } from '../utils/cronParser.js';
 import { fetchChannelCached } from '../utils/discordCache.js';
-import { safeSend } from '../utils/safeSend.js';
+import { safeReply, safeSend, safeUpdate } from '../utils/safeSend.js';
 
 /** Snooze durations in milliseconds, keyed by button suffix */
 const SNOOZE_DURATIONS = {
@@ -97,8 +97,12 @@ async function sendReminderNotification(client, reminder) {
     await user.send({ embeds: [embed], components });
     info('Reminder sent via DM', { reminderId: reminder.id, userId: reminder.user_id });
     return true;
-  } catch {
-    // DM failed — fall back to channel mention
+  } catch (err) {
+    warn('Reminder DM delivery failed, falling back to channel', {
+      reminderId: reminder.id,
+      userId: reminder.user_id,
+      error: err?.message ?? String(err),
+    });
   }
 
   // Fallback: channel mention
@@ -132,10 +136,13 @@ async function sendReminderNotification(client, reminder) {
 }
 
 /**
- * Check for due reminders and fire them.
- * Called by the scheduler every 60s.
+ * Process due reminders from the database, deliver notifications, and update reminder state.
  *
- * @param {import('discord.js').Client} client - Discord client
+ * Queries reminders whose remind_at is due, attempts delivery (DM with channel fallback), increments
+ * failed delivery counts and marks reminders completed after reaching the retry limit, reschedules
+ * recurring reminders, and logs per-reminder errors.
+ *
+ * @param {import('discord.js').Client} client - Discord client used to deliver reminder notifications.
  */
 export async function checkReminders(client) {
   const pool = getPool();
@@ -167,6 +174,7 @@ export async function checkReminders(client) {
         if (newCount >= MAX_DELIVERY_RETRIES) {
           warn('Reminder delivery failed max times, marking completed', {
             reminderId: reminder.id,
+            guildId: reminder.guild_id,
             attempts: newCount,
           });
           await pool.query(
@@ -176,6 +184,7 @@ export async function checkReminders(client) {
         } else {
           info('Reminder delivery failed, will retry next poll', {
             reminderId: reminder.id,
+            guildId: reminder.guild_id,
             attempt: newCount,
           });
           await pool.query('UPDATE reminders SET failed_delivery_count = $1 WHERE id = $2', [
@@ -217,9 +226,11 @@ export async function checkReminders(client) {
 }
 
 /**
- * Handle a reminder snooze button click.
+ * Process a snooze button interaction and reschedule the corresponding reminder.
  *
- * @param {import('discord.js').ButtonInteraction} interaction
+ * Validates the interaction custom ID, checks database availability, verifies reminder existence and ownership, ensures the reminder is not already completed, updates the reminder's next remind time and snooze count, updates or replies to the interaction with a confirmation message, and logs the action.
+ *
+ * @param {import('discord.js').ButtonInteraction} interaction - The button interaction triggered by the user.
  */
 export async function handleReminderSnooze(interaction) {
   const match = interaction.customId.match(/^reminder_snooze_(\d+)_(15m|1h|tomorrow)$/);
@@ -231,7 +242,7 @@ export async function handleReminderSnooze(interaction) {
 
   const pool = getPool();
   if (!pool) {
-    await interaction.reply({
+    await safeReply(interaction, {
       content: '❌ Database unavailable. Please try again later.',
       ephemeral: true,
     });
@@ -241,7 +252,7 @@ export async function handleReminderSnooze(interaction) {
   const { rows } = await pool.query('SELECT * FROM reminders WHERE id = $1', [reminderId]);
 
   if (rows.length === 0) {
-    await interaction.reply({ content: '❌ Reminder not found.', ephemeral: true });
+    await safeReply(interaction, { content: '❌ Reminder not found.', ephemeral: true });
     return;
   }
 
@@ -249,13 +260,13 @@ export async function handleReminderSnooze(interaction) {
 
   // Verify ownership
   if (reminder.user_id !== interaction.user.id) {
-    await interaction.reply({ content: "❌ This isn't your reminder.", ephemeral: true });
+    await safeReply(interaction, { content: "❌ This isn't your reminder.", ephemeral: true });
     return;
   }
 
   // Guard: do not reactivate already-completed reminders (stale snooze buttons)
   if (reminder.completed) {
-    await interaction.reply({
+    await safeReply(interaction, {
       content: '❌ This reminder has already been completed.',
       ephemeral: true,
     });
@@ -273,25 +284,36 @@ export async function handleReminderSnooze(interaction) {
 
   // Update the original message to show it was snoozed
   try {
-    await interaction.update({
+    await safeUpdate(interaction, {
       content: `💤 Snoozed for ${labels[duration]}. I'll remind you <t:${Math.floor(newRemindAt.getTime() / 1000)}:R>.`,
       embeds: [],
       components: [],
     });
   } catch {
-    await interaction.reply({
+    await safeReply(interaction, {
       content: `💤 Snoozed for ${labels[duration]}. I'll remind you <t:${Math.floor(newRemindAt.getTime() / 1000)}:R>.`,
       ephemeral: true,
     });
   }
 
-  info('Reminder snoozed', { reminderId, duration, userId: interaction.user.id });
+  info('Reminder snoozed', {
+    reminderId,
+    guildId: reminder.guild_id,
+    channelId: reminder.channel_id,
+    duration,
+    userId: interaction.user.id,
+  });
 }
 
 /**
- * Handle a reminder dismiss button click.
+ * Process a dismiss-button interaction by marking the referenced reminder completed and acknowledging the user.
  *
- * @param {import('discord.js').ButtonInteraction} interaction
+ * Validates the interaction customId, ensures the database and reminder exist, verifies the invoking user owns the reminder,
+ * updates the reminder to `completed = true`, attempts to update the original interaction message to confirm dismissal,
+ * and falls back to an ephemeral reply if the update fails. Emits an informational log with `reminderId`, `guildId`,
+ * `channelId` (from the persisted reminder row, not the interaction), and `userId`.
+ *
+ * @param {import('discord.js').ButtonInteraction} interaction - The button interaction representing the dismiss action.
  */
 export async function handleReminderDismiss(interaction) {
   const match = interaction.customId.match(/^reminder_dismiss_(\d+)$/);
@@ -300,7 +322,7 @@ export async function handleReminderDismiss(interaction) {
   const reminderId = Number.parseInt(match[1], 10);
   const pool = getPool();
   if (!pool) {
-    await interaction.reply({
+    await safeReply(interaction, {
       content: '❌ Database unavailable. Please try again later.',
       ephemeral: true,
     });
@@ -310,28 +332,33 @@ export async function handleReminderDismiss(interaction) {
   const { rows } = await pool.query('SELECT * FROM reminders WHERE id = $1', [reminderId]);
 
   if (rows.length === 0) {
-    await interaction.reply({ content: '❌ Reminder not found.', ephemeral: true });
+    await safeReply(interaction, { content: '❌ Reminder not found.', ephemeral: true });
     return;
   }
 
   const reminder = rows[0];
 
   if (reminder.user_id !== interaction.user.id) {
-    await interaction.reply({ content: "❌ This isn't your reminder.", ephemeral: true });
+    await safeReply(interaction, { content: "❌ This isn't your reminder.", ephemeral: true });
     return;
   }
 
   await pool.query('UPDATE reminders SET completed = true WHERE id = $1', [reminderId]);
 
   try {
-    await interaction.update({
+    await safeUpdate(interaction, {
       content: '✅ Reminder dismissed.',
       embeds: [],
       components: [],
     });
   } catch {
-    await interaction.reply({ content: '✅ Reminder dismissed.', ephemeral: true });
+    await safeReply(interaction, { content: '✅ Reminder dismissed.', ephemeral: true });
   }
 
-  info('Reminder dismissed', { reminderId, userId: interaction.user.id });
+  info('Reminder dismissed', {
+    reminderId,
+    guildId: reminder.guild_id,
+    channelId: reminder.channel_id,
+    userId: interaction.user.id,
+  });
 }

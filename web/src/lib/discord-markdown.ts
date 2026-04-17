@@ -11,6 +11,8 @@ interface ParseContext {
   inList: 'ul' | 'ol' | null;
 }
 
+const DEFAULT_VARIABLE_DELIMITERS = ['{{', '}}'] as const;
+
 /** Escape HTML entities to prevent XSS in preview */
 function escapeHtml(text: string): string {
   return text
@@ -82,16 +84,13 @@ function splitCodeBlockSegments(input: string): MarkdownSegment[] {
 let activeVariables: ReadonlySet<string> | null = null;
 
 /**
- * Parse Discord-flavored markdown to HTML.
+ * Converts Discord-flavored markdown into HTML.
  *
- * @param input - The raw markdown string
- * @param validVariables - When provided, only these names are rendered as variable badges.
- *   Any `{name}` or `{{name}}` not in the set is left as plain text.
+ * @param input - The raw markdown string to convert
+ * @param validVariables - When provided, only these names are rendered as variable badges; any `{name}` or `{{name}}` not in the list remains plain text
+ * @returns The generated HTML string
  */
-export function parseDiscordMarkdown(
-  input: string,
-  validVariables?: readonly string[],
-): string {
+export function parseDiscordMarkdown(input: string, validVariables?: readonly string[]): string {
   activeVariables = validVariables ? new Set(validVariables) : null;
   try {
     return splitCodeBlockSegments(input)
@@ -260,21 +259,17 @@ function isWordCharacter(char: string | undefined): boolean {
 }
 
 function parseVariableAt(text: string, index: number): InlineFormatMatch | null {
-  // Match double-brace {{var}} or single-brace {var} template variables.
-  const isDouble = text.startsWith('{{', index);
-  const isSingle = !isDouble && text[index] === '{';
-  if (!isDouble && !isSingle) {
+  const [openDelim, closeDelim] = DEFAULT_VARIABLE_DELIMITERS;
+  if (!text.startsWith(openDelim, index)) {
     return null;
   }
 
-  const openLen = isDouble ? 2 : 1;
-  const closeDelim = isDouble ? '}}' : '}';
-  const end = text.indexOf(closeDelim, index + openLen);
-  if (end === -1 || end === index + openLen) {
+  const end = text.indexOf(closeDelim, index + openDelim.length);
+  if (end === -1 || end === index + openDelim.length) {
     return null;
   }
 
-  const variable = text.slice(index + openLen, end);
+  const variable = text.slice(index + openDelim.length, end);
   for (const char of variable) {
     if (!isWordCharacter(char)) {
       return null;
@@ -286,10 +281,10 @@ function parseVariableAt(text: string, index: number): InlineFormatMatch | null 
     return null;
   }
 
-  const display = `${isDouble ? '{{' : '{'}${variable}${isDouble ? '}}' : '}'}`;
+  const display = `${openDelim}${variable}${closeDelim}`;
   return {
     html: `<span class="discord-variable inline rounded bg-primary/10 px-1 font-mono text-primary" data-variable="${variable}">${display}</span>`,
-    nextIndex: end + (isDouble ? 2 : 1),
+    nextIndex: end + closeDelim.length,
   };
 }
 

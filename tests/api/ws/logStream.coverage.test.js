@@ -23,11 +23,12 @@ import { queryLogs } from '../../../src/utils/logQuery.js';
 
 const TEST_SECRET = 'test-secret-coverage';
 
-function makeTicket(secret = TEST_SECRET, ttlMs = 60_000) {
+function makeTicket(secret = TEST_SECRET, ttlMs = 60_000, guildId = 'test-guild') {
   const nonce = randomBytes(16).toString('hex');
   const expiry = String(Date.now() + ttlMs);
-  const hmac = createHmac('sha256', secret).update(`${nonce}.${expiry}`).digest('hex');
-  return `${nonce}.${expiry}.${hmac}`;
+  const payload = guildId ? `${nonce}.${expiry}.${guildId}` : `${nonce}.${expiry}`;
+  const hmac = createHmac('sha256', secret).update(payload).digest('hex');
+  return guildId ? `${nonce}.${expiry}.${guildId}.${hmac}` : `${nonce}.${expiry}.${hmac}`;
 }
 
 function createTestServer() {
@@ -104,7 +105,7 @@ describe('logStream coverage', () => {
     return ws;
   }
 
-  async function authenticate(ws) {
+  async function authenticate(ws, guildId = 'test-guild') {
     const messages = [];
     return new Promise((resolve) => {
       let count = 0;
@@ -118,7 +119,7 @@ describe('logStream coverage', () => {
           resolve(messages);
         }
       });
-      sendJson(ws, { type: 'auth', ticket: makeTicket() });
+      sendJson(ws, { type: 'auth', ticket: makeTicket(TEST_SECRET, 60_000, guildId) });
     });
   }
 
@@ -264,6 +265,49 @@ describe('logStream coverage', () => {
       });
       await new Promise((r) => setTimeout(r, 50)); // let cleanup run
       expect(getAuthenticatedClientCount()).toBe(0);
+    });
+  });
+
+  describe('guild-scoped auth and filtering', () => {
+    it('passes the authenticated guild to historical log queries', async () => {
+      const ws = await connect();
+      await authenticate(ws, 'guild-123');
+
+      expect(queryLogs).toHaveBeenCalledWith({ limit: 100, guildId: 'guild-123' });
+    });
+
+    it('rejects filter messages that switch guilds after auth', async () => {
+      const ws = await connect();
+      await authenticate(ws, 'guild-123');
+
+      const msgPromise = waitForMessage(ws);
+      sendJson(ws, { type: 'filter', guildId: 'guild-999' });
+      const msg = await msgPromise;
+
+      expect(msg).toEqual({
+        type: 'error',
+        message: 'Guild filter does not match authenticated guild',
+      });
+    });
+
+    it('accepts guild-matched channel filters', async () => {
+      const ws = await connect();
+      await authenticate(ws, 'guild-123');
+
+      const msgPromise = waitForMessage(ws);
+      sendJson(ws, { type: 'filter', guildId: 'guild-123', channelIds: ['channel-1'] });
+      const msg = await msgPromise;
+
+      expect(msg).toEqual({
+        type: 'filter_ok',
+        filter: {
+          guildId: 'guild-123',
+          channelIds: ['channel-1'],
+          level: null,
+          module: null,
+          search: null,
+        },
+      });
     });
   });
 

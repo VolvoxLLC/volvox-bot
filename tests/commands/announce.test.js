@@ -89,6 +89,7 @@ vi.mock('discord.js', () => {
 
 import { data, execute, parseTime } from '../../src/commands/announce.js';
 import { getPool } from '../../src/db.js';
+import * as logger from '../../src/logger.js';
 import { isModerator } from '../../src/utils/permissions.js';
 
 /**
@@ -355,6 +356,54 @@ describe('announce command', () => {
         expect.objectContaining({
           content: expect.stringContaining('No active scheduled message'),
           ephemeral: true,
+        }),
+      );
+    });
+
+    it('should include guildId and channelId in info log on successful cancel', async () => {
+      mockPool.query
+        .mockResolvedValueOnce({
+          rows: [{ id: 5, author_id: 'user-456', guild_id: 'guild-123' }],
+        })
+        .mockResolvedValueOnce({ rows: [] });
+
+      const interaction = {
+        ...createMockInteraction('cancel', { id: 5 }),
+        channelId: 'channel-cancel-log',
+      };
+
+      await execute(interaction);
+
+      expect(logger.info).toHaveBeenCalledWith(
+        'Scheduled message cancelled',
+        expect.objectContaining({
+          guildId: 'guild-123',
+          channelId: 'channel-cancel-log',
+          id: 5,
+        }),
+      );
+    });
+
+    it('should include guildId and channelId in warn log when cancel permission denied', async () => {
+      mockPool.query.mockResolvedValueOnce({
+        rows: [{ id: 7, author_id: 'other-user', guild_id: 'guild-123' }],
+      });
+      isModerator.mockReturnValueOnce(true); // execute passes, but cancel permission denied
+      // isModerator is called again in handleCancel for the permission check
+      isModerator.mockReturnValueOnce(false);
+
+      const interaction = {
+        ...createMockInteraction('cancel', { id: 7 }),
+        channelId: 'channel-deny-log',
+      };
+
+      await execute(interaction);
+
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Announce cancel permission denied',
+        expect.objectContaining({
+          guildId: 'guild-123',
+          channelId: 'channel-deny-log',
         }),
       );
     });

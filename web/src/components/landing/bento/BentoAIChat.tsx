@@ -1,8 +1,8 @@
 'use client';
 
 import { AnimatePresence, motion, useInView, useReducedMotion } from 'framer-motion';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { AI_CHAT_POOL, pickRandom } from './bento-data';
+import { useEffect, useRef, useState } from 'react';
+import { AI_CHAT_POOL, type AIChatItem, pickRandom } from './bento-data';
 
 /**
  * AI Chat cell for the bento grid.
@@ -14,19 +14,22 @@ export function BentoAIChat() {
   const isInView = useInView(ref, { once: true });
   const shouldReduceMotion = useReducedMotion() ?? false;
   const [showResponse, setShowResponse] = useState(false);
+  const [chat, setChat] = useState<AIChatItem | null>(null);
 
-  const chat = useMemo(() => pickRandom(AI_CHAT_POOL), []);
+  useEffect(() => {
+    setChat(pickRandom(AI_CHAT_POOL));
+  }, []);
 
   // If user prefers reduced motion, skip typing animation entirely
   useEffect(() => {
-    if (shouldReduceMotion) setShowResponse(true);
-  }, [shouldReduceMotion]);
+    if (shouldReduceMotion && chat) setShowResponse(true);
+  }, [shouldReduceMotion, chat]);
 
   useEffect(() => {
-    if (!isInView || shouldReduceMotion || showResponse) return;
+    if (!isInView || shouldReduceMotion || showResponse || !chat) return;
     const timer = setTimeout(() => setShowResponse(true), 1200);
     return () => clearTimeout(timer);
-  }, [isInView, shouldReduceMotion, showResponse]);
+  }, [isInView, shouldReduceMotion, showResponse, chat]);
 
   return (
     <div
@@ -34,66 +37,70 @@ export function BentoAIChat() {
       className="rounded-2xl border border-border bg-card p-5 transition-transform duration-200 hover:-translate-y-0.5 col-span-1 sm:col-span-2 h-full flex flex-col"
     >
       <div className="text-sm font-semibold text-foreground mb-3">AI Chat</div>
-      <div className="flex flex-col gap-3 flex-1 justify-center">
-        <motion.div
-          className="flex gap-3 items-start"
-          initial={shouldReduceMotion ? {} : { opacity: 0, y: 8 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.4 }}
-        >
-          <div className="w-7 h-7 rounded-full bg-secondary shrink-0 flex items-center justify-center text-[11px] font-bold text-white">
-            A
-          </div>
-          <div className="bg-muted/50 rounded-lg px-4 py-2 text-sm text-foreground">
-            {chat.question}
-          </div>
-        </motion.div>
+      <div className="flex flex-col gap-3 flex-1 justify-center min-h-[100px]">
+        {chat && (
+          <>
+            <motion.div
+              className="flex gap-3 items-start"
+              initial={shouldReduceMotion ? {} : { opacity: 0, y: 8 }}
+              animate={isInView ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.4 }}
+            >
+              <div className="w-7 h-7 rounded-full bg-secondary shrink-0 flex items-center justify-center text-[11px] font-bold text-white">
+                A
+              </div>
+              <div className="bg-muted/50 rounded-lg px-4 py-2 text-sm text-foreground">
+                {chat.question}
+              </div>
+            </motion.div>
 
-        <motion.div
-          className="flex gap-3 items-start justify-end"
-          initial={shouldReduceMotion ? {} : { opacity: 0, y: 8 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.4, delay: shouldReduceMotion ? 0 : 0.3 }}
-        >
-          <div className="bg-primary/10 rounded-lg px-4 py-2 text-sm text-primary">
-            <AnimatePresence mode="wait">
-              {showResponse ? (
-                <motion.span
-                  key="response"
-                  initial={shouldReduceMotion ? {} : { opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  {chat.answer}
-                </motion.span>
-              ) : (
-                <motion.span
-                  key="typing"
-                  className="inline-flex gap-1 py-0.5"
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.15 }}
-                >
-                  {[0, 1, 2].map((i) => (
+            <motion.div
+              className="flex gap-3 items-start justify-end"
+              initial={shouldReduceMotion ? {} : { opacity: 0, y: 8 }}
+              animate={isInView ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.4, delay: shouldReduceMotion ? 0 : 0.3 }}
+            >
+              <div className="bg-primary/10 rounded-lg px-4 py-2 text-sm text-primary">
+                <AnimatePresence mode="wait">
+                  {showResponse ? (
                     <motion.span
-                      key={i}
-                      className="w-1 h-1 rounded-full bg-primary"
-                      animate={{ y: [0, -3, 0] }}
-                      transition={{
-                        duration: 0.5,
-                        repeat: Infinity,
-                        delay: i * 0.12,
-                        ease: 'easeInOut',
-                      }}
-                    />
-                  ))}
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </div>
-          <div className="w-7 h-7 rounded-full bg-primary shrink-0 flex items-center justify-center text-[11px] font-bold text-white">
-            V
-          </div>
-        </motion.div>
+                      key="response"
+                      initial={shouldReduceMotion ? {} : { opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      {chat.answer}
+                    </motion.span>
+                  ) : (
+                    <motion.span
+                      key="typing"
+                      className="inline-flex gap-1 py-0.5"
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                    >
+                      {[0, 1, 2].map((i) => (
+                        <motion.span
+                          key={i}
+                          className="w-1 h-1 rounded-full bg-primary"
+                          animate={{ y: [0, -3, 0] }}
+                          transition={{
+                            duration: 0.5,
+                            repeat: Infinity,
+                            delay: i * 0.12,
+                            ease: 'easeInOut',
+                          }}
+                        />
+                      ))}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </div>
+              <div className="w-7 h-7 rounded-full bg-primary shrink-0 flex items-center justify-center text-[11px] font-bold text-white">
+                V
+              </div>
+            </motion.div>
+          </>
+        )}
       </div>
     </div>
   );

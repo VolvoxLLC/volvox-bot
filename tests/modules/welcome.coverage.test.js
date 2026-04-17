@@ -155,7 +155,7 @@ describe('welcome module coverage', () => {
         welcome: {
           enabled: true,
           channelId: 'ch1',
-          message: 'Hey {user}, welcome to {server}!',
+          message: 'Hey {{user}}, welcome to {{server}}!',
         },
       };
 
@@ -208,7 +208,7 @@ describe('welcome module coverage', () => {
         welcome: {
           enabled: true,
           channelId: 'ch1',
-          message: '{greeting}\n\n{milestoneLine}\n\n{vibeLine}\n\n{ctaLine}',
+          message: '{{greeting}}\n\n{{milestoneLine}}\n\n{{vibeLine}}\n\n{{ctaLine}}',
           dynamic: { enabled: true },
         },
       };
@@ -227,7 +227,7 @@ describe('welcome module coverage', () => {
         welcome: {
           enabled: true,
           channelId: 'ch1',
-          message: '{greeting}\n\n{milestoneLine}\n\n{vibeLine}\n\n{ctaLine}',
+          message: '{{greeting}}\n\n{{milestoneLine}}\n\n{{vibeLine}}\n\n{{ctaLine}}',
           dynamic: { enabled: true },
         },
       };
@@ -369,7 +369,7 @@ describe('welcome module coverage', () => {
         welcome: {
           enabled: true,
           channelId: 'ch-hype',
-          message: '{greeting}\n\n{milestoneLine}\n\n{vibeLine}\n\n{ctaLine}',
+          message: '{{greeting}}\n\n{{milestoneLine}}\n\n{{vibeLine}}\n\n{{ctaLine}}',
           dynamic: { enabled: true, activityWindowMinutes: 60 },
         },
       };
@@ -390,7 +390,7 @@ describe('welcome module coverage', () => {
         welcome: {
           enabled: true,
           channelId: 'ch-quiet',
-          message: '{greeting}\n\n{milestoneLine}\n\n{vibeLine}\n\n{ctaLine}',
+          message: '{{greeting}}\n\n{{milestoneLine}}\n\n{{vibeLine}}\n\n{{ctaLine}}',
           dynamic: { enabled: true },
         },
       };
@@ -468,7 +468,7 @@ describe('welcome module coverage', () => {
         welcome: {
           enabled: true,
           channelId: 'ch1',
-          message: '{ctaLine}',
+          message: '{{ctaLine}}',
           dynamic: { enabled: true },
         },
       };
@@ -487,7 +487,7 @@ describe('welcome module coverage', () => {
         welcome: {
           enabled: true,
           channelId: 'ch1',
-          message: '{ctaLine} {topChannels}',
+          message: '{{ctaLine}} {{topChannels}}',
           dynamic: { enabled: true, highlightChannels: ['ch1'] },
         },
       };
@@ -506,7 +506,7 @@ describe('welcome module coverage', () => {
         welcome: {
           enabled: true,
           channelId: 'ch1',
-          message: '{ctaLine} {topChannels}',
+          message: '{{ctaLine}} {{topChannels}}',
           dynamic: { enabled: true, highlightChannels: ['ch1', 'ch2'] },
         },
       };
@@ -525,7 +525,7 @@ describe('welcome module coverage', () => {
         welcome: {
           enabled: true,
           channelId: 'ch1',
-          message: '{ctaLine}',
+          message: '{{ctaLine}}',
           dynamic: { enabled: true, highlightChannels: ['ch1', 'ch2', 'ch3'] },
         },
       };
@@ -563,7 +563,7 @@ describe('welcome module coverage', () => {
         welcome: {
           enabled: true,
           channelId: 'ch-voice',
-          message: '{vibeLine}',
+          message: '{{vibeLine}}',
           dynamic: { enabled: true, activityWindowMinutes: 60 },
         },
       };

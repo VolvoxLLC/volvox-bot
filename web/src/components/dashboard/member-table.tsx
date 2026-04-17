@@ -1,10 +1,9 @@
 'use client';
 
-import { ChevronDown, ChevronUp, Loader2, Users } from 'lucide-react';
+import { ChevronDown, ChevronRight, ChevronUp, Loader2, Users } from 'lucide-react';
 import Image from 'next/image';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
@@ -63,7 +62,9 @@ interface MemberTableProps {
 
 function relativeTime(iso: string | null): string {
   if (!iso) return '—';
-  const diff = Date.now() - new Date(iso).getTime();
+  const timestamp = new Date(iso).getTime();
+  if (Number.isNaN(timestamp)) return '—';
+  const diff = Date.now() - timestamp;
   const seconds = Math.floor(diff / 1000);
   if (seconds < 60) return 'just now';
   const minutes = Math.floor(seconds / 60);
@@ -95,7 +96,9 @@ function formatNumber(n: number): string {
  */
 function formatDateShort(iso: string | null): string {
   if (!iso) return '—';
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(iso));
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '—';
+  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(date);
 }
 
 /**
@@ -181,6 +184,9 @@ function TableSkeleton() {
           <TableCell className="hidden md:table-cell">
             <Skeleton className="h-4 w-20" />
           </TableCell>
+          <TableCell>
+            <Skeleton className="ml-auto h-4 w-4" />
+          </TableCell>
         </TableRow>
       ))}
     </>
@@ -236,11 +242,11 @@ export function MemberTable({
 
   return (
     <div className="space-y-3">
-      <div className="overflow-x-auto rounded-2xl border border-border/50 bg-card shadow-sm">
+      <div className="overflow-x-auto rounded-[24px] border border-border/40 bg-card/40 backdrop-blur-2xl shadow-lg">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-12" />
+              <TableHead className="w-10" />
               {/* Username & Display Name are not API-sortable, shown as plain headers */}
               <TableHead>Username</TableHead>
               <TableHead>Display Name</TableHead>
@@ -275,6 +281,7 @@ export function MemberTable({
                 onSort={onSort}
                 className="hidden md:table-cell"
               />
+              <TableHead className="w-8" />
             </TableRow>
           </TableHeader>
 
@@ -283,7 +290,7 @@ export function MemberTable({
               <TableSkeleton />
             ) : showEmpty ? (
               <TableRow>
-                <TableCell colSpan={8} className="py-20 text-center">
+                <TableCell colSpan={9} className="py-20 text-center">
                   <EmptyState
                     icon={Users}
                     title="No members found"
@@ -296,7 +303,7 @@ export function MemberTable({
               members.map((m) => (
                 <TableRow
                   key={m.id}
-                  className="cursor-pointer"
+                  className="cursor-pointer group/row transition-colors hover:bg-muted/30"
                   tabIndex={0}
                   onClick={() => onRowClick(m.id)}
                   onKeyDown={(e) => handleRowKeyDown(e, m.id, onRowClick)}
@@ -364,6 +371,11 @@ export function MemberTable({
                   <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
                     {formatDateShort(m.joinedAt)}
                   </TableCell>
+
+                  {/* View arrow indicator */}
+                  <TableCell className="w-8">
+                    <ChevronRight className="h-4 w-4 text-muted-foreground/30 transition-transform group-hover/row:translate-x-0.5 group-hover/row:text-primary/60" />
+                  </TableCell>
                 </TableRow>
               ))
             )}
@@ -371,19 +383,17 @@ export function MemberTable({
         </Table>
       </div>
 
-      {/* Load More */}
       {hasMore && (
-        <div className="flex justify-center">
-          <Button
-            variant="outline"
-            size="sm"
+        <div className="flex justify-center pt-1">
+          <button
+            type="button"
             onClick={onLoadMore}
             disabled={loading}
-            className="gap-2"
+            className="group inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-card/40 px-5 py-2.5 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/70 backdrop-blur-sm shadow-sm transition-all hover:bg-card/60 hover:text-foreground active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
-            {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+            {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             Load More
-          </Button>
+          </button>
         </div>
       )}
     </div>

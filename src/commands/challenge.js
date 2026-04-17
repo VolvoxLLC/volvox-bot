@@ -57,10 +57,14 @@ export async function execute(interaction) {
 }
 
 /**
- * Handle /challenge today
+ * Show today's challenge, current solve count, and navigation buttons.
  *
- * @param {import('discord.js').ChatInputCommandInteraction} interaction
- * @param {Object} challengesCfg
+ * Edits the interaction's deferred reply with an embed for today's challenge and button components,
+ * and records usage metadata to the application log.
+ *
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - The command interaction to update (must have been deferred).
+ * @param {Object} challengesCfg - Server challenge configuration.
+ * @param {string} [challengesCfg.timezone] - IANA timezone used to determine "today"; defaults to `America/New_York`.
  */
 async function handleToday(interaction, challengesCfg) {
   const pool = getPool();
@@ -88,6 +92,7 @@ async function handleToday(interaction, challengesCfg) {
   info('/challenge today used', {
     userId: interaction.user.id,
     guildId: interaction.guildId,
+    channelId: interaction.channelId,
     dayNumber,
     challengeTitle: challenge.title,
   });
@@ -175,9 +180,9 @@ async function handleStreak(interaction) {
 }
 
 /**
- * Handle /challenge leaderboard
+ * Show the guild's challenge leaderboard: top 10 solvers this week and top 10 all-time.
  *
- * @param {import('discord.js').ChatInputCommandInteraction} interaction
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - The command interaction that invoked the leaderboard.
  */
 async function handleLeaderboard(interaction) {
   const pool = getPool();
@@ -235,5 +240,9 @@ async function handleLeaderboard(interaction) {
 
   await safeEditReply(interaction, { embeds: [embed] });
 
-  info('/challenge leaderboard used', { userId: interaction.user.id, guildId });
+  info('/challenge leaderboard used', {
+    userId: interaction.user.id,
+    guildId,
+    channelId: interaction.channelId,
+  });
 }

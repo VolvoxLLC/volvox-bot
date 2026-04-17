@@ -94,7 +94,7 @@ router.post('/config-update', async (req, res) => {
     info('Config updated via dashboard webhook', { path, guildId });
     return res.json(effectiveSection);
   } catch (err) {
-    error('Failed to update config via dashboard webhook', { path, error: err.message });
+    error('Failed to update config via dashboard webhook', { path, guildId, error: err.message });
     return res.status(500).json({ error: 'Failed to update config' });
   }
 });

@@ -1,12 +1,10 @@
 'use client';
 
-import { ChevronDown, ChevronRight, ClipboardList, RefreshCw, Search, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, ClipboardList, Search, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { EmptyState } from '@/components/dashboard/empty-state';
-import { PageHeader } from '@/components/dashboard/page-header';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { Input } from '@/components/ui/input';
 import {
@@ -26,45 +24,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
-import { isAbortError, toErrorMessage } from '@/lib/api-utils';
-
-const PAGE_SIZE = 25;
-
-function buildAuditLogParams(opts: {
-  action: string;
-  userId: string;
-  startDate: string;
-  endDate: string;
-  offset: number;
-}): URLSearchParams {
-  const params = new URLSearchParams();
-  params.set('limit', String(PAGE_SIZE));
-  params.set('offset', String(opts.offset));
-  if (opts.action) params.set('action', opts.action);
-  if (opts.userId) params.set('userId', opts.userId);
-  if (opts.startDate) params.set('startDate', opts.startDate);
-  if (opts.endDate) params.set('endDate', opts.endDate);
-  return params;
-}
-
-interface AuditEntry {
-  id: number;
-  guild_id: string;
-  user_id: string;
-  action: string;
-  target_type: string | null;
-  target_id: string | null;
-  details: Record<string, unknown> | null;
-  ip_address: string | null;
-  created_at: string;
-}
-
-interface AuditLogResponse {
-  entries: AuditEntry[];
-  total: number;
-  limit: number;
-  offset: number;
-}
+import { useAuditLogStore } from '@/stores/audit-log-store';
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, {
@@ -75,7 +35,6 @@ function formatDate(iso: string): string {
   });
 }
 
-/** Map action prefixes to badge colours */
 function actionVariant(action: string): 'default' | 'secondary' | 'destructive' | 'outline' {
   if (action.includes('delete')) return 'destructive';
   if (action.includes('create')) return 'default';
@@ -83,25 +42,36 @@ function actionVariant(action: string): 'default' | 'secondary' | 'destructive' 
   return 'outline';
 }
 
-/** Common action types for the filter dropdown */
+const PAGE_SIZE = 25;
+
 function AuditLogSkeleton() {
   return (
-    <div className="rounded-md border">
+    <div className="overflow-x-auto rounded-[24px] border border-border/40 bg-card/40 backdrop-blur-2xl shadow-lg">
       <Table>
         <TableHeader>
-          <TableRow>
-            <TableHead className="w-10" />
-            <TableHead>Action</TableHead>
-            <TableHead>User</TableHead>
-            <TableHead className="hidden md:table-cell">Target</TableHead>
-            <TableHead>Date</TableHead>
-            <TableHead className="hidden lg:table-cell">IP</TableHead>
+          <TableRow className="border-border/20">
+            <TableHead className="w-10 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50" />
+            <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
+              Action
+            </TableHead>
+            <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
+              User
+            </TableHead>
+            <TableHead className="hidden md:table-cell text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
+              Target
+            </TableHead>
+            <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
+              Date
+            </TableHead>
+            <TableHead className="hidden lg:table-cell text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
+              IP
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {Array.from({ length: 8 }).map((_, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: stable skeleton list
-            <TableRow key={`skeleton-${i}`}>
+            // biome-ignore lint/suspicious/noArrayIndexKey: skeleton
+            <TableRow key={`skeleton-${i}`} className="border-border/10">
               <TableCell className="w-10 px-2">
                 <Skeleton className="h-4 w-4" />
               </TableCell>
@@ -109,7 +79,7 @@ function AuditLogSkeleton() {
                 <Skeleton className="h-5 w-24" />
               </TableCell>
               <TableCell>
-                <Skeleton className="h-4 w-28 font-mono" />
+                <Skeleton className="h-4 w-28" />
               </TableCell>
               <TableCell className="hidden md:table-cell">
                 <Skeleton className="h-4 w-32" />
@@ -138,170 +108,98 @@ const ACTION_OPTIONS = [
 
 export default function AuditLogPage() {
   const router = useRouter();
-
-  const [entries, setEntries] = useState<AuditEntry[]>([]);
-  const [total, setTotal] = useState(0);
-  const [offset, setOffset] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const [actionFilter, setActionFilter] = useState('');
-  const [userSearch, setUserSearch] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const { entries, total, loading, error, filters, setFilters, fetch } = useAuditLogStore();
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
 
+  const [userSearch, setUserSearch] = useState(filters.userId);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const [debouncedUserSearch, setDebouncedUserSearch] = useState('');
+  const [debouncedUserSearch, setDebouncedUserSearch] = useState(filters.userId);
 
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const requestIdRef = useRef(0);
+  const onGuildChange = useCallback(() => {
+    useAuditLogStore.getState().reset();
+    setExpandedRows(new Set());
+  }, []);
+  const guildId = useGuildSelection({ onGuildChange });
 
   useEffect(() => {
     clearTimeout(searchTimerRef.current);
     searchTimerRef.current = setTimeout(() => {
       setDebouncedUserSearch(userSearch);
-      setOffset(0);
+      setFilters({ userId: userSearch, offset: 0 });
     }, 300);
     return () => clearTimeout(searchTimerRef.current);
-  }, [userSearch]);
+  }, [userSearch, setFilters]);
 
   useEffect(() => {
+    if (!guildId) return;
+    void fetch(guildId, { ...filters, userId: debouncedUserSearch }).then((res) => {
+      if (res === 'unauthorized') router.replace('/login');
+    });
     return () => {
-      abortControllerRef.current?.abort();
+      useAuditLogStore.getState().abortInFlight();
     };
-  }, []);
-
-  const onGuildChange = useCallback(() => {
-    setEntries([]);
-    setTotal(0);
-    setOffset(0);
-    setError(null);
-    setExpandedRows(new Set());
-  }, []);
-
-  const guildId = useGuildSelection({ onGuildChange });
-
-  const onUnauthorized = useCallback(() => router.replace('/login'), [router]);
-
-  const fetchAuditLog = useCallback(
-    async (opts: {
-      guildId: string;
-      action: string;
-      userId: string;
-      startDate: string;
-      endDate: string;
-      offset: number;
-    }) => {
-      abortControllerRef.current?.abort();
-      const controller = new AbortController();
-      abortControllerRef.current = controller;
-      const requestId = ++requestIdRef.current;
-
-      setLoading(true);
-      setError(null);
-
-      try {
-        const params = buildAuditLogParams(opts);
-
-        const res = await fetch(
-          `/api/guilds/${encodeURIComponent(opts.guildId)}/audit-log?${params.toString()}`,
-          { signal: controller.signal },
-        );
-
-        if (requestId !== requestIdRef.current) return;
-
-        if (res.status === 401) {
-          onUnauthorized();
-          return;
-        }
-        if (!res.ok) {
-          throw new Error(`Failed to fetch audit log (${res.status})`);
-        }
-
-        const data = (await res.json()) as AuditLogResponse;
-        setEntries(data.entries);
-        setTotal(data.total);
-      } catch (err) {
-        if (isAbortError(err)) return;
-        if (requestId !== requestIdRef.current) return;
-        setError(toErrorMessage(err, 'Failed to fetch audit log'));
-      } finally {
-        if (requestId === requestIdRef.current) {
-          setLoading(false);
-        }
-      }
-    },
-    [onUnauthorized],
-  );
-
-  useEffect(() => {
-    if (!guildId) return;
-    fetchAuditLog({
-      guildId,
-      action: actionFilter,
-      userId: debouncedUserSearch,
-      startDate,
-      endDate,
-      offset,
-    });
-  }, [guildId, actionFilter, debouncedUserSearch, startDate, endDate, offset, fetchAuditLog]);
-
-  const handleRefresh = useCallback(() => {
-    if (!guildId) return;
-    fetchAuditLog({
-      guildId,
-      action: actionFilter,
-      userId: debouncedUserSearch,
-      startDate,
-      endDate,
-      offset,
-    });
-  }, [guildId, fetchAuditLog, actionFilter, debouncedUserSearch, startDate, endDate, offset]);
+  }, [
+    guildId,
+    filters.action,
+    debouncedUserSearch,
+    filters.startDate,
+    filters.endDate,
+    filters.offset,
+    fetch,
+    router,
+    filters,
+  ]);
 
   const toggleRow = useCallback((id: number) => {
     setExpandedRows((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   }, []);
 
-  const handleClearSearch = useCallback(() => {
-    setUserSearch('');
-    setDebouncedUserSearch('');
-    setOffset(0);
-  }, []);
-
-  const currentPage = Math.floor(offset / PAGE_SIZE) + 1;
+  const currentPage = Math.floor(filters.offset / PAGE_SIZE) + 1;
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
     <ErrorBoundary title="Audit log failed to load">
       <div className="space-y-6">
-        <PageHeader
-          icon={ClipboardList}
-          title="Audit Log"
-          description="Track all admin actions and configuration changes."
-          actions={
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              onClick={handleRefresh}
-              disabled={!guildId || loading}
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-          }
-        />
+        {/* Stats */}
+        {guildId && (
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="group relative overflow-hidden rounded-[24px] border border-border/40 bg-card/40 p-6 backdrop-blur-2xl shadow-lg bg-gradient-to-br from-primary/12 to-transparent">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                Total Entries
+              </p>
+              <p className="mt-3 text-3xl font-bold tabular-nums md:text-4xl">
+                {total.toLocaleString()}
+              </p>
+            </div>
+            <div className="group relative overflow-hidden rounded-[24px] border border-border/40 bg-card/40 p-6 backdrop-blur-2xl shadow-lg bg-gradient-to-br from-secondary/10 to-transparent">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                Active Filters
+              </p>
+              <p className="mt-3 text-3xl font-bold tabular-nums md:text-4xl">
+                {
+                  [filters.action, debouncedUserSearch, filters.startDate, filters.endDate].filter(
+                    Boolean,
+                  ).length
+                }
+              </p>
+            </div>
+            <div className="group relative overflow-hidden rounded-[24px] border border-border/40 bg-card/40 p-6 backdrop-blur-2xl shadow-lg">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                Expanded Rows
+              </p>
+              <p className="mt-3 text-3xl font-bold tabular-nums md:text-4xl">
+                {expandedRows.size}
+              </p>
+            </div>
+          </div>
+        )}
 
-        {/* No guild selected */}
+        {/* No guild */}
         {!guildId && (
           <EmptyState
             icon={ClipboardList}
@@ -313,39 +211,12 @@ export default function AuditLogPage() {
         {/* Content */}
         {guildId && (
           <>
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="dashboard-panel rounded-2xl bg-gradient-to-br from-primary/12 to-background p-4 md:p-5">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                  Total Entries
-                </p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums md:text-4xl">
-                  {total.toLocaleString()}
-                </p>
-              </div>
-              <div className="dashboard-panel rounded-2xl bg-gradient-to-br from-secondary/10 to-background p-4 md:p-5">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                  Active Filters
-                </p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums md:text-4xl">
-                  {[actionFilter, debouncedUserSearch, startDate, endDate].filter(Boolean).length}
-                </p>
-              </div>
-              <div className="dashboard-panel rounded-2xl p-4 md:p-5">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                  Expanded Rows
-                </p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums md:text-4xl">
-                  {expandedRows.size}
-                </p>
-              </div>
-            </div>
-
-            {/* Filters */}
-            <div className="dashboard-panel flex flex-wrap items-center gap-3 rounded-2xl p-4 md:p-5">
-              <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            {/* Compact filter strip */}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative flex-1 min-w-[200px] max-w-sm">
+                <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/50" />
                 <Input
-                  className="h-10 rounded-xl border-border/70 bg-background/70 pl-9 pr-8"
+                  className="h-9 rounded-xl border-border/40 bg-card/40 pl-8 pr-8 text-sm backdrop-blur-sm"
                   placeholder="Filter by user ID..."
                   value={userSearch}
                   onChange={(e) => setUserSearch(e.target.value)}
@@ -354,29 +225,32 @@ export default function AuditLogPage() {
                 {userSearch && (
                   <button
                     type="button"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    onClick={handleClearSearch}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-foreground"
+                    onClick={() => {
+                      setUserSearch('');
+                      setDebouncedUserSearch('');
+                      setFilters({ userId: '', offset: 0 });
+                    }}
                     aria-label="Clear search"
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-3.5 w-3.5" />
                   </button>
                 )}
               </div>
 
               <Select
-                value={actionFilter}
-                onValueChange={(val) => {
-                  setActionFilter(val === 'all' ? '' : val);
-                  setOffset(0);
-                }}
+                value={filters.action}
+                onValueChange={(val) => setFilters({ action: val === 'all' ? '' : val, offset: 0 })}
               >
-                <SelectTrigger className="h-10 w-[200px] rounded-xl border-border/70 bg-background/70">
+                <SelectTrigger className="h-9 w-[180px] rounded-xl border-border/40 bg-card/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/70 backdrop-blur-sm">
                   <SelectValue placeholder="All actions" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All actions</SelectItem>
+                <SelectContent className="rounded-xl border-white/10 bg-popover/95 backdrop-blur-xl shadow-xl">
+                  <SelectItem value="all" className="text-xs font-semibold">
+                    All actions
+                  </SelectItem>
                   {ACTION_OPTIONS.map((a) => (
-                    <SelectItem key={a} value={a}>
+                    <SelectItem key={a} value={a} className="text-xs font-semibold">
                       {a}
                     </SelectItem>
                   ))}
@@ -385,28 +259,21 @@ export default function AuditLogPage() {
 
               <Input
                 type="date"
-                className="h-10 w-[165px] rounded-xl border-border/70 bg-background/70"
-                value={startDate}
-                onChange={(e) => {
-                  setStartDate(e.target.value);
-                  setOffset(0);
-                }}
+                className="h-9 w-[155px] rounded-xl border-border/40 bg-card/40 text-sm backdrop-blur-sm"
+                value={filters.startDate}
+                onChange={(e) => setFilters({ startDate: e.target.value, offset: 0 })}
                 aria-label="Start date filter"
               />
-
               <Input
                 type="date"
-                className="h-10 w-[165px] rounded-xl border-border/70 bg-background/70"
-                value={endDate}
-                onChange={(e) => {
-                  setEndDate(e.target.value);
-                  setOffset(0);
-                }}
+                className="h-9 w-[155px] rounded-xl border-border/40 bg-card/40 text-sm backdrop-blur-sm"
+                value={filters.endDate}
+                onChange={(e) => setFilters({ endDate: e.target.value, offset: 0 })}
                 aria-label="End date filter"
               />
 
               {total > 0 && (
-                <span className="text-sm text-muted-foreground tabular-nums">
+                <span className="text-[11px] font-medium text-muted-foreground/50 tabular-nums">
                   {total.toLocaleString()} {total === 1 ? 'entry' : 'entries'}
                 </span>
               )}
@@ -416,7 +283,7 @@ export default function AuditLogPage() {
             {error && (
               <div
                 role="alert"
-                className="rounded-md border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive"
+                className="rounded-[20px] border border-destructive/30 bg-destructive/10 p-5 text-sm text-destructive backdrop-blur-xl"
               >
                 <strong>Error:</strong> {error}
               </div>
@@ -426,16 +293,26 @@ export default function AuditLogPage() {
             {loading && entries.length === 0 ? (
               <AuditLogSkeleton />
             ) : entries.length > 0 ? (
-              <div className="dashboard-panel overflow-x-auto rounded-2xl">
+              <div className="overflow-x-auto rounded-[24px] border border-border/40 bg-card/40 backdrop-blur-2xl shadow-lg">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-10" />
-                      <TableHead>Action</TableHead>
-                      <TableHead>User</TableHead>
-                      <TableHead className="hidden md:table-cell">Target</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead className="hidden lg:table-cell">IP</TableHead>
+                    <TableRow className="border-border/20 hover:bg-transparent">
+                      <TableHead className="w-10 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50" />
+                      <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
+                        Action
+                      </TableHead>
+                      <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
+                        User
+                      </TableHead>
+                      <TableHead className="hidden md:table-cell text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
+                        Target
+                      </TableHead>
+                      <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
+                        Date
+                      </TableHead>
+                      <TableHead className="hidden lg:table-cell text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
+                        IP
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -444,7 +321,7 @@ export default function AuditLogPage() {
                       return (
                         <Fragment key={entry.id}>
                           <TableRow
-                            className="cursor-pointer hover:bg-muted/50"
+                            className="cursor-pointer border-border/10 transition-colors hover:bg-muted/30"
                             tabIndex={0}
                             onClick={() => toggleRow(entry.id)}
                             onKeyDown={(e) => {
@@ -456,31 +333,33 @@ export default function AuditLogPage() {
                           >
                             <TableCell className="w-10 px-2">
                               {isExpanded ? (
-                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                <ChevronDown className="h-4 w-4 text-muted-foreground/40" />
                               ) : (
-                                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                <ChevronRight className="h-4 w-4 text-muted-foreground/40" />
                               )}
                             </TableCell>
                             <TableCell>
                               <Badge variant={actionVariant(entry.action)}>{entry.action}</Badge>
                             </TableCell>
-                            <TableCell className="font-mono text-sm">{entry.user_id}</TableCell>
-                            <TableCell className="hidden text-sm text-muted-foreground md:table-cell">
+                            <TableCell className="font-mono text-sm text-foreground/80">
+                              {entry.user_id}
+                            </TableCell>
+                            <TableCell className="hidden text-sm text-muted-foreground/60 md:table-cell">
                               {entry.target_type && entry.target_id
                                 ? `${entry.target_type}:${entry.target_id}`
                                 : '—'}
                             </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
+                            <TableCell className="text-sm text-muted-foreground/60">
                               {formatDate(entry.created_at)}
                             </TableCell>
-                            <TableCell className="hidden text-sm text-muted-foreground lg:table-cell">
+                            <TableCell className="hidden text-sm text-muted-foreground/60 lg:table-cell">
                               {entry.ip_address || '—'}
                             </TableCell>
                           </TableRow>
                           {isExpanded && entry.details && (
-                            <TableRow key={`${entry.id}-details`}>
-                              <TableCell colSpan={6} className="bg-muted/20 p-4">
-                                <pre className="max-h-64 overflow-auto rounded-lg border border-border/50 bg-background p-3 text-xs">
+                            <TableRow key={`${entry.id}-details`} className="border-border/10">
+                              <TableCell colSpan={6} className="bg-background/20 p-4">
+                                <pre className="max-h-64 overflow-auto rounded-[14px] border border-border/30 bg-background/50 p-3 text-xs text-foreground/70">
                                   {JSON.stringify(entry.details, null, 2)}
                                 </pre>
                               </TableCell>
@@ -496,12 +375,12 @@ export default function AuditLogPage() {
               <EmptyState
                 icon={ClipboardList}
                 title={
-                  actionFilter || debouncedUserSearch || startDate || endDate
+                  filters.action || debouncedUserSearch || filters.startDate || filters.endDate
                     ? 'No matching entries'
                     : 'No audit entries'
                 }
                 description={
-                  actionFilter || debouncedUserSearch || startDate || endDate
+                  filters.action || debouncedUserSearch || filters.startDate || filters.endDate
                     ? 'Try adjusting your filters.'
                     : 'Actions will appear here as your team uses the dashboard.'
                 }
@@ -510,27 +389,27 @@ export default function AuditLogPage() {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="dashboard-chip flex items-center justify-between rounded-xl px-3 py-2">
-                <span className="text-sm text-muted-foreground">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/50">
                   Page {currentPage} of {totalPages}
                 </span>
                 <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={offset <= 0 || loading}
-                    onClick={() => setOffset((o) => Math.max(0, o - PAGE_SIZE))}
+                  <button
+                    type="button"
+                    disabled={filters.offset <= 0 || loading}
+                    onClick={() => setFilters({ offset: Math.max(0, filters.offset - PAGE_SIZE) })}
+                    className="inline-flex items-center gap-1.5 rounded-2xl border border-white/10 bg-card/40 px-4 py-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/70 backdrop-blur-sm shadow-sm transition-all hover:bg-card/60 hover:text-foreground active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:active:scale-100"
                   >
                     Previous
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={offset + PAGE_SIZE >= total || loading}
-                    onClick={() => setOffset((o) => o + PAGE_SIZE)}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={filters.offset + PAGE_SIZE >= total || loading}
+                    onClick={() => setFilters({ offset: filters.offset + PAGE_SIZE })}
+                    className="inline-flex items-center gap-1.5 rounded-2xl border border-white/10 bg-card/40 px-4 py-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/70 backdrop-blur-sm shadow-sm transition-all hover:bg-card/60 hover:text-foreground active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:active:scale-100"
                   >
                     Next
-                  </Button>
+                  </button>
                 </div>
               </div>
             )}

@@ -334,57 +334,63 @@ router.get(
  *       "503":
  *         $ref: "#/components/responses/ServiceUnavailable"
  */
-router.get('/:id/tickets', ticketRateLimit, requireGuildModerator, validateGuild, async (req, res) => {
-  const { id: guildId } = req.params;
-  const { status, user } = req.query;
-  const page = parsePage(req.query.page);
-  const limit = parseLimit(req.query.limit);
-  const offset = (page - 1) * limit;
-  const pool = getDbPool(req);
-  if (!pool) return res.status(503).json({ error: 'Database not available' });
+router.get(
+  '/:id/tickets',
+  ticketRateLimit,
+  requireGuildModerator,
+  validateGuild,
+  async (req, res) => {
+    const { id: guildId } = req.params;
+    const { status, user } = req.query;
+    const page = parsePage(req.query.page);
+    const limit = parseLimit(req.query.limit);
+    const offset = (page - 1) * limit;
+    const pool = getDbPool(req);
+    if (!pool) return res.status(503).json({ error: 'Database not available' });
 
-  try {
-    const conditions = ['guild_id = $1'];
-    const params = [guildId];
-    let paramIndex = 2;
+    try {
+      const conditions = ['guild_id = $1'];
+      const params = [guildId];
+      let paramIndex = 2;
 
-    if (status && (status === 'open' || status === 'closed')) {
-      conditions.push(`status = $${paramIndex}`);
-      params.push(status);
-      paramIndex++;
-    }
+      if (status && (status === 'open' || status === 'closed')) {
+        conditions.push(`status = $${paramIndex}`);
+        params.push(status);
+        paramIndex++;
+      }
 
-    if (user) {
-      conditions.push(`user_id = $${paramIndex}`);
-      params.push(user);
-      paramIndex++;
-    }
+      if (user) {
+        conditions.push(`user_id = $${paramIndex}`);
+        params.push(user);
+        paramIndex++;
+      }
 
-    const whereClause = conditions.join(' AND ');
+      const whereClause = conditions.join(' AND ');
 
-    const [countResult, ticketsResult] = await Promise.all([
-      pool.query(`SELECT COUNT(*)::int AS total FROM tickets WHERE ${whereClause}`, params),
-      pool.query(
-        `SELECT id, guild_id, user_id, topic, status, thread_id, channel_id,
+      const [countResult, ticketsResult] = await Promise.all([
+        pool.query(`SELECT COUNT(*)::int AS total FROM tickets WHERE ${whereClause}`, params),
+        pool.query(
+          `SELECT id, guild_id, user_id, topic, status, thread_id, channel_id,
                 closed_by, close_reason, created_at, closed_at
          FROM tickets
          WHERE ${whereClause}
          ORDER BY created_at DESC
          LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
-        [...params, limit, offset],
-      ),
-    ]);
+          [...params, limit, offset],
+        ),
+      ]);
 
-    res.json({
-      tickets: ticketsResult.rows,
-      total: countResult.rows[0].total,
-      page,
-      limit,
-    });
-  } catch (err) {
-    logError('Failed to fetch tickets', { guildId, error: err.message });
-    res.status(500).json({ error: 'Failed to fetch tickets' });
-  }
-});
+      res.json({
+        tickets: ticketsResult.rows,
+        total: countResult.rows[0].total,
+        page,
+        limit,
+      });
+    } catch (err) {
+      logError('Failed to fetch tickets', { guildId, error: err.message });
+      res.status(500).json({ error: 'Failed to fetch tickets' });
+    }
+  },
+);
 
 export default router;

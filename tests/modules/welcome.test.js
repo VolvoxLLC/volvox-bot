@@ -43,36 +43,36 @@ import {
 } from '../../src/modules/welcome.js';
 
 describe('renderWelcomeMessage', () => {
-  it('should replace {user} with mention', () => {
+  it('should replace {{user}} with mention', () => {
     const result = renderWelcomeMessage(
-      'Hello {user}!',
+      'Hello {{user}}!',
       { id: '123' },
       { name: 'Test', memberCount: 10 },
     );
     expect(result).toBe('Hello <@123>!');
   });
 
-  it('should replace {username} with username', () => {
+  it('should replace {{username}} with username', () => {
     const result = renderWelcomeMessage(
-      'Hello {username}!',
+      'Hello {{username}}!',
       { id: '123', username: 'testuser' },
       { name: 'Test', memberCount: 10 },
     );
     expect(result).toBe('Hello testuser!');
   });
 
-  it('should replace {server} with guild name', () => {
+  it('should replace {{server}} with guild name', () => {
     const result = renderWelcomeMessage(
-      'Welcome to {server}!',
+      'Welcome to {{server}}!',
       { id: '123' },
       { name: 'My Server', memberCount: 10 },
     );
     expect(result).toBe('Welcome to My Server!');
   });
 
-  it('should replace {memberCount}', () => {
+  it('should replace {{memberCount}}', () => {
     const result = renderWelcomeMessage(
-      'You are member #{memberCount}!',
+      'You are member #{{memberCount}}!',
       { id: '123' },
       { name: 'Test', memberCount: 42 },
     );
@@ -81,7 +81,7 @@ describe('renderWelcomeMessage', () => {
 
   it('should handle multiple replacements', () => {
     const result = renderWelcomeMessage(
-      'Welcome {user} ({username}) to {server}! Member #{memberCount}',
+      'Welcome {{user}} ({{username}}) to {{server}}! Member #{{memberCount}}',
       { id: '123', username: 'bob' },
       { name: 'Cool Server', memberCount: 100 },
     );
@@ -90,7 +90,7 @@ describe('renderWelcomeMessage', () => {
 
   it('should handle missing username', () => {
     const result = renderWelcomeMessage(
-      '{username}',
+      '{{username}}',
       { id: '123' },
       { name: 'Test', memberCount: 1 },
     );
@@ -99,17 +99,26 @@ describe('renderWelcomeMessage', () => {
 
   it('should support all variables together', () => {
     const result = renderWelcomeMessage(
-      '{user} ({username}) joined {server} as member #{memberCount}',
+      '{{user}} ({{username}}) joined {{server}} as member #{{memberCount}}',
       { id: '42', username: 'alice' },
       { name: 'Cool Guild', memberCount: 7 },
     );
     expect(result).toBe('<@42> (alice) joined Cool Guild as member #7');
   });
+
+  it('should leave single-brace placeholders untouched', () => {
+    const result = renderWelcomeMessage(
+      'Hello {user} in {server}!',
+      { id: '123', username: 'alice' },
+      { name: 'Cool Guild', memberCount: 7 },
+    );
+    expect(result).toBe('Hello {user} in {server}!');
+  });
 });
 
 describe('pickWelcomeVariant', () => {
   it('should return a variant from the array', () => {
-    const variants = ['Hello {user}!', 'Howdy {user}!', 'Hey {user}!'];
+    const variants = ['Hello {{user}}!', 'Howdy {{user}}!', 'Hey {{user}}!'];
     const picked = pickWelcomeVariant(variants, 'fallback');
     expect(variants).toContain(picked);
   });
@@ -123,7 +132,7 @@ describe('pickWelcomeVariant', () => {
   });
 
   it('should return the hard-coded default when both are missing', () => {
-    expect(pickWelcomeVariant(null, undefined)).toBe('Welcome, {user}!');
+    expect(pickWelcomeVariant(null, undefined)).toBe('Welcome, {{user}}!');
   });
 
   it('should return the single variant when array has one entry', () => {
@@ -133,44 +142,44 @@ describe('pickWelcomeVariant', () => {
 
 describe('resolveWelcomeTemplate', () => {
   const baseConfig = {
-    message: 'Global message {user}',
-    variants: ['Variant A {user}', 'Variant B {user}'],
+    message: 'Global message {{user}}',
+    variants: ['Variant A {{user}}', 'Variant B {{user}}'],
     channels: [
       {
         channelId: 'ch-specific',
-        message: 'Channel-specific {user}',
-        variants: ['Ch variant A {user}'],
+        message: 'Channel-specific {{user}}',
+        variants: ['Ch variant A {{user}}'],
       },
     ],
   };
 
   it('should return per-channel message when channelId matches', () => {
     const template = resolveWelcomeTemplate('ch-specific', baseConfig);
-    expect(template).toBe('Ch variant A {user}'); // only one variant
+    expect(template).toBe('Ch variant A {{user}}'); // only one variant
   });
 
   it('should pick from global variants when no channel match', () => {
     const template = resolveWelcomeTemplate('ch-other', baseConfig);
-    expect(['Variant A {user}', 'Variant B {user}']).toContain(template);
+    expect(['Variant A {{user}}', 'Variant B {{user}}']).toContain(template);
   });
 
   it('should fall back to global message when no variants configured', () => {
-    const cfg = { message: 'Only message {user}', channelId: 'ch1' };
+    const cfg = { message: 'Only message {{user}}', channelId: 'ch1' };
     const template = resolveWelcomeTemplate('ch1', cfg);
-    expect(template).toBe('Only message {user}');
+    expect(template).toBe('Only message {{user}}');
   });
 
   it('should handle missing channels array gracefully', () => {
-    const cfg = { message: 'Fallback {user}' };
-    expect(resolveWelcomeTemplate('ch-any', cfg)).toBe('Fallback {user}');
+    const cfg = { message: 'Fallback {{user}}' };
+    expect(resolveWelcomeTemplate('ch-any', cfg)).toBe('Fallback {{user}}');
   });
 
   it('should use per-channel message when no per-channel variants', () => {
     const cfg = {
       message: 'Global',
-      channels: [{ channelId: 'ch1', message: 'Channel msg {user}' }],
+      channels: [{ channelId: 'ch1', message: 'Channel msg {{user}}' }],
     };
-    expect(resolveWelcomeTemplate('ch1', cfg)).toBe('Channel msg {user}');
+    expect(resolveWelcomeTemplate('ch1', cfg)).toBe('Channel msg {{user}}');
   });
 });
 
@@ -330,7 +339,7 @@ describe('sendWelcomeMessage', () => {
       welcome: {
         enabled: true,
         channelId: 'ch1',
-        message: 'Welcome {user} to {server}!',
+        message: 'Welcome {{user}} to {{server}}!',
       },
     };
     await sendWelcomeMessage(member, client, config);
@@ -407,7 +416,7 @@ describe('sendWelcomeMessage', () => {
       welcome: {
         enabled: true,
         channelId: 'ch1',
-        message: '{greeting}\n\n{milestoneLine}\n\n{vibeLine}\n\n{ctaLine}',
+        message: '{{greeting}}\n\n{{milestoneLine}}\n\n{{vibeLine}}\n\n{{ctaLine}}',
         dynamic: {
           enabled: true,
           timezone: 'UTC',
@@ -667,7 +676,7 @@ describe('sendWelcomeMessage', () => {
       welcome: {
         enabled: true,
         channelId: 'ch1',
-        message: '{milestoneLine}',
+        message: '{{milestoneLine}}',
         dynamic: { enabled: true, timezone: 'UTC', milestoneInterval: 25 },
       },
     };
@@ -690,7 +699,7 @@ describe('sendWelcomeMessage – variants and per-channel', () => {
       welcome: {
         enabled: true,
         channelId: 'ch1',
-        variants: ['Hey {user}!', 'Hello {user}!', 'Hi {user}!'],
+        variants: ['Hey {{user}}!', 'Hello {{user}}!', 'Hi {{user}}!'],
       },
     };
 
@@ -727,11 +736,11 @@ describe('sendWelcomeMessage – variants and per-channel', () => {
       welcome: {
         enabled: true,
         channelId: 'ch-primary',
-        message: 'Primary: welcome {user}!',
+        message: 'Primary: welcome {{user}}!',
         channels: [
           {
             channelId: 'ch-extra',
-            message: 'Extra: welcome {user} to {server}!',
+            message: 'Extra: welcome {{user}} to {{server}}!',
           },
         ],
       },
@@ -773,7 +782,7 @@ describe('sendWelcomeMessage – variants and per-channel', () => {
         channels: [
           {
             channelId: 'ch-extra',
-            variants: ['Variant X {user}', 'Variant Y {user}'],
+            variants: ['Variant X {{user}}', 'Variant Y {{user}}'],
           },
         ],
       },
@@ -796,7 +805,7 @@ describe('sendWelcomeMessage – variants and per-channel', () => {
       welcome: {
         enabled: true,
         channelId: 'ch1',
-        message: 'Welcome {user}',
+        message: 'Welcome {{user}}',
         channels: [{ channelId: 'ch1', message: 'Duplicate channel' }],
       },
     };
@@ -806,7 +815,7 @@ describe('sendWelcomeMessage – variants and per-channel', () => {
     expect(mockSend).toHaveBeenCalledOnce();
   });
 
-  it('should render {server} and {memberCount} variables correctly', async () => {
+  it('should render {{server}} and {{memberCount}} variables correctly', async () => {
     const mockSend = vi.fn();
     const member = {
       id: '321',
@@ -818,7 +827,7 @@ describe('sendWelcomeMessage – variants and per-channel', () => {
       welcome: {
         enabled: true,
         channelId: 'ch1',
-        message: '{user} joined {server} as member #{memberCount}',
+        message: '{{user}} joined {{server}} as member #{{memberCount}}',
       },
     };
 
@@ -838,7 +847,7 @@ describe('sendWelcomeMessage – cross-guild isolation', () => {
     };
     const client = { channels: { fetch: vi.fn().mockResolvedValue(foreignChannel) } };
     const config = {
-      welcome: { enabled: true, channelId: 'foreign-ch', message: 'Hello {user}!' },
+      welcome: { enabled: true, channelId: 'foreign-ch', message: 'Hello {{user}}!' },
     };
     await sendWelcomeMessage(member, client, config);
     expect(mockSend).not.toHaveBeenCalled();
@@ -866,8 +875,8 @@ describe('sendWelcomeMessage – cross-guild isolation', () => {
       welcome: {
         enabled: true,
         channelId: 'local-ch',
-        message: 'Hello {user}!',
-        channels: [{ channelId: 'foreign-ch', message: 'Sneaky {user}!' }],
+        message: 'Hello {{user}}!',
+        channels: [{ channelId: 'foreign-ch', message: 'Sneaky {{user}}!' }],
       },
     };
     await sendWelcomeMessage(member, client, config);
@@ -885,7 +894,7 @@ describe('sendWelcomeMessage – cross-guild isolation', () => {
     };
     const client = { channels: { fetch: vi.fn().mockResolvedValue(localChannel) } };
     const config = {
-      welcome: { enabled: true, channelId: 'local-ch', message: 'Hello {user}!' },
+      welcome: { enabled: true, channelId: 'local-ch', message: 'Hello {{user}}!' },
     };
     await sendWelcomeMessage(member, client, config);
     expect(mockSend).toHaveBeenCalledOnce();
@@ -907,7 +916,7 @@ describe('renderWelcomeMessage – dynamic context variables', () => {
       topChannels: '<#111>, <#222>',
     };
     const result = renderWelcomeMessage(
-      '{greeting}\n\n{milestoneLine}\n\n{vibeLine}\n\n{ctaLine}',
+      '{{greeting}}\n\n{{milestoneLine}}\n\n{{vibeLine}}\n\n{{ctaLine}}',
       member,
       guild,
       dynamicCtx,
@@ -918,13 +927,13 @@ describe('renderWelcomeMessage – dynamic context variables', () => {
   });
 
   it('should not replace dynamic placeholders when context is null', () => {
-    const result = renderWelcomeMessage('{greeting} {vibeLine}', member, guild, null);
-    expect(result).toBe('{greeting} {vibeLine}');
+    const result = renderWelcomeMessage('{{greeting}} {{vibeLine}}', member, guild, null);
+    expect(result).toBe('{{greeting}} {{vibeLine}}');
   });
 
   it('should not replace dynamic placeholders when context is omitted', () => {
-    const result = renderWelcomeMessage('{greeting} {vibeLine}', member, guild);
-    expect(result).toBe('{greeting} {vibeLine}');
+    const result = renderWelcomeMessage('{{greeting}} {{vibeLine}}', member, guild);
+    expect(result).toBe('{{greeting}} {{vibeLine}}');
   });
 
   it('should allow mixing static and dynamic variables', () => {
@@ -938,7 +947,7 @@ describe('renderWelcomeMessage – dynamic context variables', () => {
       topChannels: '',
     };
     const result = renderWelcomeMessage(
-      '{greeting} Welcome {user} to {server}! Activity: {activityLevel}',
+      '{{greeting}} Welcome {{user}} to {{server}}! Activity: {{activityLevel}}',
       member,
       guild,
       dynamicCtx,
@@ -969,7 +978,7 @@ describe('sendWelcomeMessage – dynamic template variables', () => {
       welcome: {
         enabled: true,
         channelId: 'ch1',
-        message: '{greeting}\n\n{milestoneLine}\n\n{vibeLine}\n\n{ctaLine}',
+        message: '{{greeting}}\n\n{{milestoneLine}}\n\n{{vibeLine}}\n\n{{ctaLine}}',
         dynamic: { enabled: true, timezone: 'UTC' },
       },
     };
@@ -995,15 +1004,15 @@ describe('sendWelcomeMessage – dynamic template variables', () => {
       welcome: {
         enabled: true,
         channelId: 'ch1',
-        message: '{user} joined! {greeting} {vibeLine}',
+        message: '{{user}} joined! {{greeting}} {{vibeLine}}',
       },
     };
     await sendWelcomeMessage(member, client, config);
     const msg = mockSend.mock.calls[0][0].content;
-    expect(msg).toBe('<@123> joined! {greeting} {vibeLine}');
+    expect(msg).toBe('<@123> joined! {{greeting}} {{vibeLine}}');
   });
 
-  it('should replace {activityLevel} and {timeOfDay} in template', async () => {
+  it('should replace {{activityLevel}} and {{timeOfDay}} in template', async () => {
     const mockSend = vi.fn();
     const member = {
       id: '123',
@@ -1024,7 +1033,7 @@ describe('sendWelcomeMessage – dynamic template variables', () => {
       welcome: {
         enabled: true,
         channelId: 'ch1',
-        message: 'Hi {user}! Activity: {activityLevel}',
+        message: 'Hi {{user}}! Activity: {{activityLevel}}',
         dynamic: { enabled: true, timezone: 'UTC' },
       },
     };

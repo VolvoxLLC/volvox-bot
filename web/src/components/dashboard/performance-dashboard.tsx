@@ -1,24 +1,13 @@
 'use client';
 
-import { Activity, AlertTriangle, Clock, Cpu, HardDrive, RefreshCw, Zap } from 'lucide-react';
+import { Activity, AlertTriangle, Clock, Cpu, HardDrive, Zap } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from 'recharts';
 import { toast } from 'sonner';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { StableResponsiveContainer } from '@/components/ui/stable-responsive-container';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -97,22 +86,57 @@ interface StatCardProps {
 
 function StatCard({ title, value, subtitle, icon: Icon, alert, loading }: StatCardProps) {
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-        <Icon className={`h-4 w-4 ${alert ? 'text-destructive' : 'text-muted-foreground'}`} />
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-          <div className="h-7 w-24 animate-pulse rounded bg-muted" />
-        ) : (
-          <>
-            <div className={`text-2xl font-bold ${alert ? 'text-destructive' : ''}`}>{value}</div>
-            {subtitle && <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>}
-          </>
-        )}
-      </CardContent>
-    </Card>
+    <div
+      className={`group relative flex flex-col overflow-hidden rounded-[28px] border border-white/5 bg-card/40 p-6 shadow-xl transition-all hover:-translate-y-1 hover:bg-card/60 active:scale-[0.98] active:translate-y-0 backdrop-blur-3xl ${
+        alert ? 'ring-1 ring-inset ring-destructive/30' : ''
+      }`}
+    >
+      {/* Ambient glass background layer */}
+      <div
+        className={`absolute inset-0 pointer-events-none ${
+          alert
+            ? 'bg-gradient-to-br from-destructive/10 to-transparent'
+            : 'bg-gradient-to-br from-white/[0.04] to-transparent'
+        }`}
+      />
+
+      <div className="relative z-10 flex items-start justify-between">
+        <div className="space-y-3">
+          <span className="text-[10px] font-black uppercase tracking-[0.25em] text-muted-foreground/50">
+            {title}
+          </span>
+          <div className="space-y-1">
+            {loading ? (
+              <div className="h-8 w-24 animate-pulse rounded-lg bg-white/5" />
+            ) : (
+              <h3
+                className={`text-2xl font-black tracking-tight ${
+                  alert
+                    ? 'text-destructive drop-shadow-[0_0_12px_rgba(255,0,0,0.4)]'
+                    : 'text-foreground'
+                }`}
+              >
+                {value}
+              </h3>
+            )}
+            {subtitle && (
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40">
+                {subtitle}
+              </p>
+            )}
+          </div>
+        </div>
+        <div
+          className={`flex h-12 w-12 items-center justify-center rounded-2xl border shadow-xl backdrop-blur-xl transition-transform group-hover:scale-110 ${
+            alert
+              ? 'border-destructive/30 bg-destructive/10 text-destructive shadow-destructive/20'
+              : 'border-white/10 bg-background/50 text-muted-foreground/60'
+          }`}
+        >
+          <Icon className="h-6 w-6" />
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -120,61 +144,10 @@ function StatCard({ title, value, subtitle, icon: Icon, alert, loading }: StatCa
 
 const AUTO_REFRESH_MS = 30_000;
 
-/** Extract an error message from a JSON response body, or return the fallback. */
-function extractErrorMessage(json: unknown, fallback: string): string {
-  if (typeof json === 'object' && json !== null && 'error' in json) {
-    return String((json as Record<string, unknown>).error);
-  }
-  return fallback;
-}
-
-/** Build memory chart data from a performance snapshot. */
-function buildMemChartData(data: PerformanceSnapshot | null) {
-  return (
-    data?.timeSeries.memoryHeapMb.map((pt, i) => ({
-      time: formatTs(pt.timestamp),
-      heap: pt.value,
-      rss: data.timeSeries.memoryRssMb[i]?.value ?? 0,
-    })) ?? []
-  );
-}
-
-/** Build CPU chart data from a performance snapshot. */
-function buildCpuChartData(data: PerformanceSnapshot | null) {
-  return (
-    data?.timeSeries.cpuPercent.map((pt) => ({
-      time: formatTs(pt.timestamp),
-      cpu: pt.value,
-    })) ?? []
-  );
-}
-
-/** Build response-time histogram buckets (500ms granularity). */
-function buildRtHistogram(data: PerformanceSnapshot | null) {
-  const rtBuckets: Record<string, number> = {};
-  for (const sample of data?.responseTimes ?? []) {
-    const bucket = `${Math.floor(sample.durationMs / 500) * 500}ms`;
-    rtBuckets[bucket] = (rtBuckets[bucket] ?? 0) + 1;
-  }
-  return Object.entries(rtBuckets)
-    .sort(([a], [b]) => parseInt(a, 10) - parseInt(b, 10))
-    .map(([bucket, count]) => ({ bucket, count }));
-}
-
-/**
- * Render the performance dashboard UI showing memory, CPU, and response-time metrics,
- * including time-series charts, a response-time histogram, recent samples, and editable alert thresholds.
- *
- * The dashboard auto-refreshes in the background at a fixed interval, allows manual refresh,
- * seeds the threshold editor from fetched data, and provides saving of threshold changes.
- *
- * @returns The dashboard UI as a JSX element.
- */
 export function PerformanceDashboard() {
   const [data, setData] = useState<PerformanceSnapshot | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [thresholdEdit, setThresholdEdit] = useState<Partial<AlertThresholds>>({});
   const [thresholdSaving, setThresholdSaving] = useState(false);
   const [thresholdMsg, setThresholdMsg] = useState<string | null>(null);
@@ -187,38 +160,47 @@ export function PerformanceDashboard() {
     if (!bg) {
       setLoading(true);
       setError(null);
+      window.dispatchEvent(new CustomEvent('performance-loading-start'));
     }
     try {
       const res = await fetch('/api/performance', { cache: 'no-store', signal: ctl.signal });
       if (!res.ok) {
         const json: unknown = await res.json().catch(() => ({}));
-        throw new Error(extractErrorMessage(json, 'Failed to fetch performance data'));
+        const msg =
+          typeof json === 'object' && json !== null && 'error' in json
+            ? String((json as Record<string, unknown>).error)
+            : 'Failed to fetch performance data';
+        throw new Error(msg);
       }
       const json: PerformanceSnapshot = (await res.json()) as PerformanceSnapshot;
       setData(json);
-      setLastUpdated(new Date());
       setError(null);
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
-      if (!bg) setLoading(false);
+      if (!bg) {
+        setLoading(false);
+        window.dispatchEvent(new CustomEvent('performance-loading-end'));
+      }
     }
   }, []);
 
-  // Initial fetch
   useEffect(() => {
-    fetchData();
-    return () => abortRef.current?.abort();
+    fetchData().catch(() => {});
+    const handleRefresh = () => fetchData().catch(() => {});
+    window.addEventListener('refresh-performance', handleRefresh);
+    return () => {
+      abortRef.current?.abort();
+      window.removeEventListener('refresh-performance', handleRefresh);
+    };
   }, [fetchData]);
 
-  // Auto-refresh every 30s
   useEffect(() => {
-    const id = window.setInterval(() => fetchData(true), AUTO_REFRESH_MS);
+    const id = window.setInterval(() => fetchData(true).catch(() => {}), AUTO_REFRESH_MS);
     return () => window.clearInterval(id);
   }, [fetchData]);
 
-  // Seed threshold editor on data load
   useEffect(() => {
     if (data && Object.keys(thresholdEdit).length === 0) {
       setThresholdEdit({ ...data.thresholds });
@@ -236,14 +218,17 @@ export function PerformanceDashboard() {
       });
       if (!res.ok) {
         const json: unknown = await res.json().catch(() => ({}));
-        const msg = extractErrorMessage(json, 'Failed to save thresholds');
+        const msg =
+          typeof json === 'object' && json !== null && 'error' in json
+            ? String((json as Record<string, unknown>).error)
+            : 'Failed to save thresholds';
         setThresholdMsg(`Error: ${msg}`);
         toast.error('Failed to save thresholds', { description: msg });
         return;
       }
       setThresholdMsg('Thresholds saved.');
       toast.success('Thresholds saved', { description: 'Alert thresholds updated successfully.' });
-      fetchData(true);
+      fetchData(true).catch(() => {});
     } catch {
       setThresholdMsg('Error: Network failure');
       toast.error('Failed to save thresholds', { description: 'A network error occurred.' });
@@ -252,11 +237,27 @@ export function PerformanceDashboard() {
     }
   };
 
-  // ── Derived chart data ─────────────────────────────────────
+  const memChartData =
+    data?.timeSeries.memoryHeapMb.map((pt, i) => ({
+      time: formatTs(pt.timestamp),
+      heap: pt.value,
+      rss: data.timeSeries.memoryRssMb[i]?.value ?? 0,
+    })) ?? [];
 
-  const memChartData = buildMemChartData(data);
-  const cpuChartData = buildCpuChartData(data);
-  const rtHistogram = buildRtHistogram(data);
+  const cpuChartData =
+    data?.timeSeries.cpuPercent.map((pt) => ({
+      time: formatTs(pt.timestamp),
+      cpu: pt.value,
+    })) ?? [];
+
+  const rtBuckets: Record<string, number> = {};
+  for (const sample of data?.responseTimes ?? []) {
+    const bucket = `${Math.floor(sample.durationMs / 500) * 500}ms`;
+    rtBuckets[bucket] = (rtBuckets[bucket] ?? 0) + 1;
+  }
+  const rtHistogram = Object.entries(rtBuckets)
+    .sort(([a], [b]) => parseInt(a, 10) - parseInt(b, 10))
+    .map(([bucket, count]) => ({ bucket, count }));
 
   const cur = data?.current;
   const thresh = data?.thresholds;
@@ -264,50 +265,23 @@ export function PerformanceDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Performance</h1>
-          <p className="text-sm text-muted-foreground">
-            Memory, CPU, and response time metrics. Auto-refreshes every 30s.
-          </p>
-          {lastUpdated && (
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Last updated{' '}
-              {lastUpdated.toLocaleTimeString(undefined, {
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-              })}
-            </p>
-          )}
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-2"
-          onClick={() => fetchData()}
-          disabled={loading}
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
-      </div>
-
-      {/* Error banner */}
       {error && (
         <div
           role="alert"
-          className="rounded-md border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive"
+          className="rounded-[20px] border border-destructive/30 bg-destructive/10 p-5 text-sm text-destructive backdrop-blur-xl"
         >
           <strong>Failed to load performance data:</strong> {error}
-          <Button variant="outline" size="sm" className="ml-4" onClick={() => fetchData()}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="ml-4 rounded-xl"
+            onClick={() => fetchData().catch(() => {})}
+          >
             Try again
           </Button>
         </div>
       )}
 
-      {/* KPI cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Heap Memory"
@@ -341,29 +315,28 @@ export function PerformanceDashboard() {
         />
       </div>
 
-      {/* Response time summary */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title="Avg Response Time"
+          title="Avg Latency"
           value={sum ? `${sum.avgMs} ms` : '—'}
           icon={Zap}
           loading={loading && !data}
         />
         <StatCard
-          title="p50 Response Time"
+          title="p50 Latency"
           value={sum ? `${sum.p50Ms} ms` : '—'}
           icon={Activity}
           loading={loading && !data}
         />
         <StatCard
-          title="p95 Response Time"
+          title="p95 Latency"
           value={sum ? `${sum.p95Ms} ms` : '—'}
           icon={Activity}
           alert={!!sum && !!thresh && sum.p95Ms > thresh.responseTimeMs}
           loading={loading && !data}
         />
         <StatCard
-          title="p99 Response Time"
+          title="p99 Latency"
           value={sum ? `${sum.p99Ms} ms` : '—'}
           icon={AlertTriangle}
           alert={!!sum && !!thresh && sum.p99Ms > thresh.responseTimeMs}
@@ -371,208 +344,281 @@ export function PerformanceDashboard() {
         />
       </div>
 
-      {/* Memory time-series chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Memory Usage Over Time</CardTitle>
-          <CardDescription>Heap and RSS memory sampled every 30s (last 60 minutes)</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {memChartData.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              No samples yet — data appears after the first 30-second interval.
-            </p>
-          ) : (
-            <ResponsiveContainer width="100%" height={250}>
-              <AreaChart data={memChartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis dataKey="time" tick={{ fontSize: 11 }} />
-                <YAxis unit=" MB" tick={{ fontSize: 11 }} />
-                <Tooltip formatter={(v) => (v != null ? [`${v} MB`] : [''])} />
-                <Area
-                  type="monotone"
-                  dataKey="heap"
-                  name="Heap"
-                  stroke="#5865F2"
-                  fill="#5865F233"
-                  strokeWidth={2}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="rss"
-                  name="RSS"
-                  stroke="#22C55E"
-                  fill="#22C55E33"
-                  strokeWidth={2}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* CPU time-series chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle>CPU Utilization Over Time</CardTitle>
-          <CardDescription>Process CPU usage sampled every 30s</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {cpuChartData.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              No samples yet — data appears after the first 30-second interval.
-            </p>
-          ) : (
-            <ResponsiveContainer width="100%" height={200}>
-              <AreaChart data={cpuChartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis dataKey="time" tick={{ fontSize: 11 }} />
-                <YAxis domain={[0, 100]} unit="%" tick={{ fontSize: 11 }} />
-                <Tooltip formatter={(v) => (v != null ? [`${v}%`] : [''])} />
-                <Area
-                  type="monotone"
-                  dataKey="cpu"
-                  name="CPU"
-                  stroke="#F59E0B"
-                  fill="#F59E0B33"
-                  strokeWidth={2}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Response time histogram */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Response Time Distribution</CardTitle>
-          <CardDescription>
-            Histogram of command and API response times (500ms buckets) · {sum?.count ?? 0} total
-            samples
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {rtHistogram.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              No response times recorded yet.
-            </p>
-          ) : (
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={rtHistogram} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis dataKey="bucket" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip />
-                <Bar dataKey="count" name="Requests" fill="#5865F2" radius={[2, 2, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Recent response times table */}
-      {(data?.responseTimes?.length ?? 0) > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Response Times</CardTitle>
-            <CardDescription>
-              Last {Math.min(data?.responseTimes?.length ?? 0, 20)} samples
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left text-muted-foreground">
-                    <th className="pb-2 pr-4">Time</th>
-                    <th className="pb-2 pr-4">Name</th>
-                    <th className="pb-2 pr-4">Type</th>
-                    <th className="pb-2 text-right">Duration</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...(data?.responseTimes ?? [])]
-                    .reverse()
-                    .slice(0, 20)
-                    .map((s) => (
-                      <tr key={`${s.timestamp}-${s.name}`} className="border-b last:border-0">
-                        <td className="py-1.5 pr-4 text-muted-foreground">
-                          {formatTs(s.timestamp)}
-                        </td>
-                        <td className="py-1.5 pr-4 font-mono text-xs">{s.name}</td>
-                        <td className="py-1.5 pr-4">
-                          <Badge variant="outline" className="text-xs">
-                            {s.type}
-                          </Badge>
-                        </td>
-                        <td
-                          className={`py-1.5 text-right font-mono text-xs ${
-                            thresh && s.durationMs > thresh.responseTimeMs ? 'text-destructive' : ''
-                          }`}
-                        >
-                          {s.durationMs} ms
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Alert thresholds editor */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Alert Thresholds</CardTitle>
-          <CardDescription>
-            Configure when the bot logs a warning and triggers alert callbacks. Changes take effect
-            immediately.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {(
-              [
-                { key: 'memoryHeapMb', label: 'Heap Memory (MB)' },
-                { key: 'memoryRssMb', label: 'RSS Memory (MB)' },
-                { key: 'cpuPercent', label: 'CPU Utilization (%)' },
-                { key: 'responseTimeMs', label: 'Response Time (ms)' },
-              ] as const
-            ).map(({ key, label }) => (
-              <div key={key} className="space-y-1">
-                <Label htmlFor={key}>{label}</Label>
-                <Input
-                  id={key}
-                  type="number"
-                  min={1}
-                  value={thresholdEdit[key] ?? ''}
-                  onChange={(e) =>
-                    setThresholdEdit((prev) => ({
-                      ...prev,
-                      [key]: Number(e.target.value),
-                    }))
-                  }
-                />
-              </div>
-            ))}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="rounded-[24px] border border-border/40 bg-card/40 p-6 backdrop-blur-2xl shadow-lg">
+          <div className="mb-6 flex flex-col gap-1">
+            <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60">
+              Memory Usage
+            </h3>
+            <p className="text-xs text-muted-foreground/40">Heap and RSS trends (last 60m)</p>
           </div>
-
-          <div className="mt-4 flex items-center gap-3">
-            <Button onClick={() => void saveThresholds()} disabled={thresholdSaving}>
-              {thresholdSaving ? 'Saving…' : 'Save Thresholds'}
-            </Button>
-            {thresholdMsg && (
-              <p
-                className={`text-sm ${thresholdMsg.startsWith('Error') ? 'text-destructive' : 'text-green-600'}`}
-              >
-                {thresholdMsg}
-              </p>
+          <div className="h-[250px] w-full">
+            {memChartData.length === 0 ? (
+              <div className="flex h-full items-center justify-center text-xs text-muted-foreground/40 italic">
+                Waiting for samples...
+              </div>
+            ) : (
+              <StableResponsiveContainer>
+                <AreaChart data={memChartData}>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    stroke="hsl(var(--border)/0.2)"
+                  />
+                  <XAxis
+                    dataKey="time"
+                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground)/0.4)' }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    unit=" MB"
+                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground)/0.4)' }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
+                      borderRadius: '12px',
+                      border: '1px solid hsl(var(--border)/0.4)',
+                      fontSize: '11px',
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="heap"
+                    stroke="hsl(var(--primary))"
+                    fill="url(#colorHeap)"
+                    strokeWidth={2}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="rss"
+                    stroke="#22C55E"
+                    fill="url(#colorRss)"
+                    strokeWidth={2}
+                  />
+                  <defs>
+                    <linearGradient id="colorHeap" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.1} />
+                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="colorRss" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#22C55E" stopOpacity={0.1} />
+                      <stop offset="95%" stopColor="#22C55E" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                </AreaChart>
+              </StableResponsiveContainer>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+
+        <div className="rounded-[24px] border border-border/40 bg-card/40 p-6 backdrop-blur-2xl shadow-lg">
+          <div className="mb-6 flex flex-col gap-1">
+            <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60">
+              CPU Utilization
+            </h3>
+            <p className="text-xs text-muted-foreground/40">Process load sampled every 30s</p>
+          </div>
+          <div className="h-[250px] w-full">
+            {cpuChartData.length === 0 ? (
+              <div className="flex h-full items-center justify-center text-xs text-muted-foreground/40 italic">
+                Waiting for samples...
+              </div>
+            ) : (
+              <StableResponsiveContainer>
+                <AreaChart data={cpuChartData}>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    stroke="hsl(var(--border)/0.2)"
+                  />
+                  <XAxis
+                    dataKey="time"
+                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground)/0.4)' }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    domain={[0, 100]}
+                    unit="%"
+                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground)/0.4)' }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
+                      borderRadius: '12px',
+                      border: '1px solid hsl(var(--border)/0.4)',
+                      fontSize: '11px',
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="cpu"
+                    stroke="#F59E0B"
+                    fill="url(#colorCpu)"
+                    strokeWidth={2}
+                  />
+                  <defs>
+                    <linearGradient id="colorCpu" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.1} />
+                      <stop offset="95%" stopColor="#F59E0B" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                </AreaChart>
+              </StableResponsiveContainer>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="rounded-[24px] border border-border/40 bg-card/40 p-6 backdrop-blur-2xl shadow-lg">
+          <div className="mb-6 flex flex-col gap-1">
+            <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60">
+              latency Distribution
+            </h3>
+            <p className="text-xs text-muted-foreground/40">
+              Command & API response times (500ms buckets)
+            </p>
+          </div>
+          <div className="latency-distribution-chart h-[250px] w-full">
+            {rtHistogram.length === 0 ? (
+              <div className="flex h-full items-center justify-center text-xs text-muted-foreground/40 italic">
+                No samples yet...
+              </div>
+            ) : (
+              <StableResponsiveContainer>
+                <BarChart data={rtHistogram}>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    stroke="hsl(var(--border)/0.2)"
+                  />
+                  <XAxis
+                    dataKey="bucket"
+                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground)/0.4)' }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground)/0.4)' }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
+                      borderRadius: '12px',
+                      border: '1px solid hsl(var(--border)/0.4)',
+                      fontSize: '11px',
+                    }}
+                  />
+                  <Bar dataKey="count" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </StableResponsiveContainer>
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-[24px] border border-border/40 bg-card/40 p-6 backdrop-blur-2xl shadow-lg overflow-hidden">
+          <div className="mb-6 flex flex-col gap-1">
+            <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60">
+              Recent Samples
+            </h3>
+            <p className="text-xs text-muted-foreground/40">Latest performance captures</p>
+          </div>
+          <div className="max-h-[250px] overflow-y-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-border/10 text-left text-muted-foreground/40 uppercase tracking-widest font-black text-[9px]">
+                  <th className="pb-2">Time</th>
+                  <th className="pb-2">Endpoint</th>
+                  <th className="pb-2 text-right">Duration</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/5">
+                {[...(data?.responseTimes ?? [])]
+                  .reverse()
+                  .slice(0, 20)
+                  .map((s, i) => (
+                    <tr
+                      key={`perf-${i}-${s.timestamp}-${s.type}-${s.name}`}
+                      className="transition-colors hover:bg-muted/30"
+                    >
+                      <td className="py-2 text-muted-foreground/60 tabular-nums">
+                        {formatTs(s.timestamp)}
+                      </td>
+                      <td className="py-2 font-mono text-[10px] text-foreground/70">{s.name}</td>
+                      <td
+                        className={`py-2 text-right font-mono tabular-nums ${thresh && s.durationMs > thresh.responseTimeMs ? 'text-destructive font-bold' : 'text-muted-foreground/80'}`}
+                      >
+                        {s.durationMs}ms
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-[24px] border border-border/40 bg-card/40 p-8 backdrop-blur-2xl shadow-lg">
+        <div className="mb-8 flex flex-col gap-1">
+          <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60">
+            Alert Thresholds
+          </h3>
+          <p className="text-xs text-muted-foreground/40">
+            Configure performance warning boundaries
+          </p>
+        </div>
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {(
+            [
+              { key: 'memoryHeapMb', label: 'Heap (MB)' },
+              { key: 'memoryRssMb', label: 'RSS (MB)' },
+              { key: 'cpuPercent', label: 'CPU Load (%)' },
+              { key: 'responseTimeMs', label: 'Latency (ms)' },
+            ] as const
+          ).map(({ key, label }) => (
+            <div key={key} className="space-y-2">
+              <Label
+                htmlFor={key}
+                className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50"
+              >
+                {label}
+              </Label>
+              <Input
+                id={key}
+                type="number"
+                className="h-10 rounded-xl border-border/40 bg-background/30 text-sm backdrop-blur-sm"
+                value={thresholdEdit[key] ?? ''}
+                onChange={(e) =>
+                  setThresholdEdit((prev) => ({ ...prev, [key]: Number(e.target.value) }))
+                }
+              />
+            </div>
+          ))}
+        </div>
+        <div className="mt-8 flex items-center justify-between border-t border-border/10 pt-6">
+          <p
+            className={`text-xs font-medium ${thresholdMsg?.startsWith('Error') ? 'text-destructive' : 'text-emerald-500'}`}
+          >
+            {thresholdMsg}
+          </p>
+          <Button
+            onClick={() => saveThresholds().catch(() => {})}
+            disabled={thresholdSaving}
+            className="rounded-xl px-8 font-bold uppercase tracking-widest text-[10px] h-11"
+          >
+            {thresholdSaving ? 'Synchronizing…' : 'Update Thresholds'}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -33,6 +33,17 @@ describe("guild-selection", () => {
     expect(dispatchSpy).not.toHaveBeenCalled();
   });
 
+  it("does not redispatch when the guild is already selected", () => {
+    const dispatchSpy = vi.spyOn(window, "dispatchEvent");
+    localStorage.setItem(SELECTED_GUILD_KEY, "guild-123");
+
+    broadcastSelectedGuild("guild-123");
+    broadcastSelectedGuild(" guild-123 ");
+
+    expect(localStorage.getItem(SELECTED_GUILD_KEY)).toBe("guild-123");
+    expect(dispatchSpy).not.toHaveBeenCalled();
+  });
+
   it("still dispatches when localStorage persistence throws", () => {
     const dispatchSpy = vi.spyOn(window, "dispatchEvent");
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {

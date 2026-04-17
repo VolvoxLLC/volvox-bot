@@ -19,6 +19,7 @@ vi.mock("@/lib/auth", () => ({
 vi.mock("next/navigation", () => ({
   redirect: mockRedirect,
   usePathname: () => "/dashboard",
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
 }));
 
 vi.mock("@/components/layout/dashboard-shell", () => ({

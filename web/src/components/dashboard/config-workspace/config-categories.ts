@@ -216,6 +216,15 @@ export const CONFIG_SEARCH_ITEMS: ConfigSearchItem[] = [
     isAdvanced: true,
   },
   {
+    id: 'xp-level-dm',
+    featureId: 'xp-level-actions',
+    categoryId: 'onboarding-growth',
+    label: 'Level-Up DMs',
+    description: 'Configure milestone DMs, per-level overrides, and template previews.',
+    keywords: ['levelup', 'level-up', 'dm', 'notification', 'message', 'template', 'milestone'],
+    isAdvanced: true,
+  },
+  {
     id: 'xp-role-stacking',
     featureId: 'xp-level-actions',
     categoryId: 'onboarding-growth',

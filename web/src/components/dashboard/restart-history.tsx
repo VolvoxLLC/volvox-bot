@@ -1,8 +1,8 @@
 'use client';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatUptime } from '@/lib/format-time';
+import { cn } from '@/lib/utils';
 import type { BotHealth, RestartRecord } from './types';
 
 interface RestartHistoryProps {
@@ -11,99 +11,38 @@ interface RestartHistoryProps {
 }
 
 const MAX_RESTARTS = 20;
+const RESTART_SKELETON_ROWS = [
+  'restart-skeleton-1',
+  'restart-skeleton-2',
+  'restart-skeleton-3',
+  'restart-skeleton-4',
+  'restart-skeleton-5',
+] as const;
 
 function formatTimestamp(iso: string): string {
   try {
     return new Intl.DateTimeFormat(undefined, {
       month: 'short',
       day: 'numeric',
-      year: 'numeric',
       hour: 'numeric',
       minute: '2-digit',
-      second: '2-digit',
     }).format(new Date(iso));
   } catch {
     return iso;
   }
 }
 
-type ReasonStyle = {
-  bg: string;
-  text: string;
-  label: string;
-};
-
-function reasonStyle(reason: string): ReasonStyle {
+function reasonStyle(reason: string) {
   const normalized = reason.toLowerCase();
-
-  // Check crash/restart before startup to avoid "restart" matching "start"
-  if (
-    normalized.includes('crash') ||
-    normalized.includes('error') ||
-    normalized.includes('uncaught') ||
-    normalized.includes('unhandled')
-  ) {
-    return {
-      bg: 'bg-red-100 dark:bg-red-900/30',
-      text: 'text-red-700 dark:text-red-400',
-      label: reason,
-    };
-  }
-  if (normalized.includes('restart')) {
-    return {
-      bg: 'bg-yellow-100 dark:bg-yellow-900/30',
-      text: 'text-yellow-700 dark:text-yellow-400',
-      label: reason,
-    };
-  }
-  if (normalized.includes('startup') || normalized.startsWith('start')) {
-    return {
-      bg: 'bg-green-100 dark:bg-green-900/30',
-      text: 'text-green-700 dark:text-green-400',
-      label: reason,
-    };
-  }
-  if (normalized.includes('deploy') || normalized.includes('update')) {
-    return {
-      bg: 'bg-blue-100 dark:bg-blue-900/30',
-      text: 'text-blue-700 dark:text-blue-400',
-      label: reason,
-    };
-  }
-  if (
-    normalized.includes('shutdown') ||
-    normalized.includes('sigterm') ||
-    normalized.includes('sigint')
-  ) {
-    return {
-      bg: 'bg-yellow-100 dark:bg-yellow-900/30',
-      text: 'text-yellow-700 dark:text-yellow-400',
-      label: reason,
-    };
-  }
-
-  return { bg: 'bg-muted', text: 'text-muted-foreground', label: reason };
-}
-
-function ReasonBadge({ reason }: { reason: string }) {
-  const style = reasonStyle(reason);
-  return (
-    <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${style.bg} ${style.text}`}
-    >
-      {style.label}
-    </span>
-  );
-}
-
-function TableSkeleton() {
-  return (
-    <div className="space-y-2">
-      {(['rh-0', 'rh-1', 'rh-2', 'rh-3', 'rh-4'] as const).map((key) => (
-        <Skeleton key={key} className="h-10 w-full" />
-      ))}
-    </div>
-  );
+  if (normalized.includes('crash') || normalized.includes('error'))
+    return { bg: 'bg-red-500/10 text-red-500 ring-red-500/20', label: 'CRITICAL' };
+  if (normalized.includes('restart'))
+    return { bg: 'bg-amber-500/10 text-amber-500 ring-amber-500/20', label: 'RESTART' };
+  if (normalized.includes('startup') || normalized.startsWith('start'))
+    return { bg: 'bg-emerald-500/10 text-emerald-500 ring-emerald-500/20', label: 'STARTUP' };
+  if (normalized.includes('deploy') || normalized.includes('update'))
+    return { bg: 'bg-blue-500/10 text-blue-500 ring-blue-500/20', label: 'DEPLOY' };
+  return { bg: 'bg-white/5 text-muted-foreground/60 ring-white/10', label: 'EVENT' };
 }
 
 export function RestartHistory({ health, loading }: RestartHistoryProps) {
@@ -114,52 +53,100 @@ export function RestartHistory({ health, loading }: RestartHistoryProps) {
     : [];
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Restart History</CardTitle>
-        <CardDescription>Last {MAX_RESTARTS} restarts, most recent first.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {loading && !health ? (
-          <TableSkeleton />
-        ) : restarts.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">
-            {health ? 'No restarts recorded.' : 'No data available.'}
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-muted-foreground">
-                  <th className="pb-2 pr-4 font-medium">Timestamp</th>
-                  <th className="pb-2 pr-4 font-medium">Reason</th>
-                  <th className="pb-2 pr-4 font-medium">Version</th>
-                  <th className="pb-2 font-medium">Uptime Before</th>
-                </tr>
-              </thead>
-              <tbody>
-                {restarts.map((restart) => (
-                  <tr
-                    key={restart.timestamp}
-                    className="border-b last:border-0 hover:bg-muted/40 transition-colors"
-                  >
-                    <td className="py-2.5 pr-4 text-muted-foreground whitespace-nowrap">
-                      {formatTimestamp(restart.timestamp)}
+    <div className="group relative overflow-hidden rounded-[32px] border border-white/10 bg-card/40 backdrop-blur-3xl shadow-2xl transition-all">
+      <div className="absolute inset-0 bg-gradient-to-b from-white/[0.03] to-transparent pointer-events-none" />
+
+      <div className="border-b border-white/5 px-8 py-6">
+        <h3 className="text-xl font-black tracking-tight text-foreground">
+          Restart <span className="text-primary/60">Log</span>
+        </h3>
+        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/40">
+          Last {MAX_RESTARTS} lifecycle events
+        </p>
+      </div>
+
+      <div className="px-8 pb-8">
+        <div className="overflow-x-auto overflow-y-hidden">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="border-b border-white/5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/30">
+                <th className="py-4 font-black">Timestamp</th>
+                <th className="py-4 font-black">Category</th>
+                <th className="py-4 font-black">Engine</th>
+                <th className="py-4 font-black text-right">Last Uptime</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {loading && !health ? (
+                RESTART_SKELETON_ROWS.map((rowId) => (
+                  <tr key={rowId}>
+                    <td className="py-4">
+                      <Skeleton className="h-4 w-32 rounded bg-white/5" />
                     </td>
-                    <td className="py-2.5 pr-4">
-                      <ReasonBadge reason={restart.reason} />
+                    <td className="py-4">
+                      <Skeleton className="h-4 w-16 rounded bg-white/5" />
                     </td>
-                    <td className="py-2.5 pr-4 font-mono text-xs">{restart.version ?? '—'}</td>
-                    <td className="py-2.5 text-muted-foreground">
-                      {restart.uptimeBefore != null ? formatUptime(restart.uptimeBefore) : '—'}
+                    <td className="py-4">
+                      <Skeleton className="h-4 w-12 rounded bg-white/5" />
+                    </td>
+                    <td className="py-4 text-right">
+                      <Skeleton className="h-4 w-20 ml-auto rounded bg-white/5" />
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+                ))
+              ) : restarts.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={4}
+                    className="py-12 text-center text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground/20"
+                  >
+                    No lifecycle records found
+                  </td>
+                </tr>
+              ) : (
+                restarts.map((restart) => {
+                  const style = reasonStyle(restart.reason);
+                  return (
+                    <tr
+                      key={restart.timestamp}
+                      className="group/row transition-colors hover:bg-white/[0.02]"
+                    >
+                      <td className="py-4">
+                        <span className="text-xs font-bold text-muted-foreground/80">
+                          {formatTimestamp(restart.timestamp)}
+                        </span>
+                      </td>
+                      <td className="py-4">
+                        <div
+                          className={cn(
+                            'inline-flex items-center rounded-lg px-2 py-0.5 text-[9px] font-black tracking-tighter ring-1 ring-inset',
+                            style.bg,
+                          )}
+                        >
+                          {style.label}
+                        </div>
+                        <span className="ml-2 text-[10px] font-medium text-muted-foreground/40 italic">
+                          {restart.reason}
+                        </span>
+                      </td>
+                      <td className="py-4">
+                        <code className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] font-medium text-primary/60">
+                          {restart.version || 'n/a'}
+                        </code>
+                      </td>
+                      <td className="py-4 text-right">
+                        <span className="text-xs font-bold text-muted-foreground/60">
+                          {restart.uptimeBefore != null ? formatUptime(restart.uptimeBefore) : '—'}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   );
 }

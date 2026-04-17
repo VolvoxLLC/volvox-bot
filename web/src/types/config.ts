@@ -280,6 +280,8 @@ export interface TldrConfig extends ToggleSectionConfig {
 export interface ReputationConfig extends ToggleSectionConfig {
   xpPerMessage: number[];
   xpCooldownSeconds: number;
+  levelThresholds: number[];
+  announceChannelId: string | null;
 }
 
 /** XP level-up action definition. */
@@ -313,11 +315,24 @@ export interface XpLevelActionEntry {
   actions: XpLevelAction[];
 }
 
+export interface XpLevelUpDmMessage {
+  level: number;
+  message: string;
+}
+
+export interface XpLevelUpDmConfig {
+  enabled: boolean;
+  sendOnEveryLevel: boolean;
+  defaultMessage: string;
+  messages: XpLevelUpDmMessage[];
+}
+
 /** XP / Level-Up Actions configuration. */
 export interface XpConfig extends ToggleSectionConfig {
   levelThresholds: number[];
   levelActions: XpLevelActionEntry[];
   defaultActions: XpLevelAction[];
+  levelUpDm: XpLevelUpDmConfig;
   roleRewards: {
     stackRoles: boolean;
     removeOnLevelDown: boolean;

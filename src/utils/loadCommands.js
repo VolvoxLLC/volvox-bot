@@ -30,9 +30,10 @@ export async function loadCommandsFromDirectory({
 
   for (const file of commandFiles) {
     const filePath = join(commandsPath, file);
+    const fileUrl = pathToFileURL(filePath).href;
 
     try {
-      const command = await import(pathToFileURL(filePath).href);
+      const command = await import(fileUrl);
 
       if (!command.data || !command.execute) {
         commandLogger.warn('Command missing data or execute export', { file });

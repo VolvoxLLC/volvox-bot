@@ -15,9 +15,12 @@ function getErrorMessage(err) {
 }
 
 /**
- * Handle autocomplete interactions.
- * @param {import('discord.js').Client} client - Discord client
- * @param {import('discord.js').AutocompleteInteraction} interaction - Autocomplete interaction
+ * Dispatches an autocomplete interaction to the matching command or returns no suggestions.
+ *
+ * If the command is not found or has no `autocomplete` handler, responds with an empty array.
+ * If the handler throws, logs the error with guild and channel context and responds with an empty array.
+ * @param {import('discord.js').Client} client - Discord client instance containing registered commands.
+ * @param {import('discord.js').AutocompleteInteraction} interaction - The autocomplete interaction to handle.
  */
 async function handleAutocomplete(client, interaction) {
   const command = client.commands.get(interaction.commandName);
@@ -30,6 +33,8 @@ async function handleAutocomplete(client, interaction) {
     await command.autocomplete(interaction);
   } catch (err) {
     logger.error('Autocomplete error', {
+      guildId: interaction.guildId,
+      channelId: interaction.channelId,
       command: interaction.commandName,
       error: getErrorMessage(err),
     });
@@ -38,9 +43,11 @@ async function handleAutocomplete(client, interaction) {
 }
 
 /**
- * Send a safe command execution error response.
- * @param {import('discord.js').ChatInputCommandInteraction} interaction - Command interaction
- * @param {string} commandName - Slash command name
+ * Send an ephemeral error message to the user indicating the command failed; use a follow-up if the interaction was already replied to or deferred.
+ *
+ * If sending the response fails, a debug-level log is recorded with `guildId`, `channelId`, the extracted error message, and the `command` name.
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - Interaction to respond to.
+ * @param {string} commandName - Command name used for logging context.
  */
 async function sendCommandExecutionError(interaction, commandName) {
   const errorMessage = {
@@ -51,6 +58,8 @@ async function sendCommandExecutionError(interaction, commandName) {
   if (interaction.replied || interaction.deferred) {
     await safeFollowUp(interaction, errorMessage).catch((replyErr) => {
       logger.debug('Failed to send error follow-up', {
+        guildId: interaction.guildId,
+        channelId: interaction.channelId,
         error: getErrorMessage(replyErr),
         command: commandName,
       });
@@ -60,6 +69,8 @@ async function sendCommandExecutionError(interaction, commandName) {
 
   await safeReply(interaction, errorMessage).catch((replyErr) => {
     logger.debug('Failed to send error reply', {
+      guildId: interaction.guildId,
+      channelId: interaction.channelId,
       error: getErrorMessage(replyErr),
       command: commandName,
     });
@@ -67,8 +78,9 @@ async function sendCommandExecutionError(interaction, commandName) {
 }
 
 /**
- * Register the interactionCreate handler for slash commands and autocomplete.
- * @param {import('discord.js').Client} client - Discord client
+ * Register an InteractionCreate listener that routes autocomplete interactions and handles chat input (slash) commands.
+ *
+ * The handler enforces per-guild permissions, replies ephemerally for permission denials or missing commands, executes the matched command and records usage, and sends an ephemeral error response if command processing fails.
  */
 export function registerCommandInteractionHandler(client) {
   client.on(Events.InteractionCreate, async (interaction) => {
@@ -82,7 +94,12 @@ export function registerCommandInteractionHandler(client) {
     const { commandName, member } = interaction;
 
     try {
-      logger.info('Slash command received', { command: commandName, user: interaction.user.tag });
+      logger.info('Slash command received', {
+        guildId: interaction.guildId,
+        channelId: interaction.channelId,
+        command: commandName,
+        user: interaction.user.tag,
+      });
 
       const guildConfig = getConfig(interaction.guildId);
       if (!hasPermission(member, commandName, guildConfig)) {
@@ -92,7 +109,12 @@ export function registerCommandInteractionHandler(client) {
           content: getPermissionError(commandName, permLevel),
           ephemeral: true,
         });
-        logger.warn('Permission denied', { user: interaction.user.tag, command: commandName });
+        logger.warn('Permission denied', {
+          guildId: interaction.guildId,
+          channelId: interaction.channelId,
+          user: interaction.user.tag,
+          command: commandName,
+        });
         return;
       }
 
@@ -120,11 +142,15 @@ export function registerCommandInteractionHandler(client) {
         channelId: interaction.channelId,
       }).catch((err) =>
         logger.error('Failed to log command usage', {
+          guildId: interaction.guildId,
+          channelId: interaction.channelId,
           error: getErrorMessage(err),
         }),
       );
     } catch (err) {
       logger.error('Command error', {
+        guildId: interaction.guildId,
+        channelId: interaction.channelId,
         command: commandName,
         error: getErrorMessage(err),
         stack: err instanceof Error ? err.stack : undefined,

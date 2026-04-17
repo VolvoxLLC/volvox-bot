@@ -207,12 +207,22 @@ export async function handleReactionRoleAdd(reaction, user) {
     }
 
     if (member.roles.cache.has(roleId)) {
-      debug('Reaction role: member already has role', { userId: user.id, roleId });
+      debug('Reaction role: member already has role', {
+        guildId: guild.id,
+        channelId: reaction.message.channelId,
+        userId: user.id,
+        roleId,
+      });
       return;
     }
 
     await member.roles.add(role, 'Reaction role assignment');
-    info('Reaction role granted', { userId: user.id, roleId, guildId: guild.id });
+    info('Reaction role granted', {
+      userId: user.id,
+      roleId,
+      guildId: guild.id,
+      channelId: reaction.message.channelId,
+    });
   } catch (err) {
     logError('handleReactionRoleAdd failed', {
       messageId: reaction.message?.id,
@@ -253,12 +263,22 @@ export async function handleReactionRoleRemove(reaction, user) {
     }
 
     if (!member.roles.cache.has(roleId)) {
-      debug('Reaction role: member does not have role to remove', { userId: user.id, roleId });
+      debug('Reaction role: member does not have role to remove', {
+        guildId: guild.id,
+        channelId: reaction.message.channelId,
+        userId: user.id,
+        roleId,
+      });
       return;
     }
 
     await member.roles.remove(roleId, 'Reaction role removal');
-    info('Reaction role revoked', { userId: user.id, roleId, guildId: guild.id });
+    info('Reaction role revoked', {
+      userId: user.id,
+      roleId,
+      guildId: guild.id,
+      channelId: reaction.message.channelId,
+    });
   } catch (err) {
     logError('handleReactionRoleRemove failed', {
       messageId: reaction.message?.id,

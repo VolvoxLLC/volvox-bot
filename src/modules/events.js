@@ -10,47 +10,11 @@ import { registerClientReadyHandler } from './events/clientReady.js';
 import { registerCommandInteractionHandler } from './events/commandInteraction.js';
 import { registerErrorHandlers } from './events/errors.js';
 import { registerGuildMemberAddHandler } from './events/guildMemberAdd.js';
-import {
-  registerChallengeButtonHandler,
-  registerComponentHandlers,
-  registerPollButtonHandler,
-  registerReminderButtonHandler,
-  registerReviewClaimHandler,
-  registerShowcaseButtonHandler,
-  registerShowcaseModalHandler,
-  registerTicketCloseButtonHandler,
-  registerTicketModalHandler,
-  registerTicketOpenButtonHandler,
-  registerWelcomeOnboardingHandlers,
-} from './events/interactionCreate.js';
+import { registerComponentHandlers } from './events/interactionCreate.js';
 import { registerMessageCreateHandler } from './events/messageCreate.js';
 import { registerReactionHandlers } from './events/reactions.js';
 import { registerReadyHandler } from './events/ready.js';
 import { registerVoiceStateHandler } from './events/voiceState.js';
-
-// Re-export for backward compatibility
-export {
-  // Deprecated — use handler functions directly
-  registerChallengeButtonHandler,
-  registerClientReadyHandler,
-  registerCommandInteractionHandler,
-  registerComponentHandlers,
-  registerErrorHandlers,
-  registerGuildMemberAddHandler,
-  registerMessageCreateHandler,
-  registerPollButtonHandler,
-  registerReactionHandlers,
-  registerReadyHandler,
-  registerReminderButtonHandler,
-  registerReviewClaimHandler,
-  registerShowcaseButtonHandler,
-  registerShowcaseModalHandler,
-  registerTicketCloseButtonHandler,
-  registerTicketModalHandler,
-  registerTicketOpenButtonHandler,
-  registerVoiceStateHandler,
-  registerWelcomeOnboardingHandlers,
-};
 
 /**
  * Register all event handlers

@@ -326,7 +326,11 @@ async function handleList(interaction, pool) {
 }
 
 /**
- * Handle /announce cancel
+ * Cancel an active scheduled announcement by ID for the current guild.
+ *
+ * If the scheduled message exists and the caller is the original author or a moderator, disables the schedule in the database,
+ * logs the cancellation, and confirms the action to the caller. If no active schedule is found, replies with an error.
+ * If the caller is not authorized, replies with an authorization error and logs a warning.
  */
 async function handleCancel(interaction, pool) {
   const id = interaction.options.getInteger('id');
@@ -354,6 +358,8 @@ async function handleCancel(interaction, pool) {
       ephemeral: true,
     });
     warn('Announce cancel permission denied', {
+      guildId: interaction.guildId,
+      channelId: interaction.channelId,
       userId: interaction.user.id,
       messageId: id,
     });
@@ -362,7 +368,12 @@ async function handleCancel(interaction, pool) {
 
   await pool.query('UPDATE scheduled_messages SET enabled = false WHERE id = $1', [id]);
 
-  info('Scheduled message cancelled', { id, cancelledBy: interaction.user.id });
+  info('Scheduled message cancelled', {
+    guildId: interaction.guildId,
+    channelId: interaction.channelId,
+    id,
+    cancelledBy: interaction.user.id,
+  });
 
   await safeEditReply(interaction, {
     content: `✅ Scheduled message **#${id}** has been cancelled.`,

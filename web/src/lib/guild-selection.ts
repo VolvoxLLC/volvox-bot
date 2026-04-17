@@ -11,6 +11,14 @@ export function broadcastSelectedGuild(guildId: string): void {
 
   const normalizedGuildId = guildId.trim();
   if (!normalizedGuildId) return;
+  try {
+    const currentGuildId = window.localStorage.getItem(SELECTED_GUILD_KEY)?.trim() ?? '';
+    if (currentGuildId === normalizedGuildId) {
+      return;
+    }
+  } catch {
+    // localStorage may be unavailable in strict browser contexts
+  }
 
   try {
     window.localStorage.setItem(SELECTED_GUILD_KEY, normalizedGuildId);
@@ -21,6 +29,7 @@ export function broadcastSelectedGuild(guildId: string): void {
   window.dispatchEvent(
     new CustomEvent<string>(GUILD_SELECTED_EVENT, {
       detail: normalizedGuildId,
+      cancelable: true,
     }),
   );
 }

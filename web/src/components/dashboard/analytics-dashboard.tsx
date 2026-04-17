@@ -1,186 +1,285 @@
 'use client';
 
 import {
+  Activity,
+  ArrowDown,
+  ArrowUp,
   Bot,
   Coins,
-  Download,
-  FileText,
+  Heart,
+  type LucideIcon,
   MessageSquare,
-  RefreshCw,
+  Minus,
+  Star,
   UserPlus,
   Users,
+  Zap,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  Tooltip as RechartsTooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { StableResponsiveContainer } from '@/components/ui/stable-responsive-container';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useAnalytics } from '@/contexts/analytics-context';
 import { useChartTheme } from '@/hooks/use-chart-theme';
 import { useGlowCard } from '@/hooks/use-glow-card';
-import { useGuildSelection } from '@/hooks/use-guild-selection';
-import { exportAnalyticsPdf } from '@/lib/analytics-pdf';
-import {
-  endOfDayIso,
-  formatDateInput,
-  formatLastUpdatedTime,
-  formatNumber,
-  formatUsd,
-  startOfDayIso,
-} from '@/lib/analytics-utils';
-import { extractApiError, isAbortError, safeParseJson, toErrorMessage } from '@/lib/api-utils';
-import type { AnalyticsRangePreset, DashboardAnalytics } from '@/types/analytics';
-import { isDashboardAnalyticsPayload } from '@/types/analytics-validators';
-import {
-  ActivityHeatmapCard,
-  AiUsageCard,
-  ChannelFilterCard,
-  CommandUsageCard,
-  escapeCsvCell,
-  type KpiCard,
-  KpiCardItem,
-  KpiSkeleton,
-  MessageVolumeCard,
-  RealtimeIndicatorsCard,
-  TopChannelsCard,
-  toDeltaPercent,
-  UserEngagementCard,
-  XpEconomyCard,
-} from './analytics-dashboard-sections';
+import { formatNumber, formatUsd } from '@/lib/analytics-utils';
+import { cn } from '@/lib/utils';
+import type { AnalyticsRangePreset } from '@/types/analytics';
+import { DashboardCard } from './dashboard-card';
+import { EmptyState } from './empty-state';
 
-const RANGE_PRESETS: Array<{ label: string; value: AnalyticsRangePreset }> = [
+const _RANGE_PRESETS: Array<{ label: string; value: AnalyticsRangePreset }> = [
   { label: 'Today', value: 'today' },
   { label: 'Week', value: 'week' },
   { label: 'Month', value: 'month' },
   { label: 'Custom', value: 'custom' },
 ];
 
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
+
+type KpiCard = {
+  label: string;
+  value: number | undefined;
+  previous: number | undefined;
+  icon: typeof MessageSquare;
+  format: (value: number) => string;
+};
+
+type MetricSummaryCardProps = {
+  label: string;
+  value: string;
+  icon: LucideIcon;
+  accentClassName: string;
+};
+
+function MetricSummaryCard({ label, value, icon: Icon, accentClassName }: MetricSummaryCardProps) {
+  return (
+    <div className="rounded-xl border border-border/40 bg-muted/30 p-5">
+      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+        <Icon className={cn('h-3.5 w-3.5', accentClassName)} />
+        {label}
+      </div>
+      <output className="mt-2 block text-2xl font-bold tracking-tight text-foreground/90">
+        {value}
+      </output>
+    </div>
+  );
+}
+
+type RealtimeMetricCardProps = {
+  label: string;
+  value: string;
+  icon: LucideIcon;
+  accentClassName: string;
+  badgeClassName: string;
+};
+
+function RealtimeMetricCard({
+  label,
+  value,
+  icon: Icon,
+  accentClassName,
+  badgeClassName,
+}: RealtimeMetricCardProps) {
+  return (
+    <div className="relative overflow-hidden rounded-xl border border-border/40 bg-muted/30 p-5">
+      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+        <span className={cn('flex h-6 w-6 items-center justify-center rounded-md', badgeClassName)}>
+          <Icon className={cn('h-3 w-3', accentClassName)} />
+        </span>
+        {label}
+      </div>
+      <output className="mt-3 block text-3xl font-bold tracking-tighter text-foreground/90">
+        {value}
+      </output>
+    </div>
+  );
+}
+
+function _KpiSkeleton() {
+  return (
+    <div className="group relative overflow-hidden rounded-2xl border border-border/40 bg-muted/20 p-5 backdrop-blur-3xl">
+      <div className="mb-4 flex items-center gap-3">
+        <div className="h-8 w-8 animate-pulse rounded-xl bg-muted/20" />
+        <div className="h-3 w-20 animate-pulse rounded bg-muted/20" />
+      </div>
+      <div className="flex items-baseline justify-between">
+        <div className="h-8 w-24 animate-pulse rounded bg-muted/20" />
+      </div>
+      <div className="mt-3 flex items-center gap-1.5">
+        <div className="h-3 w-32 animate-pulse rounded bg-muted/20" />
+      </div>
+    </div>
+  );
+}
+
+function escapeCsvCell(value: string | number | null): string {
+  if (value === null) return '';
+  const text = String(value);
+  if (text.includes(',') || text.includes('"') || text.includes('\n')) {
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+  return text;
+}
+
+function toDeltaPercent(current: number, previous: number): number | null {
+  if (previous === 0) {
+    return current === 0 ? 0 : null;
+  }
+  return ((current - previous) / previous) * 100;
+}
+
+function formatDeltaPercent(deltaPercent: number | null): string {
+  if (deltaPercent === null) return '—';
+  if (deltaPercent === 0) return '0%';
+  return `${deltaPercent > 0 ? '+' : ''}${deltaPercent.toFixed(1)}%`;
+}
+
+function hexToRgba(hex: string, alpha: number): string {
+  const normalized = hex.replace('#', '');
+  if (normalized.length !== 6) {
+    return `rgba(88, 101, 242, ${alpha})`;
+  }
+
+  const r = Number.parseInt(normalized.slice(0, 2), 16);
+  const g = Number.parseInt(normalized.slice(2, 4), 16);
+  const b = Number.parseInt(normalized.slice(4, 6), 16);
+
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+// ─── Animated value (count-up) ──────────────────────────────────────────────
+
+function AnimatedValue({ value, format }: { value: number; format: (n: number) => string }) {
+  const [display, setDisplay] = useState(0);
+  const prevRef = useRef(0);
+
+  useEffect(() => {
+    const start = prevRef.current;
+    const diff = value - start;
+    if (Math.abs(diff) < 0.01) {
+      setDisplay(value);
+      prevRef.current = value;
+      return;
+    }
+
+    const duration = 1400;
+    const startTime = performance.now();
+    let cancelled = false;
+
+    function step() {
+      if (cancelled) return;
+      const elapsed = performance.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - (1 - progress) ** 3;
+      setDisplay(start + diff * eased);
+      if (progress < 1) {
+        requestAnimationFrame(step);
+      } else {
+        setDisplay(value);
+        prevRef.current = value;
+      }
+    }
+
+    requestAnimationFrame(step);
+    return () => {
+      cancelled = true;
+    };
+  }, [value]);
+
+  return <>{format(display)}</>;
+}
+
+// ─── Live activity feed (animated preview) ──────────────────────────────────
+
+function FadeInLine({ text }: { text: string }) {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    let innerRaf = 0;
+    const raf = requestAnimationFrame(() => {
+      innerRaf = requestAnimationFrame(() => setVisible(true));
+    });
+    return () => {
+      cancelAnimationFrame(raf);
+      cancelAnimationFrame(innerRaf);
+    };
+  }, []);
+
+  return (
+    <div
+      className="text-[11px] text-muted-foreground/50 transition-all duration-500 ease-out"
+      style={{ opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(4px)' }}
+    >
+      <span className="text-primary/30 mr-1.5">›</span>
+      {text}
+    </div>
+  );
+}
+
+const SAMPLE_ACTIVITY = [
+  'User joined #general',
+  'AI handled support ticket',
+  'New ticket #1042 opened',
+  'Config updated by admin',
+  'XP awarded: @alex → Lv.15',
+  'Warning issued to @spam_user',
+  'Welcome message sent',
+  'Level up: @jordan → Lv.22',
+  'Bot responded in #help',
+  'Member milestone reached',
+];
+
+function LiveActivityFeed() {
+  const [lines, setLines] = useState<Array<{ id: number; text: string }>>([]);
+  const idRef = useRef(0);
+
+  useEffect(() => {
+    let index = 0;
+    const interval = setInterval(() => {
+      const newLine = {
+        id: idRef.current++,
+        text: SAMPLE_ACTIVITY[index % SAMPLE_ACTIVITY.length],
+      };
+      index++;
+      setLines((prev) => [...prev.slice(-3), newLine]);
+    }, 2200);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="mt-4 space-y-1.5 min-h-[80px]">
+      {lines.length === 0 && (
+        <div className="text-[11px] text-muted-foreground/25 italic">Monitoring activity…</div>
+      )}
+      {lines.map((line) => (
+        <FadeInLine key={line.id} text={line.text} />
+      ))}
+    </div>
+  );
+}
+
 export function AnalyticsDashboard() {
-  const [now] = useState(() => new Date());
   const chart = useChartTheme();
-  const guildId = useGuildSelection({
-    onGuildChange: () => setChannelFilter(null),
-  });
-  const [rangePreset, setRangePreset] = useState<AnalyticsRangePreset>('week');
-  const [customFromDraft, setCustomFromDraft] = useState<string>(
-    formatDateInput(new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)),
-  );
-  const [customToDraft, setCustomToDraft] = useState<string>(formatDateInput(now));
-  const [customFromApplied, setCustomFromApplied] = useState<string>(
-    formatDateInput(new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)),
-  );
-  const [customToApplied, setCustomToApplied] = useState<string>(formatDateInput(now));
-  const [channelFilter, setChannelFilter] = useState<string | null>(null);
-  const [compareMode, setCompareMode] = useState(false);
-  const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [customRangeError, setCustomRangeError] = useState<string | null>(null);
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const { analytics, loading, error, compareMode, channelFilter, setChannelFilter, refresh } =
+    useAnalytics();
 
   useGlowCard();
-
-  const queryString = useMemo(() => {
-    const params = new URLSearchParams();
-    params.set('range', rangePreset);
-
-    if (rangePreset === 'custom') {
-      params.set('from', startOfDayIso(customFromApplied));
-      params.set('to', endOfDayIso(customToApplied));
-    }
-
-    if (rangePreset !== 'custom') {
-      params.set('interval', rangePreset === 'today' ? 'hour' : 'day');
-    }
-
-    if (channelFilter) {
-      params.set('channelId', channelFilter);
-    }
-
-    if (compareMode) {
-      params.set('compare', '1');
-    }
-
-    return params.toString();
-  }, [channelFilter, compareMode, customFromApplied, customToApplied, rangePreset]);
-
-  const fetchAnalytics = useCallback(
-    async (backgroundRefresh = false) => {
-      if (!guildId) return;
-
-      abortControllerRef.current?.abort();
-      const controller = new AbortController();
-      abortControllerRef.current = controller;
-
-      if (!backgroundRefresh) {
-        setLoading(true);
-      }
-      setError(null);
-
-      try {
-        const encodedGuildId = encodeURIComponent(guildId);
-        const response = await fetch(`/api/guilds/${encodedGuildId}/analytics?${queryString}`, {
-          cache: 'no-store',
-          signal: controller.signal,
-        });
-
-        if (response.status === 401) {
-          window.location.href = '/login';
-          return;
-        }
-
-        const payload = await safeParseJson(response);
-
-        if (!response.ok) {
-          throw new Error(extractApiError(payload, 'Failed to fetch analytics'));
-        }
-
-        if (!isDashboardAnalyticsPayload(payload)) {
-          throw new Error('Invalid analytics payload from server');
-        }
-
-        setAnalytics(payload);
-        setLastUpdatedAt(new Date());
-      } catch (fetchError) {
-        if (isAbortError(fetchError)) return;
-        setError(toErrorMessage(fetchError, 'Failed to fetch analytics'));
-      } finally {
-        if (abortControllerRef.current === controller) {
-          setLoading(false);
-        }
-      }
-    },
-    [guildId, queryString],
-  );
-
-  useEffect(() => {
-    void fetchAnalytics();
-    return () => abortControllerRef.current?.abort();
-  }, [fetchAnalytics]);
-
-  useEffect(() => {
-    if (!guildId) return;
-
-    const intervalId = window.setInterval(() => {
-      void fetchAnalytics(true);
-    }, 30_000);
-
-    return () => window.clearInterval(intervalId);
-  }, [fetchAnalytics, guildId]);
-
-  const applyCustomRange = () => {
-    if (!customFromDraft || !customToDraft) {
-      setCustomRangeError('Select both a from and to date.');
-      return;
-    }
-
-    if (customFromDraft > customToDraft) {
-      setCustomRangeError('"From" date must be on or before "To" date.');
-      return;
-    }
-
-    setCustomRangeError(null);
-    setCustomFromApplied(customFromDraft);
-    setCustomToApplied(customToDraft);
-  };
 
   const heatmapLookup = useMemo(() => {
     const map = new Map<string, number>();
@@ -215,8 +314,107 @@ export function AnalyticsDashboard() {
     [analytics?.aiUsage.tokens.completion, analytics?.aiUsage.tokens.prompt],
   );
 
+  const sanitizedMessageVolume = useMemo(() => {
+    if (!analytics?.messageVolume) return [];
+    return analytics.messageVolume.map((pt) => ({
+      ...pt,
+      label:
+        !pt.label || pt.label === 'Invalid Date' || pt.label.includes('NaN')
+          ? `Unknown (${pt.label ?? 'no label'})`
+          : pt.label,
+    }));
+  }, [analytics?.messageVolume]);
+
   const topChannels = analytics?.topChannels ?? analytics?.channelActivity ?? [];
+  const hasMessageVolumeData = (analytics?.messageVolume?.length ?? 0) > 0;
+  const hasModelUsageData = analytics != null && modelUsageData.length > 0;
+  const hasTokenUsageData =
+    analytics != null &&
+    ((analytics.aiUsage.tokens.prompt ?? 0) > 0 || (analytics.aiUsage.tokens.completion ?? 0) > 0);
+  const hasTopChannelsData = topChannels.length > 0;
   const canShowNoDataStates = !loading && analytics !== null;
+  const realtimeMetrics = [
+    {
+      label: 'Active Sessions',
+      value:
+        analytics == null
+          ? '\u2014'
+          : analytics.realtime.onlineMembers === null
+            ? 'N/A'
+            : formatNumber(analytics.realtime.onlineMembers),
+      icon: Activity,
+      accentClassName: 'text-primary',
+      badgeClassName: 'bg-primary/10',
+    },
+    {
+      label: 'AI Workload',
+      value:
+        loading || analytics == null
+          ? '\u2014'
+          : analytics.realtime.activeAiConversations === null
+            ? 'N/A'
+            : formatNumber(analytics.realtime.activeAiConversations),
+      icon: Bot,
+      accentClassName: 'text-secondary',
+      badgeClassName: 'bg-secondary/10',
+    },
+  ] as const;
+  const engagementMetrics = analytics?.userEngagement
+    ? [
+        {
+          label: 'Tracked users',
+          value: formatNumber(analytics.userEngagement.trackedUsers),
+          icon: Users,
+          accentClassName: 'text-primary',
+        },
+        {
+          label: 'Avg msgs / user',
+          value: analytics.userEngagement.avgMessagesPerUser.toFixed(1),
+          icon: MessageSquare,
+          accentClassName: 'text-primary',
+        },
+        {
+          label: 'Reactions given',
+          value: formatNumber(analytics.userEngagement.totalReactionsGiven),
+          icon: Heart,
+          accentClassName: 'text-primary',
+        },
+        {
+          label: 'Reactions received',
+          value: formatNumber(analytics.userEngagement.totalReactionsReceived),
+          icon: Activity,
+          accentClassName: 'text-primary',
+        },
+      ]
+    : null;
+  const xpEconomyMetrics = analytics?.xpEconomy
+    ? [
+        {
+          label: 'Users with XP',
+          value: formatNumber(analytics.xpEconomy.totalUsers),
+          icon: Users,
+          accentClassName: 'text-secondary',
+        },
+        {
+          label: 'Total XP Minted',
+          value: formatNumber(analytics.xpEconomy.totalXp),
+          icon: Star,
+          accentClassName: 'text-secondary',
+        },
+        {
+          label: 'Average Level',
+          value: analytics.xpEconomy.avgLevel.toFixed(1),
+          icon: Activity,
+          accentClassName: 'text-secondary',
+        },
+        {
+          label: 'Highest Level',
+          value: formatNumber(analytics.xpEconomy.maxLevel),
+          icon: Star,
+          accentClassName: 'text-secondary',
+        },
+      ]
+    : null;
 
   const kpiCards = useMemo<KpiCard[]>(
     () => [
@@ -259,7 +457,7 @@ export function AnalyticsDashboard() {
     [analytics],
   );
 
-  const exportCsv = useCallback(() => {
+  const _exportCsv = useCallback(() => {
     if (!analytics) return;
 
     const rows: string[] = [];
@@ -323,258 +521,656 @@ export function AnalyticsDashboard() {
     window.URL.revokeObjectURL(url);
   }, [analytics, compareMode, kpiCards, topChannels]);
 
-  if (!guildId) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Select a server</CardTitle>
-          <CardDescription>Choose a server from the sidebar to load analytics.</CardDescription>
-        </CardHeader>
-      </Card>
-    );
-  }
-
   const showKpiSkeleton = loading && !analytics;
-  const hasComparison = compareMode && analytics?.comparison != null;
 
   return (
-    <div className="space-y-6 overflow-x-hidden">
-      <DashboardHeader
-        lastUpdatedAt={lastUpdatedAt}
-        rangePreset={rangePreset}
-        setRangePreset={setRangePreset}
-        compareMode={compareMode}
-        setCompareMode={setCompareMode}
-        customFromDraft={customFromDraft}
-        setCustomFromDraft={setCustomFromDraft}
-        customToDraft={customToDraft}
-        setCustomToDraft={setCustomToDraft}
-        customRangeError={customRangeError}
-        setCustomRangeError={setCustomRangeError}
-        applyCustomRange={applyCustomRange}
-        loading={loading}
-        analytics={analytics}
-        fetchAnalytics={fetchAnalytics}
-        exportCsv={exportCsv}
-      />
-
+    <div className="space-y-6">
       {error ? (
-        <Card className="border-destructive/50" role="alert">
-          <CardHeader>
-            <CardTitle className="text-destructive">Failed to load analytics</CardTitle>
-            <CardDescription>{error}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={() => void fetchAnalytics()}>Try again</Button>
-          </CardContent>
-        </Card>
+        <div
+          className="group relative overflow-hidden rounded-2xl border border-destructive/20 bg-destructive/5 p-6 backdrop-blur-xl"
+          role="alert"
+        >
+          <div className="mb-4">
+            <h2 className="text-sm font-semibold tracking-wide text-destructive">
+              Failed to load analytics
+            </h2>
+            <p className="mt-1 text-[11px] text-destructive/80 uppercase tracking-wider">{error}</p>
+          </div>
+          <div>
+            <Button onClick={() => refresh().catch(() => {})} variant="destructive" size="sm">
+              Try again
+            </Button>
+          </div>
+        </div>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5 stagger-fade-in">
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-5 stagger-fade-in">
         {showKpiSkeleton
           ? (['kpi-0', 'kpi-1', 'kpi-2', 'kpi-3', 'kpi-4'] as const).map((key) => (
-              <KpiSkeleton key={key} />
-            ))
-          : kpiCards.map((card) => (
-              <KpiCardItem
-                key={card.label}
-                card={card}
-                compareMode={compareMode}
-                hasAnalytics={analytics !== null}
-                hasComparison={hasComparison}
+              <div
+                key={key}
+                className="h-28 animate-pulse rounded-[20px] bg-muted/20 border border-border/10"
               />
-            ))}
+            ))
+          : kpiCards.map((card) => {
+              const Icon = card.icon;
+              const value = card.value ?? 0;
+              const hasComparison = compareMode && analytics?.comparison != null;
+              const delta =
+                hasComparison && card.previous != null
+                  ? toDeltaPercent(value, card.previous)
+                  : null;
+
+              return (
+                <div
+                  key={card.label}
+                  className="glow-card group relative min-h-[11rem] overflow-hidden rounded-[20px] border border-border/40 bg-gradient-to-br from-background/40 to-muted/20 p-5 backdrop-blur-3xl transition-all duration-500 hover:border-border/60 hover:shadow-[0_4px_24px_-8px_rgba(0,0,0,0.3)] shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)]"
+                >
+                  {/* Background ambient light & large icon */}
+                  <div className="absolute inset-0 bg-primary/[0.02] opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+                  <Icon className="absolute -bottom-4 -right-4 h-24 w-24 text-primary/[0.03] -rotate-12 transition-all duration-500 group-hover:scale-110 group-hover:text-primary/5 group-hover:-rotate-6" />
+
+                  <div className="relative z-10">
+                    <div className="flex items-center gap-3 mb-4">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-primary/10 text-primary shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] ring-1 ring-primary/20 group-hover:bg-primary/15 transition-all duration-300">
+                        <Icon className="h-4 w-4 drop-shadow-[0_0_8px_hsl(var(--primary))]" />
+                      </span>
+                      <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/70 group-hover:text-foreground/80 transition-colors">
+                        {card.label}
+                      </h3>
+                    </div>
+
+                    <div className="flex items-baseline justify-between mt-1">
+                      <span className="text-3xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-br from-foreground to-foreground/60 drop-shadow-sm">
+                        {analytics ? (
+                          <AnimatedValue value={value} format={card.format} />
+                        ) : (
+                          '\u2014'
+                        )}
+                      </span>
+                    </div>
+
+                    {hasComparison ? (
+                      <div
+                        className={cn(
+                          'mt-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider backdrop-blur-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] border transition-colors',
+                          delta === null
+                            ? 'bg-muted/30 text-muted-foreground/70 border-border/30'
+                            : delta > 0
+                              ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 shadow-[0_0_8px_rgba(16,185,129,0.1)]'
+                              : delta < 0
+                                ? 'bg-rose-500/10 text-rose-500 border-rose-500/20 shadow-[0_0_8px_rgba(244,63,94,0.1)]'
+                                : 'bg-muted/30 text-muted-foreground/70 border-border/30',
+                        )}
+                      >
+                        {delta === null ? (
+                          <Minus className="h-[10px] w-[10px]" />
+                        ) : delta > 0 ? (
+                          <ArrowUp className="h-[10px] w-[10px]" />
+                        ) : delta < 0 ? (
+                          <ArrowDown className="h-[10px] w-[10px]" />
+                        ) : (
+                          <Minus className="h-[10px] w-[10px]" />
+                        )}
+                        <span>{formatDeltaPercent(delta)}</span>
+                      </div>
+                    ) : (
+                      <div className="mt-3 h-[22px]" />
+                    )}
+                  </div>
+                </div>
+              );
+            })}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <RealtimeIndicatorsCard analytics={analytics} loading={loading} />
-        <ChannelFilterCard
-          channelFilter={channelFilter}
-          setChannelFilter={setChannelFilter}
-          topChannels={topChannels}
-        />
+        <DashboardCard>
+          <div className="mb-5 flex items-center justify-between">
+            <div>
+              <h2 className="flex items-center gap-2 text-sm font-semibold tracking-wide text-foreground/90">
+                <span className="status-dot-live shadow-[0_0_8px_hsl(var(--destructive))]" />
+                Real-Time Network
+              </h2>
+              <p className="mt-1 text-[11px] text-muted-foreground/60 uppercase tracking-wider">
+                Recent Activity • 30s interval
+              </p>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            {realtimeMetrics.map((metric) => (
+              <RealtimeMetricCard key={metric.label} {...metric} />
+            ))}
+          </div>
+          <LiveActivityFeed />
+        </DashboardCard>
+
+        <DashboardCard>
+          <div className="mb-5">
+            <h2 className="text-sm font-semibold tracking-wide text-foreground/90">
+              Workspace Filter
+            </h2>
+            <p className="mt-1 text-[11px] text-muted-foreground/60 uppercase tracking-wider">
+              Isolate metrics by channel
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant={channelFilter === null ? 'default' : 'outline'}
+              onClick={() => setChannelFilter(null)}
+              className="rounded-full shadow-none"
+            >
+              System Wide
+            </Button>
+            {topChannels.map((channel) => (
+              <Button
+                key={channel.channelId}
+                size="sm"
+                variant={channelFilter === channel.channelId ? 'default' : 'outline'}
+                className="rounded-full shadow-none bg-muted/30 hover:bg-muted/50"
+                onClick={() =>
+                  setChannelFilter(channel.channelId === channelFilter ? null : channel.channelId)
+                }
+              >
+                {channel.name}
+              </Button>
+            ))}
+          </div>
+        </DashboardCard>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-12">
-        <MessageVolumeCard
-          data={analytics?.messageVolume ?? []}
-          chart={chart}
-          canShowNoDataStates={canShowNoDataStates}
-        />
-        <AiUsageCard
-          modelUsageData={modelUsageData}
-          tokenBreakdownData={tokenBreakdownData}
-          chart={chart}
-          canShowNoDataStates={canShowNoDataStates}
-        />
+        <DashboardCard className="xl:col-span-6">
+          <div className="mb-6">
+            <h2 className="text-sm font-semibold tracking-wide text-foreground/90">
+              Message Volume
+            </h2>
+            <p className="mt-1 text-[11px] text-muted-foreground/60 uppercase tracking-wider">
+              Messages and AI requests over time
+            </p>
+          </div>
+          <div className="relative">
+            {hasMessageVolumeData ? (
+              <div className="h-[340px]">
+                <StableResponsiveContainer>
+                  <LineChart data={sanitizedMessageVolume}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} vertical={false} />
+                    <XAxis
+                      dataKey="label"
+                      minTickGap={20}
+                      tick={{ fill: chart.tooltipText, fontSize: 11 }}
+                      axisLine={false}
+                      tickLine={false}
+                      dy={10}
+                    />
+                    <YAxis
+                      allowDecimals={false}
+                      tick={{ fill: chart.tooltipText, fontSize: 11 }}
+                      axisLine={false}
+                      tickLine={false}
+                      dx={-10}
+                    />
+                    <RechartsTooltip
+                      contentStyle={{
+                        backgroundColor: chart.tooltipBg,
+                        borderColor: chart.tooltipBorder,
+                        borderRadius: 12,
+                        color: chart.tooltipText,
+                        boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                      }}
+                    />
+                    <Legend wrapperStyle={{ paddingTop: '20px' }} iconType="circle" />
+                    <Line
+                      type="monotone"
+                      dataKey="messages"
+                      name="Messages"
+                      stroke={chart.primary}
+                      strokeWidth={3}
+                      dot={false}
+                      activeDot={{ r: 6, strokeWidth: 0 }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="aiRequests"
+                      name="AI Requests"
+                      stroke={chart.success}
+                      strokeWidth={3}
+                      dot={false}
+                      activeDot={{ r: 6, strokeWidth: 0 }}
+                    />
+                  </LineChart>
+                </StableResponsiveContainer>
+              </div>
+            ) : canShowNoDataStates ? (
+              <EmptyState
+                icon={MessageSquare}
+                title="No message volume yet"
+                description="Run activity in this range to populate the trend chart."
+                className="min-h-[340px] border-0 bg-transparent"
+              />
+            ) : (
+              <div className="min-h-[340px]" aria-hidden="true" />
+            )}
+          </div>
+        </DashboardCard>
+
+        <div className="group relative overflow-hidden rounded-3xl border border-border/40 bg-muted/10 p-6 backdrop-blur-3xl xl:col-span-6">
+          <div className="mb-8 flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-black tracking-tight text-foreground/90">
+                AI Cost Analysis
+              </h2>
+              <p className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/40">
+                Model requests & computation
+              </p>
+            </div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/20">
+              <Zap className="h-5 w-5" />
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="relative overflow-hidden rounded-2xl border border-border/40 bg-muted/20 p-5 transition-all hover:bg-muted/30">
+              {hasModelUsageData ? (
+                <div className="h-[140px]">
+                  <StableResponsiveContainer>
+                    <PieChart>
+                      <Pie
+                        data={modelUsageData}
+                        dataKey="requests"
+                        nameKey="model"
+                        outerRadius={60}
+                        innerRadius={45}
+                        strokeWidth={0}
+                        labelLine={false}
+                      >
+                        {modelUsageData.map((entry) => (
+                          <Cell key={entry.model} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip
+                        contentStyle={{
+                          backgroundColor: chart.tooltipBg,
+                          borderColor: chart.tooltipBorder,
+                          borderRadius: 12,
+                          color: chart.tooltipText,
+                        }}
+                      />
+                    </PieChart>
+                  </StableResponsiveContainer>
+                </div>
+              ) : (
+                <div className="flex h-[140px] flex-col items-center justify-center text-center">
+                  <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-primary/5 text-primary/40 shadow-[0_0_15px_rgba(var(--primary),0.1)] transition-transform group-hover:scale-110">
+                    <Bot className="h-5 w-5" />
+                  </div>
+                  <h3 className="text-[11px] font-bold uppercase tracking-wider text-foreground/70">
+                    No model usage
+                  </h3>
+                  <p className="mt-1 px-4 text-[10px] leading-relaxed text-muted-foreground/50">
+                    Distribution appears after AI requests are processed.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="relative overflow-hidden rounded-2xl border border-border/40 bg-muted/20 p-5 transition-all hover:bg-muted/30">
+              {hasTokenUsageData ? (
+                <div className="h-[140px]">
+                  <StableResponsiveContainer>
+                    <BarChart data={tokenBreakdownData}>
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke={chart.grid}
+                        vertical={false}
+                        opacity={0.1}
+                      />
+                      <XAxis
+                        dataKey="label"
+                        tick={{ fill: chart.tooltipText, fontSize: 9 }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <RechartsTooltip
+                        contentStyle={{
+                          backgroundColor: chart.tooltipBg,
+                          borderColor: chart.tooltipBorder,
+                          borderRadius: 12,
+                          color: chart.tooltipText,
+                        }}
+                      />
+                      <Bar
+                        dataKey="prompt"
+                        fill={chart.primary}
+                        radius={[2, 2, 0, 0]}
+                        maxBarSize={20}
+                      />
+                      <Bar
+                        dataKey="completion"
+                        fill={chart.success}
+                        radius={[2, 2, 0, 0]}
+                        maxBarSize={20}
+                      />
+                    </BarChart>
+                  </StableResponsiveContainer>
+                </div>
+              ) : (
+                <div className="flex h-[140px] flex-col items-center justify-center text-center">
+                  <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/5 text-emerald-500/40 shadow-[0_0_15px_rgba(34,197,94,0.1)] transition-transform group-hover:scale-110">
+                    <Coins className="h-5 w-5" />
+                  </div>
+                  <h3 className="text-[11px] font-bold uppercase tracking-wider text-foreground/70">
+                    No token metrics
+                  </h3>
+                  <p className="mt-1 px-4 text-[10px] leading-relaxed text-muted-foreground/50">
+                    Metrics appear once usage is recorded.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-12">
-        <TopChannelsCard
-          topChannels={topChannels}
-          channelFilter={channelFilter}
-          setChannelFilter={setChannelFilter}
-          chart={chart}
-          canShowNoDataStates={canShowNoDataStates}
-        />
-        <CommandUsageCard analytics={analytics} canShowNoDataStates={canShowNoDataStates} />
+        <DashboardCard className="xl:col-span-6">
+          <div className="mb-6">
+            <h2 className="text-sm font-semibold tracking-wide text-foreground/90">Top Channels</h2>
+            <p className="mt-1 text-[11px] text-muted-foreground/60 uppercase tracking-wider">
+              Most active workspaces by volume
+            </p>
+          </div>
+          <div className="relative">
+            {hasTopChannelsData ? (
+              <div className="h-[340px]">
+                <StableResponsiveContainer>
+                  <BarChart
+                    data={topChannels}
+                    layout="vertical"
+                    margin={{ top: 0, right: 0, left: 10, bottom: 0 }}
+                  >
+                    <XAxis type="number" hide />
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      width={120}
+                      tick={{ fill: chart.tooltipText, fontSize: 12 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <RechartsTooltip
+                      contentStyle={{
+                        backgroundColor: chart.tooltipBg,
+                        borderColor: chart.tooltipBorder,
+                        borderRadius: 12,
+                        color: chart.tooltipText,
+                      }}
+                    />
+                    <Bar
+                      dataKey="messages"
+                      fill={chart.success}
+                      radius={[0, 4, 4, 0]}
+                      barSize={20}
+                      className="cursor-pointer"
+                      onClick={(_value, index) => {
+                        const selected = topChannels[index]?.channelId;
+                        if (!selected) return;
+                        setChannelFilter((current) => (current === selected ? null : selected));
+                      }}
+                    >
+                      {topChannels.map((channel) => (
+                        <Cell
+                          key={channel.channelId}
+                          fill={channel.channelId === channelFilter ? chart.primary : chart.success}
+                          className="transition-colors duration-300 hover:opacity-80"
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </StableResponsiveContainer>
+              </div>
+            ) : canShowNoDataStates ? (
+              <EmptyState
+                icon={MessageSquare}
+                title="No channel activity"
+                description="Top channel breakdown appears when messages are recorded in the selected range."
+                className="min-h-[340px] border-0 bg-transparent"
+              />
+            ) : (
+              <div className="min-h-[340px]" aria-hidden="true" />
+            )}
+          </div>
+        </DashboardCard>
+
+        <DashboardCard className="xl:col-span-6">
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-semibold tracking-wide text-foreground/90">
+                Command Telemetry
+              </h2>
+              <p className="mt-1 text-[11px] text-muted-foreground/60 uppercase tracking-wider">
+                Slash command execution frequency
+              </p>
+            </div>
+            {analytics?.commandUsage?.items?.length ? (
+              <div className="flex items-center gap-2">
+                <span className="status-dot-live shadow-[0_0_8px_hsl(var(--destructive))]" />
+                <span className="text-2xl font-black tracking-tighter text-foreground/90">
+                  {formatNumber(analytics.commandUsage.items.reduce((sum, e) => sum + e.uses, 0))}
+                </span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
+                  served
+                </span>
+              </div>
+            ) : null}
+          </div>
+          <div className="relative">
+            {analytics?.commandUsage?.items?.length ? (
+              <div className="max-h-[340px] overflow-y-auto overflow-x-auto rounded-xl border border-border/40 bg-muted/30">
+                <table className="w-full min-w-[320px] text-sm">
+                  <thead>
+                    <tr className="border-b border-border/40 text-left text-[11px] uppercase tracking-wider text-muted-foreground/70">
+                      <th scope="col" className="px-4 py-3 font-semibold">
+                        Command
+                      </th>
+                      <th scope="col" className="px-4 py-3 text-right font-semibold">
+                        Invocations
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {analytics.commandUsage.items.map((entry) => (
+                      <tr
+                        key={entry.command}
+                        className="border-b border-border/40 last:border-0 transition-colors hover:bg-muted/50"
+                      >
+                        <td className="px-4 py-3 font-mono text-xs text-foreground/90">
+                          /{entry.command}
+                        </td>
+                        <td className="px-4 py-3 text-right font-semibold text-foreground/90">
+                          {formatNumber(entry.uses)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : canShowNoDataStates ? (
+              <div className="rounded-xl border border-border/40 bg-muted/30 p-6 text-center text-sm text-muted-foreground/60">
+                {analytics?.commandUsage?.source === 'unavailable'
+                  ? 'Command usage source is currently unavailable. Showing empty state until telemetry is ready.'
+                  : 'No command usage found for this range.'}
+              </div>
+            ) : (
+              <div className="min-h-[120px]" aria-hidden="true" />
+            )}
+          </div>
+        </DashboardCard>
       </div>
 
       {(analytics?.userEngagement ?? analytics?.xpEconomy) ? (
         <div className="grid gap-4 xl:grid-cols-2">
-          {analytics ? <UserEngagementCard analytics={analytics} /> : null}
-          {analytics ? <XpEconomyCard analytics={analytics} /> : null}
+          {analytics?.userEngagement ? (
+            <DashboardCard>
+              <div className="mb-6">
+                <h2 className="text-sm font-semibold tracking-wide text-foreground/90">
+                  Community Engagement
+                </h2>
+                <p className="mt-1 text-[11px] text-muted-foreground/60 uppercase tracking-wider">
+                  Aggregate social interactions
+                </p>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {engagementMetrics?.map((metric) => (
+                  <MetricSummaryCard key={metric.label} {...metric} />
+                ))}
+              </div>
+            </DashboardCard>
+          ) : null}
+
+          {analytics?.xpEconomy ? (
+            <DashboardCard>
+              <div className="mb-6">
+                <h2 className="text-sm font-semibold tracking-wide text-foreground/90">
+                  XP Economy
+                </h2>
+                <p className="mt-1 text-[11px] text-muted-foreground/60 uppercase tracking-wider">
+                  Reputation and level distribution
+                </p>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {xpEconomyMetrics?.map((metric) => (
+                  <MetricSummaryCard key={metric.label} {...metric} />
+                ))}
+              </div>
+            </DashboardCard>
+          ) : null}
         </div>
       ) : null}
 
-      <ActivityHeatmapCard heatmapLookup={heatmapLookup} chart={chart} />
-    </div>
-  );
-}
+      <DashboardCard className="mb-8">
+        <div className="mb-5 flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-semibold tracking-wide text-foreground/90">
+              Activity Heatmap
+            </h2>
+            <p className="mt-1 text-[11px] text-muted-foreground/60 uppercase tracking-wider">
+              Message density by day of week and hour
+            </p>
+          </div>
+          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/50">
+            <span>Less</span>
+            {[0, 1, 2, 3, 4].map((level) => (
+              <div
+                key={level}
+                className={cn(
+                  'h-[13px] w-[13px] rounded-[3px] border',
+                  level === 0
+                    ? 'bg-black/5 border-black/5 dark:bg-white/5 dark:border-white/5'
+                    : 'border-transparent',
+                )}
+                style={
+                  level > 0
+                    ? { backgroundColor: hexToRgba(chart.primary, 0.15 + level * 0.2125) }
+                    : undefined
+                }
+              />
+            ))}
+            <span>More</span>
+          </div>
+        </div>
+        <div className="overflow-x-auto pb-2">
+          <TooltipProvider delayDuration={0}>
+            <div
+              className="grid w-full gap-[4px]"
+              style={{ gridTemplateColumns: 'minmax(32px, auto) repeat(24, 1fr)' }}
+            >
+              {/* Hour labels row */}
+              <div />
+              {HOURS.map((hour) => (
+                <div
+                  key={`h-${hour}`}
+                  className="flex items-end justify-center pb-1.5 text-[10px] font-bold text-muted-foreground/30"
+                >
+                  {hour % 3 === 0 ? `${hour}` : ''}
+                </div>
+              ))}
 
-// ---- Dashboard header (extracted to reduce main function complexity) ----
+              {/* Day rows */}
+              {DAYS.map((day, dayIndex) => (
+                <React.Fragment key={day}>
+                  <div className="flex items-center text-[11px] font-bold text-muted-foreground/40 pr-2">
+                    {day}
+                  </div>
+                  {HOURS.map((hour) => {
+                    const value = heatmapLookup.map.get(`${dayIndex}-${hour}`) ?? 0;
+                    const ratio = heatmapLookup.max === 0 ? 0 : value / heatmapLookup.max;
+                    const level =
+                      value === 0
+                        ? 0
+                        : ratio <= 0.25
+                          ? 1
+                          : ratio <= 0.5
+                            ? 2
+                            : ratio <= 0.75
+                              ? 3
+                              : 4;
 
-function DashboardHeader({
-  lastUpdatedAt,
-  rangePreset,
-  setRangePreset,
-  compareMode,
-  setCompareMode,
-  customFromDraft,
-  setCustomFromDraft,
-  customToDraft,
-  setCustomToDraft,
-  customRangeError,
-  setCustomRangeError,
-  applyCustomRange,
-  loading,
-  analytics,
-  fetchAnalytics,
-  exportCsv,
-}: {
-  lastUpdatedAt: Date | null;
-  rangePreset: AnalyticsRangePreset;
-  setRangePreset: (preset: AnalyticsRangePreset) => void;
-  compareMode: boolean;
-  setCompareMode: (updater: (current: boolean) => boolean) => void;
-  customFromDraft: string;
-  setCustomFromDraft: (value: string) => void;
-  customToDraft: string;
-  setCustomToDraft: (value: string) => void;
-  customRangeError: string | null;
-  setCustomRangeError: (value: string | null) => void;
-  applyCustomRange: () => void;
-  loading: boolean;
-  analytics: DashboardAnalytics | null;
-  fetchAnalytics: () => Promise<void>;
-  exportCsv: () => void;
-}) {
-  return (
-    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">
-          <span className="text-gradient-primary">Analytics</span> Dashboard
-        </h1>
-        <p className="mt-1 text-muted-foreground">
-          Usage trends, AI performance, and community activity for your server.
-        </p>
-        {lastUpdatedAt ? (
-          <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span className="status-dot-live" style={{ width: 6, height: 6 }} />
-            Last updated {formatLastUpdatedTime(lastUpdatedAt)}
-          </p>
-        ) : null}
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        {RANGE_PRESETS.map((preset) => (
-          <Button
-            key={preset.value}
-            variant={rangePreset === preset.value ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => {
-              setRangePreset(preset.value);
-              if (preset.value !== 'custom') {
-                setCustomRangeError(null);
-              }
-            }}
-          >
-            {preset.label}
-          </Button>
-        ))}
-
-        <Button
-          variant={compareMode ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setCompareMode((current) => !current)}
-        >
-          Compare vs previous
-        </Button>
-
-        {rangePreset === 'custom' ? (
-          <>
-            <input
-              aria-label="From date"
-              type="date"
-              value={customFromDraft}
-              onChange={(event) => {
-                setCustomFromDraft(event.target.value);
-                setCustomRangeError(null);
-              }}
-              className="h-9 rounded-md border bg-background px-3 text-sm"
-            />
-            <input
-              aria-label="To date"
-              type="date"
-              value={customToDraft}
-              onChange={(event) => {
-                setCustomToDraft(event.target.value);
-                setCustomRangeError(null);
-              }}
-              className="h-9 rounded-md border bg-background px-3 text-sm"
-            />
-            <Button size="sm" onClick={applyCustomRange}>
-              Apply
-            </Button>
-            {customRangeError ? (
-              <p role="alert" className="text-xs text-destructive">
-                {customRangeError}
-              </p>
-            ) : null}
-          </>
-        ) : null}
-
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-2"
-          onClick={() => void fetchAnalytics()}
-          disabled={loading}
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-2"
-          onClick={exportCsv}
-          disabled={!analytics}
-        >
-          <Download className="h-4 w-4" />
-          Export CSV
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-2"
-          onClick={() => analytics && exportAnalyticsPdf(analytics)}
-          disabled={!analytics}
-        >
-          <FileText className="h-4 w-4" />
-          Export PDF
-        </Button>
-      </div>
+                    return (
+                      <Tooltip key={`${day}-${hour}`}>
+                        <TooltipTrigger asChild>
+                          <div
+                            className={cn(
+                              'aspect-square w-full rounded-[4px] border transition-all duration-200 hover:ring-2 hover:ring-primary/50 hover:scale-[1.15] hover:z-20 cursor-default',
+                              level === 0
+                                ? 'bg-black/5 border-black/5 dark:bg-white/5 dark:border-white/5'
+                                : 'border-transparent',
+                            )}
+                            style={
+                              level > 0
+                                ? {
+                                    backgroundColor: hexToRgba(
+                                      chart.primary,
+                                      0.15 + level * 0.2125,
+                                    ),
+                                  }
+                                : undefined
+                            }
+                          />
+                        </TooltipTrigger>
+                        <TooltipContent
+                          side="top"
+                          className="flex flex-col gap-0.5 px-3 py-1.5 backdrop-blur-xl"
+                        >
+                          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
+                            {
+                              [
+                                'Sunday',
+                                'Monday',
+                                'Tuesday',
+                                'Wednesday',
+                                'Thursday',
+                                'Friday',
+                                'Saturday',
+                              ][dayIndex]
+                            }
+                          </span>
+                          <span className="text-xs font-bold tabular-nums">
+                            {String(hour).padStart(2, '0')}:00 — {formatNumber(value)} message
+                            {value !== 1 ? 's' : ''}
+                          </span>
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  })}
+                </React.Fragment>
+              ))}
+            </div>
+          </TooltipProvider>
+        </div>
+      </DashboardCard>
     </div>
   );
 }

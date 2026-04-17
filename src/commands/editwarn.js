@@ -33,7 +33,9 @@ export const data = new SlashCommandBuilder()
 export const moderatorOnly = true;
 
 /**
- * Handle the /editwarn slash command to update an existing warning's reason and/or severity.
+ * Edit an existing warning's reason and/or severity based on command input.
+ *
+ * Requires at least one of `reason` or `severity`; replies to the interaction with an appropriate success or error message and logs the outcome.
  * @param {import('discord.js').ChatInputCommandInteraction} interaction - The command interaction invoking the edit.
  */
 export async function execute(interaction) {
@@ -68,6 +70,7 @@ export async function execute(interaction) {
 
     info('Warning edited via command', {
       guildId: interaction.guild.id,
+      channelId: interaction.channelId,
       warningId,
       moderator: interaction.user.tag,
       updates: Object.keys(updates),

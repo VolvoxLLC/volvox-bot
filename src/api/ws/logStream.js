@@ -128,6 +128,7 @@ export function setupLogStream(httpServer, transport) {
 function handleConnection(ws) {
   ws.isAlive = true;
   ws.authenticated = false;
+  ws.guildId = null;
   ws.logFilter = null;
 
   // Set auth timeout
@@ -197,40 +198,61 @@ async function handleMessage(ws, data) {
  *
  * @param {string} ticket - The ticket string from the client
  * @param {string} secret - The BOT_API_SECRET used to derive the HMAC
- * @returns {boolean} True if the ticket is valid and not expired
+ * @returns {{ valid: boolean, guildId: string | null }} Validation result and bound guild
  */
 function validateTicket(ticket, secret) {
-  if (typeof ticket !== 'string' || typeof secret !== 'string') return false;
+  if (typeof ticket !== 'string' || typeof secret !== 'string') {
+    return { valid: false, guildId: null };
+  }
 
   const parts = ticket.split('.');
-  if (parts.length !== 3 && parts.length !== 4) return false;
+  if (parts.length !== 3 && parts.length !== 4) {
+    return { valid: false, guildId: null };
+  }
 
   const [nonce, expiry, maybeGuildId, maybeHmac] = parts;
   const guildId = parts.length === 4 ? maybeGuildId : null;
   const hmac = parts.length === 4 ? maybeHmac : maybeGuildId;
-  if (!nonce || !expiry || !hmac) return false;
-  if (parts.length === 4 && !guildId) return false;
+  if (!nonce || !expiry || !hmac) {
+    return { valid: false, guildId: null };
+  }
+  if (parts.length === 4 && !guildId) {
+    return { valid: false, guildId: null };
+  }
 
   // Check expiry — guard against NaN from non-numeric strings
   const expiryNum = Number(expiry);
-  if (!Number.isFinite(expiryNum) || expiryNum <= Date.now()) return false;
+  if (!Number.isFinite(expiryNum) || expiryNum <= Date.now()) {
+    return { valid: false, guildId: null };
+  }
 
   // Re-derive HMAC and compare with timing-safe equality
   const payload = guildId ? `${nonce}.${expiry}.${guildId}` : `${nonce}.${expiry}`;
   const expected = createHmac('sha256', secret).update(payload).digest('hex');
 
   try {
-    return timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(hmac, 'hex'));
+    return {
+      valid: timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(hmac, 'hex')),
+      guildId,
+    };
   } catch {
-    return false;
+    return { valid: false, guildId: null };
   }
 }
 
 /**
- * Handle auth message. Validates the ticket and sends historical logs.
+ * Authenticate a WebSocket client using a ticket and deliver recent logs.
  *
- * @param {import('ws').WebSocket} ws
- * @param {Object} msg
+ * Validates `msg.ticket`, enforces guild-scoped tickets and client limits, marks the socket as authenticated,
+ * clears the auth timeout, sends an `auth_ok` acknowledgement, transmits up to `HISTORY_LIMIT` historical log
+ * entries scoped to the authenticated guild, and registers the socket with the real-time transport.
+ *
+ * On invalid or legacy tickets the connection is closed with code 4003; when the server is at capacity the
+ * connection is closed with code 4029. Historical log delivery failures are non-fatal and result in an empty
+ * history being sent.
+ *
+ * @param {import('ws').WebSocket} ws - The WebSocket connection to authenticate; mutated to record authentication state and filters.
+ * @param {Object} msg - The incoming message object; expected to contain a `ticket` string.
  */
 async function handleAuth(ws, msg) {
   if (ws.authenticated) {
@@ -238,9 +260,17 @@ async function handleAuth(ws, msg) {
     return;
   }
 
-  if (typeof msg.ticket !== 'string' || !validateTicket(msg.ticket, process.env.BOT_API_SECRET)) {
+  const authResult = validateTicket(msg.ticket, process.env.BOT_API_SECRET);
+  if (!authResult.valid) {
     warn('WebSocket auth failed', { reason: 'invalid ticket' });
     ws.close(4003, 'Authentication failed');
+    return;
+  }
+
+  // Reject legacy tickets without guild scope
+  if (!authResult.guildId) {
+    warn('WebSocket auth rejected — guild-scoped ticket required', { reason: 'legacy-ticket' });
+    ws.close(4003, 'Guild-scoped ticket required');
     return;
   }
 
@@ -253,6 +283,7 @@ async function handleAuth(ws, msg) {
 
   // Auth successful
   ws.authenticated = true;
+  ws.guildId = authResult.guildId;
   authenticatedCount++;
 
   if (ws.authTimeout) {
@@ -267,7 +298,10 @@ async function handleAuth(ws, msg) {
   // Send historical logs BEFORE registering for real-time broadcast
   // to prevent race where live logs arrive before history and get overwritten
   try {
-    const { rows } = await queryLogs({ limit: HISTORY_LIMIT });
+    // NOTE: Historical replay is guild-scoped only — channel filtering from a
+    // subsequent filter message applies to the live stream only. Replaying filtered
+    // history on every channel filter change is not worth the complexity for 100 entries.
+    const { rows } = await queryLogs({ limit: HISTORY_LIMIT, guildId: ws.guildId || undefined });
     // Reverse so oldest comes first (queryLogs returns DESC order)
     const logs = rows.reverse().map((row) => {
       const meta = sanitizeMetadata(row.metadata);
@@ -293,10 +327,21 @@ async function handleAuth(ws, msg) {
 }
 
 /**
- * Handle filter message. Updates per-client filter.
+ * Update the client's log filter based on a received filter message.
  *
- * @param {import('ws').WebSocket} ws
- * @param {Object} msg
+ * If the connection is not authenticated the message is rejected. If `msg.guildId`
+ * is present it must match the authenticated guild for the connection; otherwise
+ * the message is rejected. On success the connection's `ws.logFilter` is set to
+ * an object with the following shape and an acknowledgment `{ type: 'filter_ok', filter }`
+ * is sent to the client.
+ *
+ * @param {import('ws').WebSocket} ws - The client's WebSocket connection.
+ * @param {Object} msg - Filter message payload.
+ * @param {string} [msg.guildId] - Optional guild id; if provided must match the authenticated guild.
+ * @param {Array<any>} [msg.channelIds] - Optional array whose string entries become `channelIds`; empty or absent results in `null`.
+ * @param {string} [msg.level] - Optional log level to filter by; non-strings become `null`.
+ * @param {string} [msg.module] - Optional module name to filter by; non-strings become `null`.
+ * @param {string} [msg.search] - Optional search string to filter log messages; non-strings become `null`.
  */
 function handleFilter(ws, msg) {
   if (!ws.authenticated) {
@@ -304,7 +349,18 @@ function handleFilter(ws, msg) {
     return;
   }
 
+  if (msg.guildId && msg.guildId !== ws.guildId) {
+    sendError(ws, 'Guild filter does not match authenticated guild');
+    return;
+  }
+
+  const validChannelIds = Array.isArray(msg.channelIds)
+    ? msg.channelIds.filter((id) => typeof id === 'string')
+    : [];
+
   ws.logFilter = {
+    guildId: ws.guildId || null,
+    channelIds: validChannelIds.length > 0 ? validChannelIds : null,
     level: typeof msg.level === 'string' ? msg.level : null,
     module: typeof msg.module === 'string' ? msg.module : null,
     search: typeof msg.search === 'string' ? msg.search : null,
@@ -314,9 +370,9 @@ function handleFilter(ws, msg) {
 }
 
 /**
- * Clean up a disconnecting client.
+ * Perform cleanup for a disconnecting WebSocket client: clear its auth timeout, reset authentication state, decrement the authenticated client count, and unregister it from the broadcast transport.
  *
- * @param {import('ws').WebSocket} ws
+ * @param {import('ws').WebSocket} ws - The client WebSocket being cleaned up.
  */
 function cleanupClient(ws) {
   if (ws.authTimeout) {
@@ -326,6 +382,7 @@ function cleanupClient(ws) {
 
   if (ws.authenticated) {
     ws.authenticated = false;
+    ws.guildId = null;
     authenticatedCount = Math.max(0, authenticatedCount - 1);
 
     if (wsTransport) {

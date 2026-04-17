@@ -115,11 +115,11 @@ function buildChannelPermissions(guild, userId, supportRoleId) {
 /**
  * Open a new support ticket by creating a private thread or a dedicated text channel.
  *
- * @param {import('discord.js').Guild} guild - The Discord guild
- * @param {import('discord.js').User} user - The user opening the ticket
- * @param {string|null} topic - Optional topic for the ticket
- * @param {string|null} channelId - The channel the ticket panel lives in (for DB tracking)
- * @returns {Promise<{ticket: object, thread: import('discord.js').ThreadChannel|import('discord.js').TextChannel}>}
+ * @param {import('discord.js').Guild} guild - Guild where the ticket will be created.
+ * @param {import('discord.js').User} user - User opening the ticket.
+ * @param {string|null} topic - Optional topic/description for the ticket.
+ * @param {string|null} channelId - ID of the channel containing the ticket panel (stored for tracking).
+ * @returns {Promise<{ticket: object, thread: import('discord.js').ThreadChannel|import('discord.js').TextChannel}>} The inserted ticket row and the created Discord thread or text channel for the ticket.
  */
 export async function openTicket(guild, user, topic, channelId = null) {
   const pool = getPool();
@@ -255,6 +255,7 @@ export async function openTicket(guild, user, topic, channelId = null) {
   info('Ticket opened', {
     ticketId: ticket.id,
     guildId: guild.id,
+    channelId: ticketChannel.id,
     userId: user.id,
     topic,
     mode: ticketConfig.mode,
@@ -376,13 +377,10 @@ export async function closeTicket(channel, closer, reason) {
 }
 
 /**
- * Add a user to a ticket thread or channel.
+ * Adds a user to a ticket by either adding them to the thread or granting view/send permissions on the channel, and posts a confirmation message.
  *
- * For thread mode: adds via thread.members.
- * For channel mode: grants ViewChannel + SendMessages via permission overrides.
- *
- * @param {import('discord.js').ThreadChannel|import('discord.js').TextChannel} channel - The ticket thread or channel
- * @param {import('discord.js').User} user - The user to add
+ * @param {import('discord.js').ThreadChannel|import('discord.js').TextChannel} channel - The ticket thread or channel to modify.
+ * @param {import('discord.js').User} user - The user to add to the ticket.
  */
 export async function addMember(channel, user) {
   const isThread = typeof channel.isThread === 'function' && channel.isThread();
@@ -397,17 +395,20 @@ export async function addMember(channel, user) {
   }
 
   await safeSend(channel, { content: `✅ <@${user.id}> has been added to the ticket.` });
-  info('Member added to ticket', { channelId: channel.id, userId: user.id });
+  info('Member added to ticket', {
+    guildId: channel.guildId,
+    channelId: channel.id,
+    userId: user.id,
+  });
 }
 
 /**
- * Remove a user from a ticket thread or channel.
+ * Remove a user from a ticket's thread or channel.
  *
- * For thread mode: removes via thread.members.
- * For channel mode: revokes ViewChannel via permission overrides.
+ * Removes the user's access (removes them from a private thread or deletes their channel permission overwrite), posts a confirmation message in the ticket, and logs the removal.
  *
- * @param {import('discord.js').ThreadChannel|import('discord.js').TextChannel} channel - The ticket thread or channel
- * @param {import('discord.js').User} user - The user to remove
+ * @param {import('discord.js').ThreadChannel|import('discord.js').TextChannel} channel - The ticket thread or text channel to remove the user from.
+ * @param {import('discord.js').User} user - The user to remove.
  */
 export async function removeMember(channel, user) {
   const isThread = typeof channel.isThread === 'function' && channel.isThread();
@@ -419,7 +420,11 @@ export async function removeMember(channel, user) {
   }
 
   await safeSend(channel, { content: `🚫 <@${user.id}> has been removed from the ticket.` });
-  info('Member removed from ticket', { channelId: channel.id, userId: user.id });
+  info('Member removed from ticket', {
+    guildId: channel.guildId,
+    channelId: channel.id,
+    userId: user.id,
+  });
 }
 
 /**

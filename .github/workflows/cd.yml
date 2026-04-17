@@ -44,7 +44,7 @@ jobs:
           echo "sha_short=$SHA_SHORT" >> "$GITHUB_OUTPUT"
 
       - name: Build & push bot
-        uses: docker/build-push-action@v7.0.0
+        uses: docker/build-push-action@v7.1.0
         with:
           context: .
           file: Dockerfile
@@ -56,7 +56,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=volvox-bot
 
       - name: Build & push web
-        uses: docker/build-push-action@v7.0.0
+        uses: docker/build-push-action@v7.1.0
         with:
           context: web
           file: web/Dockerfile
@@ -68,7 +68,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=volvox-web
 
       - name: Build & push docs
-        uses: docker/build-push-action@v7.0.0
+        uses: docker/build-push-action@v7.1.0
         with:
           context: docs
           file: docs/Dockerfile

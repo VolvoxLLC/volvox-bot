@@ -1,589 +1,328 @@
 'use client';
 
-import {
-  AnimatePresence,
-  motion,
-  useInView,
-  useReducedMotion,
-  useScroll,
-  useSpring,
-  useTransform,
-} from 'framer-motion';
-import { Bot, MessageSquare, Shield, Sparkles, Terminal, Zap } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { GetStartedButton } from '@/components/ui/get-started-button';
+import { useGSAP } from '@gsap/react';
+import { motion, useScroll, useTransform } from 'framer-motion';
+import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { Bot, Command } from 'lucide-react';
+import { useMemo, useRef } from 'react';
 import { getBotInviteUrl } from '@/lib/discord';
 
-// ─── Typewriter hook (headline) ──────────────────────────────────────────────
-
-function useTypewriter(text: string, speed = 40, delay = 150) {
-  const [displayText, setDisplayText] = useState('');
-  const [isComplete, setIsComplete] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  useEffect(() => {
-    setDisplayText('');
-    setIsComplete(false);
-
-    const timeout = setTimeout(() => {
-      let index = 0;
-      intervalRef.current = setInterval(() => {
-        if (index < text.length) {
-          setDisplayText(text.slice(0, index + 1));
-          index++;
-        } else {
-          setIsComplete(true);
-          if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-            intervalRef.current = null;
-          }
-        }
-      }, speed);
-    }, delay);
-
-    return () => {
-      clearTimeout(timeout);
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [text, speed, delay]);
-
-  return { displayText, isComplete };
+if (typeof window !== 'undefined') {
+  gsap.registerPlugin(ScrollTrigger);
 }
 
-function BlinkingCursor() {
+// ─── AMBIENT BACKGROUND ──────────────────────────────────
+export function PrismaticBackground() {
   return (
-    <span
-      aria-hidden="true"
-      className="inline-block w-[3px] h-[0.9em] bg-primary ml-1 terminal-cursor align-baseline"
-    />
+    <div className="absolute inset-0 -z-10 bg-background overflow-hidden relative">
+      {/* Prismatic Shard */}
+      <div className="hero-parallax-deep absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[180%] h-[500px] -rotate-12 bg-gradient-to-r from-primary/20 via-secondary/15 to-transparent blur-[120px] opacity-40 dark:opacity-30 pointer-events-none" />
+
+      {/* Grid Overlay */}
+      <div
+        className="absolute inset-0 opacity-[0.03] dark:opacity-[0.02] pointer-events-none"
+        style={{
+          backgroundImage: `
+            linear-gradient(to right, hsl(var(--foreground)) 1px, transparent 1px),
+            linear-gradient(to bottom, hsl(var(--foreground)) 1px, transparent 1px)
+          `,
+          backgroundSize: '40px 40px',
+        }}
+      />
+
+      {/* Grain Overlay */}
+      <div className="absolute inset-0 opacity-[0.05] dark:opacity-[0.08] pointer-events-none mix-blend-overlay">
+        <svg
+          viewBox="0 0 200 200"
+          xmlns="http://www.w3.org/2000/svg"
+          className="w-full h-full opacity-50"
+          aria-hidden="true"
+        >
+          <filter id="noiseFilter">
+            <feTurbulence
+              type="fractalNoise"
+              baseFrequency="0.65"
+              numOctaves="3"
+              stitchTiles="stitch"
+            />
+          </filter>
+          <rect width="100%" height="100%" filter="url(#noiseFilter)" />
+        </svg>
+      </div>
+
+      {/* Fading Vignette */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_30%,hsl(var(--background))_100%)] pointer-events-none" />
+    </div>
   );
 }
 
-// ─── Conversation data ───────────────────────────────────────────────────────
+const dataThreadIds = [
+  'alpha',
+  'beta',
+  'gamma',
+  'delta',
+  'epsilon',
+  'zeta',
+  'eta',
+  'theta',
+] as const;
 
-type IconType = 'bot' | 'sparkles' | 'shield' | 'zap';
+const brandLetters = [
+  { id: 'brand-v-1', char: 'V' },
+  { id: 'brand-o-1', char: 'O' },
+  { id: 'brand-l-1', char: 'L' },
+  { id: 'brand-v-2', char: 'V' },
+  { id: 'brand-o-2', char: 'O' },
+  { id: 'brand-x-1', char: 'X' },
+] as const;
 
-interface ScriptLine {
-  role: 'user' | 'bot';
-  content: string;
-  icon?: IconType;
-}
+const particleIds = [
+  'particle-01',
+  'particle-02',
+  'particle-03',
+  'particle-04',
+  'particle-05',
+  'particle-06',
+  'particle-07',
+  'particle-08',
+  'particle-09',
+  'particle-10',
+  'particle-11',
+  'particle-12',
+  'particle-13',
+  'particle-14',
+  'particle-15',
+  'particle-16',
+  'particle-17',
+  'particle-18',
+  'particle-19',
+  'particle-20',
+] as const;
 
-const iconToneClasses: Record<
-  IconType,
-  {
-    avatar: string;
-    bubble: string;
-    chromeDot: string;
-    chromeText: string;
-    dots: string;
-    slashText: string;
-  }
-> = {
-  bot: {
-    avatar: 'bg-primary shadow-[0_0_12px] shadow-primary/30',
-    bubble: 'border-primary/18 bg-primary/8',
-    chromeDot: 'bg-primary',
-    chromeText: 'text-primary',
-    dots: 'bg-primary/60',
-    slashText: 'text-primary/75',
-  },
-  sparkles: {
-    avatar: 'bg-secondary shadow-[0_0_12px] shadow-secondary/30',
-    bubble: 'border-primary/18 bg-primary/8',
-    chromeDot: 'bg-secondary',
-    chromeText: 'text-secondary',
-    dots: 'bg-primary/60',
-    slashText: 'text-secondary/80',
-  },
-  shield: {
-    avatar: 'bg-secondary shadow-[0_0_12px] shadow-secondary/30',
-    bubble: 'border-primary/18 bg-primary/8',
-    chromeDot: 'bg-secondary',
-    chromeText: 'text-secondary',
-    dots: 'bg-primary/60',
-    slashText: 'text-secondary/80',
-  },
-  zap: {
-    avatar: 'bg-accent shadow-[0_0_12px] shadow-accent/30',
-    bubble: 'border-primary/18 bg-primary/8',
-    chromeDot: 'bg-accent',
-    chromeText: 'text-accent',
-    dots: 'bg-primary/60',
-    slashText: 'text-accent/80',
-  },
-};
+// ─── DATA THREADS ──────────────────────────────────────
+function DataThreads() {
+  const threads = useMemo(
+    () =>
+      dataThreadIds.map((id, index) => ({
+        id,
+        left: `${10 + index * 11.5}%`,
+        delay: (index * 2927) % 5,
+        duration: 8 + ((index * 3511) % 10),
+      })),
+    [],
+  );
 
-const script: ScriptLine[] = [
-  { role: 'user', content: '/help' },
-  {
-    role: 'bot',
-    content: "Hey! I'm Volvox.Bot — your AI-powered Discord companion. What can I help with?",
-    icon: 'bot',
-  },
-  { role: 'user', content: 'Can you moderate my server?' },
-  {
-    role: 'bot',
-    content:
-      'Absolutely. I use Claude to detect spam, toxicity, and raids in real-time. Zero config needed.',
-    icon: 'shield',
-  },
-  { role: 'user', content: 'What about AI chat?' },
-  {
-    role: 'bot',
-    content:
-      'Just @mention me — I understand context, remember conversations, and actually help your community.',
-    icon: 'sparkles',
-  },
-  { role: 'user', content: 'How fast is setup?' },
-  {
-    role: 'bot',
-    content: 'One click to invite, 30 seconds to configure. Your server is already smarter.',
-    icon: 'zap',
-  },
-];
-
-const typingDotDelays = [0, 0.15, 0.3] as const;
-
-// ─── Sub-components ──────────────────────────────────────────────────────────
-
-function TypingDots({ className }: { className: string }) {
   return (
-    <div className="flex gap-1 py-1">
-      {typingDotDelays.map((d) => (
-        <motion.span
-          key={d}
-          animate={{ y: [0, -4, 0], opacity: [0.4, 1, 0.4] }}
-          transition={{ repeat: Infinity, duration: 0.8, delay: d, ease: 'easeInOut' }}
-          className={`w-1.5 h-1.5 rounded-full ${className}`}
-        />
+    <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+      {threads.map((t) => (
+        <div
+          key={`thread-${t.id}`}
+          className="absolute top-0 bottom-0 w-[1px] bg-foreground/[0.06] dark:bg-white/[0.02]"
+          style={{ left: t.left }}
+        >
+          <motion.div
+            initial={{ top: '-10%' }}
+            animate={{ top: '110%' }}
+            transition={{
+              duration: t.duration,
+              repeat: Infinity,
+              ease: 'linear',
+              delay: t.delay,
+            }}
+            className="absolute left-1/2 -translate-x-1/2 w-[3px] h-32 bg-gradient-to-b from-transparent via-primary to-transparent blur-[1px]"
+          />
+        </div>
       ))}
     </div>
   );
 }
 
-function BotAvatar({ icon = 'bot' }: { icon?: IconType }) {
-  const tone = iconToneClasses[icon];
-  const icons: Record<IconType, React.ReactNode> = {
-    bot: <Bot className="w-4 h-4 text-white" />,
-    sparkles: <Sparkles className="w-4 h-4 text-white" />,
-    shield: <Shield className="w-4 h-4 text-white" />,
-    zap: <Zap className="w-4 h-4 text-white" />,
-  };
-  return (
-    <div
-      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${tone.avatar}`}
-    >
-      {icons[icon]}
-    </div>
-  );
-}
-
-/** Bot message that types out character by character at 18ms/char, then calls onDone */
-function BotBubble({ text, onDone }: { text: string; onDone: () => void }) {
-  const [charIndex, setCharIndex] = useState(0);
-  const doneRef = useRef(false);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCharIndex((prev) => {
-        const next = prev + 1;
-        if (next >= text.length && !doneRef.current) {
-          doneRef.current = true;
-          clearInterval(interval);
-          setTimeout(onDone, 150);
-        }
-        return Math.min(next, text.length);
-      });
-    }, 18);
-    return () => clearInterval(interval);
-  }, [text, onDone]);
-
-  const isTyping = charIndex < text.length;
-
-  return (
-    <span>
-      {text.slice(0, charIndex)}
-      {isTyping && (
-        <span className="inline-block w-[2px] h-[1em] bg-primary/70 ml-0.5 terminal-cursor align-text-bottom" />
-      )}
-    </span>
-  );
-}
-
-// ─── State machine ───────────────────────────────────────────────────────────
-
-type Phase =
-  | { kind: 'idle' }
-  | { kind: 'show-user'; index: number }
-  | { kind: 'after-user'; index: number }
-  | { kind: 'show-typing'; index: number }
-  | { kind: 'show-bot'; index: number }
-  | { kind: 'typing-bot'; index: number }
-  | { kind: 'after-bot'; index: number }
-  | { kind: 'done' };
-
-interface VisibleMessage {
-  key: string;
-  role: 'user' | 'bot';
-  content: string;
-  icon?: IconType;
-  isTyping: boolean;
-}
-
-function ChatConsole() {
-  const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
-  const [messages, setMessages] = useState<VisibleMessage[]>([]);
-  const [showDots, setShowDots] = useState(false);
-  const [dotsIcon, setDotsIcon] = useState<IconType>('bot');
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const containerRef = useRef(null);
-  const isInView = useInView(containerRef, { once: true });
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const messageCount = messages.length;
-  const activeBotIcon = showDots
-    ? dotsIcon
-    : ([...messages].reverse().find((message) => message.role === 'bot')?.icon ?? 'bot');
-  const activeTone = iconToneClasses[activeBotIcon];
-
-  const clearTimer = useCallback(() => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-  }, []);
-
-  // Auto-scroll
-  useEffect(() => {
-    if (!scrollRef.current || (messageCount === 0 && !showDots)) return;
-    scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [messageCount, showDots]);
-
-  // Phase machine
-  useEffect(() => {
-    clearTimer();
-
-    switch (phase.kind) {
-      case 'idle':
-        if (isInView) {
-          timerRef.current = setTimeout(() => setPhase({ kind: 'show-user', index: 0 }), 800);
-        }
-        break;
-
-      case 'show-user': {
-        const line = script[phase.index];
-        setMessages((prev) => [
-          ...prev,
-          { key: `msg-${phase.index}`, role: 'user', content: line.content, isTyping: false },
-        ]);
-        timerRef.current = setTimeout(
-          () => setPhase({ kind: 'after-user', index: phase.index }),
-          300,
-        );
-        break;
-      }
-
-      case 'after-user': {
-        const nextIdx = phase.index + 1;
-        if (nextIdx >= script.length) {
-          setPhase({ kind: 'done' });
-          break;
-        }
-        setDotsIcon(script[nextIdx].icon ?? 'bot');
-        setShowDots(true);
-        timerRef.current = setTimeout(
-          () => setPhase({ kind: 'show-bot', index: nextIdx }),
-          500 + Math.random() * 300,
-        );
-        break;
-      }
-
-      case 'show-bot': {
-        const line = script[phase.index];
-        setShowDots(false);
-        setMessages((prev) => [
-          ...prev,
-          {
-            key: `msg-${phase.index}`,
-            role: 'bot',
-            content: line.content,
-            icon: line.icon,
-            isTyping: true,
-          },
-        ]);
-        setPhase({ kind: 'typing-bot', index: phase.index });
-        break;
-      }
-
-      case 'typing-bot':
-        break;
-
-      case 'after-bot': {
-        const nextIdx = phase.index + 1;
-        if (nextIdx >= script.length) {
-          setPhase({ kind: 'done' });
-          break;
-        }
-        timerRef.current = setTimeout(() => setPhase({ kind: 'show-user', index: nextIdx }), 500);
-        break;
-      }
-
-      case 'done':
-        break;
-    }
-
-    return clearTimer;
-  }, [phase, isInView, clearTimer]);
-
-  const handleBotDone = useCallback((index: number) => {
-    setMessages((prev) =>
-      prev.map((m) => (m.key === `msg-${index}` ? { ...m, isTyping: false } : m)),
-    );
-    setPhase({ kind: 'after-bot', index });
-  }, []);
-
-  return (
-    <motion.div
-      ref={containerRef}
-      initial={{ opacity: 0, scale: 0.96, y: 30 }}
-      animate={isInView ? { opacity: 1, scale: 1, y: 0 } : {}}
-      transition={{ type: 'spring', damping: 25, stiffness: 180, delay: 1.4 }}
-      className="w-full max-w-lg mx-auto"
-    >
-      <div className="rounded-2xl border border-border bg-card shadow-2xl shadow-primary/5 overflow-hidden">
-        {/* VS Code-style window chrome with channel context */}
-        <div className="flex items-center justify-between px-4 py-3 bg-muted/50 border-b border-border">
-          <div className="flex items-center gap-2">
-            <div className="flex gap-1.5">
-              <div className="w-3 h-3 rounded-full bg-red-400" />
-              <div className="w-3 h-3 rounded-full bg-amber-400" />
-              <div className="w-3 h-3 rounded-full bg-green-400" />
-            </div>
-            <div className="flex items-center gap-2 ml-3 text-xs text-muted-foreground">
-              <Terminal className="w-3.5 h-3.5 text-secondary" />
-              <span className="font-medium">volvox-bot</span>
-              <span className="text-muted-foreground/50">—</span>
-              <span className="text-muted-foreground/70">#general</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className={`w-2 h-2 rounded-full animate-pulse ${activeTone.chromeDot}`} />
-            <span
-              className={`text-[10px] font-medium uppercase tracking-wider ${activeTone.chromeText}`}
-            >
-              Live
-            </span>
-          </div>
-        </div>
-
-        {/* Messages */}
-        <div
-          ref={scrollRef}
-          className="h-[320px] space-y-3 overflow-y-auto p-4 scroll-smooth overscroll-contain md:h-[340px]"
-        >
-          <AnimatePresence>
-            {messages.map((msg) => (
-              <motion.div
-                key={msg.key}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-                className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}
-              >
-                {msg.role === 'bot' && <BotAvatar icon={msg.icon} />}
-                <div
-                  className={`px-3.5 py-2.5 text-sm leading-relaxed max-w-[85%] ${
-                    msg.role === 'user'
-                      ? 'bg-primary text-white rounded-[16px] rounded-br-[4px]'
-                      : `rounded-2xl rounded-bl-md border text-foreground ${iconToneClasses[msg.icon ?? 'bot'].bubble}`
-                  }`}
-                >
-                  {msg.role === 'bot' && msg.isTyping ? (
-                    <BotBubble
-                      text={msg.content}
-                      onDone={() => handleBotDone(Number(msg.key.split('-')[1]))}
-                    />
-                  ) : (
-                    msg.content
-                  )}
-                </div>
-                {msg.role === 'user' && (
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground">
-                    U
-                  </div>
-                )}
-              </motion.div>
-            ))}
-          </AnimatePresence>
-
-          {/* Typing indicator */}
-          <AnimatePresence>
-            {showDots && (
-              <motion.div
-                key="dots"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.15 }}
-                className="flex gap-3"
-              >
-                <BotAvatar icon={dotsIcon} />
-                <div
-                  className={`rounded-2xl rounded-bl-md border px-3.5 py-2.5 ${iconToneClasses[dotsIcon].bubble}`}
-                >
-                  <TypingDots className={iconToneClasses[dotsIcon].dots} />
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* Input bar (decorative) */}
-        <div className="px-4 py-3 border-t border-border bg-muted/30">
-          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-background border border-border text-sm text-muted-foreground">
-            <span className="opacity-50">Type a message...</span>
-            <span className={`ml-auto text-[10px] font-mono ${activeTone.slashText}`}>/slash</span>
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-// ─── Hero export ─────────────────────────────────────────────────────────────
-
+// ─── MAIN HERO ───────────────────────────────────────────
 export function Hero() {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true });
-  const shouldReduceMotion = useReducedMotion() ?? false;
+  const sectionRef = useRef<HTMLElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
   const botInviteUrl = getBotInviteUrl();
-  const { displayText, isComplete } = useTypewriter('volvox-bot', 40, 150);
+
   const { scrollYProgress } = useScroll({
-    target: ref,
+    target: sectionRef,
     offset: ['start start', 'end start'],
   });
 
-  const glowY = useSpring(useTransform(scrollYProgress, [0, 1], [0, -80]), {
-    damping: 26,
-    mass: 0.3,
-    stiffness: 180,
-  });
-  const copyY = useSpring(useTransform(scrollYProgress, [0, 1], [0, -28]), {
-    damping: 30,
-    mass: 0.35,
-    stiffness: 170,
-  });
-  const copyOpacity = useTransform(scrollYProgress, [0, 0.92], [1, 0.82]);
-  const consoleY = useSpring(useTransform(scrollYProgress, [0, 1], [0, 88]), {
-    damping: 28,
-    mass: 0.34,
-    stiffness: 175,
-  });
-  const consoleScale = useSpring(useTransform(scrollYProgress, [0, 1], [1, 0.96]), {
-    damping: 30,
-    mass: 0.3,
-    stiffness: 180,
-  });
-  const consoleOpacity = useTransform(scrollYProgress, [0, 0.92], [1, 0.78]);
+  const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
+  const scale = useTransform(scrollYProgress, [0, 0.5], [1, 0.98]);
+
+  useGSAP(
+    () => {
+      const tl = gsap.timeline();
+
+      tl.fromTo(
+        '.hero-char',
+        { y: 40, opacity: 0 },
+        { y: 0, opacity: 1, duration: 1.2, stagger: 0.05, ease: 'power3.out' },
+      );
+
+      tl.fromTo(
+        '.hero-engine',
+        { opacity: 0, letterSpacing: '0em' },
+        { opacity: 1, letterSpacing: '0.8em', duration: 1.5, ease: 'power2.out' },
+        '-=1.0',
+      );
+
+      tl.fromTo(
+        '.hero-sub',
+        { y: 20, opacity: 0 },
+        { y: 0, opacity: 1, duration: 1, ease: 'power3.out' },
+        '-=1.2',
+      );
+
+      tl.fromTo(
+        '.hero-console',
+        { y: 20, opacity: 0 },
+        { y: 0, opacity: 1, duration: 1, ease: 'expo.out' },
+        '-=0.8',
+      );
+
+      // Parallax
+      gsap.to('.hero-parallax-deep', {
+        scrollTrigger: {
+          trigger: sectionRef.current,
+          start: 'top top',
+          end: 'bottom top',
+          scrub: true,
+        },
+        y: 150,
+        rotate: -5,
+      });
+    },
+    { scope: sectionRef },
+  );
+
+  const particles = useMemo(
+    () =>
+      particleIds.map((id, i) => ({
+        id,
+        // Deterministic positions from index to avoid SSR hydration mismatch
+        x: ((i * 7919 + 1234) % 600) - 300,
+        y: ((i * 6271 + 5678) % 600) - 300,
+        duration: 15 + ((i * 3571) % 15),
+        delay: (i * 2909) % 10,
+      })),
+    [],
+  );
 
   return (
     <section
-      ref={ref}
-      className="relative min-h-screen pt-32 md:pt-[180px] flex flex-col items-center overflow-hidden"
+      ref={sectionRef}
+      className="relative min-h-[90vh] bg-background justify-center flex flex-col items-center pt-[10vw] overflow-hidden"
     >
-      {/* Background glow */}
+      <PrismaticBackground />
+      <DataThreads />
+
+      {/* Hero Content */}
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={isInView ? { opacity: 1 } : {}}
-        transition={{ duration: 0.6 }}
-        className="hero-glow absolute -top-[20%] left-1/2 -translate-x-1/2 w-[80vw] h-[80vw] -z-[1] pointer-events-none"
-        style={shouldReduceMotion ? undefined : { y: glowY }}
-      />
+        style={{ opacity, scale }}
+        className="relative z-20 flex flex-col items-center max-w-5xl px-4 w-full mt-10 md:mt-0"
+      >
+        {/* Top Label */}
+        <div className="flex items-center gap-4 mb-12 opacity-50">
+          <div className="h-[1px] w-6 bg-foreground" />
+          <span
+            className="text-[10px] font-semibold uppercase tracking-[0.3em] text-foreground font-mono"
+            suppressHydrationWarning
+          >
+            Architecture v2.4.0
+          </span>
+          <div className="h-[1px] w-6 bg-foreground" />
+        </div>
 
-      <div className="text-center max-w-[1100px] px-4 z-[2] pb-16 md:pb-24">
-        <motion.div style={shouldReduceMotion ? undefined : { opacity: copyOpacity, y: copyY }}>
-          {/* Badge — enters at 100ms */}
+        {/* Main Title Group */}
+        <div className="relative mb-8 text-center flex flex-col items-center">
+          <h1
+            ref={titleRef}
+            className="flex flex-wrap justify-center text-[18vw] md:text-[14vw] lg:text-[160px] font-black leading-[0.8] tracking-[-0.05em] text-foreground select-none"
+          >
+            {brandLetters.map((letter) => (
+              <span key={letter.id} className="hero-char inline-block">
+                {letter.char}
+              </span>
+            ))}
+          </h1>
+          <div
+            className="hero-engine mt-6 text-[14px] md:text-[14px] lg:text-[16px] font-mono text-primary font-bold uppercase tracking-[1.2em] opacity-0 text-center w-full"
+            suppressHydrationWarning
+          >
+            BOT
+          </div>
+        </div>
+
+        {/* Subtitle */}
+        <p className="hero-sub text-foreground/50 text-base md:text-lg max-w-md text-center font-medium leading-relaxed mb-16 tracking-tight">
+          The absolute synthesis of community intelligence, robust moderation, and seamless scale.
+        </p>
+
+        {/* Console CTA */}
+        <div className="hero-console w-full max-w-xl origin-top px-2 sm:px-0">
+          <div className="relative group p-[1px] rounded-[1.5rem] sm:rounded-2xl overflow-hidden bg-border/40 hover:bg-border/80 transition-colors duration-500">
+            <div className="relative bg-card rounded-[calc(1.5rem-1px)] sm:rounded-[15px] p-1.5 sm:p-2 flex items-center shadow-sm">
+              <div className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 text-foreground/80 shrink-0">
+                <Command className="w-4 h-4 sm:w-5 sm:h-5" />
+              </div>
+
+              <div
+                className="flex-1 font-mono text-[15px] sm:text-lg tracking-tighter pl-1 sm:pl-2 flex items-center overflow-hidden whitespace-nowrap"
+                suppressHydrationWarning
+              >
+                <span className="text-foreground font-semibold mr-2 sm:mr-3">/summon</span>
+                <span className="text-primary">volvox bot</span>
+                <motion.div
+                  animate={{ opacity: [1, 0] }}
+                  transition={{ duration: 0.8, repeat: Infinity }}
+                  className="w-[2px] h-4 sm:h-5 bg-foreground/30 ml-1.5 sm:ml-2"
+                />
+              </div>
+
+              {botInviteUrl && (
+                <a
+                  href={botInviteUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 sm:px-6 h-10 sm:h-12 bg-foreground text-background font-bold tracking-wide text-[11px] sm:text-[13px] rounded-xl sm:rounded-xl overflow-hidden transition-transform hover:scale-[1.02] active:scale-95 shadow-sm shrink-0"
+                >
+                  <Bot className="w-3.5 h-3.5 sm:w-4 h-4" />
+                  <span className="hidden sm:inline">Add to Server</span>
+                  <span className="sm:hidden">Add</span>
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Background Particles */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-10">
+        {particles.map((particle) => (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={isInView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="inline-flex items-center py-2 px-4 rounded-full bg-secondary/10 text-secondary text-sm font-semibold mb-8 border border-secondary/20"
-          >
-            Building the future of Discord communities
-          </motion.div>
-
-          {/* Headline — enters at 200ms, typewriter starts at 150ms delay */}
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={isInView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="font-[family-name:var(--font-mono)] text-[clamp(2.5rem,6vw,5rem)] leading-[1.1] font-extrabold tracking-[-0.03em] mb-6 text-foreground"
-          >
-            {displayText}
-            {!isComplete && <BlinkingCursor />}
-            {isComplete && (
-              <>
-                <br />
-                <span className="text-aurora">AI-powered Discord.</span>
-              </>
-            )}
-          </motion.h1>
-
-          {/* Subheadline — fades in after typewriter completes */}
-          <motion.p
-            initial={{ opacity: 0, y: 10 }}
-            animate={isComplete ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="text-[clamp(1rem,2vw,1.25rem)] text-foreground/70 leading-relaxed mb-10 max-w-[700px] mx-auto"
-          >
-            A software-powered bot for modern communities. Moderation, AI chat, dynamic welcomes,
-            and a fully configurable dashboard — all in one place.
-          </motion.p>
-
-          {/* CTA Buttons — stagger in after subtitle */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={isComplete ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-            className="flex flex-col gap-4 sm:flex-row justify-center mb-16"
-          >
-            {botInviteUrl && (
-              <GetStartedButton
-                variant="discord"
-                label="Add to Server"
-                href={botInviteUrl}
-                className="rounded-full h-14 px-12 font-bold text-sm tracking-widest uppercase shadow-lg shadow-[var(--color-discord)]/20"
-              />
-            )}
-            <GetStartedButton
-              variant="outline"
-              icon={MessageSquare}
-              label="Open Dashboard"
-              href="/login"
-              internal
-              className="rounded-full h-14 px-8 font-bold text-sm tracking-widest uppercase text-accent border-accent/25 hover:bg-accent/8 hover:border-accent/35"
-            />
-          </motion.div>
-        </motion.div>
-
-        {/* Interactive chat console — enters at 1400ms with spring physics */}
-        <motion.div
-          className="origin-top"
-          style={
-            shouldReduceMotion
-              ? undefined
-              : {
-                  opacity: consoleOpacity,
-                  scale: consoleScale,
-                  y: consoleY,
-                }
-          }
-        >
-          <ChatConsole />
-        </motion.div>
+            key={particle.id}
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{
+              opacity: [0, 0.3, 0],
+              scale: [0, 1.2, 0],
+              x: [0, particle.x],
+              y: [0, particle.y],
+            }}
+            transition={{
+              duration: particle.duration,
+              repeat: Infinity,
+              delay: particle.delay,
+            }}
+            className="absolute top-1/2 left-1/2 w-1 h-1 bg-foreground/30 dark:bg-white/30 rounded-full blur-[1px]"
+          />
+        ))}
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[var(--bg-primary)] to-transparent pointer-events-none" />
+      {/* Bottom Gradient Fade */}
+      <div className="absolute bottom-0 left-0 right-0 h-[18vh] bg-gradient-to-t from-background to-transparent z-30 pointer-events-none" />
     </section>
   );
 }

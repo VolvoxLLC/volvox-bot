@@ -197,8 +197,14 @@ async function handleList(interaction) {
 }
 
 /**
- * Handle /case reason
- * @param {import('discord.js').ChatInputCommandInteraction} interaction
+ * Update the reason for a moderation case and refresh its associated log message if present.
+ *
+ * Updates the stored reason for the specified case number in the guild. If the case has a linked
+ * log message, attempts to edit that message's embed to reflect the updated reason. Replies to the
+ * invoking interaction with either a "not found" message or a confirmation. Logs an info event on
+ * successful update and records any failures when attempting to edit the log message.
+ *
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - The command interaction for `/case reason`; must include `case_id` (integer) and `reason` (string) options.
  */
 async function handleReason(interaction) {
   const caseId = interaction.options.getInteger('case_id');
@@ -246,6 +252,7 @@ async function handleReason(interaction) {
 
   info('Case reason updated', {
     guildId: interaction.guild.id,
+    channelId: interaction.channelId,
     caseNumber: caseId,
     moderator: interaction.user.tag,
   });
@@ -254,8 +261,8 @@ async function handleReason(interaction) {
 }
 
 /**
- * Handle /case delete
- * @param {import('discord.js').ChatInputCommandInteraction} interaction
+ * Deletes a moderation case by case number, logs the deletion, and updates the command reply.
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - The interaction for the `/case delete` subcommand; expects an integer `case_id` option.
  */
 async function handleDelete(interaction) {
   const caseId = interaction.options.getInteger('case_id');
@@ -272,6 +279,7 @@ async function handleDelete(interaction) {
 
   info('Case deleted', {
     guildId: interaction.guild.id,
+    channelId: interaction.channelId,
     caseNumber: caseId,
     moderator: interaction.user.tag,
   });

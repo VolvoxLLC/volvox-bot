@@ -253,19 +253,24 @@ function tokenizeMarkdownSegments(line: string): string[] {
 function renderVariablePreview(text: string): React.ReactNode[] {
   if (!text) return [];
 
-  return tokenizeVariableSegments(text).map((part, index) => {
+  let offset = 0;
+
+  return tokenizeVariableSegments(text).map((part) => {
+    const segmentStart = offset;
+    offset += part.length;
+
     if (part.startsWith('{{') && part.endsWith('}}')) {
       const varName = part.slice(2, -2);
       return (
         <span
-          key={`${varName}-${index}`}
+          key={`var-${segmentStart}-${varName}`}
           className="inline-flex items-center rounded bg-primary/20 px-1.5 py-0.5 text-xs font-medium text-primary"
         >
           {varName}
         </span>
       );
     }
-    return <span key={`text-${index}`}>{part}</span>;
+    return <span key={`text-${segmentStart}`}>{part}</span>;
   });
 }
 
@@ -343,6 +348,22 @@ function formatPreviewTimestamp(date: Date): string {
 
 function clampTextToAvailable(text: string, available: number): string {
   return available <= 0 ? '' : text.slice(0, available);
+}
+
+function PreviewImage({
+  src,
+  alt,
+  width,
+  height,
+  className,
+}: {
+  src: string;
+  alt: string;
+  width: number;
+  height: number;
+  className: string;
+}) {
+  return <img src={src} alt={alt} width={width} height={height} className={className} />;
 }
 
 // ── CharCount indicator ─────────────────────────────────────────────
@@ -444,9 +465,11 @@ function EmbedPreview({ config }: { config: EmbedConfig }) {
             {config.thumbnailType !== 'none' && (
               <div className="shrink-0">
                 {config.thumbnailType === 'custom' && config.thumbnailUrl ? (
-                  <img
+                  <PreviewImage
                     src={config.thumbnailUrl}
                     alt="Thumbnail"
+                    width={64}
+                    height={64}
                     className="h-16 w-16 rounded object-cover"
                   />
                 ) : (
@@ -461,13 +484,13 @@ function EmbedPreview({ config }: { config: EmbedConfig }) {
           {/* Fields */}
           {config.fields.length > 0 && (
             <div className="grid grid-cols-3 gap-2" data-testid="embed-preview-fields">
-              {config.fields.map((field, i) => {
+              {config.fields.map((field, index) => {
                 const renderedName = renderVariablePreview(field.name);
                 const renderedValue = renderDiscordMarkdown(field.value);
 
                 return (
                   <div
-                    key={field.id ?? `field-${i}`}
+                    key={field.id ?? `field-${index}`}
                     className={cn(field.inline ? 'col-span-1' : 'col-span-3')}
                   >
                     <div className="text-xs font-semibold text-white">
@@ -485,9 +508,11 @@ function EmbedPreview({ config }: { config: EmbedConfig }) {
           {/* Image */}
           {config.imageUrl && (
             <div className="mt-2">
-              <img
+              <PreviewImage
                 src={config.imageUrl}
                 alt="Embed"
+                width={1024}
+                height={256}
                 className="max-h-64 max-w-full rounded object-contain"
               />
             </div>
@@ -500,9 +525,11 @@ function EmbedPreview({ config }: { config: EmbedConfig }) {
               data-testid="embed-preview-footer"
             >
               {config.footerIconUrl && (
-                <img
+                <PreviewImage
                   src={config.footerIconUrl}
                   alt="Footer icon"
+                  width={20}
+                  height={20}
                   className="h-5 w-5 rounded-full object-cover"
                 />
               )}

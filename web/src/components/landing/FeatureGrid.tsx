@@ -1,39 +1,63 @@
 'use client';
 
-import { motion, useInView, useReducedMotion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import type { LucideIcon } from 'lucide-react';
-import { BarChart3, MessageSquare, Shield, Star } from 'lucide-react';
-import { useRef } from 'react';
-import { ScrollStage } from './ScrollStage';
-import { SectionHeader } from './SectionHeader';
+import { Activity, Cpu, Globe, Lock, MessageSquare, Shield, Sparkles, Zap } from 'lucide-react';
+import * as React from 'react';
+import { cn } from '@/lib/utils';
 
 interface Feature {
   readonly icon: LucideIcon;
   readonly title: string;
   readonly description: string;
-  readonly accentColor: string;
-  readonly iconBg: string;
   readonly preview: React.ReactNode;
+  readonly size: 'small' | 'medium' | 'large';
+  readonly className?: string;
+  readonly animationOrder: number;
 }
+
+const liveInsightBars = [
+  { id: 'activity-40', height: 40, delayOrder: 0 },
+  { id: 'activity-75', height: 75, delayOrder: 1 },
+  { id: 'activity-55', height: 55, delayOrder: 2 },
+  { id: 'activity-90', height: 90, delayOrder: 3 },
+  { id: 'activity-65', height: 65, delayOrder: 4 },
+  { id: 'activity-85', height: 85, delayOrder: 5 },
+  { id: 'activity-45', height: 45, delayOrder: 6 },
+  { id: 'activity-70', height: 70, delayOrder: 7 },
+] as const;
+
+const coreEngineCells = [
+  'core-alpha',
+  'core-beta',
+  'core-gamma',
+  'core-delta',
+  'core-epsilon',
+  'core-zeta',
+  'core-eta',
+  'core-theta',
+] as const;
 
 const features: readonly Feature[] = [
   {
     icon: MessageSquare,
-    title: 'AI Chat',
+    title: 'Neural Chat',
     description:
-      'Reply in-channel with Claude. Context-aware, multi-turn conversations that actually help.',
-    accentColor: 'bg-primary',
-    iconBg: 'bg-primary/10 text-primary',
+      'Multi-turn, context-aware conversations powered by Claude. Synthesis of intelligence directly in your channels.',
+    size: 'large',
+    className: 'md:col-span-2 lg:col-span-2',
+    animationOrder: 0,
     preview: (
-      <div className="space-y-2 text-xs">
-        <div className="flex gap-2">
-          <span className="text-muted-foreground">user:</span>
-          <span className="text-foreground">How do I set up auto-roles?</span>
+      <div className="space-y-4 text-[13px] font-medium leading-relaxed">
+        <div className="flex gap-3 text-foreground/40">
+          <span className="font-mono opacity-50 shrink-0">usr</span>
+          <span className="font-mono opacity-30 truncate">~ [mod-core] scan initialized...</span>
         </div>
-        <div className="flex gap-2">
-          <span className="text-primary font-medium">bot:</span>
-          <span className="text-foreground">
-            Head to Dashboard → Settings → Auto Roles. Pick the role and trigger.
+        <div className="flex gap-3 text-primary bg-primary/[0.03] p-4 rounded-xl border border-primary/10">
+          <Sparkles className="w-4 h-4 shrink-0 mt-0.5 opacity-70" />
+          <span className="text-foreground/80">
+            I've condensed 42 commits into 3 key themes: Stability, UI, and Speed. Engagement is up
+            12% this week.
           </span>
         </div>
       </div>
@@ -41,57 +65,87 @@ const features: readonly Feature[] = [
   },
   {
     icon: Shield,
-    title: 'Moderation',
+    title: 'Active Sentry',
     description:
-      'Claude-backed detection for spam, toxicity, and raids. Steps in before your team has to.',
-    accentColor: 'bg-secondary',
-    iconBg: 'bg-secondary/10 text-secondary',
+      'Autonomous moderation that identifies and neutralizes raids with surgical precision.',
+    size: 'medium',
+    className: 'md:col-span-1 lg:col-span-1',
+    animationOrder: 1,
     preview: (
-      <div className="space-y-1.5 text-xs">
-        <div className="flex items-center gap-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-red-400" />
-          <span className="text-foreground">Spam detected → Message removed</span>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between text-[11px] bg-destructive/10 px-3 py-2 rounded-lg border border-destructive/20">
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse" />
+            <span className="text-destructive font-black uppercase tracking-wider font-mono">
+              Intercepted
+            </span>
+          </div>
+          <span className="text-foreground/30 font-mono">0.02ms</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-          <span className="text-foreground">User warned — toxicity</span>
-          <span className="text-muted-foreground ml-auto">0.3s</span>
+        <div className="flex items-center gap-3 text-[12px] text-foreground/50 px-1">
+          <Lock className="w-3.5 h-3.5 opacity-60" />
+          <span>Spam cluster quarantined (8 accounts)</span>
         </div>
       </div>
     ),
   },
   {
-    icon: Star,
-    title: 'Starboard',
-    description: 'Best posts become a running highlight reel. Community votes, bot curates.',
-    accentColor: 'bg-accent',
-    iconBg: 'bg-accent/10 text-accent',
+    icon: Activity,
+    title: 'Live Insight',
+    description: 'Real-time analytics and server health metrics visualized instantly.',
+    size: 'medium',
+    className: 'md:col-span-1 lg:col-span-1',
+    animationOrder: 2,
     preview: (
-      <div className="flex items-center gap-3 text-xs">
-        <div className="flex items-center gap-1">
-          <span className="text-accent">⭐</span>
-          <span className="text-foreground font-medium">5 reactions</span>
-        </div>
-        <span className="text-muted-foreground">→</span>
-        <span className="text-foreground">promoted to #starboard</span>
-      </div>
-    ),
-  },
-  {
-    icon: BarChart3,
-    title: 'Analytics',
-    description:
-      'Track server health from the dashboard. Activity, trends, and AI usage in one place.',
-    accentColor: 'bg-[hsl(var(--neon-cyan))]',
-    iconBg: 'bg-[hsl(var(--neon-cyan))]/10 text-[hsl(var(--neon-cyan))]',
-    preview: (
-      <div className="flex items-end gap-1 h-8">
-        {[40, 65, 45, 80, 55].map((h) => (
-          <div
-            key={h}
-            className="flex-1 rounded-sm bg-[hsl(var(--neon-cyan))]/30"
-            style={{ height: `${h}%` }}
+      <div className="flex items-end gap-2 h-20 px-1">
+        {liveInsightBars.map((bar) => (
+          <motion.div
+            key={bar.id}
+            initial={{ height: 0 }}
+            whileInView={{ height: `${bar.height}%` }}
+            transition={{ delay: bar.delayOrder * 0.05, duration: 0.8, ease: 'circOut' }}
+            className="flex-1 rounded-[3px] bg-primary/20"
           />
+        ))}
+      </div>
+    ),
+  },
+  {
+    icon: Zap,
+    title: 'Edge Performance',
+    description: 'Built for scale. Minimal latency across all global regions.',
+    size: 'small',
+    className: 'md:col-span-1 lg:col-span-1',
+    animationOrder: 3,
+    preview: (
+      <div className="flex items-center justify-center py-2 h-full">
+        <div className="w-full h-12 bg-card rounded-xl border border-border/50 flex flex-col justify-center px-5">
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-2">
+              <Globe className="w-4 h-4 text-foreground/40" />
+              <span className="text-[11px] font-semibold text-foreground/60 uppercase font-sans tracking-widest">
+                Global
+              </span>
+            </div>
+            <span className="text-[11px] font-black tracking-wider text-foreground/40 uppercase font-mono">
+              12ms
+            </span>
+          </div>
+        </div>
+      </div>
+    ),
+  },
+  {
+    icon: Cpu,
+    title: 'Core Engine',
+    description: 'Highly optimized architecture designed for 99.99% uptime.',
+    size: 'small',
+    className: 'md:col-span-1 lg:col-span-1',
+    animationOrder: 4,
+    preview: (
+      <div className="grid grid-cols-4 gap-2 opacity-50 h-full content-center">
+        {coreEngineCells.map((cellId) => (
+          <div key={cellId} className="h-6 rounded-full bg-foreground/5 border border-border/60" />
         ))}
       </div>
     ),
@@ -100,75 +154,87 @@ const features: readonly Feature[] = [
 
 function FeatureCard({
   feature,
-  index,
-  isInView,
   shouldReduceMotion,
 }: {
   readonly feature: Feature;
-  readonly index: number;
-  readonly isInView: boolean;
   readonly shouldReduceMotion: boolean;
 }) {
   return (
     <motion.div
-      initial={shouldReduceMotion ? false : { opacity: 0, y: 18 }}
-      animate={isInView ? { opacity: 1, y: 0 } : {}}
+      initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-50px' }}
       transition={{
-        duration: 0.45,
-        delay: shouldReduceMotion ? 0 : index * 0.08,
-        ease: [0.16, 1, 0.3, 1],
+        duration: 0.6,
+        delay: shouldReduceMotion ? 0 : feature.animationOrder * 0.05,
+        ease: [0.21, 1.02, 0.47, 0.98],
       }}
-      className="group relative p-6 rounded-2xl border border-border bg-card glow-card overflow-hidden"
+      className={cn(
+        'group relative overflow-hidden rounded-[2rem] border border-border/60 bg-card p-8 transition-all hover:border-border flex flex-col justify-between shadow-sm',
+        feature.className,
+      )}
     >
-      {/* Colored top accent line */}
-      <div className={`absolute inset-x-0 top-0 h-0.5 ${feature.accentColor} opacity-60`} />
+      <div className="relative z-10">
+        <div className="inline-flex items-center justify-center w-12 h-12 rounded-[14px] mb-6 bg-secondary/50 border border-border/50 text-muted-foreground transition-colors group-hover:text-primary group-hover:bg-secondary/70">
+          <feature.icon className="w-[22px] h-[22px]" aria-hidden="true" />
+        </div>
 
-      {/* Icon */}
-      <div
-        className={`inline-flex items-center justify-center w-9 h-9 rounded-lg mb-4 ${feature.iconBg}`}
-      >
-        <feature.icon className="w-[18px] h-[18px]" aria-hidden="true" />
+        <h3 className="text-[22px] font-bold tracking-tight text-foreground mb-3">
+          {feature.title}
+        </h3>
+        <p className="text-[15px] leading-relaxed text-foreground/50 mb-8 font-medium max-w-sm">
+          {feature.description}
+        </p>
       </div>
 
-      {/* Title + Description */}
-      <h3 className="text-lg font-semibold tracking-tight text-foreground mb-2">{feature.title}</h3>
-      <p className="text-sm leading-6 text-muted-foreground mb-4">{feature.description}</p>
-
-      {/* Mini-preview inset */}
-      <div className="p-3 rounded-lg bg-muted/50 border border-border/60">{feature.preview}</div>
+      <div className="relative z-10 mt-auto overflow-hidden rounded-2xl bg-background border border-border/30 p-5 shadow-sm h-full max-h-[140px] flex flex-col justify-center">
+        {feature.preview}
+      </div>
     </motion.div>
   );
 }
 
 export function FeatureGrid() {
-  const containerRef = useRef(null);
-  const isInView = useInView(containerRef, { once: true, margin: '-100px' }) ?? false;
-  const shouldReduceMotion = useReducedMotion() ?? false;
+  const [mounted, setMounted] = React.useState(false);
+  const reducedMotion = useReducedMotion();
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const shouldReduceMotion = mounted ? (reducedMotion ?? false) : (reducedMotion ?? true);
 
   return (
-    <section className="py-28 px-4 sm:px-6 lg:px-8 bg-[var(--bg-primary)]">
-      <div className="mx-auto max-w-6xl" ref={containerRef}>
-        <ScrollStage>
-          <SectionHeader
-            label="FEATURES"
-            labelColor="accent"
-            title="Everything you need"
-            subtitle="One bot. One dashboard. No stitching together single-purpose tools."
-            className="mb-14"
-          />
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            {features.map((feature, index) => (
-              <FeatureCard
-                key={feature.title}
-                feature={feature}
-                index={index}
-                isInView={isInView}
-                shouldReduceMotion={shouldReduceMotion}
-              />
-            ))}
+    <section className="relative py-32 px-4 sm:px-6 lg:px-8 bg-background overflow-hidden">
+      <div className="mx-auto max-w-6xl relative z-10">
+        <div className="flex flex-col mb-24 max-w-3xl">
+          <div className="flex items-center gap-3 mb-6 opacity-80">
+            <div className="w-8 h-[1px] bg-primary/40" />
+            <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary">
+              System Protocol
+            </span>
           </div>
-        </ScrollStage>
+
+          <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground mb-6 leading-tight">
+            Everything you need,
+            <br />
+            <span className="text-foreground/40">re-engineered.</span>
+          </h2>
+          <p className="text-lg text-foreground/50 max-w-xl font-medium leading-relaxed">
+            Volvox consolidates your entire community stack into a single, high-performance
+            architecture.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6">
+          {features.map((feature) => (
+            <FeatureCard
+              key={feature.title}
+              feature={feature}
+              shouldReduceMotion={shouldReduceMotion}
+            />
+          ))}
+        </div>
       </div>
     </section>
   );

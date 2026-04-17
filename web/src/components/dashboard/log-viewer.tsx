@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { ConnectionStatus, LogEntry, LogLevel } from '@/lib/log-ws';
 import { cn } from '@/lib/utils';
@@ -9,53 +10,71 @@ import { cn } from '@/lib/utils';
 
 const LEVEL_STYLES: Record<LogLevel, { badge: string; row: string; label: string }> = {
   error: {
-    badge: 'text-destructive font-semibold',
-    row: 'hover:bg-destructive/10',
+    badge: 'text-red-500 font-bold',
+    row: 'hover:bg-red-500/5',
     label: 'ERR ',
   },
   warn: {
-    badge: 'text-amber-500 font-semibold',
-    row: 'hover:bg-amber-500/10',
+    badge: 'text-amber-500 font-bold',
+    row: 'hover:bg-amber-500/5',
     label: 'WARN',
   },
   info: {
-    badge: 'text-primary',
-    row: 'hover:bg-primary/10',
+    badge: 'text-primary font-bold',
+    row: 'hover:bg-primary/5',
     label: 'INFO',
   },
   debug: {
-    badge: 'text-muted-foreground',
-    row: 'hover:bg-muted/50',
+    badge: 'text-muted-foreground/60',
+    row: 'hover:bg-muted/20',
     label: 'DBUG',
   },
 };
 
-const STATUS_STYLES: Record<ConnectionStatus, { dot: string; label: string }> = {
-  connected: { dot: 'bg-green-500', label: 'Connected' },
-  disconnected: { dot: 'bg-red-500', label: 'Disconnected' },
-  reconnecting: { dot: 'bg-yellow-500 animate-pulse', label: 'Reconnecting…' },
-};
+// StatusIndicator removed — status rendering is handled inline by the parent page.
+
+/**
+ * Extracts a channel identifier from a log entry's metadata.
+ *
+ * @param entry - The log entry to inspect
+ * @returns The channel identifier from `entry.meta.channelId` or `entry.meta.channel_id` if it is a non-empty string, `null` otherwise
+ */
+function getEntryChannelId(entry: LogEntry): string | null {
+  const value = entry.meta?.channelId ?? entry.meta?.channel_id;
+  return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
+/**
+ * Render a connection status indicator with a colored dot and label.
+ *
+ * @param status - The current connection status used to select the dot color and label text
+ * @returns The UI element displaying a colored status dot and its label
+ */
+// StatusIndicator removed — status rendering is handled inline by the parent page.
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function StatusIndicator({ status }: { status: ConnectionStatus }) {
-  const s = STATUS_STYLES[status];
-  return (
-    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-      <span className={cn('h-2 w-2 rounded-full shrink-0', s.dot)} />
-      <span>{s.label}</span>
-    </div>
-  );
-}
-
+/**
+ * Renders a single log entry row including time, level badge, optional module and channel badges, message, and an expandable metadata panel when metadata is present.
+ *
+ * The row displays a resolved channel name (via `resolveChannelName`) if a channel identifier exists in `entry.meta`. When metadata exists, the main row is rendered as a toggle button that shows or hides a formatted JSON metadata panel based on `isExpanded`.
+ *
+ * @param entry - The log entry to render
+ * @param isExpanded - Whether the entry's metadata panel is currently expanded
+ * @param onToggle - Callback invoked when the user toggles the entry's expanded state
+ * @param resolveChannelName - Optional resolver to convert a channel identifier into a display name
+ * @returns The rendered React element for the log entry row
+ */
 function LogRow({
   entry,
   isExpanded,
   onToggle,
+  resolveChannelName,
 }: {
   entry: LogEntry;
   isExpanded: boolean;
   onToggle: () => void;
+  resolveChannelName?: (channelId: string | null | undefined) => string | null;
 }) {
   const level = LEVEL_STYLES[entry.level];
   const time = new Date(entry.timestamp).toLocaleTimeString('en-US', {
@@ -66,33 +85,44 @@ function LogRow({
   });
 
   const hasMeta = entry.meta && Object.keys(entry.meta).length > 0;
+  const channelId = getEntryChannelId(entry);
+  const channelName = resolveChannelName?.(channelId) ?? null;
 
   const rowClassName = cn(
-    'group border-b border-border/60 px-3 py-1.5 font-mono text-xs transition-colors',
+    'group border-b border-border/5 px-4 py-1.5 font-mono text-[11px] transition-colors',
     level.row,
   );
 
-  /** Shared main-row content rendered in both branches */
   const mainRow = (
-    <div className="flex items-start gap-2 min-w-0">
-      {/* Timestamp */}
-      <span className="shrink-0 text-muted-foreground/90 select-none">{time}</span>
-
-      {/* Level badge */}
-      <span className={cn('shrink-0 min-w-[3rem] select-none', level.badge)}>{level.label}</span>
-
-      {/* Module */}
+    <div className="flex items-start gap-3 min-w-0">
+      <span className="shrink-0 text-muted-foreground/30 select-none tabular-nums">{time}</span>
+      <span
+        className={cn(
+          'shrink-0 min-w-[2.5rem] select-none text-[10px] tracking-tight',
+          level.badge,
+        )}
+      >
+        {level.label}
+      </span>
       {entry.module && (
-        <span className="shrink-0 text-secondary max-w-[120px] truncate">[{entry.module}]</span>
+        <span className="shrink-0 text-secondary/60 max-w-[100px] truncate text-[10px] font-bold uppercase tracking-wider">
+          [{entry.module}]
+        </span>
       )}
-
-      {/* Message */}
-      <span className="text-foreground break-words min-w-0">{entry.message}</span>
-
-      {/* Expand indicator */}
+      {channelId && (
+        <Badge
+          variant="outline"
+          className="h-5 shrink-0 rounded-md border-border/70 bg-background/60 px-1.5 font-mono text-[10px]"
+        >
+          #{channelName ?? channelId}
+        </Badge>
+      )}
+      <span className="text-foreground/80 break-words min-w-0 leading-relaxed">
+        {entry.message}
+      </span>
       {hasMeta && (
-        <span className="ml-auto shrink-0 text-muted-foreground select-none">
-          {isExpanded ? '▲' : '▼'}
+        <span className="ml-auto shrink-0 text-muted-foreground/20 select-none text-[9px] group-hover:text-muted-foreground/40 transition-colors">
+          {isExpanded ? 'CLOSE' : 'META'}
         </span>
       )}
     </div>
@@ -100,20 +130,20 @@ function LogRow({
 
   if (hasMeta) {
     return (
-      <div className={cn('border-b border-border/60', level.row)}>
+      <div
+        className={cn('border-b border-border/5', isExpanded ? 'bg-white/[0.02]' : '', level.row)}
+      >
         <button
           type="button"
-          className="group w-full cursor-pointer px-3 py-1 font-mono text-xs text-left transition-colors"
+          className="group w-full cursor-pointer px-4 py-1.5 font-mono text-[11px] text-left transition-colors"
           aria-expanded={isExpanded}
           onClick={onToggle}
         >
           {mainRow}
         </button>
-
-        {/* Expanded metadata — outside the button so text is selectable */}
         {isExpanded && (
-          <div className="mt-1 ml-14 rounded border border-border/60 bg-muted/40 p-2 text-muted-foreground">
-            <pre className="whitespace-pre-wrap break-words text-[11px]">
+          <div className="mx-4 mb-3 mt-1 rounded-[14px] border border-border/20 bg-black/20 p-4 text-muted-foreground/70">
+            <pre className="whitespace-pre-wrap break-words text-[10px] leading-relaxed font-mono">
               {JSON.stringify(entry.meta, null, 2)}
             </pre>
           </div>
@@ -131,28 +161,31 @@ interface LogViewerProps {
   logs: LogEntry[];
   status: ConnectionStatus;
   onClear: () => void;
+  resolveChannelName?: (channelId: string | null | undefined) => string | null;
 }
 
 /**
- * Terminal-style log display with auto-scroll, pause, and metadata expansion.
+ * Render a terminal-style log viewer with auto-scroll, pause/resume, clear, and optional metadata expansion.
  *
- * Renders up to 1000 log entries (enforced by the hook). Uses JetBrains Mono
- * for that authentic terminal vibe.
+ * The viewer shows connection status, an entry count, controls to pause/resume auto-scrolling and clear logs,
+ * and a scrollable list of log rows that can expand to reveal JSON metadata. Auto-scrolling is disabled when
+ * paused or when the user has scrolled away from the bottom.
+ *
+ * @param resolveChannelName - Optional function that maps a channel identifier (from a log entry's metadata)
+ *                             to a human-friendly display name; may return `null` to indicate no replacement.
  */
-export function LogViewer({ logs, status, onClear }: LogViewerProps) {
+export function LogViewer({ logs, status, onClear, resolveChannelName }: LogViewerProps) {
   const [paused, setPaused] = useState(false);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const containerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const userScrolledRef = useRef(false);
 
-  // Auto-scroll to bottom when new logs arrive (unless paused/user scrolled)
   useEffect(() => {
     if (!logs.length || paused || userScrolledRef.current) return;
     bottomRef.current?.scrollIntoView({ behavior: 'instant' });
   }, [logs, paused]);
 
-  // Detect manual scroll to pause auto-scroll
   const handleScroll = useCallback(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -164,7 +197,6 @@ export function LogViewer({ logs, status, onClear }: LogViewerProps) {
     setPaused((p) => {
       const next = !p;
       if (!next) {
-        // Resume — scroll to bottom
         userScrolledRef.current = false;
         requestAnimationFrame(() => {
           bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -177,70 +209,77 @@ export function LogViewer({ logs, status, onClear }: LogViewerProps) {
   const toggleExpand = useCallback((id: string) => {
     setExpandedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   }, []);
 
   return (
-    <div className="flex h-full min-h-[18rem] flex-col overflow-hidden rounded-xl border border-border/70 bg-background/75">
+    <div className="flex h-full flex-col overflow-hidden rounded-[20px] border border-border/20 bg-background/40 backdrop-blur-md">
       {/* Toolbar */}
-      <div className="flex items-center justify-between border-b border-border/70 bg-muted/35 px-3 py-2">
-        <StatusIndicator status={status} />
+      <div className="flex items-center justify-between border-b border-border/10 bg-white/[0.03] px-4 py-2.5">
+        <div className="flex items-center gap-4">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40">
+            {logs.length} active entries
+          </span>
+        </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">{logs.length} entries</span>
           <Button
             size="sm"
-            variant="outline"
+            variant="ghost"
             className={cn(
-              'h-7 rounded-md border-border/80 px-2 text-xs',
-              paused && 'border-amber-500/70 text-amber-500 hover:bg-amber-500/10',
+              'h-7 rounded-lg text-[10px] font-bold uppercase tracking-wider',
+              paused
+                ? 'bg-amber-500/10 text-amber-500 hover:bg-amber-500/20'
+                : 'text-muted-foreground/60 hover:bg-white/5 hover:text-foreground',
             )}
             onClick={togglePause}
           >
-            {paused ? '▶ Resume' : '⏸ Pause'}
+            {paused ? 'Resume Stream' : 'Pause Stream'}
           </Button>
           <Button
             size="sm"
-            variant="outline"
-            className="h-7 rounded-md border-border/80 px-2 text-xs"
+            variant="ghost"
+            className="h-7 rounded-lg text-[10px] font-bold uppercase tracking-wider text-muted-foreground/40 hover:bg-red-500/10 hover:text-red-500"
             onClick={onClear}
           >
-            Clear
+            Clear Terminal
           </Button>
         </div>
       </div>
 
-      {/* Log list */}
       <div
         ref={containerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto"
+        className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10"
         style={{ fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace" }}
       >
         {logs.length === 0 ? (
-          <div className="flex h-32 items-center justify-center text-xs text-muted-foreground">
-            {status === 'connected'
-              ? 'Waiting for logs…'
-              : status === 'reconnecting'
-                ? 'Connecting to log stream…'
-                : 'Not connected'}
+          <div className="flex h-48 flex-col items-center justify-center gap-3 text-center">
+            <div className="h-6 w-6 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+            <p className="text-[11px] font-medium text-muted-foreground/30 italic">
+              {status === 'connected'
+                ? 'Listening for bot log signals...'
+                : status === 'reconnecting'
+                  ? 'Re-establishing log frequency...'
+                  : 'Terminal interface offline'}
+            </p>
           </div>
         ) : (
-          logs.map((entry) => (
-            <LogRow
-              key={entry.id}
-              entry={entry}
-              isExpanded={expandedIds.has(entry.id)}
-              onToggle={() => toggleExpand(entry.id)}
-            />
-          ))
+          <div className="py-2">
+            {logs.map((entry) => (
+              <LogRow
+                key={entry.id}
+                entry={entry}
+                isExpanded={expandedIds.has(entry.id)}
+                onToggle={() => toggleExpand(entry.id)}
+                resolveChannelName={resolveChannelName}
+              />
+            ))}
+          </div>
         )}
-        <div ref={bottomRef} />
+        <div ref={bottomRef} className="h-4" />
       </div>
     </div>
   );
