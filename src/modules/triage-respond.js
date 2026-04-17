@@ -356,12 +356,10 @@ export async function buildStatsAndLog(
 
   const classifySeparator = resolved.classifyModel?.indexOf(':') ?? -1;
   const respondSeparator = resolved.respondModel?.indexOf(':') ?? -1;
-  const classifyProvider = classifySeparator > 0
-    ? resolved.classifyModel.slice(0, classifySeparator)
-    : 'anthropic';
-  const respondProvider = respondSeparator > 0
-    ? resolved.respondModel.slice(0, respondSeparator)
-    : 'anthropic';
+  const classifyProvider =
+    classifySeparator > 0 ? resolved.classifyModel.slice(0, classifySeparator) : 'anthropic';
+  const respondProvider =
+    respondSeparator > 0 ? resolved.respondModel.slice(0, respondSeparator) : 'anthropic';
 
   const stats = {
     classify: extractStats(classifyMessage, resolved.classifyModel, classifyProvider),

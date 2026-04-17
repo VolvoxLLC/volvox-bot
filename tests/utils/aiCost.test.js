@@ -21,7 +21,7 @@ describe('pricingMap', () => {
   });
 
   it('should have all four price fields per model', () => {
-    for (const [key, entry] of _pricingMap) {
+    for (const entry of _pricingMap.values()) {
       expect(entry).toHaveProperty('input');
       expect(entry).toHaveProperty('output');
       expect(entry).toHaveProperty('cacheRead');

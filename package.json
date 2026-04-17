@@ -56,8 +56,7 @@
       "langsmith": "0.5.20",
       "undici": "7.25.0",
       "picomatch": "4.0.4",
-      "path-to-regexp": "8.4.0",
-      "brace-expansion": "1.1.13"
+      "path-to-regexp": "8.4.0"
     }
   },
   "engines": {
