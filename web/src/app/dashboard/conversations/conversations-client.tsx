@@ -52,6 +52,18 @@ function formatDuration(first: string, last: string): string {
 
 const PAGE_SIZE = 25;
 
+/**
+ * Renders the Conversations client UI for a selected guild, including filters, stats, results table, and pagination.
+ *
+ * Displays an empty prompt when no guild is selected. When a guild is selected the component:
+ * - loads and shows text channels for channel filtering,
+ * - fetches and displays paginated conversations with debounced search and channel filters,
+ * - shows loading skeletons, error banner, or empty states as appropriate,
+ * - navigates to a conversation detail on row click,
+ * - redirects to `/login` if the conversation fetch reports `'unauthorized'`.
+ *
+ * @returns The Conversations client UI as a JSX element.
+ */
 export default function ConversationsClient() {
   const router = useRouter();
   const {

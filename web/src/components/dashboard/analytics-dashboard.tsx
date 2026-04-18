@@ -274,6 +274,17 @@ function LiveActivityFeed() {
   );
 }
 
+/**
+ * Render the analytics dashboard UI showing workspace metrics, charts, and interactive filters.
+ *
+ * Renders KPI cards with optional comparison deltas, realtime metrics and activity feed, message
+ * volume and AI cost charts, top channels and command telemetry tables, community engagement and
+ * XP economy summaries, an activity heatmap, and CSV export functionality. Handles loading,
+ * empty, and error states based on analytics data and exposes channel filtering and refresh actions
+ * via hooks.
+ *
+ * @returns A React element representing the complete analytics dashboard interface
+ */
 export function AnalyticsDashboard() {
   const chart = useChartTheme();
   const { analytics, loading, error, compareMode, channelFilter, setChannelFilter, refresh } =

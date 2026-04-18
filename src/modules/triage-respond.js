@@ -20,17 +20,14 @@ const CONTEXT_MESSAGE_CHAR_LIMIT = 500;
 // ── History helpers ──────────────────────────────────────────────────────────
 
 /**
- * Log an assistant message (or multiple messages when safeSend splits into an array)
- * to conversation history.
+ * Record one or more assistant messages into conversation history.
  *
- * `safeSend` can return either a single Message object or an array of Message objects
- * when the content was split across multiple Discord messages. Both cases are handled
- * here so history is never silently dropped.
+ * For each sent Discord message with a valid `id`, adds an "assistant" entry using the message content (or `fallbackContent` when empty) and the message's author id. Handles either a single Message, an array of Messages, or `null`; entries without an `id` are ignored.
  *
  * @param {string} channelId - The channel the message was sent in.
- * @param {string|null} guildId - The guild ID, or null for DMs.
- * @param {string} fallbackContent - Text to use when the sent message has no `.content`.
- * @param {import('discord.js').Message|import('discord.js').Message[]|null} sentMsg - Return value of safeSend.
+ * @param {string|null} guildId - The guild ID, or `null` for DMs.
+ * @param {string} fallbackContent - Text to use when a sent message has no `.content`.
+ * @param {import('discord.js').Message|import('discord.js').Message[]|null} sentMsg - The result from `safeSend`: a Message, an array of Messages, or `null`.
  */
 function logAssistantHistory(channelId, guildId, fallbackContent, sentMsg) {
   const sentMessages = Array.isArray(sentMsg) ? sentMsg : [sentMsg];

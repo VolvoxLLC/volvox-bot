@@ -107,10 +107,11 @@ export async function PATCH(
 }
 
 /**
- * Handles PUT requests to update multiple guild configuration values in bulk.
+ * Update multiple guild configuration entries in bulk via the upstream bot API.
  *
- * @param request - The incoming NextRequest containing the JSON array of patches.
- * @param params - Route parameters object; must provide `guildId`.
+ * @param request - Incoming request containing a JSON array of patch objects.
+ * @param params - Route params; must include `guildId` identifying the target guild.
+ * @returns A NextResponse representing the proxied upstream response on success, or a NextResponse containing a JSON error and appropriate HTTP status on failure.
  */
 export async function PUT(
   request: NextRequest,

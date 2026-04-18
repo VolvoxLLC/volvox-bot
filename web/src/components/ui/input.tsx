@@ -2,6 +2,14 @@ import type * as React from 'react';
 
 import { cn } from '@/lib/utils';
 
+/**
+ * Input element that automatically selects its contents when focused and accepts all standard input props.
+ *
+ * @param className - Additional CSS classes applied to the input
+ * @param type - Input `type` attribute (e.g., "text", "email")
+ * @param onFocus - Optional focus event handler that is called after the input's contents are selected
+ * @returns The rendered input element
+ */
 function Input({ className, type, onFocus, ...props }: React.ComponentProps<'input'>) {
   return (
     <input

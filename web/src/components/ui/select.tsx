@@ -44,6 +44,17 @@ function SelectTrigger({
   );
 }
 
+/**
+ * Renders the dropdown content for the Select control inside a portal.
+ *
+ * The component provides a scrollable viewport with top/bottom scroll buttons, accepts alignment and positioning options, and forwards other Content props to Radix's SelectPrimitive.Content.
+ *
+ * @param className - Additional CSS class names to apply to the content container
+ * @param children - Elements rendered inside the content viewport
+ * @param position - Placement mode for the content; default is `'item-aligned'`. When set to `'popper'`, the component adjusts translation offsets for popper-style positioning.
+ * @param align - Alignment of the content relative to the trigger; default is `'center'`
+ * @returns The rendered dropdown content element
+ */
 function SelectContent({
   className,
   children,

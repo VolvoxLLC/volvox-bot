@@ -55,6 +55,13 @@ const DYNAMIC_VARIABLE_DEFINITIONS = [
   },
 ] as const;
 
+/**
+ * Renders the Onboarding & Growth configuration category UI that allows editing multiple feature sections based on the active tab.
+ *
+ * Displays controls for Welcome, Engagement, Reputation, TL;DR & AFK, and Challenges features; reads from and updates the editable draft configuration from context, and disables inputs while saving.
+ *
+ * @returns The configuration UI element for the selected onboarding/growth feature, or `null` if no draft configuration or active tab is available.
+ */
 export function OnboardingGrowthCategory() {
   const { draftConfig, saving, guildId, updateDraftConfig, activeTabId } = useConfigContext();
 

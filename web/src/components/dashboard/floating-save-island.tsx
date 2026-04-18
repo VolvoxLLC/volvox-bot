@@ -1,13 +1,14 @@
 'use client';
+import { useState, useEffect } from 'react';
 import { Loader2, RotateCcw, Save, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
 import { useConfigContext } from '@/components/dashboard/config-context';
 import { cn } from '@/lib/utils';
 import { DiscardChangesButton } from './reset-defaults-button';
 
 /**
- * Floating save island — appears at the bottom of the viewport when
- * there are unsaved config changes. Provides Save, Discard, and Undo.
+ * Render a bottom "save island" UI that appears when there are unsaved configuration changes or immediately after a save.
+ *
+ * Shows a status indicator plus action buttons for Save, Discard, and Undo. The control reflects validation and saving state (disables Save when validation errors exist or while saving, and shows a saving indicator). The island can be dismissed; once dismissed it remains hidden until new changes are made.
  */
 export function FloatingSaveIsland() {
   const {

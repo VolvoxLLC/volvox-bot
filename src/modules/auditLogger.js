@@ -40,14 +40,13 @@ import { info, error as logError, warn } from '../logger.js';
  */
 
 /**
- * Insert an audit log event into the database.
+ * Record an audit event in the `audit_logs` table.
  *
- * Non-blocking by design: if the DB is unavailable or the insert fails, the
- * error is logged at WARN level but **never rethrown**. This ensures audit
- * logging never interrupts the primary request flow.
+ * If the DB pool is unavailable, required fields are missing, or insertion fails,
+ * the function logs the condition and returns without throwing, ensuring callers are not interrupted.
  *
- * @param {import('pg').Pool|null} pool - Database connection pool (may be null — graceful skip)
- * @param {AuditEventOptions} event     - Audit event fields
+ * @param {import('pg').Pool|null} pool - Database connection pool; if null or falsy the event is skipped.
+ * @param {AuditEventOptions} event - Audit event data (must include `guildId`, `userId`, and `action`).
  * @returns {Promise<void>}
  */
 export async function logAuditEvent(pool, event) {
@@ -59,8 +58,17 @@ export async function logAuditEvent(pool, event) {
     return;
   }
 
-  const { guildId, userId, userTag, action, targetType, targetId, targetTag, details, ipAddress } =
-    event ?? {};
+  const {
+    guildId,
+    userId,
+    userTag,
+    action,
+    targetType,
+    targetId,
+    targetTag,
+    details,
+    ipAddress,
+  } = event ?? {};
 
   if (!guildId || !userId || !action) {
     warn('auditLogger: missing required fields (guildId, userId, action), skipping', {

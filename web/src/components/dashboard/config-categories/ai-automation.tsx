@@ -13,7 +13,13 @@ import { ToggleSwitch } from '../toggle-switch';
 import { ConfigCategoryLayout } from './config-category-layout';
 
 /**
- * AI & Automation category — managing chat, automod, triage, and memory.
+ * Render the AI & Automation configuration UI for the chat, automod, triage, and memory feature tabs.
+ *
+ * Renders controls and panels appropriate to the currently active feature tab and wires updates into
+ * the shared draft configuration via the config context. Returns `null` when the draft configuration
+ * or the active tab is not available.
+ *
+ * @returns The component's rendered JSX element, or `null` when configuration or the active feature is unavailable.
  */
 export function AiAutomationCategory() {
   const { draftConfig, saving, guildId, updateDraftConfig, activeTabId } = useConfigContext();

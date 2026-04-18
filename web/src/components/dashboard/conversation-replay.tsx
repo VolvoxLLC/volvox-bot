@@ -68,6 +68,21 @@ function shouldShowTimestamp(current: string, previous: string | null): boolean 
   return diff > 5 * 60 * 1000;
 }
 
+/**
+ * Renders a read-only replay of a conversation with timestamps, participant avatars, mention resolution, and AI response flagging UI.
+ *
+ * Renders messages with compact stats (channel, duration, token estimate, message count), resolves Discord-style mentions (`<@123>` / `<@!123>`) to usernames using `mentionMap` (fallbacks to participants observed in `messages`), displays avatars when available, and provides a dialog to flag assistant responses which sends a POST to the guild conversation flag endpoint and calls `onFlagSubmitted` on success.
+ *
+ * @param props.messages - Ordered list of conversation messages to display.
+ * @param props.channelId - Channel identifier used when `channelName` is not provided.
+ * @param props.channelName - Optional human-readable channel name.
+ * @param props.duration - Conversation duration in seconds used for the stats strip.
+ * @param props.tokenEstimate - Estimated token count shown in the stats strip.
+ * @param props.mentionMap - Optional mapping of userId → username used when resolving mention tokens.
+ * @param props.guildId - Guild identifier required for submitting flag requests.
+ * @param props.onFlagSubmitted - Optional callback invoked after a successful flag submission.
+ * @returns The conversation replay React element.
+ */
 export function ConversationReplay({
   messages,
   channelId,
