@@ -243,6 +243,7 @@ function LoginForm() {
                     />
                   ))}
                   {[...features, ...features].map((f, i) => (
+                    // biome-ignore lint/suspicious/noArrayIndexKey: compound key with label
                     <FeatureItem
                       key={`marquee-clone-${f.label}-${i}`}
                       icon={f.icon}

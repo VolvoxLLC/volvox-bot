@@ -199,6 +199,7 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
           )}
           {hasRealData &&
             points.map((p, i) => (
+              // biome-ignore lint/a11y/noStaticElementInteractions: SVG hit targets for chart hover
               <rect
                 key={`hit-${p.x}-${p.y}`}
                 x={p.x - 220 / points.length / 2}
@@ -242,6 +243,7 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
           suppressHydrationWarning
         >
           {dayLabels.map((label, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: compound key with label
             <span key={`day-${label}-${i}`}>{label}</span>
           ))}
         </div>

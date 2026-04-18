@@ -231,8 +231,9 @@ export function ConversationReplay({
                     )}
                   >
                     {hasAvatar ? (
+                      // biome-ignore lint/performance/noImgElement: dynamic Discord avatars with fallback
                       <img
-                        src={msg.avatarUrl}
+                        src={msg.avatarUrl ?? ''}
                         alt={msg.username}
                         className="h-full w-full object-cover"
                         onError={() => {
