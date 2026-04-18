@@ -487,14 +487,12 @@ function getChangedLeafEvents(beforeConfig, afterConfig, scopePath) {
 }
 
 /**
- * Update a configuration entry addressed by a dot-notation path (e.g., "ai.model") for a guild or global defaults.
- *
- * The provided value is parsed/coerced (e.g., "true"/"null"/JSON strings) before being applied. The change is
- * persisted to the database when available and applied to the in-memory cache; listeners for the exact path are emitted.
- * @param {string} path - Dot-notation path with at least a top-level section and a key (e.g., "ai.model").
- * @param {*} value - Value to store; string inputs are parsed according to config parsing rules.
- * @param {string} [guildId='global'] - Guild ID to target, or `'global'` to modify global defaults.
- * @returns {Promise<Object>} The updated section object from the in-memory cache.
+ * Set a config value using dot notation (e.g., "ai.model" or "welcome.enabled")
+ * Persists to database and updates in-memory cache
+ * @param {string} path - Dot-notation path (e.g., "ai.model")
+ * @param {*} value - Value to set (automatically parsed from string)
+ * @param {string} [guildId='global'] - Guild ID, or 'global' for global defaults
+ * @returns {Promise<Object>} Updated section config
  */
 export async function setConfigValue(path, value, guildId = 'global') {
   const parts = path.split('.');
@@ -609,10 +607,10 @@ export async function setConfigValue(path, value, guildId = 'global') {
 }
 
 /**
- * Apply multiple dot-notation configuration patches as a single bulk update.
- * @param {Array<{path: string, value: any}>} patches - Non-empty array of patches; each must include a dot-separated `path` with at least a section and key (e.g., "ai.model") and a `value`. Paths containing dangerous segments are rejected.
- * @param {string} [guildId='global'] - Target guild ID, or `'global'` to update global defaults.
- * @returns {Promise<void>} Resolves when all patches have been applied in-memory and persisted to the database if a DB pool is available.
+ * Update multiple configuration values atomically.
+ * @param {Array<{path: string, value: any}>} patches - Array of patches
+ * @param {string} [guildId='global'] - Guild ID to update, or 'global'
+ * @returns {Promise<void>}
  */
 export async function setMultipleConfigValues(patches, guildId = 'global') {
   if (!Array.isArray(patches) || patches.length === 0) return;
@@ -645,65 +643,76 @@ export async function setMultipleConfigValues(patches, guildId = 'global') {
   try {
     pool = getPool();
   } catch {
-    logWarn('Database not initialized for bulk config write — updating in-memory only');
+    throw new Error('Database unavailable for bulk config write');
   }
 
-  if (pool) {
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
+  if (!pool) {
+    throw new Error('Database unavailable for bulk config write');
+  }
 
-      const sectionList = Array.from(sectionsToUpdate).sort();
-      
-      for (const section of sectionList) {
-        const guildConfig = configCache.get(guildId) || {};
-        const sectionClone = structuredClone(guildConfig[section] || {});
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
 
-        const { rows } = await client.query(
-          'SELECT value FROM config WHERE guild_id = $1 AND key = $2 FOR UPDATE',
-          [guildId, section],
+    const sectionList = Array.from(sectionsToUpdate).sort();
+
+    for (const section of sectionList) {
+      const guildConfig = configCache.get(guildId) || {};
+      const sectionClone = structuredClone(guildConfig[section] || {});
+
+      const { rows } = await client.query(
+        'SELECT value FROM config WHERE guild_id = $1 AND key = $2 FOR UPDATE',
+        [guildId, section],
+      );
+
+      const dbSection = rows.length > 0 ? rows[0].value : sectionClone;
+
+      for (const patch of patchesBySection.get(section)) {
+        const parts = patch.path.split('.');
+        const nestedParts = parts.slice(1);
+        const parsedVal = parseValue(patch.value);
+        // API callers validate patch.path via validateConfigPatchBody, which gates
+        // the top-level key against SAFE_CONFIG_KEYS before any property write.
+        setNestedValue(dbSection, nestedParts, parsedVal);
+      }
+
+      if (rows.length > 0) {
+        await client.query(
+          'UPDATE config SET value = $1, updated_at = NOW() WHERE guild_id = $2 AND key = $3',
+          [JSON.stringify(dbSection), guildId, section],
         );
-
-        let dbSection = rows.length > 0 ? rows[0].value : sectionClone;
-
-        for (const patch of patchesBySection.get(section)) {
-          const parts = patch.path.split('.');
-          const nestedParts = parts.slice(1);
-          const parsedVal = parseValue(patch.value);
-          setNestedValue(dbSection, nestedParts, parsedVal);
-        }
-
-        if (rows.length > 0) {
-          await client.query(
-            'UPDATE config SET value = $1, updated_at = NOW() WHERE guild_id = $2 AND key = $3',
-            [JSON.stringify(dbSection), guildId, section],
-          );
-        } else {
-          await client.query(
-            'INSERT INTO config (guild_id, key, value) VALUES ($1, $2, $3) ON CONFLICT (guild_id, key) DO UPDATE SET value = $3, updated_at = NOW()',
-            [guildId, section, JSON.stringify(dbSection)],
-          );
-        }
+      } else {
+        await client.query(
+          'INSERT INTO config (guild_id, key, value) VALUES ($1, $2, $3) ON CONFLICT (guild_id, key) DO UPDATE SET value = $3, updated_at = NOW()',
+          [guildId, section, JSON.stringify(dbSection)],
+        );
       }
-
-      await client.query('COMMIT');
-      dbPersisted = true;
-    } catch (txErr) {
-      try {
-        await client.query('ROLLBACK');
-      } catch {
-        /* ignore rollback failure */
-      }
-      throw txErr;
-    } finally {
-      client.release();
     }
+
+    await client.query('COMMIT');
+    dbPersisted = true;
+  } catch (txErr) {
+    try {
+      await client.query('ROLLBACK');
+    } catch {
+      /* ignore rollback failure */
+    }
+    throw txErr;
+  } finally {
+    client.release();
   }
 
   if (!configCache.has(guildId)) {
     configCache.set(guildId, {});
   }
   const cacheEntry = configCache.get(guildId);
+
+  if (guildId === 'global') {
+    mergedConfigCache.clear();
+    globalConfigGeneration++;
+  } else {
+    mergedConfigCache.delete(guildId);
+  }
 
   for (const patch of patches) {
     const parts = patch.path.split('.');
@@ -712,23 +721,29 @@ export async function setMultipleConfigValues(patches, guildId = 'global') {
     const parsedVal = parseValue(patch.value);
 
     const rawOld = getNestedValue(cacheEntry[section], nestedParts);
-    const oldValue = rawOld !== null && typeof rawOld === 'object' ? structuredClone(rawOld) : rawOld;
+    const oldValue =
+      rawOld !== null && typeof rawOld === 'object' ? structuredClone(rawOld) : rawOld;
 
-    if (!cacheEntry[section] || typeof cacheEntry[section] !== 'object' || Array.isArray(cacheEntry[section])) {
+    if (
+      !cacheEntry[section] ||
+      typeof cacheEntry[section] !== 'object' ||
+      Array.isArray(cacheEntry[section])
+    ) {
       cacheEntry[section] = {};
     }
+    // API callers validate patch.path via validateConfigPatchBody, which gates
+    // the top-level key against SAFE_CONFIG_KEYS before any property write.
     setNestedValue(cacheEntry[section], nestedParts, parsedVal);
 
-    info('Config updated (bulk)', { path: patch.path, value: parsedVal, guildId, persisted: dbPersisted });
+    info('Config updated (bulk)', {
+      path: patch.path,
+      value: parsedVal,
+      guildId,
+      persisted: dbPersisted,
+    });
     await emitConfigChangeEvents(patch.path, parsedVal, oldValue, guildId);
   }
 
-  if (guildId === 'global') {
-    mergedConfigCache.clear();
-    globalConfigGeneration++;
-  } else {
-    mergedConfigCache.delete(guildId);
-  }
 }
 
 /**

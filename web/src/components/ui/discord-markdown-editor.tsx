@@ -421,7 +421,9 @@ export function DiscordMarkdownEditor({
             disabled={disabled}
             className={cn(
               EDITOR_PANE_CONTENT_CLASSES,
-              'resize-none bg-transparent font-mono [field-sizing:content] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 scrollbar-thin scrollbar-thumb-border/20 scrollbar-track-transparent',
+              'resize-none bg-transparent font-mono [field-sizing:content] focus:outline-none',
+              'disabled:cursor-not-allowed disabled:opacity-50',
+              'scrollbar-thin scrollbar-thumb-border/20 scrollbar-track-transparent',
             )}
             aria-label="Markdown editor"
           />
@@ -432,7 +434,8 @@ export function DiscordMarkdownEditor({
             className={cn(
               EDITOR_PANE_CONTENT_CLASSES,
               'discord-preview relative -top-[3px] max-w-none',
-              'font-mono md:overflow-x-auto md:overflow-y-hidden md:whitespace-nowrap',
+              'font-mono',
+              'md:overflow-x-auto md:overflow-y-hidden md:whitespace-nowrap',
             )}
           >
             {previewContent}

@@ -301,7 +301,7 @@ export default function ConversationsClient() {
                           <div className="flex -space-x-1">
                             {convo.participants.slice(0, 3).map((p) => (
                               <div
-                                key={p.username}
+                                key={`${p.userId ?? 'unknown'}-${p.username}`}
                                 className="group relative"
                                 title={`${p.username} (${p.role})`}
                               >

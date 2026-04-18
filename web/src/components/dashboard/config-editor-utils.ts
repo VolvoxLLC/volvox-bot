@@ -4,8 +4,15 @@ import type { BotConfig, DeepPartial } from '@/types/config';
 export type GuildConfig = DeepPartial<BotConfig>;
 
 /** Shared input styling for text inputs and textareas in the config editor. */
-export const inputClasses =
-  'w-full rounded-xl border border-border bg-muted/20 dark:bg-black/40 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/30 transition-all duration-300 shadow-inner dark:shadow-[inset_0_2px_4px_rgba(0,0,0,0.4),0_1px_1px_rgba(255,255,255,0.05)] disabled:cursor-not-allowed disabled:opacity-50 scrollbar-thin scrollbar-thumb-border/20 scrollbar-track-transparent';
+export const inputClasses = [
+  'w-full rounded-xl border border-border bg-muted/20 px-3 py-2 text-sm',
+  'ring-offset-background placeholder:text-muted-foreground/50',
+  'transition-all duration-300 focus-visible:border-primary/30 focus-visible:outline-none',
+  'focus-visible:ring-1 focus-visible:ring-primary/30',
+  'disabled:cursor-not-allowed disabled:opacity-50',
+  'scrollbar-thin scrollbar-thumb-border/20 scrollbar-track-transparent',
+  'dark:bg-black/40 dark:shadow-[inset_0_2px_4px_rgba(0,0,0,0.4),0_1px_1px_rgba(255,255,255,0.05)]',
+].join(' ');
 
 /**
  * Generate a UUID with fallback for environments without crypto.randomUUID.

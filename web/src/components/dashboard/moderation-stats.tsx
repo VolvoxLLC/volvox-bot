@@ -172,14 +172,14 @@ export function ModerationStats({ stats, loading, error }: ModerationStatsProps)
                 ))}
               </div>
             ) : !stats?.topTargets?.length ? (
-              <p className="text-sm text-muted-foreground">No repeat offenders. 🎉</p>
-            ) : (
-              <ul className="space-y-2">
-                {stats.topTargets.map(({ userId, tag, count }, index) => (
-                  <li key={`${userId}-${index}`} className="flex items-center justify-between text-sm">
-                    <span className="truncate text-muted-foreground font-mono text-xs">{tag}</span>
-                    <span className="ml-2 flex shrink-0 items-center gap-1 text-destructive font-semibold tabular-nums bg-destructive/10 px-2 py-0.5 rounded-full ring-1 ring-destructive/20">
-                      <Ban className="h-3 w-3" />
+                {stats.topTargets.map(({ userId, tag, count }) => (
+                  <li
+                    key={`${userId}-${tag ?? 'unknown'}`}
+                    className="flex items-center justify-between text-sm"
+                  >
+                    <span className="truncate text-muted-foreground font-mono text-xs">
+                      {tag ?? userId}
+                    </span>
                       {count}
                     </span>
                   </li>

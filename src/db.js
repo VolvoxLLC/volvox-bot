@@ -263,7 +263,7 @@ export async function initDb() {
       return Number.isNaN(val) || val < 0 ? defaultVal : val;
     };
 
-    const poolSize = Math.max(1, parsePositiveInt(process.env.PG_POOL_SIZE, 20));
+    const poolSize = Math.max(1, parsePositiveInt(process.env.PG_POOL_SIZE, 5));
     const idleTimeoutMs = parsePositiveInt(process.env.PG_IDLE_TIMEOUT_MS, 30000);
     const connectionTimeoutMs = parsePositiveInt(process.env.PG_CONNECTION_TIMEOUT_MS, 10000);
 

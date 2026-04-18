@@ -55,12 +55,38 @@ function actionVariant(action: string): 'default' | 'secondary' | 'destructive' 
  */
 function CopyButton({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
+  const resetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleCopy = (e: React.MouseEvent) => {
+  useEffect(() => {
+    return () => {
+      if (resetTimeoutRef.current) {
+        clearTimeout(resetTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    void navigator.clipboard.writeText(value);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+
+    if (!navigator.clipboard?.writeText) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+
+      if (resetTimeoutRef.current) {
+        clearTimeout(resetTimeoutRef.current);
+      }
+
+      resetTimeoutRef.current = setTimeout(() => {
+        setCopied(false);
+        resetTimeoutRef.current = null;
+      }, 2000);
+    } catch {
+      setCopied(false);
+    }
   };
 
   return (

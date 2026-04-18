@@ -189,11 +189,15 @@ export async function executeModAction(interaction, opts) {
       ...extraCaseData,
     });
 
-    // Send mod log
-    await sendModLogEmbed(interaction.client, config, caseData);
-
     // Audit log
-    await logAuditEvent(getPool(), {
+    let pool;
+    try {
+      pool = getPool();
+    } catch {
+      pool = null;
+    }
+
+    await logAuditEvent(pool, {
       guildId: interaction.guild.id,
       userId: interaction.user.id,
       userTag: interaction.user.tag,
@@ -207,6 +211,9 @@ export async function executeModAction(interaction, opts) {
         ...extraCaseData,
       },
     });
+
+    // Send mod log
+    await sendModLogEmbed(interaction.client, config, caseData);
 
     // Post-case hook
     if (afterCase) {

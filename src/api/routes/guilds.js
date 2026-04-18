@@ -1002,11 +1002,21 @@ router.put('/:id/config', requireGuildAdmin, validateGuild, async (req, res) => 
     if (isGlobalBotStatusWrite && req.authMethod === 'oauth' && !isOAuthBotOwner(req.user)) {
       return res.status(403).json({ error: 'Only bot owners can update global bot status' });
     }
-    validatedPatches.push(patch);
+    validatedPatches.push(result);
   }
 
   try {
-    await setMultipleConfigValues(validatedPatches, req.params.id);
+    const globalPatches = validatedPatches.filter((patch) => patch.topLevelKey === 'botStatus');
+    const guildPatches = validatedPatches.filter((patch) => patch.topLevelKey !== 'botStatus');
+
+    if (globalPatches.length > 0) {
+      await setMultipleConfigValues(globalPatches);
+    }
+
+    if (guildPatches.length > 0) {
+      await setMultipleConfigValues(guildPatches, req.params.id);
+    }
+
     const effectiveConfig = getConfig(req.params.id);
 
     info('Bulk config updated via API', {

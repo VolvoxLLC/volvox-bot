@@ -3,7 +3,6 @@ exports.up = (pgm) => {
   pgm.addColumn('conversations', {
     user_id: { type: 'TEXT' },
   });
-  pgm.createIndex('conversations', 'user_id');
 };
 
 exports.down = (pgm) => {

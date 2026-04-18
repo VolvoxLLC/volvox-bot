@@ -473,7 +473,15 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     [savedConfig],
   );
 
-  // ── Execute save (batched PATCH per section) ───────────────────
+  /**
+   * Persist the current draft as one bulk config update.
+   *
+   * This intentionally uses a single PUT with the full patch list instead of the
+   * previous per-section save flow. The backend validates and applies the batch as
+   * one unit so related settings stay in sync, and any invalid patch causes the
+   * entire request to fail rather than leaving the dashboard in a partially-saved
+   * state.
+   */
   const executeSave = useCallback(async () => {
     if (!guildId || !savedConfig || !draftConfig) return;
 

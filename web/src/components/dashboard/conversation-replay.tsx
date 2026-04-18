@@ -1,7 +1,7 @@
 'use client';
 
 import { AlertTriangle, Clock, ExternalLink, Flag, Hash, Zap } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -99,6 +99,7 @@ export function ConversationReplay({
   const [flagNotes, setFlagNotes] = useState('');
   const [flagSubmitting, setFlagSubmitting] = useState(false);
   const [flagError, setFlagError] = useState<string | null>(null);
+  const [brokenAvatarMessageIds, setBrokenAvatarMessageIds] = useState<Set<number>>(new Set());
 
   const conversationId = messages[0]?.id;
 
@@ -140,21 +141,26 @@ export function ConversationReplay({
     }
   }, [flagMessageId, flagReason, flagNotes, conversationId, guildId, onFlagSubmitted]);
 
-  // Map of userId -> username for resolving mentions
-  const participantMap = new Map<string, string>();
-  for (const msg of messages) {
-    if (msg.userId && msg.username) {
-      participantMap.set(msg.userId, msg.username);
-    }
-  }
+  const participantMap = useMemo(() => {
+    const map = new Map<string, string>();
 
-  const resolveMentions = (content: string) => {
-    // Matches <@123...> or <@!123...>
-    return content.replace(/<@!?(\d+)>/g, (match, userId) => {
-      const username = mentionMap?.[userId] || participantMap.get(userId);
-      return username ? `@${username}` : match;
-    });
-  };
+    for (const msg of messages) {
+      if (msg.userId && msg.username) {
+        map.set(msg.userId, msg.username);
+      }
+    }
+
+    return map;
+  }, [messages]);
+
+  const resolveMentions = useMemo(
+    () => (content: string) =>
+      content.replace(/<@!?(\d+)>/g, (match, userId) => {
+        const username = mentionMap?.[userId] || participantMap.get(userId);
+        return username ? `@${username}` : match;
+      }),
+    [mentionMap, participantMap],
+  );
 
   return (
     <div className="space-y-6">
@@ -193,6 +199,7 @@ export function ConversationReplay({
             const isFlagged = msg.flagStatus === 'open';
             const isUser = msg.role === 'user';
             const isSystem = msg.role === 'system';
+            const hasAvatar = Boolean(msg.avatarUrl) && !brokenAvatarMessageIds.has(msg.id);
 
             if (isSystem) {
               return (
@@ -223,11 +230,18 @@ export function ConversationReplay({
                         : 'bg-gradient-to-br from-muted-foreground/40 to-muted-foreground/20',
                     )}
                   >
-                    {msg.avatarUrl ? (
+                    {hasAvatar ? (
                       <img
                         src={msg.avatarUrl}
                         alt={msg.username}
                         className="h-full w-full object-cover"
+                        onError={() => {
+                          setBrokenAvatarMessageIds((prev) => {
+                            const next = new Set(prev);
+                            next.add(msg.id);
+                            return next;
+                          });
+                        }}
                       />
                     ) : (
                       (msg.username || msg.role).slice(0, 2).toUpperCase()

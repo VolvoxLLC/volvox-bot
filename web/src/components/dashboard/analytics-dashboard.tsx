@@ -671,6 +671,7 @@ export function AnalyticsDashboard() {
               size="sm"
               variant={channelFilter === null ? 'default' : 'ghost'}
               onClick={() => setChannelFilter(null)}
+              aria-pressed={channelFilter === null}
               className={cn(
                 'rounded-full px-5 transition-all duration-300 font-bold text-[11px] uppercase tracking-wider',
                 channelFilter === null
@@ -687,6 +688,7 @@ export function AnalyticsDashboard() {
                   key={channel.channelId}
                   size="sm"
                   variant={isActive ? 'default' : 'ghost'}
+                  aria-pressed={isActive}
                   className={cn(
                     'rounded-full px-5 transition-all duration-300 font-bold text-[11px] uppercase tracking-wider',
                     isActive

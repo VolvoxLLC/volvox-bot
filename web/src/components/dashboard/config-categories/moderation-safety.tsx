@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { type FocusEvent, useCallback } from 'react';
 import { useConfigContext } from '@/components/dashboard/config-context';
 import { inputClasses, parseNumberInput } from '@/components/dashboard/config-editor-utils';
 import { AuditLogSection } from '@/components/dashboard/config-sections/AuditLogSection';
@@ -24,6 +24,13 @@ export function ModerationSafetyCategory() {
   const { draftConfig, saving, guildId, updateDraftConfig, activeTabId } = useConfigContext();
 
   const activeTab = activeTabId;
+
+  const selectNumericValueOnFocus = useCallback((event: FocusEvent<HTMLInputElement>) => {
+    // Number inputs do not expose a better cross-browser text selection API than
+    // select(). Keep the current best-effort behavior without changing the control
+    // type, which still highlights the value in Chromium-based browsers.
+    event.currentTarget.select();
+  }, []);
 
   // Moderation state updates
   const updateModerationEnabled = useCallback(
@@ -319,7 +326,7 @@ export function ModerationSafetyCategory() {
                       const num = parseNumberInput(e.target.value, 1);
                       if (num !== undefined) updateRateLimitField('maxMessages', num);
                     }}
-                    onFocus={(e) => e.target.select()}
+                    onFocus={selectNumericValueOnFocus}
                     disabled={saving}
                     className={cn(inputClasses, 'text-center')}
                   />
@@ -340,7 +347,7 @@ export function ModerationSafetyCategory() {
                       const num = parseNumberInput(e.target.value, 1);
                       if (num !== undefined) updateRateLimitField('windowSeconds', num);
                     }}
-                    onFocus={(e) => e.target.select()}
+                    onFocus={selectNumericValueOnFocus}
                     disabled={saving}
                     className={cn(inputClasses, 'text-center')}
                   />
@@ -364,7 +371,7 @@ export function ModerationSafetyCategory() {
                       const num = parseNumberInput(e.target.value, 1);
                       if (num !== undefined) updateRateLimitField('muteAfterTriggers', num);
                     }}
-                    onFocus={(e) => e.target.select()}
+                    onFocus={selectNumericValueOnFocus}
                     disabled={saving}
                     className={cn(inputClasses, 'text-center')}
                   />
@@ -385,7 +392,7 @@ export function ModerationSafetyCategory() {
                       const num = parseNumberInput(e.target.value, 1);
                       if (num !== undefined) updateRateLimitField('muteWindowSeconds', num);
                     }}
-                    onFocus={(e) => e.target.select()}
+                    onFocus={selectNumericValueOnFocus}
                     disabled={saving}
                     className={cn(inputClasses, 'text-center')}
                   />
@@ -406,7 +413,7 @@ export function ModerationSafetyCategory() {
                       const num = parseNumberInput(e.target.value, 1);
                       if (num !== undefined) updateRateLimitField('muteDurationSeconds', num);
                     }}
-                    onFocus={(e) => e.target.select()}
+                    onFocus={selectNumericValueOnFocus}
                     disabled={saving}
                     className={cn(inputClasses, 'text-center')}
                   />
@@ -564,7 +571,7 @@ export function ModerationSafetyCategory() {
                     const num = parseNumberInput(e.target.value, 1);
                     if (num !== undefined) updateStarboardField('threshold', num);
                   }}
-                  onFocus={(e) => e.target.select()}
+                  onFocus={selectNumericValueOnFocus}
                   disabled={saving}
                   className={inputClasses}
                 />

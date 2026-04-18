@@ -1,5 +1,6 @@
 import pg from 'pg';
 import dotenv from 'dotenv';
+import { error as logError } from '../src/logger.js';
 dotenv.config();
 
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
@@ -14,7 +15,8 @@ async function check() {
     const res = await pool.query("SELECT id, action, target_id, target_tag FROM audit_logs ORDER BY created_at DESC LIMIT 5");
     console.log(JSON.stringify(res.rows, null, 2));
   } catch (err) {
-    console.error(err);
+    process.exitCode = 1;
+    logError('Failed to check audit tags', { error: err instanceof Error ? err.message : String(err) });
   } finally {
     await pool.end();
   }
