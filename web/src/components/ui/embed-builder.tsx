@@ -364,14 +364,16 @@ function PreviewImage({
   className: string;
 }) {
   return (
-    {/* biome-ignore lint/performance/noImgElement: Discord embed image component */}
-    <img
-      src={src}
-      alt={alt}
-      width={width}
-      height={height}
-      className={className}
-    />
+    <>
+      {/* biome-ignore lint/performance/noImgElement: Discord embed image component */}
+      <img
+        src={src}
+        alt={alt}
+        width={width}
+        height={height}
+        className={className}
+      />
+    </>
   );
 }
 

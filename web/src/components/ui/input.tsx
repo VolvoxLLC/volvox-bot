@@ -2,7 +2,7 @@ import type * as React from 'react';
 
 import { cn } from '@/lib/utils';
 
-const TEXT_SELECTABLE_INPUT_TYPES = new Set(['text', 'search', 'url', 'tel', 'password']);
+const SELECT_ALL_ON_FOCUS_TYPES = new Set(['number']);
 
 /**
  * Input element that automatically selects its contents when focused and accepts all standard input props.
@@ -18,7 +18,7 @@ function Input({ className, type, onFocus, ...props }: React.ComponentProps<'inp
       type={type}
       data-slot="input"
       onFocus={(e) => {
-        if (!type || TEXT_SELECTABLE_INPUT_TYPES.has(type)) {
+        if (SELECT_ALL_ON_FOCUS_TYPES.has(type)) {
           e.currentTarget.select();
         }
         onFocus?.(e);

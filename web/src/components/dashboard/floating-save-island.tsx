@@ -92,6 +92,7 @@ export function FloatingSaveIsland() {
                 onClick={() => setDismissed(true)}
                 className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-background/40 text-muted-foreground/60 transition-all hover:bg-white/[0.06] hover:text-foreground active:scale-95 backdrop-blur-xl"
                 title="Dismiss"
+                aria-label="Dismiss"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
