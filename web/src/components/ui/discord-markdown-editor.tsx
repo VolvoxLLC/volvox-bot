@@ -392,7 +392,7 @@ export function DiscordMarkdownEditor({
                 Variables
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="max-h-48 min-w-[160px] overflow-auto p-1">
+            <DropdownMenuContent align="end" className="max-h-48 min-w-[160px] overflow-auto p-1 scrollbar-thin scrollbar-thumb-border/20 scrollbar-track-transparent">
               {variables.map((variable) => (
                 <DropdownMenuItem
                   key={variable}
@@ -422,7 +422,7 @@ export function DiscordMarkdownEditor({
             disabled={disabled}
             className={cn(
               EDITOR_PANE_CONTENT_CLASSES,
-              'resize-none bg-transparent font-mono [field-sizing:content] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50',
+              'resize-none bg-transparent font-mono [field-sizing:content] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 scrollbar-thin scrollbar-thumb-border/20 scrollbar-track-transparent',
             )}
             aria-label="Markdown editor"
           />

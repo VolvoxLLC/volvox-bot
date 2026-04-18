@@ -59,8 +59,17 @@ export async function logAuditEvent(pool, event) {
     return;
   }
 
-  const { guildId, userId, userTag, action, targetType, targetId, details, ipAddress } =
-    event ?? {};
+  const {
+    guildId,
+    userId,
+    userTag,
+    action,
+    targetType,
+    targetId,
+    targetTag,
+    details,
+    ipAddress,
+  } = event ?? {};
 
   if (!guildId || !userId || !action) {
     warn('auditLogger: missing required fields (guildId, userId, action), skipping', {
@@ -74,8 +83,8 @@ export async function logAuditEvent(pool, event) {
   try {
     await pool.query(
       `INSERT INTO audit_logs
-         (guild_id, user_id, user_tag, action, target_type, target_id, details, ip_address)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+         (guild_id, user_id, user_tag, action, target_type, target_id, target_tag, details, ip_address)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
       [
         guildId,
         userId,
@@ -83,6 +92,7 @@ export async function logAuditEvent(pool, event) {
         action,
         targetType ?? null,
         targetId ?? null,
+        targetTag ?? null,
         details != null ? JSON.stringify(details) : null,
         ipAddress ?? null,
       ],

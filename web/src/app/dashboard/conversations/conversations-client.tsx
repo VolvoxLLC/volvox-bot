@@ -290,10 +290,22 @@ export default function ConversationsClient() {
                             {convo.participants.slice(0, 3).map((p) => (
                               <div
                                 key={p.username}
-                                className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-white ring-2 ring-card ${p.role === 'user' ? 'bg-primary/80' : 'bg-muted-foreground/50'}`}
+                                className="group relative"
                                 title={`${p.username} (${p.role})`}
                               >
-                                {p.username.slice(0, 2).toUpperCase()}
+                                {p.avatar ? (
+                                  <img
+                                    src={p.avatar}
+                                    alt={p.username}
+                                    className="h-6 w-6 rounded-full border-2 border-card object-cover"
+                                  />
+                                ) : (
+                                  <div
+                                    className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-white ring-2 ring-card ${p.role === 'user' ? 'bg-primary/80' : 'bg-muted-foreground/50'}`}
+                                  >
+                                    {p.username.slice(0, 2).toUpperCase()}
+                                  </div>
+                                )}
                               </div>
                             ))}
                             {convo.participants.length > 3 && (

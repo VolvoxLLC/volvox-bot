@@ -36,7 +36,15 @@ function logAssistantHistory(channelId, guildId, fallbackContent, sentMsg) {
   const sentMessages = Array.isArray(sentMsg) ? sentMsg : [sentMsg];
   for (const m of sentMessages) {
     if (!m?.id) continue;
-    addToHistory(channelId, 'assistant', m.content || fallbackContent, null, m.id, guildId || null);
+    addToHistory(
+      channelId,
+      'assistant',
+      m.content || fallbackContent,
+      null,
+      m.id,
+      guildId || null,
+      m.author.id,
+    );
   }
 }
 

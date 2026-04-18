@@ -899,6 +899,7 @@ export async function accumulateMessage(message, msgConfig) {
     entry.author,
     entry.messageId,
     message.guild?.id || null,
+    entry.userId,
   );
 
   // Check for trigger words -- instant evaluation

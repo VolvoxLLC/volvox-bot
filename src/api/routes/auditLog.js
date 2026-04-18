@@ -119,9 +119,11 @@ export function rowsToCsv(rows) {
     'id',
     'guild_id',
     'user_id',
+    'user_tag',
     'action',
     'target_type',
     'target_id',
+    'target_tag',
     'details',
     'ip_address',
     'created_at',
@@ -161,7 +163,7 @@ router.get('/:id/audit-log', auditRateLimit, requireGuildAdmin, validateGuild, a
     const [countResult, entriesResult] = await Promise.all([
       pool.query(`SELECT COUNT(*)::int AS total FROM audit_logs WHERE ${whereClause}`, params),
       pool.query(
-        `SELECT id, guild_id, user_id, action, target_type, target_id, details, ip_address, created_at
+        `SELECT id, guild_id, user_id, user_tag, action, target_type, target_id, target_tag, details, ip_address, created_at
            FROM audit_logs
            WHERE ${whereClause}
            ORDER BY created_at DESC
@@ -218,7 +220,7 @@ router.get(
       const whereClause = conditions.join(' AND ');
 
       const result = await pool.query(
-        `SELECT id, guild_id, user_id, action, target_type, target_id, details, ip_address, created_at
+        `SELECT id, guild_id, user_id, user_tag, action, target_type, target_id, target_tag, details, ip_address, created_at
            FROM audit_logs
            WHERE ${whereClause}
            ORDER BY created_at DESC

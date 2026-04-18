@@ -310,6 +310,7 @@ export function ModerationSafetyCategory() {
                       const num = parseNumberInput(e.target.value, 1);
                       if (num !== undefined) updateRateLimitField('maxMessages', num);
                     }}
+                    onFocus={(e) => e.target.select()}
                     disabled={saving}
                     className={cn(inputClasses, 'text-center')}
                   />
@@ -330,6 +331,7 @@ export function ModerationSafetyCategory() {
                       const num = parseNumberInput(e.target.value, 1);
                       if (num !== undefined) updateRateLimitField('windowSeconds', num);
                     }}
+                    onFocus={(e) => e.target.select()}
                     disabled={saving}
                     className={cn(inputClasses, 'text-center')}
                   />
@@ -353,6 +355,7 @@ export function ModerationSafetyCategory() {
                       const num = parseNumberInput(e.target.value, 1);
                       if (num !== undefined) updateRateLimitField('muteAfterTriggers', num);
                     }}
+                    onFocus={(e) => e.target.select()}
                     disabled={saving}
                     className={cn(inputClasses, 'text-center')}
                   />
@@ -373,6 +376,7 @@ export function ModerationSafetyCategory() {
                       const num = parseNumberInput(e.target.value, 1);
                       if (num !== undefined) updateRateLimitField('muteWindowSeconds', num);
                     }}
+                    onFocus={(e) => e.target.select()}
                     disabled={saving}
                     className={cn(inputClasses, 'text-center')}
                   />
@@ -393,6 +397,7 @@ export function ModerationSafetyCategory() {
                       const num = parseNumberInput(e.target.value, 1);
                       if (num !== undefined) updateRateLimitField('muteDurationSeconds', num);
                     }}
+                    onFocus={(e) => e.target.select()}
                     disabled={saving}
                     className={cn(inputClasses, 'text-center')}
                   />
@@ -436,6 +441,7 @@ export function ModerationSafetyCategory() {
                       .filter(Boolean),
                   )
                 }
+                onFocus={(e) => e.target.select()}
                 disabled={saving}
                 className={inputClasses}
                 placeholder="example.com, spam.net"
@@ -549,6 +555,7 @@ export function ModerationSafetyCategory() {
                     const num = parseNumberInput(e.target.value, 1);
                     if (num !== undefined) updateStarboardField('threshold', num);
                   }}
+                  onFocus={(e) => e.target.select()}
                   disabled={saving}
                   className={inputClasses}
                 />
@@ -567,6 +574,7 @@ export function ModerationSafetyCategory() {
                     type="text"
                     value={draftConfig.starboard?.emoji ?? '*'}
                     onChange={(e) => updateStarboardField('emoji', e.target.value.trim() || '*')}
+                    onFocus={(e) => e.target.select()}
                     disabled={saving}
                     className={inputClasses}
                     placeholder="*"
@@ -698,6 +706,7 @@ export function ModerationSafetyCategory() {
                       .filter(Boolean),
                   )
                 }
+                onFocus={(e) => e.target.select()}
                 disabled={saving}
                 className={inputClasses}
                 placeholder="Comma-separated user IDs"

@@ -3,6 +3,8 @@ import { create } from 'zustand';
 interface Participant {
   username: string;
   role: string;
+  userId?: string | null;
+  avatar?: string | null;
 }
 
 interface ConversationSummary {

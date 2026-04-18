@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, ChevronRight, ClipboardList, Search, X } from 'lucide-react';
+import { Check, ChevronDown, ChevronRight, ClipboardList, Copy, Search, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { EmptyState } from '@/components/dashboard/empty-state';
@@ -40,6 +40,28 @@ function actionVariant(action: string): 'default' | 'secondary' | 'destructive' 
   if (action.includes('create')) return 'default';
   if (action.includes('update')) return 'secondary';
   return 'outline';
+}
+
+function CopyButton({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    void navigator.clipboard.writeText(value);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className="ml-2 inline-flex items-center justify-center rounded p-1 text-muted-foreground/30 transition-colors hover:bg-muted/50 hover:text-foreground active:scale-95"
+      aria-label="Copy ID"
+    >
+      {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+    </button>
+  );
 }
 
 const PAGE_SIZE = 25;
@@ -341,13 +363,33 @@ export default function AuditLogPage() {
                             <TableCell>
                               <Badge variant={actionVariant(entry.action)}>{entry.action}</Badge>
                             </TableCell>
-                            <TableCell className="font-mono text-sm text-foreground/80">
-                              {entry.user_id}
+                            <TableCell className="text-sm text-foreground/80">
+                              <div className="flex flex-col">
+                                <span className="font-semibold">
+                                  {entry.user_tag || `User ${entry.user_id.slice(-4)}`}
+                                </span>
+                                <div className="flex items-center text-[10px] font-mono text-muted-foreground/50">
+                                  {entry.user_id}
+                                  <CopyButton value={entry.user_id} />
+                                </div>
+                              </div>
                             </TableCell>
                             <TableCell className="hidden text-sm text-muted-foreground/60 md:table-cell">
-                              {entry.target_type && entry.target_id
-                                ? `${entry.target_type}:${entry.target_id}`
-                                : '—'}
+                              {entry.target_id ? (
+                                <div className="flex flex-col">
+                                  <span className="font-semibold text-foreground/70">
+                                    {entry.target_tag || `Target ${entry.target_id.slice(-4)}`}
+                                  </span>
+                                  <div className="flex items-center text-[10px] font-mono text-muted-foreground/40">
+                                    <span>
+                                      {entry.target_type ? `${entry.target_type}:${entry.target_id}` : entry.target_id}
+                                    </span>
+                                    <CopyButton value={entry.target_id} />
+                                  </div>
+                                </div>
+                              ) : (
+                                '—'
+                              )}
                             </TableCell>
                             <TableCell className="text-sm text-muted-foreground/60">
                               {formatDate(entry.created_at)}
@@ -358,10 +400,12 @@ export default function AuditLogPage() {
                           </TableRow>
                           {isExpanded && entry.details && (
                             <TableRow key={`${entry.id}-details`} className="border-border/10">
-                              <TableCell colSpan={6} className="bg-background/20 p-4">
-                                <pre className="max-h-64 overflow-auto rounded-[14px] border border-border/30 bg-background/50 p-3 text-xs text-foreground/70">
-                                  {JSON.stringify(entry.details, null, 2)}
-                                </pre>
+                              <TableCell colSpan={6} className="max-w-0 bg-background/20 p-4">
+                                <div className="w-full overflow-hidden rounded-[14px] border border-border/30 bg-background/50">
+                                  <pre className="max-h-64 w-full overflow-x-auto p-3 text-xs text-foreground/70 scrollbar-thin scrollbar-thumb-border/20">
+                                    {JSON.stringify(entry.details, null, 2)}
+                                  </pre>
+                                </div>
                               </TableCell>
                             </TableRow>
                           )}

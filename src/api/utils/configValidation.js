@@ -167,6 +167,24 @@ export const CONFIG_SCHEMA = {
           includeServerOwner: { type: 'boolean' },
         },
       },
+      rateLimit: {
+        type: 'object',
+        properties: {
+          enabled: { type: 'boolean' },
+          maxMessages: { type: 'number', min: 1 },
+          windowSeconds: { type: 'number', min: 1 },
+          muteAfterTriggers: { type: 'number', min: 1 },
+          muteWindowSeconds: { type: 'number', min: 1 },
+          muteDurationSeconds: { type: 'number', min: 1 },
+        },
+      },
+      linkFilter: {
+        type: 'object',
+        properties: {
+          enabled: { type: 'boolean' },
+          blockedDomains: { type: 'array', items: { type: 'string' } },
+        },
+      },
     },
   },
   triage: {

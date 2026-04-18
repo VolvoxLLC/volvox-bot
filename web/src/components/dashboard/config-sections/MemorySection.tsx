@@ -59,6 +59,7 @@ export function MemorySection({
               const num = parseNumberInput(e.target.value, 1);
               if (num !== undefined) onFieldChange('maxContextMemories', num);
             }}
+            onFocus={(e) => e.target.select()}
             disabled={saving}
             className={inputClasses}
           />

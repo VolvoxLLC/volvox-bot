@@ -295,6 +295,7 @@ export function AiAutomationCategory() {
                               [cat]: v,
                             });
                           }}
+                          onFocus={(e) => e.target.select()}
                           disabled={saving}
                           className={cn(
                             inputClasses,
@@ -381,6 +382,7 @@ export function AiAutomationCategory() {
                     type="text"
                     value={draftConfig.triage?.classifyModel ?? ''}
                     onChange={(e) => updateTriageField('classifyModel', e.target.value)}
+                    onFocus={(e) => e.target.select()}
                     disabled={saving}
                     className={inputClasses}
                     placeholder="e.g. gpt-4o-mini"
@@ -398,6 +400,7 @@ export function AiAutomationCategory() {
                     type="text"
                     value={draftConfig.triage?.respondModel ?? ''}
                     onChange={(e) => updateTriageField('respondModel', e.target.value)}
+                    onFocus={(e) => e.target.select()}
                     disabled={saving}
                     className={inputClasses}
                     placeholder="e.g. claude-3-5-sonnet"
@@ -457,6 +460,7 @@ export function AiAutomationCategory() {
                       const num = parseNumberInput(e.target.value, 0);
                       if (num !== undefined) updateTriageField('classifyBudget', num);
                     }}
+                    onFocus={(e) => e.target.select()}
                     disabled={saving}
                     className={inputClasses}
                   />
@@ -475,6 +479,7 @@ export function AiAutomationCategory() {
                       const num = parseNumberInput(e.target.value, 0);
                       if (num !== undefined) updateTriageField('respondBudget', num);
                     }}
+                    onFocus={(e) => e.target.select()}
                     disabled={saving}
                     className={inputClasses}
                   />
@@ -548,6 +553,7 @@ export function AiAutomationCategory() {
                   const num = parseNumberInput(e.target.value, 1);
                   if (num !== undefined) updateMemoryField('maxContextMemories', num);
                 }}
+                onFocus={(e) => e.target.select()}
                 disabled={saving}
                 className={cn(inputClasses, 'w-40')}
               />

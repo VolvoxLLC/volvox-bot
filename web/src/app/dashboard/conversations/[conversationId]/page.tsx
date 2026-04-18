@@ -17,6 +17,7 @@ interface ConversationDetailResponse {
   channelName?: string | null;
   duration: number;
   tokenEstimate: number;
+  mentionMap?: Record<string, string>;
 }
 
 export default function ConversationDetailPage() {
@@ -151,6 +152,7 @@ export default function ConversationDetailPage() {
             channelName={data.channelName}
             duration={data.duration}
             tokenEstimate={data.tokenEstimate}
+            mentionMap={data.mentionMap}
             guildId={guildId}
             onFlagSubmitted={fetchDetail}
           />

@@ -147,6 +147,7 @@ export function SupportIntegrationsCategory() {
                         }));
                       }
                     }}
+                    onFocus={(e) => e.target.select()}
                     disabled={saving}
                     className={cn(inputClasses, 'pr-12 text-center')}
                   />
@@ -177,6 +178,7 @@ export function SupportIntegrationsCategory() {
                       }));
                     }
                   }}
+                  onFocus={(e) => e.target.select()}
                   disabled={saving}
                   className={cn(inputClasses, 'text-center')}
                 />
@@ -274,6 +276,7 @@ export function SupportIntegrationsCategory() {
                       }));
                     }
                   }}
+                  onFocus={(e) => e.target.select()}
                   disabled={saving}
                   className={cn(inputClasses, 'pr-12 text-center')}
                 />

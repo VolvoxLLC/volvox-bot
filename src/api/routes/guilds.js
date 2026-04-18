@@ -5,7 +5,7 @@
 
 import { Router } from 'express';
 import { error, info, warn } from '../../logger.js';
-import { getConfig, setConfigValue } from '../../modules/config.js';
+import { getConfig, setConfigValue, setMultipleConfigValues } from '../../modules/config.js';
 import { cacheGetOrSet, TTL } from '../../utils/cache.js';
 import { getBotOwnerIds, isAdmin, isModerator } from '../../utils/permissions.js';
 import { safeSend } from '../../utils/safeSend.js';
@@ -891,6 +891,7 @@ router.patch('/:id/config', requireGuildAdmin, validateGuild, async (req, res) =
 
   const result = validateConfigPatchBody(req.body, SAFE_CONFIG_KEYS);
   if (result.error) {
+    warn('Config validation failed', { body: req.body, error: result.error, details: result.details });
     const response = { error: result.error };
     if (result.details) response.details = result.details;
     return res.status(result.status).json(response);
@@ -926,6 +927,96 @@ router.patch('/:id/config', requireGuildAdmin, validateGuild, async (req, res) =
     res.json(effectiveSection);
   } catch (err) {
     error('Failed to update config via API', { path, error: err.message });
+    res.status(500).json({ error: 'Failed to update config' });
+  }
+});
+
+/**
+ * @openapi
+ * /guilds/{id}/config:
+ *   put:
+ *     summary: Bulk update guild configuration
+ *     description: Apply multiple patch operations to a guild's configuration in a single transaction.
+ *     tags: [Guilds]
+ *     security:
+ *       - ApiKeyAuth: []
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: array
+ *             items:
+ *               type: object
+ *               properties:
+ *                 path:
+ *                   type: string
+ *                 value:
+ *                   type: object
+ *     responses:
+ *       "200":
+ *         $ref: "#/components/responses/ConfigResponse"
+ *       "400":
+ *         $ref: "#/components/responses/BadRequest"
+ *       "401":
+ *         $ref: "#/components/responses/Unauthorized"
+ *       "403":
+ *         $ref: "#/components/responses/Forbidden"
+ *       "500":
+ *         $ref: "#/components/responses/ServerError"
+ */
+router.put('/:id/config', requireGuildAdmin, validateGuild, async (req, res) => {
+  if (!Array.isArray(req.body)) {
+    return res.status(400).json({ error: 'Request body must be an array of patches' });
+  }
+
+  const patches = req.body;
+  const validatedPatches = [];
+
+  for (const patch of patches) {
+    const result = validateConfigPatchBody(patch, SAFE_CONFIG_KEYS);
+    if (result.error) {
+      warn('Bulk config validation failed', { patch, error: result.error, details: result.details });
+      const response = { error: result.error };
+      if (result.details) response.details = result.details;
+      return res.status(result.status || 400).json(response);
+    }
+    
+    // botStatus is global
+    const isGlobalBotStatusWrite = result.topLevelKey === 'botStatus';
+    if (isGlobalBotStatusWrite && req.authMethod === 'oauth' && !isOAuthBotOwner(req.user)) {
+      return res.status(403).json({ error: 'Only bot owners can update global bot status' });
+    }
+    validatedPatches.push(patch);
+  }
+
+  try {
+    await setMultipleConfigValues(validatedPatches, req.params.id);
+    const effectiveConfig = getConfig(req.params.id);
+    
+    info('Bulk config updated via API', {
+      patchesCount: validatedPatches.length,
+      guild: req.params.id,
+    });
+    
+    // We can emit one webhook event for the whole bulk update
+    fireAndForgetWebhook('DASHBOARD_WEBHOOK_URL', {
+      event: 'config.updated.bulk',
+      guildId: req.params.id,
+      timestamp: Date.now(),
+    });
+    
+    // Responding with the full effective config minus sensitive fields
+    res.json(maskSensitiveFields(effectiveConfig, READABLE_CONFIG_KEYS));
+  } catch (err) {
+    error('Failed to update bulk config via API', { guild: req.params.id, error: err.message });
     res.status(500).json({ error: 'Failed to update config' });
   }
 });

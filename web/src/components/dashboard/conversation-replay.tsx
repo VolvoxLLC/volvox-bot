@@ -27,6 +27,8 @@ export interface ConversationMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
   username: string;
+  userId?: string | null;
+  avatarUrl?: string | null;
   createdAt: string;
   flagStatus?: string | null;
   messageUrl?: string | null;
@@ -38,6 +40,7 @@ interface ConversationReplayProps {
   channelName?: string | null;
   duration: number;
   tokenEstimate: number;
+  mentionMap?: Record<string, string>;
   guildId: string;
   onFlagSubmitted?: () => void;
 }
@@ -71,6 +74,7 @@ export function ConversationReplay({
   channelName,
   duration,
   tokenEstimate,
+  mentionMap,
   guildId,
   onFlagSubmitted,
 }: ConversationReplayProps) {
@@ -120,6 +124,22 @@ export function ConversationReplay({
       setFlagSubmitting(false);
     }
   }, [flagMessageId, flagReason, flagNotes, conversationId, guildId, onFlagSubmitted]);
+
+  // Map of userId -> username for resolving mentions
+  const participantMap = new Map<string, string>();
+  for (const msg of messages) {
+    if (msg.userId && msg.username) {
+      participantMap.set(msg.userId, msg.username);
+    }
+  }
+
+  const resolveMentions = (content: string) => {
+    // Matches <@123...> or <@!123...>
+    return content.replace(/<@!?(\d+)>/g, (match, userId) => {
+      const username = mentionMap?.[userId] || participantMap.get(userId);
+      return username ? `@${username}` : match;
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -182,13 +202,21 @@ export function ConversationReplay({
                   {/* Avatar */}
                   <div
                     className={cn(
-                      'flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl text-[10px] font-black text-white shadow-lg ring-1 ring-white/10 transition-transform hover:scale-110',
+                      'flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl text-[10px] font-black text-white shadow-lg ring-1 ring-white/10 transition-transform hover:scale-110 overflow-hidden',
                       isUser
                         ? 'bg-gradient-to-br from-primary to-primary/60'
                         : 'bg-gradient-to-br from-muted-foreground/40 to-muted-foreground/20',
                     )}
                   >
-                    {(msg.username || msg.role).slice(0, 2).toUpperCase()}
+                    {msg.avatarUrl ? (
+                      <img
+                        src={msg.avatarUrl}
+                        alt={msg.username}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      (msg.username || msg.role).slice(0, 2).toUpperCase()
+                    )}
                   </div>
 
                   {/* Bubble Container */}
@@ -229,7 +257,7 @@ export function ConversationReplay({
                       )}
                     >
                       <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">
-                        {msg.content}
+                        {resolveMentions(msg.content)}
                       </p>
 
                       {/* Flagging actions for assistant messages */}
