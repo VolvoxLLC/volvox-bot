@@ -18,7 +18,7 @@ function Input({ className, type, onFocus, ...props }: React.ComponentProps<'inp
       type={type}
       data-slot="input"
       onFocus={(e) => {
-        if (SELECT_ALL_ON_FOCUS_TYPES.has(type)) {
+        if (type && SELECT_ALL_ON_FOCUS_TYPES.has(type)) {
           e.currentTarget.select();
         }
         onFocus?.(e);

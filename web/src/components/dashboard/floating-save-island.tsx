@@ -1,6 +1,6 @@
 'use client';
-import { useState, useEffect } from 'react';
 import { Loader2, RotateCcw, Save, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useConfigContext } from '@/components/dashboard/config-context';
 import { cn } from '@/lib/utils';
 import { DiscardChangesButton } from './reset-defaults-button';

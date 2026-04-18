@@ -546,7 +546,6 @@ export function PerformanceDashboard() {
                   .reverse()
                   .slice(0, 20)
                   .map((s, i) => (
-                    // biome-ignore lint/suspicious/noArrayIndexKey: compound key with timestamp+type+name
                     <tr
                       key={`perf-${i}-${s.timestamp}-${s.type}-${s.name}`}
                       className="transition-colors hover:bg-muted/30"
