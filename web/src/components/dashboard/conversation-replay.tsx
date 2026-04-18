@@ -231,19 +231,21 @@ export function ConversationReplay({
                     )}
                   >
                     {hasAvatar ? (
-                      // biome-ignore lint/performance/noImgElement: dynamic Discord avatars with fallback
-                      <img
-                        src={msg.avatarUrl ?? ''}
-                        alt={msg.username}
-                        className="h-full w-full object-cover"
-                        onError={() => {
-                          setBrokenAvatarMessageIds((prev) => {
-                            const next = new Set(prev);
-                            next.add(msg.id);
-                            return next;
-                          });
-                        }}
-                      />
+                      <>
+                        {/* biome-ignore lint/performance/noImgElement: dynamic Discord avatars with fallback */}
+                        <img
+                          src={msg.avatarUrl ?? ''}
+                          alt={msg.username}
+                          className="h-full w-full object-cover"
+                          onError={() => {
+                            setBrokenAvatarMessageIds((prev) => {
+                              const next = new Set(prev);
+                              next.add(msg.id);
+                              return next;
+                            });
+                          }}
+                        />
+                      </>
                     ) : (
                       (msg.username || msg.role).slice(0, 2).toUpperCase()
                     )}
