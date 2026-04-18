@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+vi.mock('../../src/db.js', () => ({ getPool: vi.fn().mockReturnValue(null) }));
+vi.mock('../../src/modules/auditLogger.js', () => ({ logAuditEvent: vi.fn().mockResolvedValue(undefined) }));
 
 vi.mock('../../src/modules/moderation.js', () => ({
   createCase: vi.fn().mockResolvedValue({ case_number: 1, action: 'test', id: 1 }),
@@ -70,7 +72,10 @@ describe('executeModAction', () => {
     },
     member: { roles: { highest: { position: 10 } } },
     user: { id: 'mod1', tag: 'Mod#0001' },
-    client: { user: { id: 'bot1', tag: 'Bot#0001' } },
+    client: {
+      user: { id: 'bot1', tag: 'Bot#0001' },
+      users: { fetch: vi.fn().mockResolvedValue(null) },
+    },
     deferReply: vi.fn().mockResolvedValue(undefined),
     editReply: vi.fn().mockResolvedValue(undefined),
   });

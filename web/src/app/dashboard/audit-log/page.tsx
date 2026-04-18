@@ -382,7 +382,9 @@ export default function AuditLogPage() {
                                   </span>
                                   <div className="flex items-center text-[10px] font-mono text-muted-foreground/40">
                                     <span>
-                                      {entry.target_type ? `${entry.target_type}:${entry.target_id}` : entry.target_id}
+                                      {entry.target_type
+                                        ? `${entry.target_type}:${entry.target_id}`
+                                        : entry.target_id}
                                     </span>
                                     <CopyButton value={entry.target_id} />
                                   </div>

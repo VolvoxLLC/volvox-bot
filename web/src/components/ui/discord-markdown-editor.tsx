@@ -392,7 +392,10 @@ export function DiscordMarkdownEditor({
                 Variables
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="max-h-48 min-w-[160px] overflow-auto p-1 scrollbar-thin scrollbar-thumb-border/20 scrollbar-track-transparent">
+            <DropdownMenuContent
+              align="end"
+              className="max-h-48 min-w-[160px] overflow-auto p-1 scrollbar-thin scrollbar-thumb-border/20 scrollbar-track-transparent"
+            >
               {variables.map((variable) => (
                 <DropdownMenuItem
                   key={variable}

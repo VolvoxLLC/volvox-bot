@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+vi.mock('../../src/db.js', () => ({ getPool: vi.fn().mockReturnValue(null) }));
+vi.mock('../../src/modules/auditLogger.js', () => ({ logAuditEvent: vi.fn().mockResolvedValue(undefined) }));
 
 vi.mock('../../src/utils/safeSend.js', () => ({
   safeSend: (ch, opts) => ch.send(opts),
@@ -8,7 +10,11 @@ vi.mock('../../src/utils/safeSend.js', () => ({
 }));
 vi.mock('../../src/modules/moderation.js', () => ({
   createCase: vi.fn().mockResolvedValue({ case_number: 1, action: 'unban', id: 1 }),
+  sendDmNotification: vi.fn().mockResolvedValue(undefined),
   sendModLogEmbed: vi.fn().mockResolvedValue({ id: 'msg1' }),
+  checkHierarchy: vi.fn().mockReturnValue(null),
+  isProtectedTarget: vi.fn().mockReturnValue(false),
+  shouldSendDm: vi.fn().mockReturnValue(true),
 }));
 
 vi.mock('../../src/modules/config.js', () => ({
@@ -90,7 +96,7 @@ describe('unban command', () => {
 
   it('should fall back to raw user id when user fetch fails', async () => {
     const interaction = createInteraction();
-    interaction.client.users.fetch.mockRejectedValueOnce(new Error('not found'));
+    interaction.client.users.fetch.mockRejectedValue(new Error('not found'));
 
     await execute(interaction);
 

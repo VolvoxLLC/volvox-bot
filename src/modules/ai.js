@@ -298,7 +298,15 @@ export async function getHistoryAsync(channelId) {
  * @param {string} [guildId] - Optional guild ID for the conversation (used for dashboard/jump URLs).
  * @param {string} [userId] - Optional Discord user ID for the message author.
  */
-export function addToHistory(channelId, role, content, username, discordMessageId, guildId, userId) {
+export function addToHistory(
+  channelId,
+  role,
+  content,
+  username,
+  discordMessageId,
+  guildId,
+  userId,
+) {
   if (!conversationHistory.has(channelId)) {
     conversationHistory.set(channelId, []);
   }

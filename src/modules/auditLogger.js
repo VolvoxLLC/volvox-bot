@@ -59,17 +59,8 @@ export async function logAuditEvent(pool, event) {
     return;
   }
 
-  const {
-    guildId,
-    userId,
-    userTag,
-    action,
-    targetType,
-    targetId,
-    targetTag,
-    details,
-    ipAddress,
-  } = event ?? {};
+  const { guildId, userId, userTag, action, targetType, targetId, targetTag, details, ipAddress } =
+    event ?? {};
 
   if (!guildId || !userId || !action) {
     warn('auditLogger: missing required fields (guildId, userId, action), skipping', {

@@ -652,7 +652,7 @@ export async function setMultipleConfigValues(patches, guildId = 'global') {
       await client.query('BEGIN');
 
       const sectionList = Array.from(sectionsToUpdate).sort();
-      
+
       for (const section of sectionList) {
         const guildConfig = configCache.get(guildId) || {};
         const sectionClone = structuredClone(guildConfig[section] || {});
@@ -662,7 +662,7 @@ export async function setMultipleConfigValues(patches, guildId = 'global') {
           [guildId, section],
         );
 
-        let dbSection = rows.length > 0 ? rows[0].value : sectionClone;
+        const dbSection = rows.length > 0 ? rows[0].value : sectionClone;
 
         for (const patch of patchesBySection.get(section)) {
           const parts = patch.path.split('.');
@@ -710,14 +710,24 @@ export async function setMultipleConfigValues(patches, guildId = 'global') {
     const parsedVal = parseValue(patch.value);
 
     const rawOld = getNestedValue(cacheEntry[section], nestedParts);
-    const oldValue = rawOld !== null && typeof rawOld === 'object' ? structuredClone(rawOld) : rawOld;
+    const oldValue =
+      rawOld !== null && typeof rawOld === 'object' ? structuredClone(rawOld) : rawOld;
 
-    if (!cacheEntry[section] || typeof cacheEntry[section] !== 'object' || Array.isArray(cacheEntry[section])) {
+    if (
+      !cacheEntry[section] ||
+      typeof cacheEntry[section] !== 'object' ||
+      Array.isArray(cacheEntry[section])
+    ) {
       cacheEntry[section] = {};
     }
     setNestedValue(cacheEntry[section], nestedParts, parsedVal);
 
-    info('Config updated (bulk)', { path: patch.path, value: parsedVal, guildId, persisted: dbPersisted });
+    info('Config updated (bulk)', {
+      path: patch.path,
+      value: parsedVal,
+      guildId,
+      persisted: dbPersisted,
+    });
     await emitConfigChangeEvents(patch.path, parsedVal, oldValue, guildId);
   }
 

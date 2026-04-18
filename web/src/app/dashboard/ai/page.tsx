@@ -7,10 +7,10 @@
   */
 }
 
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
+import { ArrowRight, Bot, Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Bot, Sparkles, ArrowRight } from 'lucide-react';
 
 export default function DashboardAiRedirectPage() {
   const router = useRouter();
@@ -46,12 +46,12 @@ export default function DashboardAiRedirectPage() {
         <div className="group relative overflow-hidden rounded-[32px] border border-border/40 bg-card/40 p-8 backdrop-blur-3xl shadow-2xl">
           {/* Subtle top light effect */}
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
-          
+
           <div className="flex flex-col items-center text-center space-y-8">
             {/* Animated Icon Container */}
-            <motion.div 
+            <motion.div
               animate={{ rotate: [0, 5, -5, 0] }}
-              transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
+              transition={{ repeat: Infinity, duration: 6, ease: 'easeInOut' }}
               className="relative flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/20 shadow-[0_0_20px_rgba(var(--primary),0.2)]"
             >
               <Bot className="h-10 w-10" />
@@ -86,9 +86,11 @@ export default function DashboardAiRedirectPage() {
                     {countdown}
                   </motion.span>
                 </AnimatePresence>
-                
+
                 <div className="flex flex-col items-start text-left">
-                  <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/40">seconds until</span>
+                  <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/40">
+                    seconds until
+                  </span>
                   <span className="text-sm font-bold text-foreground/80 flex items-center gap-2">
                     Auto-Redirect <ArrowRight className="h-3 w-3 animate-bounce-x" />
                   </span>
@@ -97,10 +99,10 @@ export default function DashboardAiRedirectPage() {
 
               {/* Progress bar */}
               <div className="h-1.5 w-full bg-muted/30 rounded-full overflow-hidden">
-                <motion.div 
-                  initial={{ width: "100%" }}
-                  animate={{ width: "0%" }}
-                  transition={{ duration: 5, ease: "linear" }}
+                <motion.div
+                  initial={{ width: '100%' }}
+                  animate={{ width: '0%' }}
+                  transition={{ duration: 5, ease: 'linear' }}
                   className="h-full bg-primary/60"
                 />
               </div>

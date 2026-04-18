@@ -1,5 +1,7 @@
 import { ChannelType } from 'discord.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+vi.mock('../../src/db.js', () => ({ getPool: vi.fn().mockReturnValue(null) }));
+vi.mock('../../src/modules/auditLogger.js', () => ({ logAuditEvent: vi.fn().mockResolvedValue(undefined) }));
 
 vi.mock('../../src/utils/safeSend.js', () => ({
   safeSend: (ch, opts) => ch.send(opts),
@@ -45,7 +47,10 @@ describe('lock command', () => {
       roles: { everyone: { id: 'everyone-role' } },
     },
     user: { id: 'mod1', tag: 'Mod#0001', toString: () => '<@mod1>' },
-    client: { channels: { fetch: vi.fn() } },
+    client: {
+      channels: { fetch: vi.fn() },
+      users: { fetch: vi.fn().mockResolvedValue(null) },
+    },
     deferReply: vi.fn().mockResolvedValue(undefined),
     editReply: vi.fn().mockResolvedValue(undefined),
     reply: vi.fn().mockResolvedValue(undefined),

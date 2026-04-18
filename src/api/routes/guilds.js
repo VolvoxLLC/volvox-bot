@@ -891,7 +891,11 @@ router.patch('/:id/config', requireGuildAdmin, validateGuild, async (req, res) =
 
   const result = validateConfigPatchBody(req.body, SAFE_CONFIG_KEYS);
   if (result.error) {
-    warn('Config validation failed', { body: req.body, error: result.error, details: result.details });
+    warn('Config validation failed', {
+      body: req.body,
+      error: result.error,
+      details: result.details,
+    });
     const response = { error: result.error };
     if (result.details) response.details = result.details;
     return res.status(result.status).json(response);
@@ -983,12 +987,16 @@ router.put('/:id/config', requireGuildAdmin, validateGuild, async (req, res) => 
   for (const patch of patches) {
     const result = validateConfigPatchBody(patch, SAFE_CONFIG_KEYS);
     if (result.error) {
-      warn('Bulk config validation failed', { patch, error: result.error, details: result.details });
+      warn('Bulk config validation failed', {
+        patch,
+        error: result.error,
+        details: result.details,
+      });
       const response = { error: result.error };
       if (result.details) response.details = result.details;
       return res.status(result.status || 400).json(response);
     }
-    
+
     // botStatus is global
     const isGlobalBotStatusWrite = result.topLevelKey === 'botStatus';
     if (isGlobalBotStatusWrite && req.authMethod === 'oauth' && !isOAuthBotOwner(req.user)) {
@@ -1000,19 +1008,19 @@ router.put('/:id/config', requireGuildAdmin, validateGuild, async (req, res) => 
   try {
     await setMultipleConfigValues(validatedPatches, req.params.id);
     const effectiveConfig = getConfig(req.params.id);
-    
+
     info('Bulk config updated via API', {
       patchesCount: validatedPatches.length,
       guild: req.params.id,
     });
-    
+
     // We can emit one webhook event for the whole bulk update
     fireAndForgetWebhook('DASHBOARD_WEBHOOK_URL', {
       event: 'config.updated.bulk',
       guildId: req.params.id,
       timestamp: Date.now(),
     });
-    
+
     // Responding with the full effective config minus sensitive fields
     res.json(maskSensitiveFields(effectiveConfig, READABLE_CONFIG_KEYS));
   } catch (err) {
