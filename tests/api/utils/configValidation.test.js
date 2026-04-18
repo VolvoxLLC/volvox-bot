@@ -482,4 +482,58 @@ describe('configValidation', () => {
       expect(errors[0]).toContain('unknown config key');
     });
   });
+
+  describe('triage schema — new fields (streaming, tokenRecycleLimit)', () => {
+    it('should accept valid triage.streaming boolean', () => {
+      expect(validateSingleValue('triage.streaming', true)).toEqual([]);
+      expect(validateSingleValue('triage.streaming', false)).toEqual([]);
+    });
+
+    it('should reject non-boolean triage.streaming', () => {
+      const errors = validateSingleValue('triage.streaming', 1);
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain('expected boolean');
+    });
+
+    it('should accept triage.tokenRecycleLimit within valid range', () => {
+      expect(validateSingleValue('triage.tokenRecycleLimit', 0)).toEqual([]);
+      expect(validateSingleValue('triage.tokenRecycleLimit', 20000)).toEqual([]);
+      expect(validateSingleValue('triage.tokenRecycleLimit', 1000000)).toEqual([]);
+    });
+
+    it('should reject triage.tokenRecycleLimit below minimum', () => {
+      const errors = validateSingleValue('triage.tokenRecycleLimit', -1);
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain('>= 0');
+    });
+
+    it('should reject triage.tokenRecycleLimit above maximum', () => {
+      const errors = validateSingleValue('triage.tokenRecycleLimit', 1000001);
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain('<= 1000000');
+    });
+
+    it('should reject non-number triage.tokenRecycleLimit', () => {
+      const errors = validateSingleValue('triage.tokenRecycleLimit', '20000');
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain('expected finite number');
+    });
+
+    it('should reject NaN triage.tokenRecycleLimit', () => {
+      const errors = validateSingleValue('triage.tokenRecycleLimit', NaN);
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain('expected finite number');
+    });
+
+    it('should confirm triage schema contains streaming and tokenRecycleLimit properties', () => {
+      expect(CONFIG_SCHEMA.triage.properties).toHaveProperty('streaming');
+      expect(CONFIG_SCHEMA.triage.properties.streaming).toEqual({ type: 'boolean' });
+      expect(CONFIG_SCHEMA.triage.properties).toHaveProperty('tokenRecycleLimit');
+      expect(CONFIG_SCHEMA.triage.properties.tokenRecycleLimit).toMatchObject({
+        type: 'number',
+        min: 0,
+        max: 1000000,
+      });
+    });
+  });
 });

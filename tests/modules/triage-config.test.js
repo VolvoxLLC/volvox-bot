@@ -15,6 +15,55 @@ describe('triage-config', () => {
       expect(result.classifyBudget).toBe(0.05);
       expect(result.respondBudget).toBe(0.2);
       expect(result.timeout).toBe(30000);
+      expect(result.tokenRecycleLimit).toBe(20000);
+    });
+
+    it('should default streaming to false', () => {
+      const result = resolveTriageConfig({});
+      expect(result.streaming).toBe(false);
+    });
+
+    it('should default thinkingTokens to 4096', () => {
+      const result = resolveTriageConfig({});
+      expect(result.thinkingTokens).toBe(4096);
+    });
+
+    it('should use provided streaming value', () => {
+      expect(resolveTriageConfig({ streaming: true }).streaming).toBe(true);
+      expect(resolveTriageConfig({ streaming: false }).streaming).toBe(false);
+    });
+
+    it('should use provided thinkingTokens value', () => {
+      expect(resolveTriageConfig({ thinkingTokens: 1024 }).thinkingTokens).toBe(1024);
+      expect(resolveTriageConfig({ thinkingTokens: 0 }).thinkingTokens).toBe(0);
+    });
+
+    it('should use provided tokenRecycleLimit value', () => {
+      expect(resolveTriageConfig({ tokenRecycleLimit: 50000 }).tokenRecycleLimit).toBe(50000);
+    });
+
+    it('should include all expected fields in the resolved config', () => {
+      const result = resolveTriageConfig({});
+      expect(result).toHaveProperty('classifyModel');
+      expect(result).toHaveProperty('respondModel');
+      expect(result).toHaveProperty('classifyBudget');
+      expect(result).toHaveProperty('respondBudget');
+      expect(result).toHaveProperty('timeout');
+      expect(result).toHaveProperty('tokenRecycleLimit');
+      expect(result).toHaveProperty('thinkingTokens');
+      expect(result).toHaveProperty('streaming');
+      expect(result).toHaveProperty('classifyBaseUrl');
+      expect(result).toHaveProperty('respondBaseUrl');
+      expect(result).toHaveProperty('classifyApiKey');
+      expect(result).toHaveProperty('respondApiKey');
+    });
+
+    it('should default classifyBaseUrl, respondBaseUrl, classifyApiKey, respondApiKey to null', () => {
+      const result = resolveTriageConfig({});
+      expect(result.classifyBaseUrl).toBeNull();
+      expect(result.respondBaseUrl).toBeNull();
+      expect(result.classifyApiKey).toBeNull();
+      expect(result.respondApiKey).toBeNull();
     });
 
     it('should resolve PR #68 flat format as fallback', () => {
