@@ -1,17 +1,18 @@
 import type { MetadataRoute } from 'next';
 
+const PRODUCTION_URL = 'https://volvox.dev';
+
 /**
  * sitemap.xml — Next.js Metadata API
  *
  * Static sitemap for public-facing pages. AI agents and search engines
  * use this to discover crawlable content. Dashboard and auth routes are excluded.
  *
- * Uses VERCEL_URL in preview/staging deployments, falling back to production.
+ * Uses VERCEL_PROJECT_PRODUCTION_URL for the production domain on Vercel,
+ * falling back to volvox.dev for local/self-hosted environments.
  */
 export default function sitemap(): MetadataRoute.Sitemap {
-  const siteUrl = process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : 'https://volvox.dev';
+  const siteUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL ?? PRODUCTION_URL;
 
   return [
     {
