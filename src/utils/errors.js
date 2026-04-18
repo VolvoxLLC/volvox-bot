@@ -49,17 +49,17 @@ export class DiscordApiError extends Error {
 }
 
 /**
- * Custom error for CLI subprocess failures, carrying the failure reason.
+ * Custom error for AI client failures (Vercel AI SDK), carrying the failure reason.
  */
-export class CLIProcessError extends Error {
+export class AIClientError extends Error {
   /**
    * @param {string} message
-   * @param {'timeout'|'killed'|'exit'|'parse'} reason
+   * @param {'timeout'|'aborted'|'api'|'parse'} reason
    * @param {Object} [meta]
    */
   constructor(message, reason, meta = {}) {
     super(message);
-    this.name = 'CLIProcessError';
+    this.name = 'AIClientError';
     this.reason = reason;
     const { message: _m, name: _n, stack: _s, ...safeMeta } = meta;
     Object.assign(this, safeMeta);
@@ -76,9 +76,16 @@ export class CLIProcessError extends Error {
 export function classifyError(error, context = {}) {
   if (!error) return ErrorType.UNKNOWN;
 
+  // AIClientError carries a structured reason — use it directly
+  if (error.name === 'AIClientError') {
+    if (error.reason === 'timeout' || error.reason === 'aborted') return ErrorType.TIMEOUT;
+    // For 'api' reason, fall through to status code checks below using error.statusCode
+  }
+
   const message = error.message?.toLowerCase() || '';
   const code = error.code || context.code;
-  const status = error.status || context.status || context.statusCode;
+  // Vercel AI SDK throws APICallError with .statusCode (not .status)
+  const status = error.status ?? error.statusCode ?? context.status ?? context.statusCode ?? null;
 
   // Network errors
   if (code === 'ECONNREFUSED' || code === 'ENOTFOUND') {
@@ -202,19 +209,19 @@ export function getSuggestedNextSteps(error, context = {}) {
   const errorType = classifyError(error, context);
 
   const suggestions = {
-    [ErrorType.NETWORK]: 'Make sure the Anthropic API is reachable.',
+    [ErrorType.NETWORK]: 'Make sure the AI provider API is reachable.',
 
     [ErrorType.TIMEOUT]: 'Try a shorter message or wait a moment before retrying.',
 
     [ErrorType.API_RATE_LIMIT]: 'Wait 60 seconds before trying again.',
 
     [ErrorType.API_UNAUTHORIZED]:
-      'Check ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN environment variables. OAuth tokens (sk-ant-oat01-*) require CLAUDE_CODE_OAUTH_TOKEN.',
+      'Check that the AI provider API key is set and valid (ANTHROPIC_API_KEY or <PROVIDER>_API_KEY).',
 
-    [ErrorType.API_NOT_FOUND]: 'Verify the Anthropic API endpoint is reachable.',
+    [ErrorType.API_NOT_FOUND]: 'Verify the AI provider API endpoint is reachable.',
 
     [ErrorType.API_SERVER_ERROR]:
-      'The service should recover automatically. If it persists, restart the AI service.',
+      'The provider should recover automatically. If it persists, check provider status and outbound connectivity.',
 
     [ErrorType.DISCORD_PERMISSION]:
       'Grant the bot appropriate permissions in Server Settings > Roles.',

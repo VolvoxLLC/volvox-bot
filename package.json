@@ -33,8 +33,9 @@
     "docs:generate": "node scripts/generate-openapi.js"
   },
   "dependencies": {
-    "@anthropic-ai/claude-code": "^2.1.112",
+    "@ai-sdk/anthropic": "^3.0.68",
     "@sentry/node": "^10.49.0",
+    "ai": "^6.0.158",
     "discord.js": "^14.26.3",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",

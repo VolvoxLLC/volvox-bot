@@ -1,16 +1,16 @@
 /**
  * AI Auto-Moderation Module
- * Uses Claude CLI subprocess to analyze messages for toxicity, spam, and harassment.
+ * Uses the Vercel AI SDK to analyze messages for toxicity, spam, and harassment.
  * Supports configurable thresholds, per-guild settings, and multiple actions:
  * warn, timeout, kick, ban, or flag for review.
  */
 
 import { EmbedBuilder } from 'discord.js';
 import { info, error as logError, warn } from '../logger.js';
+import { generate } from '../utils/aiClient.js';
 import { fetchChannelCached } from '../utils/discordCache.js';
 import { isExempt } from '../utils/modExempt.js';
 import { safeSend } from '../utils/safeSend.js';
-import { CLIProcess } from './cli-process.js';
 import { createCase } from './moderation.js';
 
 /** Default config when none is provided */
@@ -89,13 +89,13 @@ Respond ONLY with valid JSON in this exact format:
   "reason": "brief explanation of main concern or 'clean' if none"
 }`;
 
-  const proc = new CLIProcess('ai-automod', {
+  const response = await generate({
     model: mergedConfig.model ?? DEFAULTS.model,
-    tools: '', // no tools needed for moderation analysis
+    prompt,
+    maxTokens: 256,
   });
-  await proc.start();
-  const msg = await proc.send(prompt);
-  const text = msg.result ?? '{}';
+
+  const text = response.text ?? '{}';
 
   let parsed;
   try {

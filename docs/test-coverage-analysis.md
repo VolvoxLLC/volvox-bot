@@ -93,10 +93,10 @@ Several modules use database-level locking (`FOR UPDATE`, `FOR UPDATE SKIP LOCKE
 - **triage.js:** `pendingReeval` flag prevents concurrent evaluations but isn't tested under contention
 - **warningEngine.js:** `removeWarning` with `active = TRUE` filter isn't tested for the case where another process deactivated it
 
-### 4. CLI/AI Timeout and Parse Failures — **MEDIUM PRIORITY**
+### 4. AI Client Timeout and Parse Failures — **MEDIUM PRIORITY**
 
-`triage.js` spawns Claude CLI in headless mode. Gaps:
-- `CLIProcessError` with `'timeout'` reason is rethrown but upstream handling isn't tested
+`triage.js` calls the Vercel AI SDK via `aiClient.js`. Gaps:
+- `AIClientError` with `'timeout'` reason is rethrown but upstream handling isn't tested
 - `parseClassifyResult` returning invalid structures (missing fields, wrong types) isn't tested
 - Memory extraction (`extractMemories`) failures are fire-and-forget — never verified
 
@@ -136,7 +136,7 @@ Several modules use database-level locking (`FOR UPDATE`, `FOR UPDATE SKIP LOCKE
 
 7. **Add DB failure tests across modules** — mock `pool.query()` rejections in ai, triage, moderation, warningEngine
 8. **Add concurrent operation tests** — verify locking semantics in moderation and triage
-9. **Add CLI timeout/parse failure tests** — verify triage handles broken AI responses gracefully
+9. **Add AI client timeout/parse failure tests** — verify triage handles broken AI responses gracefully
 10. **Add startup failure tests to `index.test.js`** — Redis failure, API server failure, state corruption
 
 ### Low Priority

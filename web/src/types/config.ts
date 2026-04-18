@@ -228,17 +228,18 @@ export interface TriageConfig {
   classifyApiKey: string | null;
   respondBaseUrl: string | null;
   respondApiKey: string | null;
-  streaming: boolean;
-  tokenRecycleLimit: number;
   contextMessages: number;
   timeout: number;
   moderationResponse: boolean;
   channels: string[];
   excludeChannels: string[];
   debugFooter: boolean;
-  debugFooterLevel: string;
+  debugFooterLevel?: string | null;
   moderationLogChannel: string | null;
-  statusReactions: boolean;
+  statusReactions?: boolean | null;
+  dailyBudgetUsd?: number | null;
+  confidenceThreshold?: number | null;
+  responseCooldownMs?: number | null;
 }
 
 /** Generic enabled-flag section used by several community features. */
@@ -269,7 +270,7 @@ export interface BotStatusConfig {
 
 /** TL;DR summary feature settings. */
 export interface TldrConfig extends ToggleSectionConfig {
-  systemPrompt: string;
+  systemPrompt?: string;
   defaultMessages: number;
   maxMessages: number;
   cooldownSeconds: number;
