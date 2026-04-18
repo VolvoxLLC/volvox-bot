@@ -154,11 +154,14 @@ export async function executeModAction(interaction, opts) {
     const { target, targetId, targetTag: rawTargetTag } = targetResult;
 
     // Build a descriptive tag that includes display name and username
-    const resolvedTargetUser = target?.user || (await interaction.client.users.fetch(targetId).catch(() => null));
+    const resolvedTargetUser =
+      target?.user ||
+      (await interaction.client.users.fetch(targetId).catch(() => null));
     const targetTag = resolvedTargetUser
-      ? (resolvedTargetUser.globalName && resolvedTargetUser.globalName !== resolvedTargetUser.username
-        ? `${resolvedTargetUser.globalName} (@${resolvedTargetUser.username})`
-        : resolvedTargetUser.tag)
+      ? (resolvedTargetUser.globalName &&
+          resolvedTargetUser.globalName !== resolvedTargetUser.username
+          ? `${resolvedTargetUser.globalName} (@${resolvedTargetUser.username})`
+          : resolvedTargetUser.tag)
       : rawTargetTag;
 
     // Pre-action checks (self-mod, protected, hierarchy)
@@ -197,7 +200,7 @@ export async function executeModAction(interaction, opts) {
       pool = null;
     }
 
-    await logAuditEvent(pool, {
+    logAuditEvent(pool, {
       guildId: interaction.guild.id,
       userId: interaction.user.id,
       userTag: interaction.user.tag,

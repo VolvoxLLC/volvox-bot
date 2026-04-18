@@ -1,8 +1,9 @@
 /** @param {import('node-pg-migrate').MigrationBuilder} pgm */
 exports.up = (pgm) => {
-  pgm.addColumn('conversations', {
-    user_id: { type: 'TEXT' },
-  });
+  pgm.sql(`
+    ALTER TABLE conversations
+    ADD COLUMN IF NOT EXISTS user_id TEXT
+  `);
 };
 
 exports.down = (pgm) => {

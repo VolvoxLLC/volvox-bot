@@ -1,6 +1,9 @@
 /** @param {import('node-pg-migrate').MigrationBuilder} pgm */
 exports.up = (pgm) => {
-  pgm.addColumn('audit_logs', 'target_tag', { type: 'VARCHAR(255)', nullable: true });
+  pgm.sql(`
+    ALTER TABLE audit_logs
+    ADD COLUMN IF NOT EXISTS target_tag VARCHAR(255) NOT NULL DEFAULT ''
+  `);
 };
 
 exports.down = (pgm) => {

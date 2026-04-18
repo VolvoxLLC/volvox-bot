@@ -35,6 +35,7 @@ import { info, error as logError, warn } from '../logger.js';
  * @property {string}  action     - Dot-namespaced action identifier (e.g. 'config.update')
  * @property {string}  [targetType] - What kind of thing was affected (e.g. 'member', 'warning')
  * @property {string}  [targetId]   - The ID of the affected entity
+ * @property {string}  [targetTag]  - Cached display name / tag of the affected target
  * @property {Object}  [details]    - Freeform JSONB payload (before/after diffs, reason, etc.)
  * @property {string}  [ipAddress]  - Client IP address (optional)
  */

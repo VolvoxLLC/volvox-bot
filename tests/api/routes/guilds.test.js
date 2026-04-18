@@ -248,7 +248,7 @@ describe('guilds routes', () => {
     it('should return all guilds for api-secret auth', async () => {
       const res = await request(app).get('/api/v1/guilds').set('x-api-secret', SECRET);
 
-      console.log("STATUS:", res.status, "BODY:", JSON.stringify(res.body)); expect(res.status).toBe(200);
+expect(res.status).toBe(200);
       expect(res.body).toHaveLength(1);
       expect(res.body[0].id).toBe('guild1');
       expect(res.body[0].name).toBe('Test Server');
@@ -266,7 +266,7 @@ describe('guilds routes', () => {
 
       const res = await request(app).get('/api/v1/guilds').set('Authorization', `Bearer ${token}`);
 
-      console.log("STATUS:", res.status, "BODY:", JSON.stringify(res.body)); expect(res.status).toBe(200);
+expect(res.status).toBe(200);
       // Only guild1 (bot is in it AND user has admin), not guild-not-in-bot
       expect(res.body).toHaveLength(1);
       expect(res.body[0].id).toBe('guild1');
@@ -282,7 +282,7 @@ describe('guilds routes', () => {
 
       const res = await request(app).get('/api/v1/guilds').set('Authorization', `Bearer ${token}`);
 
-      console.log("STATUS:", res.status, "BODY:", JSON.stringify(res.body)); expect(res.status).toBe(200);
+expect(res.status).toBe(200);
       expect(res.body).toHaveLength(1);
       expect(res.body[0].id).toBe('guild1');
       expect(res.body[0].access).toBe('moderator');
@@ -336,7 +336,7 @@ describe('guilds routes', () => {
 
       const res = await request(app).get('/api/v1/guilds').set('Authorization', `Bearer ${token}`);
 
-      console.log("STATUS:", res.status, "BODY:", JSON.stringify(res.body)); expect(res.status).toBe(200);
+expect(res.status).toBe(200);
       expect(res.body).toHaveLength(2);
       expect(res.body.find((g) => g.id === 'guild1')?.access).toBe('admin');
       expect(res.body.find((g) => g.id === 'guild2')?.access).toBe('moderator');
@@ -356,7 +356,7 @@ describe('guilds routes', () => {
 
       const res = await request(app).get('/api/v1/guilds').set('Authorization', `Bearer ${token}`);
 
-      console.log("STATUS:", res.status, "BODY:", JSON.stringify(res.body)); expect(res.status).toBe(200);
+expect(res.status).toBe(200);
       expect(res.body).toHaveLength(1);
       expect(res.body[0].id).toBe('guild1');
       expect(res.body[0].access).toBe('bot-owner');
@@ -377,7 +377,7 @@ describe('guilds routes', () => {
 
       const res = await request(app).get('/api/v1/guilds').set('Authorization', `Bearer ${token}`);
 
-      console.log("STATUS:", res.status, "BODY:", JSON.stringify(res.body)); expect(res.status).toBe(200);
+expect(res.status).toBe(200);
       expect(res.body).toHaveLength(0);
 
       mockGuild.members.cache = originalCache;
@@ -389,7 +389,7 @@ describe('guilds routes', () => {
     it('should return guild info', async () => {
       const res = await request(app).get('/api/v1/guilds/guild1').set('x-api-secret', SECRET);
 
-      console.log("STATUS:", res.status, "BODY:", JSON.stringify(res.body)); expect(res.status).toBe(200);
+expect(res.status).toBe(200);
       expect(res.body.id).toBe('guild1');
       expect(res.body.name).toBe('Test Server');
       expect(res.body.icon).toBe('https://cdn.example.com/icon.png');
@@ -403,7 +403,7 @@ describe('guilds routes', () => {
     it('should return guild roles', async () => {
       const res = await request(app).get('/api/v1/guilds/guild1/roles').set('x-api-secret', SECRET);
 
-      console.log("STATUS:", res.status, "BODY:", JSON.stringify(res.body)); expect(res.status).toBe(200);
+expect(res.status).toBe(200);
       expect(res.body).toBeInstanceOf(Array);
       expect(res.body).toHaveLength(1);
       expect(res.body[0]).toEqual({ id: 'role1', name: 'Admin', color: 0 });
@@ -421,7 +421,7 @@ describe('guilds routes', () => {
         .get('/api/v1/guilds/guild1/config')
         .set('x-api-secret', SECRET);
 
-      console.log("STATUS:", res.status, "BODY:", JSON.stringify(res.body)); expect(res.status).toBe(200);
+expect(res.status).toBe(200);
     });
 
     it('should allow OAuth users with admin permission on guild', async () => {
@@ -434,7 +434,7 @@ describe('guilds routes', () => {
         .get('/api/v1/guilds/guild1/config')
         .set('Authorization', `Bearer ${token}`);
 
-      console.log("STATUS:", res.status, "BODY:", JSON.stringify(res.body)); expect(res.status).toBe(200);
+expect(res.status).toBe(200);
     });
 
     it('should deny OAuth users with only MANAGE_GUILD on admin endpoints', async () => {
@@ -503,7 +503,7 @@ describe('guilds routes', () => {
         .get('/api/v1/guilds/guild1/config')
         .set('Authorization', `Bearer ${token}`);
 
-      console.log("STATUS:", res.status, "BODY:", JSON.stringify(res.body)); expect(res.status).toBe(200);
+expect(res.status).toBe(200);
       expect(fetchSpy).not.toHaveBeenCalled();
     });
   });
@@ -514,7 +514,7 @@ describe('guilds routes', () => {
         .get('/api/v1/guilds/guild1/config')
         .set('x-api-secret', SECRET);
 
-      console.log("STATUS:", res.status, "BODY:", JSON.stringify(res.body)); expect(res.status).toBe(200);
+expect(res.status).toBe(200);
       expect(res.body.ai).toEqual({ enabled: true, model: 'claude-3', historyLength: 20 });
       expect(res.body.welcome).toEqual({ enabled: true });
       expect(res.body.moderation).toEqual({ enabled: true });
@@ -530,7 +530,7 @@ describe('guilds routes', () => {
         .get('/api/v1/guilds/guild1/config')
         .set('x-api-secret', SECRET);
 
-      console.log("STATUS:", res.status, "BODY:", JSON.stringify(res.body)); expect(res.status).toBe(200);
+expect(res.status).toBe(200);
       expect(res.body.triage.classifyApiKey).toBe('••••••••');
       expect(res.body.triage.respondApiKey).toBe('••••••••');
     });
@@ -557,7 +557,7 @@ describe('guilds routes', () => {
         .set('x-api-secret', SECRET)
         .send({ path: 'ai.systemPrompt', value: 'claude-4' });
 
-      console.log("STATUS:", res.status, "BODY:", JSON.stringify(res.body)); expect(res.status).toBe(200);
+expect(res.status).toBe(200);
       expect(res.body).toEqual({ enabled: true, systemPrompt: 'claude-4', historyLength: 20 });
       expect(setConfigValue).toHaveBeenCalledWith('ai.systemPrompt', 'claude-4', 'guild1');
       expect(getConfig).toHaveBeenCalledWith('guild1');
@@ -583,7 +583,7 @@ describe('guilds routes', () => {
         .set('x-api-secret', SECRET)
         .send({ path: 'botStatus.status', value: 'idle' });
 
-      console.log("STATUS:", res.status, "BODY:", JSON.stringify(res.body)); expect(res.status).toBe(200);
+expect(res.status).toBe(200);
       expect(res.body).toEqual({
         enabled: true,
         status: 'idle',
@@ -643,7 +643,7 @@ describe('guilds routes', () => {
         .set('x-api-secret', SECRET)
         .send({ path: 'moderation.enabled', value: false });
 
-      console.log("STATUS:", res.status, "BODY:", JSON.stringify(res.body)); expect(res.status).toBe(200);
+expect(res.status).toBe(200);
       expect(setConfigValue).toHaveBeenCalledWith('moderation.enabled', false, 'guild1');
     });
 
@@ -717,7 +717,7 @@ describe('guilds routes', () => {
         .set('x-api-secret', SECRET)
         .send({ path: 'moderation.logging.channels.default', value: '123' });
 
-      console.log("STATUS:", res.status, "BODY:", JSON.stringify(res.body)); expect(res.status).toBe(200);
+expect(res.status).toBe(200);
     });
 
     it('should reject unknown config path in PATCH', async () => {
@@ -748,7 +748,7 @@ describe('guilds routes', () => {
         .set('x-api-secret', SECRET)
         .send({ path: 'ai.enabled', value: true });
 
-      console.log("STATUS:", res.status, "BODY:", JSON.stringify(res.body)); expect(res.status).toBe(200);
+expect(res.status).toBe(200);
     });
 
     describe('dashboard webhook notifications', () => {
@@ -764,7 +764,7 @@ describe('guilds routes', () => {
           .set('x-api-secret', SECRET)
           .send({ path: 'ai.systemPrompt', value: 'claude-4' });
 
-        console.log("STATUS:", res.status, "BODY:", JSON.stringify(res.body)); expect(res.status).toBe(200);
+  expect(res.status).toBe(200);
         await new Promise(setImmediate); // Wait for fire-and-forget webhook
         expect(fetchSpy).toHaveBeenCalledOnce();
         const [url, opts] = fetchSpy.mock.calls[0];
@@ -788,7 +788,7 @@ describe('guilds routes', () => {
           .set('x-api-secret', SECRET)
           .send({ path: 'ai.systemPrompt', value: 'claude-4' });
 
-        console.log("STATUS:", res.status, "BODY:", JSON.stringify(res.body)); expect(res.status).toBe(200);
+  expect(res.status).toBe(200);
         expect(fetchSpy).not.toHaveBeenCalled();
       });
 
@@ -804,7 +804,7 @@ describe('guilds routes', () => {
           .set('x-api-secret', SECRET)
           .send({ path: 'ai.systemPrompt', value: 'claude-4' });
 
-        console.log("STATUS:", res.status, "BODY:", JSON.stringify(res.body)); expect(res.status).toBe(200);
+  expect(res.status).toBe(200);
       });
     });
   });
@@ -889,7 +889,7 @@ describe('guilds routes', () => {
 
       const res = await request(app).get('/api/v1/guilds/guild1/stats').set('x-api-secret', SECRET);
 
-      console.log("STATUS:", res.status, "BODY:", JSON.stringify(res.body)); expect(res.status).toBe(200);
+expect(res.status).toBe(200);
       expect(res.body.aiConversations).toBe(42);
       expect(res.body.moderationCases).toBe(5);
       expect(res.body.memberCount).toBe(100);
@@ -1002,7 +1002,7 @@ describe('guilds routes', () => {
         .get('/api/v1/guilds/guild1/analytics?range=week')
         .set('x-api-secret', SECRET);
 
-      console.log("STATUS:", res.status, "BODY:", JSON.stringify(res.body)); expect(res.status).toBe(200);
+expect(res.status).toBe(200);
       expect(res.body.guildId).toBe('guild1');
       expect(res.body.kpis.totalMessages).toBe(120);
       expect(res.body.kpis.aiRequests).toBe(40);
@@ -1065,7 +1065,7 @@ describe('guilds routes', () => {
         .get('/api/v1/guilds/guild1/analytics?range=today')
         .set('x-api-secret', SECRET);
 
-      console.log("STATUS:", res.status, "BODY:", JSON.stringify(res.body)); expect(res.status).toBe(200);
+expect(res.status).toBe(200);
       expect(setUTCHoursSpy).toHaveBeenCalledWith(0, 0, 0, 0);
     });
 
@@ -1086,7 +1086,7 @@ describe('guilds routes', () => {
         .get('/api/v1/guilds/guild1/analytics?range=week&channelId=123456789012345678')
         .set('x-api-secret', SECRET);
 
-      console.log("STATUS:", res.status, "BODY:", JSON.stringify(res.body)); expect(res.status).toBe(200);
+expect(res.status).toBe(200);
       expect(
         mockPool.query.mock.calls.some(([, params]) =>
           Array.isArray(params) ? params.includes('123456789012345678') : false,
@@ -1126,7 +1126,7 @@ describe('guilds routes', () => {
         .get('/api/v1/guilds/guild1/analytics?range=week&compare=1&channelId=123456789012345678')
         .set('x-api-secret', SECRET);
 
-      console.log("STATUS:", res.status, "BODY:", JSON.stringify(res.body)); expect(res.status).toBe(200);
+expect(res.status).toBe(200);
       expect(res.body.range.compare).toBe(true);
       expect(res.body.comparison).toBeTruthy();
       expect(res.body.comparison.kpis.totalMessages).toBe(8);
@@ -1158,7 +1158,7 @@ describe('guilds routes', () => {
         .get('/api/v1/guilds/guild1/analytics?range=week')
         .set('x-api-secret', SECRET);
 
-      console.log("STATUS:", res.status, "BODY:", JSON.stringify(res.body)); expect(res.status).toBe(200);
+expect(res.status).toBe(200);
       expect(res.body.commandUsage).toEqual({ source: 'unavailable', items: [] });
     });
 
@@ -1178,7 +1178,7 @@ describe('guilds routes', () => {
         .get('/api/v1/guilds/guild1/analytics?range=week')
         .set('x-api-secret', SECRET);
 
-      console.log("STATUS:", res.status, "BODY:", JSON.stringify(res.body)); expect(res.status).toBe(200);
+expect(res.status).toBe(200);
       expect(res.body.aiUsage.byModel).toEqual([]);
       expect(res.body.kpis.aiCostUsd).toBe(0);
       expect(res.body.kpis.newMembers).toBeTypeOf('number');
@@ -1201,7 +1201,7 @@ describe('guilds routes', () => {
         .get('/api/v1/guilds/guild1/analytics?range=week')
         .set('x-api-secret', SECRET);
 
-      console.log("STATUS:", res.status, "BODY:", JSON.stringify(res.body)); expect(res.status).toBe(200);
+expect(res.status).toBe(200);
       expect(res.body.userEngagement).toBeNull();
     });
 
@@ -1222,7 +1222,7 @@ describe('guilds routes', () => {
         .get('/api/v1/guilds/guild1/analytics?range=week')
         .set('x-api-secret', SECRET);
 
-      console.log("STATUS:", res.status, "BODY:", JSON.stringify(res.body)); expect(res.status).toBe(200);
+expect(res.status).toBe(200);
       expect(res.body.xpEconomy).toBeNull();
     });
 
@@ -1243,7 +1243,7 @@ describe('guilds routes', () => {
         .get('/api/v1/guilds/guild1/analytics?range=week')
         .set('x-api-secret', SECRET);
 
-      console.log("STATUS:", res.status, "BODY:", JSON.stringify(res.body)); expect(res.status).toBe(200);
+expect(res.status).toBe(200);
       expect(res.body.userEngagement).toBeNull();
       expect(res.body.xpEconomy).toBeNull();
     });
@@ -1259,7 +1259,7 @@ describe('guilds routes', () => {
         .get('/api/v1/guilds/guild1/moderation')
         .set('x-api-secret', SECRET);
 
-      console.log("STATUS:", res.status, "BODY:", JSON.stringify(res.body)); expect(res.status).toBe(200);
+expect(res.status).toBe(200);
       expect(res.body.page).toBe(1);
       expect(res.body.limit).toBe(25);
       expect(res.body.total).toBe(50);
@@ -1315,7 +1315,7 @@ describe('guilds routes', () => {
         .get('/api/v1/guilds/guild1/moderation')
         .set('Authorization', `Bearer ${token}`);
 
-      console.log("STATUS:", res.status, "BODY:", JSON.stringify(res.body)); expect(res.status).toBe(200);
+expect(res.status).toBe(200);
       expect(res.body.total).toBe(1);
     });
 
@@ -1338,7 +1338,7 @@ describe('guilds routes', () => {
         .get('/api/v1/guilds/guild1/moderation')
         .set('Authorization', `Bearer ${token}`);
 
-      console.log("STATUS:", res.status, "BODY:", JSON.stringify(res.body)); expect(res.status).toBe(200);
+expect(res.status).toBe(200);
       expect(fetchSpy).not.toHaveBeenCalled();
     });
 
