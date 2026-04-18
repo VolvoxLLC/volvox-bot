@@ -7,6 +7,7 @@ import { EmbedBuilder } from 'discord.js';
 import { info, error as logError, warn } from '../logger.js';
 import { buildDebugEmbed, extractStats, logAiUsage } from '../utils/debugFooter.js';
 import { fetchChannelCached } from '../utils/discordCache.js';
+import { parseProviderModel } from '../utils/modelString.js';
 import { safeSend } from '../utils/safeSend.js';
 import { splitMessage } from '../utils/splitMessage.js';
 import { addToHistory } from './ai.js';
@@ -76,16 +77,20 @@ export async function fetchChannelContext(channelId, client, bufferSnapshot, lim
       channelTopic: channel.topic ?? null,
     });
 
-    // Fetch historical context + recent messages in parallel
+    // Fetch historical context + recent messages in parallel.
+    // When the buffer is empty we have no `before` anchor, so the history
+    // fetch already returns the most recent messages — skip the redundant
+    // second fetch in that case.
     const oldest = bufferSnapshot[0];
     const historyOptions = { limit };
     if (oldest) historyOptions.before = oldest.messageId;
     const RECENT_LIMIT = 5;
 
-    const [historyFetched, recentFetched] = await Promise.all([
-      channel.messages.fetch(historyOptions),
-      channel.messages.fetch({ limit: RECENT_LIMIT }),
-    ]);
+    const fetchPromises = [channel.messages.fetch(historyOptions)];
+    if (oldest) fetchPromises.push(channel.messages.fetch({ limit: RECENT_LIMIT }));
+    const fetchResults = await Promise.all(fetchPromises);
+    const historyFetched = fetchResults[0];
+    const recentFetched = fetchResults[1] ?? new Map();
 
     // Merge and deduplicate by messageId, excluding messages already in the buffer
     const bufferIds = new Set(bufferSnapshot.map((m) => m.messageId));
@@ -354,12 +359,8 @@ export async function buildStatsAndLog(
   const targetEntry = snapshot.find((m) => classification.targetMessageIds?.includes(m.messageId));
   const targetUserId = targetEntry?.userId || null;
 
-  const classifySeparator = resolved.classifyModel?.indexOf(':') ?? -1;
-  const respondSeparator = resolved.respondModel?.indexOf(':') ?? -1;
-  const classifyProvider =
-    classifySeparator > 0 ? resolved.classifyModel.slice(0, classifySeparator) : 'anthropic';
-  const respondProvider =
-    respondSeparator > 0 ? resolved.respondModel.slice(0, respondSeparator) : 'anthropic';
+  const { providerName: classifyProvider } = parseProviderModel(resolved.classifyModel);
+  const { providerName: respondProvider } = parseProviderModel(resolved.respondModel);
 
   const stats = {
     classify: extractStats(classifyMessage, resolved.classifyModel, classifyProvider),

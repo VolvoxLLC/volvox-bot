@@ -14,6 +14,7 @@
 import { debug, error as logError, warn } from '../logger.js';
 import { calculateCost } from './aiCost.js';
 import { AIClientError, isRetryable } from './errors.js';
+import { parseProviderModel } from './modelString.js';
 
 // ── Lazy SDK loading ────────────────────────────────────────────────────────
 
@@ -92,7 +93,7 @@ async function withRetry(fn, opts = {}) {
 
       // Calculate delay: min(1000 * 2^attempt, 15_000) + jitter
       const retryAfter =
-        status === 429 ? (parseFloat(err.headers?.['retry-after']) || 0) * 1000 : 0;
+        status === 429 ? (Number.parseFloat(err.headers?.['retry-after']) || 0) * 1000 : 0;
       const exponential = Math.min(1000 * 2 ** attempt, 15_000);
       const jitter = Math.random() * 1000;
       const delay = Math.max(exponential + jitter, retryAfter);
@@ -105,9 +106,15 @@ async function withRetry(fn, opts = {}) {
       });
 
       await new Promise((resolve, reject) => {
-        const timer = setTimeout(resolve, delay);
+        let onAbort;
+        const timer = setTimeout(() => {
+          // Remove the abort listener on normal timer completion so we don't
+          // accumulate listeners across retries (each retry adds one).
+          if (signal && onAbort) signal.removeEventListener('abort', onAbort);
+          resolve();
+        }, delay);
         if (signal) {
-          const onAbort = () => {
+          onAbort = () => {
             clearTimeout(timer);
             reject(err);
           };
@@ -155,6 +162,13 @@ function isAnthropicAuthToken(credential) {
   return false;
 }
 
+// Re-export the pure string parser so existing callers that reach for it via
+// aiClient (alongside generate/stream) still work. The implementation lives
+// in `modelString.js` so callers that only need the parser — e.g. debug
+// footer builders — don't transitively import the Vercel AI SDK, and tests
+// that mock aiClient don't lose the helper.
+export { parseProviderModel };
+
 /**
  * Parse a model string and resolve the provider instance + model object.
  *
@@ -166,9 +180,7 @@ function isAnthropicAuthToken(credential) {
 async function resolveModel(modelString, overrides = {}) {
   const { createAnthropic } = await getSDK();
 
-  const colonIdx = modelString.indexOf(':');
-  const providerName = colonIdx > 0 ? modelString.slice(0, colonIdx) : 'anthropic';
-  const modelId = colonIdx > 0 ? modelString.slice(colonIdx + 1) : modelString;
+  const { providerName, modelId } = parseProviderModel(modelString);
 
   // Cache key uses the raw apiKey as a discriminator. Safe because the Map
   // lives in-process and is never serialized, logged, or exported. Using the
@@ -201,6 +213,19 @@ async function resolveModel(modelString, overrides = {}) {
       overrides.baseUrl ||
       (isAnthropic ? undefined : process.env[`${envPrefix}_BASE_URL`]) ||
       KNOWN_BASE_URLS[providerName];
+
+    // Non-Anthropic providers MUST have a baseUrl (from overrides, env, or
+    // KNOWN_BASE_URLS). Without one, createAnthropic() would target
+    // api.anthropic.com and forward the provider's authToken — a credential
+    // leak and a 401 storm. Fail hard with a clear config error.
+    if (!isAnthropic && !baseUrl) {
+      throw new AIClientError(
+        `Missing base URL for provider '${providerName}'. Set ${envPrefix}_BASE_URL, ` +
+          `pass a baseUrl override, or add '${providerName}' to KNOWN_BASE_URLS. ` +
+          `Without a base URL the SDK would route requests to Anthropic and leak the provider's credential.`,
+        'api',
+      );
+    }
 
     providerCache.set(
       cacheKey,
@@ -457,6 +482,10 @@ export async function stream(opts) {
   try {
     const result = await withRetry(
       async () => {
+        // Capture stream-creation time on the *first* successful attempt we
+        // reach here. Retries overwrite this so the final value reflects the
+        // attempt that actually produced the result.
+        timings.streamStarted = Date.now();
         const streamResult = streamText({
           model,
           system,
@@ -496,7 +525,6 @@ export async function stream(opts) {
       },
       { maxRetries: 3, signal },
     );
-    timings.streamStarted = Date.now();
     timings.streamComplete = Date.now();
 
     const providerMeta = getProviderMetadata(result.providerMetadata, providerName);

@@ -190,16 +190,22 @@ describe('generate', () => {
     expect(mockCreateAnthropic).not.toHaveBeenCalled();
   });
 
-  it('should pick up <PROVIDER>_API_KEY env var for non-anthropic providers', async () => {
+  it('should fail hard when <PROVIDER>_API_KEY is set but no base URL is resolvable', async () => {
+    // Defense-in-depth: a non-Anthropic provider without a baseUrl
+    // (from overrides, <PROVIDER>_BASE_URL, or KNOWN_BASE_URLS) would
+    // route requests to api.anthropic.com and leak the provider's credential.
+    // The client must refuse to construct a factory in this case.
     mockGenerateText.mockResolvedValue(makeGenerateResult());
     process.env.CODEX_API_KEY = 'codex-key-123';
+    delete process.env.CODEX_BASE_URL;
 
     try {
-      await generate({ model: 'codex:some-model', prompt: 'test' });
+      await expect(generate({ model: 'codex:some-model', prompt: 'test' })).rejects.toMatchObject({
+        reason: 'api',
+        message: expect.stringContaining('CODEX_BASE_URL'),
+      });
 
-      expect(mockCreateAnthropic).toHaveBeenCalledWith(
-        expect.objectContaining({ authToken: 'codex-key-123' }),
-      );
+      expect(mockCreateAnthropic).not.toHaveBeenCalled();
     } finally {
       delete process.env.CODEX_API_KEY;
     }
