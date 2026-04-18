@@ -83,7 +83,7 @@ export async function logAuditEvent(pool, event) {
         action,
         targetType ?? null,
         targetId ?? null,
-        targetTag ?? null,
+        targetTag ?? '',
         details != null ? JSON.stringify(details) : null,
         ipAddress ?? null,
       ],
