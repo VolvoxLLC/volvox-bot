@@ -1,11 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
 vi.mock('../../src/db.js', () => ({ getPool: vi.fn().mockReturnValue(null) }));
-vi.mock(
-  '../../src/modules/auditLogger.js',
-  () => ({
-    logAuditEvent: vi.fn().mockResolvedValue(undefined),
-  }),
-);
+vi.mock('../../src/modules/auditLogger.js', () => ({
+  logAuditEvent: vi.fn().mockResolvedValue(undefined),
+}));
 
 vi.mock('../../src/utils/safeSend.js', () => ({
   safeSend: (ch, opts) => ch.send(opts),
