@@ -493,7 +493,6 @@ export function AiAutomationCategory() {
               </div>
               <div className="space-y-2">
                 {[
-                  { id: 'streaming', label: 'Real-time Streaming', key: 'streaming' },
                   {
                     id: 'moderationResponse',
                     label: 'Enforce Safety Guardrails',
