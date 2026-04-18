@@ -10,26 +10,28 @@ const PRODUCTION_URL = 'https://volvox.dev';
  *
  * Uses VERCEL_PROJECT_PRODUCTION_URL for the production domain on Vercel,
  * falling back to volvox.dev for local/self-hosted environments.
+ * Ensures the URL always includes the https:// protocol.
  */
 export default function sitemap(): MetadataRoute.Sitemap {
-  const siteUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL ?? PRODUCTION_URL;
+  const rawUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL ?? PRODUCTION_URL;
+  const siteUrl = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
 
   return [
     {
       url: siteUrl,
-      lastModified: new Date('2026-04-18'),
+      lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 1.0,
     },
     {
       url: `${siteUrl}/privacy`,
-      lastModified: new Date('2026-04-18'),
+      lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.3,
     },
     {
       url: `${siteUrl}/terms`,
-      lastModified: new Date('2026-04-18'),
+      lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.3,
     },

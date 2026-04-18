@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next';
 
-const siteUrl = 'https://volvox.dev';
+const PRODUCTION_URL = 'https://volvox.dev';
 
 /**
  * robots.txt — Next.js Metadata API
@@ -12,6 +12,7 @@ const siteUrl = 'https://volvox.dev';
  * @see https://docs.anthropic.com/en/docs/build-with-claude/crawler
  */
 export default function robots(): MetadataRoute.Robots {
+  const siteUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL ?? PRODUCTION_URL;
   const disallowPaths = ['/dashboard', '/login', '/api', '/community'];
 
   const aiAgents = [
