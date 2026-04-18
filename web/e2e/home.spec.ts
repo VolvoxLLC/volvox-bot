@@ -189,13 +189,13 @@ test.describe('Stats Section', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-    await page.getByText('Trusted by').waitFor({ state: 'visible', timeout: 15000 });
+    await page.getByText('Network Status').waitFor({ state: 'visible', timeout: 15000 });
   });
 
   test('shows live stats labels', async ({ page }) => {
-    const statsSection = page.locator('section', { hasText: 'Trusted by' });
-    await expect(statsSection.getByText('Commands Processed')).toBeVisible({ timeout: 15000 });
-    await expect(statsSection.getByText('Current Uptime')).toBeVisible({ timeout: 15000 });
+    const statsSection = page.locator('section', { hasText: 'Network Status' });
+    await expect(statsSection.getByText('Active Users')).toBeVisible({ timeout: 15000 });
+    await expect(statsSection.getByText('Uptime')).toBeVisible({ timeout: 15000 });
   });
 
   test('Bot Config is not in navigation', async ({ page }) => {
