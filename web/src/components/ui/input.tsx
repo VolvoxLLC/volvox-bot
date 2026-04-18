@@ -19,7 +19,7 @@ function Input({ className, type, onFocus, ...props }: React.ComponentProps<'inp
       data-slot="input"
       onFocus={(e) => {
         if (!type || TEXT_SELECTABLE_INPUT_TYPES.has(type)) {
-          e.target.select();
+          e.currentTarget.select();
         }
         onFocus?.(e);
       }}

@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, Ban, Clock, Shield, TrendingUp, UserX } from 'lucide-react';
+import { AlertTriangle, Clock, Shield, TrendingUp, UserX } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { ModStats } from './moderation-types';
 import { ACTION_META } from './moderation-types';
@@ -172,6 +172,9 @@ export function ModerationStats({ stats, loading, error }: ModerationStatsProps)
                 ))}
               </div>
             ) : !stats?.topTargets?.length ? (
+              <p className="text-sm text-muted-foreground">No targets yet.</p>
+            ) : (
+              <ul className="space-y-2">
                 {stats.topTargets.map(({ userId, tag, count }) => (
                   <li
                     key={`${userId}-${tag ?? 'unknown'}`}
@@ -180,8 +183,7 @@ export function ModerationStats({ stats, loading, error }: ModerationStatsProps)
                     <span className="truncate text-muted-foreground font-mono text-xs">
                       {tag ?? userId}
                     </span>
-                      {count}
-                    </span>
+                    <span className="font-semibold tabular-nums text-foreground/90">{count}</span>
                   </li>
                 ))}
               </ul>

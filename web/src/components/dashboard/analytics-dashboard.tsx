@@ -673,7 +673,8 @@ export function AnalyticsDashboard() {
               onClick={() => setChannelFilter(null)}
               aria-pressed={channelFilter === null}
               className={cn(
-                'rounded-full px-5 transition-all duration-300 font-bold text-[11px] uppercase tracking-wider',
+                'rounded-full px-5 transition-all duration-300 font-bold text-[11px] uppercase',
+                'tracking-wider',
                 channelFilter === null
                   ? 'shadow-[0_0_20px_hsl(var(--primary)/0.25)]'
                   : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/30',
@@ -690,7 +691,8 @@ export function AnalyticsDashboard() {
                   variant={isActive ? 'default' : 'ghost'}
                   aria-pressed={isActive}
                   className={cn(
-                    'rounded-full px-5 transition-all duration-300 font-bold text-[11px] uppercase tracking-wider',
+                    'rounded-full px-5 transition-all duration-300 font-bold',
+                    'text-[11px] uppercase tracking-wider',
                     isActive
                       ? 'shadow-[0_0_20px_hsl(var(--primary)/0.25)]'
                       : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/30',

@@ -429,6 +429,15 @@ function cloneForEvent(value) {
 }
 
 /**
+ * Check whether a config path likely contains sensitive material.
+ * @param {string} path - Dot-notation config path
+ * @returns {boolean} `true` when the path should have its value redacted in logs
+ */
+function isSensitiveConfigPath(path) {
+  return path.split('.').some((segment) => /apikey|token|secret|password|key/i.test(segment));
+}
+
+/**
  * Collect leaf values from an object into a dot-notation map.
  * Plain-object leaves are flattened; arrays and primitives are treated as terminal values.
  * @param {*} value - Root value
@@ -651,10 +660,11 @@ export async function setMultipleConfigValues(patches, guildId = 'global') {
   }
 
   const client = await pool.connect();
+  const persistedSections = new Map();
   try {
     await client.query('BEGIN');
 
-    const sectionList = Array.from(sectionsToUpdate).sort();
+    const sectionList = Array.from(sectionsToUpdate).sort((a, b) => a.localeCompare(b));
 
     for (const section of sectionList) {
       const guildConfig = configCache.get(guildId) || {};
@@ -675,6 +685,8 @@ export async function setMultipleConfigValues(patches, guildId = 'global') {
         // the top-level key against SAFE_CONFIG_KEYS before any property write.
         setNestedValue(dbSection, nestedParts, parsedVal);
       }
+
+      persistedSections.set(section, structuredClone(dbSection));
 
       if (rows.length > 0) {
         await client.query(
@@ -706,6 +718,12 @@ export async function setMultipleConfigValues(patches, guildId = 'global') {
     configCache.set(guildId, {});
   }
   const cacheEntry = configCache.get(guildId);
+  const previousSections = new Map(
+    Array.from(persistedSections.keys(), (section) => [
+      section,
+      cacheEntry[section] === undefined ? undefined : structuredClone(cacheEntry[section]),
+    ]),
+  );
 
   if (guildId === 'global') {
     mergedConfigCache.clear();
@@ -714,34 +732,29 @@ export async function setMultipleConfigValues(patches, guildId = 'global') {
     mergedConfigCache.delete(guildId);
   }
 
+  for (const [section, dbSection] of persistedSections) {
+    cacheEntry[section] = structuredClone(dbSection);
+  }
+
   for (const patch of patches) {
     const parts = patch.path.split('.');
     const section = parts[0];
     const nestedParts = parts.slice(1);
-    const parsedVal = parseValue(patch.value);
 
-    const rawOld = getNestedValue(cacheEntry[section], nestedParts);
+    const rawOld = getNestedValue(previousSections.get(section), nestedParts);
     const oldValue =
       rawOld !== null && typeof rawOld === 'object' ? structuredClone(rawOld) : rawOld;
-
-    if (
-      !cacheEntry[section] ||
-      typeof cacheEntry[section] !== 'object' ||
-      Array.isArray(cacheEntry[section])
-    ) {
-      cacheEntry[section] = {};
-    }
-    // API callers validate patch.path via validateConfigPatchBody, which gates
-    // the top-level key against SAFE_CONFIG_KEYS before any property write.
-    setNestedValue(cacheEntry[section], nestedParts, parsedVal);
+    const rawNew = getNestedValue(cacheEntry[section], nestedParts);
+    const newValue =
+      rawNew !== null && typeof rawNew === 'object' ? structuredClone(rawNew) : rawNew;
 
     info('Config updated (bulk)', {
       path: patch.path,
-      value: parsedVal,
+      value: isSensitiveConfigPath(patch.path) ? '***' : newValue,
       guildId,
       persisted: dbPersisted,
     });
-    await emitConfigChangeEvents(patch.path, parsedVal, oldValue, guildId);
+    await emitConfigChangeEvents(patch.path, newValue, oldValue, guildId);
   }
 
 }

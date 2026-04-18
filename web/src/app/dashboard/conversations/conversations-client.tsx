@@ -1,6 +1,7 @@
 'use client';
 
 import { Hash, MessageSquare, Search, X } from 'lucide-react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { EmptyState } from '@/components/dashboard/empty-state';
@@ -78,6 +79,7 @@ export default function ConversationsClient() {
   const [channelFilter, setChannelFilter] = useState(currentOpts.channel);
   const [page, setPage] = useState(currentOpts.page);
   const [channels, setChannels] = useState<Channel[]>([]);
+  const [brokenAvatars, setBrokenAvatars] = useState<Set<string>>(() => new Set());
   const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [debouncedSearch, setDebouncedSearch] = useState(currentOpts.search);
 
@@ -86,6 +88,7 @@ export default function ConversationsClient() {
     setSearch('');
     setChannelFilter('');
     setPage(1);
+    setBrokenAvatars(new Set());
   }, []);
   const guildId = useGuildSelection({ onGuildChange });
 
@@ -299,27 +302,41 @@ export default function ConversationsClient() {
                         </TableCell>
                         <TableCell>
                           <div className="flex -space-x-1">
-                            {convo.participants.slice(0, 3).map((p) => (
-                              <div
-                                key={`${p.userId ?? 'unknown'}-${p.username}`}
-                                className="group relative"
-                                title={`${p.username} (${p.role})`}
-                              >
-                                {p.avatar ? (
-                                  <img
-                                    src={p.avatar}
-                                    alt={p.username}
-                                    className="h-6 w-6 rounded-full border-2 border-card object-cover"
-                                  />
-                                ) : (
-                                  <div
-                                    className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-white ring-2 ring-card ${p.role === 'user' ? 'bg-primary/80' : 'bg-muted-foreground/50'}`}
-                                  >
-                                    {p.username.slice(0, 2).toUpperCase()}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
+                            {convo.participants.slice(0, 3).map((p) => {
+                              const avatarKey = `${p.userId ?? p.username}:${p.avatar ?? ''}`;
+                              const avatarSrc = p.avatar ?? '';
+                              const showAvatar =
+                                avatarSrc.length > 0 && !brokenAvatars.has(avatarKey);
+
+                              return (
+                                <div
+                                  key={`${p.userId ?? 'unknown'}-${p.username}`}
+                                  className="group relative"
+                                  title={`${p.username} (${p.role})`}
+                                >
+                                  {showAvatar ? (
+                                    <Image
+                                      src={avatarSrc}
+                                      alt={p.username}
+                                      width={24}
+                                      height={24}
+                                      className="h-6 w-6 rounded-full border-2 border-card object-cover"
+                                      onError={() => {
+                                        setBrokenAvatars((current) =>
+                                          new Set(current).add(avatarKey),
+                                        );
+                                      }}
+                                    />
+                                  ) : (
+                                    <div
+                                      className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-white ring-2 ring-card ${p.role === 'user' ? 'bg-primary/80' : 'bg-muted-foreground/50'}`}
+                                    >
+                                      {p.username.slice(0, 2).toUpperCase()}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
                             {convo.participants.length > 3 && (
                               <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-[10px] font-bold ring-2 ring-card">
                                 +{convo.participants.length - 3}

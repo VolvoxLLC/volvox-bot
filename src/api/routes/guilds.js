@@ -891,8 +891,11 @@ router.patch('/:id/config', requireGuildAdmin, validateGuild, async (req, res) =
 
   const result = validateConfigPatchBody(req.body, SAFE_CONFIG_KEYS);
   if (result.error) {
+    const path = typeof req.body?.path === 'string' ? req.body.path : undefined;
+    const topLevelKey = path?.split('.')[0];
     warn('Config validation failed', {
-      body: req.body,
+      path,
+      topLevelKey,
       error: result.error,
       details: result.details,
     });
@@ -987,8 +990,11 @@ router.put('/:id/config', requireGuildAdmin, validateGuild, async (req, res) => 
   for (const patch of patches) {
     const result = validateConfigPatchBody(patch, SAFE_CONFIG_KEYS);
     if (result.error) {
+      const path = typeof patch?.path === 'string' ? patch.path : undefined;
+      const topLevelKey = path?.split('.')[0];
       warn('Bulk config validation failed', {
-        patch,
+        path,
+        topLevelKey,
         error: result.error,
         details: result.details,
       });

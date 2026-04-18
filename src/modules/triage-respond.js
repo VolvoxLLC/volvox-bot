@@ -22,7 +22,10 @@ const CONTEXT_MESSAGE_CHAR_LIMIT = 500;
 /**
  * Record one or more assistant messages into conversation history.
  *
- * For each sent Discord message with a valid `id`, adds an "assistant" entry using the message content (or `fallbackContent` when empty) and the message's author id. Handles either a single Message, an array of Messages, or `null`; entries without an `id` are ignored.
+ * For each sent Discord message with a valid `id`, adds an "assistant" entry
+ * using the message content (or `fallbackContent` when empty) and the
+ * message's author id. Handles either a single Message, an array of Messages,
+ * or `null`; entries without an `id` are ignored.
  *
  * @param {string} channelId - The channel the message was sent in.
  * @param {string|null} guildId - The guild ID, or `null` for DMs.
@@ -40,7 +43,7 @@ function logAssistantHistory(channelId, guildId, fallbackContent, sentMsg) {
       null,
       m.id,
       guildId || null,
-      m.author.id,
+      m.author?.id ?? null,
     );
   }
 }
@@ -120,9 +123,12 @@ export async function fetchChannelContext(channelId, client, bufferSnapshot, lim
 // ── Moderation audit log ─────────────────────────────────────────────────────
 
 /**
- * Send a moderation audit embed to the configured moderation log channel summarizing the classification and flagged messages.
+ * Send a moderation audit embed to the configured moderation log channel
+ * summarizing the classification and flagged messages.
  *
- * If no moderation log channel is configured or the channel cannot be fetched, the function exits without action. Errors encountered while sending the embed are caught and ignored so the triage flow continues.
+ * If no moderation log channel is configured or the channel cannot be fetched,
+ * the function exits without action. Errors encountered while sending the embed
+ * are caught and ignored so the triage flow continues.
  *
  * @param {import('discord.js').Client} client - Discord client used to fetch the log channel.
  * @param {Object} classification - Classifier output containing fields such as `recommendedAction`, `violatedRule`, `reasoning`, and `targetMessageIds`.

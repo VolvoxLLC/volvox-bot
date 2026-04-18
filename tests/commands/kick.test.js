@@ -29,6 +29,7 @@ vi.mock('../../src/modules/config.js', () => ({
 vi.mock('../../src/logger.js', () => ({ info: vi.fn(), error: vi.fn(), warn: vi.fn() }));
 
 import { adminOnly, data, execute } from '../../src/commands/kick.js';
+import { logAuditEvent } from '../../src/modules/auditLogger.js';
 import {
   checkHierarchy,
   createCase,
@@ -66,9 +67,9 @@ describe('kick command', () => {
         member: { roles: { highest: { position: 10 } } },
         user: { id: 'mod1', tag: 'Mod#0001' },
         client: {
-      user: { id: 'bot1', tag: 'Bot#0001' },
-      users: { fetch: vi.fn().mockResolvedValue(null) },
-    },
+          user: { id: 'bot1', tag: 'Bot#0001' },
+          users: { fetch: vi.fn().mockResolvedValue(null) },
+        },
         deferReply: vi.fn().mockResolvedValue(undefined),
         editReply: vi.fn().mockResolvedValue(undefined),
         reply: vi.fn().mockResolvedValue(undefined),
@@ -110,6 +111,10 @@ describe('kick command', () => {
         action: 'kick',
         targetId: 'user1',
       }),
+    );
+    expect(logAuditEvent).toHaveBeenCalledWith(
+      null,
+      expect.objectContaining({ action: 'mod.kick' }),
     );
     expect(interaction.editReply).toHaveBeenCalledWith(expect.stringContaining('has been kicked'));
   });

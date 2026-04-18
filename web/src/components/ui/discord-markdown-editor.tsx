@@ -206,12 +206,14 @@ const SHORTCUT_MAP: Record<string, string> = {
 const EDITOR_PANE_CONTENT_CLASSES = 'w-full px-3 py-2 text-sm leading-relaxed';
 
 /**
- * Controlled Discord-style Markdown editor with a formatting toolbar, variable insertion, and live HTML preview.
+ * Controlled Discord-style Markdown editor with a formatting toolbar, variable
+ * insertion, and live HTML preview.
  *
  * @param value - Current editor text.
  * @param onChange - Callback invoked with the updated text when the editor content changes.
  * @param variables - Optional list of variable names available for insertion into the editor.
- * @param variableSamples - Optional map of variable name → sample text used to render sample values inside the preview.
+ * @param variableSamples - Optional map of variable name → sample text used to
+ * render sample values inside the preview.
  * @param maxLength - Maximum allowed number of characters in the editor (default: 2000).
  * @param placeholder - Placeholder text shown when the editor is empty.
  * @param className - Additional CSS class names applied to the editor container.
@@ -391,7 +393,10 @@ export function DiscordMarkdownEditor({
                 Variables
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="max-h-48 min-w-[160px] overflow-auto p-1 scrollbar-thin scrollbar-thumb-border/20 scrollbar-track-transparent">
+            <DropdownMenuContent
+              align="end"
+              className="max-h-48 min-w-[160px] overflow-auto p-1 scrollbar-thin scrollbar-thumb-border/20 scrollbar-track-transparent"
+            >
               {variables.map((variable) => (
                 <DropdownMenuItem
                   key={variable}

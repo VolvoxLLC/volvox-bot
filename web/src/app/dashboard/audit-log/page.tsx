@@ -2,6 +2,7 @@
 
 import { Check, ChevronDown, ChevronRight, ClipboardList, Copy, Search, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import type { MouseEvent } from 'react';
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { EmptyState } from '@/components/dashboard/empty-state';
 import { Badge } from '@/components/ui/badge';
@@ -65,7 +66,7 @@ function CopyButton({ value }: { value: string }) {
     };
   }, []);
 
-  const handleCopy = async (e: React.MouseEvent) => {
+  const handleCopy = async (e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
 
     if (!navigator.clipboard?.writeText) {
@@ -434,7 +435,9 @@ export default function AuditLogPage() {
                                   </span>
                                   <div className="flex items-center text-[10px] font-mono text-muted-foreground/40">
                                     <span>
-                                      {entry.target_type ? `${entry.target_type}:${entry.target_id}` : entry.target_id}
+                                      {entry.target_type
+                                        ? `${entry.target_type}:${entry.target_id}`
+                                        : entry.target_id}
                                     </span>
                                     <CopyButton value={entry.target_id} />
                                   </div>

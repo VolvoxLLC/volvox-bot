@@ -21,11 +21,15 @@ interface ConversationDetailResponse {
 }
 
 /**
- * Displays a conversation replay page and manages fetching its detail based on URL parameters and the `guildId` query parameter.
+ * Displays a conversation replay page and manages fetching its detail based on URL
+ * parameters and the `guildId` query parameter.
  *
- * The component handles loading and error states, redirects to the login page on 401, shows a "not found" message on 404, and renders the replay UI when conversation data is available.
+ * The component handles loading and error states, redirects to the login page on
+ * 401, shows a "not found" message on 404, and renders the replay UI when
+ * conversation data is available.
  *
- * @returns A React element that renders the conversation detail page, including loading skeletons, error UI, and the conversation replay when data is loaded.
+ * @returns A React element that renders the conversation detail page, including
+ * loading skeletons, error UI, and the conversation replay when data is loaded.
  */
 export default function ConversationDetailPage() {
   const router = useRouter();

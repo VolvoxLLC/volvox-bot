@@ -215,7 +215,7 @@ describe('guilds routes', () => {
         .get('/api/v1/guilds/guild1')
         .set('Authorization', `Bearer ${token}`);
 
-      console.log("STATUS:", res.status, "BODY:", JSON.stringify(res.body)); expect(res.status).toBe(200);
+      expect(res.status).toBe(200);
       expect(res.body.id).toBe('guild1');
     });
 
