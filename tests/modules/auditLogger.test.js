@@ -82,7 +82,7 @@ describe('logAuditEvent', () => {
     expect(params[2]).toBeNull(); // userTag
     expect(params[4]).toBeNull(); // targetType
     expect(params[5]).toBeNull(); // targetId
-    expect(params[6]).toBeNull(); // targetTag
+    expect(params[6]).toBe(''); // targetTag (NOT NULL column)
     expect(params[7]).toBeNull(); // details
     expect(params[8]).toBeNull(); // ipAddress
   });
