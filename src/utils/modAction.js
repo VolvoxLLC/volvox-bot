@@ -5,10 +5,10 @@
  * case creation, mod log, success reply, and error handling.
  */
 
-import { debug, info, error as logError, warn } from '../logger.js';
-import { getConfig } from '../modules/config.js';
 import { getPool } from '../db.js';
+import { debug, info, error as logError, warn } from '../logger.js';
 import { logAuditEvent } from '../modules/auditLogger.js';
+import { getConfig } from '../modules/config.js';
 import {
   checkHierarchy,
   createCase,
@@ -155,13 +155,12 @@ export async function executeModAction(interaction, opts) {
 
     // Build a descriptive tag that includes display name and username
     const resolvedTargetUser =
-      target?.user ||
-      (await interaction.client.users.fetch(targetId).catch(() => null));
+      target?.user || (await interaction.client.users.fetch(targetId).catch(() => null));
     const targetTag = resolvedTargetUser
-      ? (resolvedTargetUser.globalName &&
-          resolvedTargetUser.globalName !== resolvedTargetUser.username
-          ? `${resolvedTargetUser.globalName} (@${resolvedTargetUser.username})`
-          : resolvedTargetUser.tag)
+      ? resolvedTargetUser.globalName &&
+        resolvedTargetUser.globalName !== resolvedTargetUser.username
+        ? `${resolvedTargetUser.globalName} (@${resolvedTargetUser.username})`
+        : resolvedTargetUser.tag
       : rawTargetTag;
 
     // Pre-action checks (self-mod, protected, hierarchy)

@@ -756,7 +756,6 @@ export async function setMultipleConfigValues(patches, guildId = 'global') {
     });
     await emitConfigChangeEvents(patch.path, newValue, oldValue, guildId);
   }
-
 }
 
 /**
