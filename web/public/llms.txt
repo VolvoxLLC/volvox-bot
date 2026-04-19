@@ -7,9 +7,9 @@ Volvox combines large language models with community governance to give server a
 ## Documentation
 
 - Documentation: https://docs.volvox.bot
-- Dashboard: https://volvox.dev
-- Privacy Policy: https://volvox.dev/privacy
-- Terms of Service: https://volvox.dev/terms
+- Dashboard: https://volvox.bot
+- Privacy Policy: https://volvox.bot/privacy
+- Terms of Service: https://volvox.bot/terms
 
 ## Features
 

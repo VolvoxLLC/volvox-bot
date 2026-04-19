@@ -21,11 +21,11 @@ export const metadata: Metadata = {
   },
   description:
     'The AI-powered Discord bot for modern communities. Moderation, AI chat, dynamic welcomes, spam detection, and a fully configurable web dashboard.',
-  metadataBase: new URL('https://volvox.dev'),
+  metadataBase: new URL('https://volvox.bot'),
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://volvox.dev',
+    url: 'https://volvox.bot',
     siteName: 'Volvox',
     title: 'Volvox.Bot — AI-Powered Discord Bot',
     description:
