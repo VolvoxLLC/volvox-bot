@@ -233,7 +233,7 @@ export function OnboardingGrowthCategory() {
       {/* Welcome Layout */}
       {activeTab === 'welcome' && (
         <div className="space-y-6">
-          <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-6">
+          <div className="p-4 sm:p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-6">
             <div className="space-y-2">
               <span className="block text-sm font-bold tracking-tight text-foreground/80">
                 Welcome message
@@ -329,7 +329,7 @@ export function OnboardingGrowthCategory() {
           {/* Advanced Multi-column Setup */}
           <div className="grid lg:grid-cols-2 gap-6">
             {/* Dynamic Onboarding Toggle */}
-            <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-6">
+            <div className="p-4 sm:p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-6">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <h3 className="text-sm font-bold text-foreground/90">Engine Intelligence</h3>
@@ -374,7 +374,7 @@ export function OnboardingGrowthCategory() {
             </div>
 
             {/* DM Sequence */}
-            <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-4">
+            <div className="p-4 sm:p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <h3 className="text-sm font-bold text-foreground/90">Directed Onboarding</h3>
@@ -409,7 +409,7 @@ export function OnboardingGrowthCategory() {
           </div>
 
           {/* Role Menu Setup */}
-          <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl">
+          <div className="p-4 sm:p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl">
             <div className="flex items-center justify-between mb-8">
               <div className="space-y-0.5">
                 <h3 className="text-sm font-bold text-foreground/90">Self-Assign Tiers</h3>
@@ -495,7 +495,7 @@ export function OnboardingGrowthCategory() {
       {/* Engagement Layout */}
       {activeTab === 'engagement' && (
         <div className="space-y-6">
-          <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl">
+          <div className="p-4 sm:p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl">
             <div className="flex items-center justify-between mb-6">
               <div className="space-y-1">
                 <h3 className="text-sm font-bold text-foreground/90 uppercase tracking-tight">
@@ -635,7 +635,7 @@ export function OnboardingGrowthCategory() {
       {/* Reputation Layout */}
       {activeTab === 'reputation' && (
         <div className="space-y-6">
-          <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl">
+          <div className="p-4 sm:p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
@@ -761,7 +761,7 @@ export function OnboardingGrowthCategory() {
       {activeTab === 'tldr-afk' && (
         <div className="space-y-6">
           <div className="grid md:grid-cols-2 gap-6">
-            <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-6">
+            <div className="p-4 sm:p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-6">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
                   <h3 className="text-sm font-bold text-foreground/90">AI Summaries</h3>
@@ -795,7 +795,7 @@ export function OnboardingGrowthCategory() {
               </div>
             </div>
 
-            <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-6">
+            <div className="p-4 sm:p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-6">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
                   <h3 className="text-sm font-bold text-foreground/90">AFK Responder</h3>
@@ -823,7 +823,7 @@ export function OnboardingGrowthCategory() {
             </div>
           </div>
 
-          <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl">
+          <div className="p-4 sm:p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl">
             <h3 className="text-sm font-bold text-foreground/90 uppercase tracking-tight mb-6">
               TL;DR Budgeting
             </h3>
@@ -877,7 +877,7 @@ export function OnboardingGrowthCategory() {
       {/* Challenges Layout */}
       {activeTab === 'challenges' && (
         <div className="space-y-6">
-          <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl">
+          <div className="p-4 sm:p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
               <div className="space-y-2">
                 <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1">

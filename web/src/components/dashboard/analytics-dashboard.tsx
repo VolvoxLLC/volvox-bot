@@ -840,7 +840,6 @@ export function AnalyticsDashboard() {
                           borderRadius: 12,
                           color: chart.tooltipText,
                         }}
-                        cursor={{ fill: 'transparent' }}
                       />
                       <Bar
                         dataKey="prompt"
@@ -902,7 +901,6 @@ export function AnalyticsDashboard() {
                       tickLine={false}
                     />
                     <RechartsTooltip
-                      cursor={{ fill: 'transparent' }}
                       contentStyle={{
                         backgroundColor: chart.tooltipBg,
                         borderColor: chart.tooltipBorder,

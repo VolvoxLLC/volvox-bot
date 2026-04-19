@@ -1,6 +1,7 @@
 /**
  * Triage Result Parsers
- * Parse and validate JSON results from classifier and responder CLI processes.
+ * Parse and validate JSON results returned by the Vercel AI SDK classifier
+ * and responder calls.
  */
 
 import { info, warn } from '../logger.js';
@@ -26,8 +27,13 @@ export function parseSDKResult(raw, channelId, label) {
   }
   const text = typeof raw === 'string' ? raw : JSON.stringify(raw);
 
-  // Strip markdown code fences if present
-  const stripped = text.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/, '');
+  // Strip markdown code fences if present. Some providers prepend blank lines
+  // before the fence, so trim outer whitespace before checking fence markers.
+  const stripped = text
+    .trim()
+    .replace(/^```(?:json)?\s*\n?/i, '')
+    .replace(/\n?```\s*$/i, '')
+    .trim();
 
   try {
     return JSON.parse(stripped);
@@ -50,7 +56,10 @@ export function parseSDKResult(raw, channelId, label) {
     const recovered = {
       classification: classMatch[1],
       reasoning: reasonMatch ? reasonMatch[1] : 'Recovered from truncated response',
+      confidence: 0.5,
       targetMessageIds: [],
+      needsThinking: false,
+      needsSearch: false,
     };
     info(`${label}: recovered classification from truncated JSON`, { channelId, ...recovered });
     return recovered;
@@ -67,26 +76,27 @@ export function parseSDKResult(raw, channelId, label) {
 
 /**
  * Parse the classifier's JSON text output.
- * @param {Object} sdkMessage - Raw CLI result message
+ * @param {Object} sdkResult - Vercel AI SDK result object (has `.text`, `.finishReason`, etc.)
  * @param {string} channelId - For logging
- * @returns {Object|null} Parsed { classification, reasoning, targetMessageIds } or null
+ * @returns {Object|null} Parsed { classification, reasoning, targetMessageIds, needsThinking, needsSearch } or null
  */
-export function parseClassifyResult(sdkMessage, channelId) {
-  const parsed = parseSDKResult(sdkMessage.result, channelId, 'Classifier');
+export function parseClassifyResult(sdkResult, channelId) {
+  const parsed = parseSDKResult(sdkResult.text, channelId, 'Classifier');
 
   if (!parsed?.classification) {
     warn('Classifier result unparseable', {
       channelId,
-      resultType: typeof sdkMessage.result,
-      messageKeys: Object.keys(sdkMessage),
-      hasResult: 'result' in sdkMessage,
-      isError: sdkMessage.is_error,
-      errors: sdkMessage.errors?.map((e) => e.message || e).slice(0, 5),
-      stopReason: sdkMessage.stop_reason,
-      resultSnippet: JSON.stringify(sdkMessage.result)?.slice(0, 300),
+      resultType: typeof sdkResult.text,
+      hasText: 'text' in sdkResult,
+      finishReason: sdkResult.finishReason,
+      resultSnippet: sdkResult.text?.slice(0, 300),
     });
     return null;
   }
+
+  // Normalize classifier hints (default false for backward compat / truncated responses)
+  parsed.needsThinking = parsed.needsThinking === true;
+  parsed.needsSearch = parsed.needsSearch === true;
 
   return parsed;
 }
@@ -101,23 +111,20 @@ export function parseClassifyResult(sdkMessage, channelId) {
  * accumulation time, and splitMessage() in triage-respond.js handles chunking
  * for any edge cases before sending to Discord.
  *
- * @param {Object} sdkMessage - Raw CLI result message
+ * @param {Object} sdkResult - Vercel AI SDK result object (has `.text`, `.finishReason`, etc.)
  * @param {string} channelId - For logging
  * @returns {Object|null} Parsed { responses: [...] } or null
  */
-export function parseRespondResult(sdkMessage, channelId) {
-  const parsed = parseSDKResult(sdkMessage.result, channelId, 'Responder');
+export function parseRespondResult(sdkResult, channelId) {
+  const parsed = parseSDKResult(sdkResult.text, channelId, 'Responder');
 
   if (!parsed) {
     warn('Responder result unparseable', {
       channelId,
-      resultType: typeof sdkMessage.result,
-      messageKeys: Object.keys(sdkMessage),
-      hasResult: 'result' in sdkMessage,
-      isError: sdkMessage.is_error,
-      errors: sdkMessage.errors?.map((e) => e.message || e).slice(0, 5),
-      stopReason: sdkMessage.stop_reason,
-      resultSnippet: JSON.stringify(sdkMessage.result)?.slice(0, 300),
+      resultType: typeof sdkResult.text,
+      hasText: 'text' in sdkResult,
+      finishReason: sdkResult.finishReason,
+      resultSnippet: sdkResult.text?.slice(0, 300),
     });
     return null;
   }

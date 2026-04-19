@@ -1,7 +1,6 @@
 'use client';
 
 import { useGSAP } from '@gsap/react';
-import { motion } from 'framer-motion'; // Kept only for simple hover/tap interactions
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Activity, ArrowRight, ChevronRight, Cpu, Terminal, Zap } from 'lucide-react';
@@ -13,7 +12,9 @@ import { GithubIcon } from '@/components/ui/github-icon';
 import { SimpleIcon } from '@/components/ui/simple-icon';
 import { getBotInviteUrl } from '@/lib/discord';
 
-gsap.registerPlugin(ScrollTrigger);
+if (typeof window !== 'undefined') {
+  gsap.registerPlugin(ScrollTrigger);
+}
 
 // ─── Footer Links Config ─────────────────────────────────
 const footerLinks = [
@@ -49,25 +50,12 @@ function FooterBackground() {
     <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
       {/* Tactical Background Grid */}
       <div
-        className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] pointer-events-none"
+        className="absolute inset-0 opacity-[0.03] dark:opacity-[0.02] pointer-events-none"
         style={{
           backgroundImage: `
             linear-gradient(to right, hsl(var(--foreground)) 1px, transparent 1px),
             linear-gradient(to bottom, hsl(var(--foreground)) 1px, transparent 1px)
           `,
-          backgroundSize: '40px 40px',
-        }}
-      />
-
-      {/* Prismatic Orbs - Fixed positioning for GSAP targeting */}
-      <div className="footer-orb-1 absolute -bottom-40 -left-20 w-[60vw] h-[60vw] bg-primary/10 dark:bg-primary/5 blur-[120px] rounded-full" />
-      <div className="footer-orb-2 absolute top-0 -right-20 w-[50vw] h-[50vw] bg-secondary/10 dark:bg-secondary/5 blur-[120px] rounded-full" />
-
-      {/* Tactical dots */}
-      <div
-        className="absolute inset-0 opacity-[0.05] pointer-events-none"
-        style={{
-          backgroundImage: 'radial-gradient(circle, hsl(var(--border)) 1.5px, transparent 1.5px)',
           backgroundSize: '32px 32px',
         }}
       />
@@ -82,63 +70,74 @@ export function Footer() {
 
   useGSAP(
     () => {
-      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        gsap.set('.cta-label', { opacity: 1 });
+        gsap.set('.cta-card', { opacity: 1, scale: 1 });
+        gsap.set('.cta-buttons', { opacity: 1 });
+        if (contentRef.current) {
+          gsap.set(contentRef.current, { opacity: 1, y: 0 });
+        }
+        return;
+      }
 
-      // 1. Reveal Animation for Main Content
+      const tl = gsap.timeline({
+        scrollTrigger: {
+          trigger: '.cta-module',
+          start: 'top 80%',
+          toggleActions: 'play none none none',
+        },
+      });
+
+      tl.fromTo(
+        '.cta-label',
+        { opacity: 0, y: 10 },
+        { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' },
+      );
+
+      tl.fromTo(
+        '.cta-card',
+        { opacity: 0, scale: 0.98, y: 20 },
+        { opacity: 1, scale: 1, y: 0, duration: 0.8, ease: 'expo.out' },
+        '-=0.4',
+      );
+
+      tl.fromTo(
+        '.cta-buttons',
+        { opacity: 0, y: 10 },
+        { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' },
+        '-=0.4',
+      );
+
       gsap.fromTo(
         contentRef.current,
-        { opacity: 0, y: 100, scale: 0.95 },
+        { opacity: 0, y: 50 },
         {
           opacity: 1,
           y: 0,
-          scale: 1,
-          duration: 1.5,
-          ease: 'expo.out',
+          duration: 1,
+          ease: 'power3.out',
           scrollTrigger: {
             trigger: containerRef.current,
-            start: 'top 85%', // Trigger slightly before it enters the viewport
+            start: 'top 85%',
             toggleActions: 'play none none none',
           },
         },
       );
 
-      // 2. Parallax Background Effects
-      gsap.to('.footer-orb-1', {
-        y: -150,
-        scrollTrigger: {
-          trigger: containerRef.current,
-          start: 'top bottom',
-          end: 'bottom top',
-          scrub: 1,
-        },
-      });
-
-      gsap.to('.footer-orb-2', {
-        y: -250,
-        scrollTrigger: {
-          trigger: containerRef.current,
-          start: 'top bottom',
-          end: 'bottom top',
-          scrub: 1.5,
-        },
-      });
-
-      // 3. Staggered Entrance for Footer Links
       gsap.from('.footer-link-col', {
         opacity: 0,
-        y: 20,
-        duration: 0.8,
+        y: 10,
+        duration: 0.6,
         stagger: 0.1,
         ease: 'power2.out',
         scrollTrigger: {
           trigger: '.footer-nav-grid',
-          start: 'top 90%',
+          start: 'top 95%',
         },
       });
 
-      // 4. Status Bar Subtle Pulse
       gsap.to('.status-indicator', {
-        opacity: 0.6,
+        opacity: 0.5,
         duration: 1.5,
         repeat: -1,
         yoyo: true,
@@ -152,108 +151,113 @@ export function Footer() {
     <footer
       ref={containerRef}
       id="footer"
-      className="relative w-full bg-background pt-24 pb-12 overflow-hidden border-t border-border/40"
+      className="relative w-full bg-background pt-24 pb-12 overflow-hidden"
     >
       <FooterBackground />
 
-      <div ref={contentRef} className="relative z-10 max-w-7xl mx-auto px-6 opacity-0">
+      <div ref={contentRef} className="relative z-10 max-w-6xl mx-auto px-6 opacity-0">
         {/* ─── CTA MODULE ─── */}
-        <div className="mb-32">
-          <div className="glass-morphism-premium group relative overflow-hidden rounded-[3rem] p-10 md:p-24 border-border/60 shadow-2xl">
-            {/* Interior Glow */}
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-secondary/10 opacity-30 pointer-events-none" />
+        <div className="cta-module mb-32 relative">
+          {/* Prismatic Background for CTA */}
+          <div className="absolute inset-0 -z-10 overflow-hidden rounded-[2rem]">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[300px] -rotate-12 bg-gradient-to-r from-primary/15 via-secondary/10 to-transparent blur-[100px] opacity-50 dark:opacity-40 pointer-events-none" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_40%,hsl(var(--background))_100%)] pointer-events-none" />
+          </div>
 
-            <div className="relative z-10 flex flex-col items-center text-center">
-              {/* Tactical Badge */}
-              <div className="flex items-center gap-4 mb-8">
-                <div className="h-[1px] w-8 bg-primary/30" />
-                <span className="text-[10px] font-mono font-black uppercase tracking-[0.5em] text-primary">
-                  [SYSTEM_READY]
+          {/* Glassmorphic Card */}
+          <div className="cta-card relative group p-[1px] rounded-[1.5rem] overflow-hidden bg-border/20 hover:bg-border/40 transition-colors duration-500">
+            <div className="relative bg-card/60 backdrop-blur-xl rounded-[calc(1.5rem-1px)] p-8 md:p-12">
+              {/* Top Label */}
+              <div className="cta-label flex items-center justify-center gap-4 mb-8">
+                <div className="h-[1px] w-6 bg-foreground" />
+                <span
+                  className="text-[10px] font-bold uppercase tracking-[0.3em] text-foreground font-mono"
+                  suppressHydrationWarning
+                >
+                  System Ready v4.1
                 </span>
-                <div className="h-[1px] w-8 bg-primary/30" />
+                <div className="h-[1px] w-6 bg-foreground" />
               </div>
 
-              <h2 className="text-4xl md:text-7xl lg:text-8xl font-black tracking-tighter text-foreground mb-8 leading-[1]">
-                Your community, <br />
-                <span className="text-aurora">re-engineered.</span>
-              </h2>
+              {/* Heading */}
+              <div className="text-center mb-8">
+                <h2 className="text-4xl md:text-5xl font-black tracking-tight text-foreground mb-3 leading-tight">
+                  Your community, <span className="text-foreground/25">re-engineered.</span>
+                </h2>
+                <p className="text-sm text-foreground/40 max-w-md mx-auto font-medium leading-relaxed">
+                  Deploy the absolute synthesis of AI intelligence and community governance.
+                </p>
+              </div>
 
-              <p className="text-base md:text-xl text-muted-foreground max-w-2xl font-medium leading-relaxed mb-12">
-                Deploy the absolute synthesis of AI intelligence and community governance.
-                Experience the next generation of Discord management.
-              </p>
-
-              {/* Action Node */}
-              <div className="flex flex-col sm:flex-row items-center gap-6">
+              {/* Action Buttons */}
+              <div className="cta-buttons flex flex-col sm:flex-row items-center justify-center gap-3">
                 {botInviteUrl ? (
-                  <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                    <Link
-                      href={botInviteUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group/btn relative px-10 py-5 rounded-2xl bg-foreground text-background font-black uppercase tracking-widest text-xs shadow-xl flex items-center gap-3 transition-colors"
-                    >
-                      <Zap className="w-4 h-4 fill-current" />
-                      <span>Initialize Bot</span>
-                      <ArrowRight className="w-4 h-4 transition-transform group-hover/btn:translate-x-1" />
-                    </Link>
-                  </motion.div>
+                  <Link
+                    href={botInviteUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group relative flex items-center gap-2.5 px-6 py-3 rounded-xl bg-foreground text-background font-bold tracking-wide text-xs overflow-hidden transition-all hover:scale-[1.02] active:scale-95"
+                  >
+                    <Zap className="w-3.5 h-3.5 fill-current opacity-80" />
+                    <span>Initialize Bot</span>
+                    <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1 opacity-70" />
+                  </Link>
                 ) : (
-                  <div className="px-10 py-5 rounded-2xl bg-muted border border-border text-muted-foreground font-mono text-[10px] tracking-widest uppercase">
-                    [OVERSIGHT_LOCKED]
+                  <div className="px-6 py-3 rounded-xl bg-muted border border-border text-foreground/40 font-mono text-[11px] tracking-widest uppercase">
+                    [Locked]
                   </div>
                 )}
 
-                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                  <Link
-                    href="/login"
-                    className="group/secondary px-10 py-5 rounded-2xl border border-border bg-card/50 backdrop-blur-xl text-foreground font-black uppercase tracking-widest text-xs transition-all hover:bg-card hover:border-primary/40 flex items-center gap-3"
-                  >
-                    <Terminal className="w-4 h-4" />
-                    <span>Dashboard</span>
-                  </Link>
-                </motion.div>
+                <Link
+                  href="/login"
+                  className="cta-dashboard flex items-center gap-2.5 px-6 py-3 rounded-xl border border-border/50 bg-background/40 text-foreground font-bold tracking-wide text-xs transition-all hover:bg-background/80 hover:border-border"
+                >
+                  <Terminal className="w-3.5 h-3.5 opacity-60" />
+                  <span>Dashboard</span>
+                </Link>
               </div>
-            </div>
 
-            {/* Tactical ID */}
-            <div className="absolute bottom-6 right-10 text-[9px] font-mono text-muted-foreground/30 tracking-[0.2em] hidden md:block">
-              BUILD_REF: VOLVOX_2.4.0_STABLE
+              {/* Decorative Element */}
+              <div className="cta-decor absolute bottom-4 right-4 md:bottom-6 md:right-6 opacity-20 group-hover:opacity-40 transition-opacity">
+                <span
+                  className="text-[9px] font-mono text-foreground tracking-[0.15em]"
+                  suppressHydrationWarning
+                >
+                  VOLVOX_2.4.0
+                </span>
+              </div>
             </div>
           </div>
         </div>
 
         {/* ─── NAVIGATION GRID ─── */}
-        <div className="footer-nav-grid grid grid-cols-1 lg:grid-cols-12 gap-16 pb-20 border-b border-border/20">
+        <div className="footer-nav-grid grid grid-cols-1 lg:grid-cols-12 gap-16 pb-16">
           {/* Brand Info */}
-          <div className="footer-link-col lg:col-span-5 space-y-8">
+          <div className="footer-link-col lg:col-span-4 space-y-6">
             <Link href="/" className="flex items-center gap-4 group w-fit">
-              <div className="relative h-12 w-12 overflow-hidden rounded-2xl border border-border shadow-xl transition-transform group-hover:rotate-12">
+              <div className="relative h-10 w-10 overflow-hidden rounded-xl border border-border/80 shadow-sm transition-transform group-hover:rotate-6 bg-card">
                 <Image
                   src="/icon-192.png"
-                  alt="Volvox"
+                  alt="Volvox.Bot"
                   fill
-                  sizes="48px"
+                  sizes="40px"
                   className="object-cover"
                 />
               </div>
               <div>
-                <span className="text-2xl font-black tracking-tighter uppercase block leading-none">
-                  Volvox
-                </span>
-                <span className="text-[9px] font-mono font-bold tracking-[0.3em] text-primary uppercase">
-                  Neural Network
+                <span className="text-xl font-black tracking-tight uppercase block leading-none text-foreground">
+                  Volvox<span className="text-primary">.Bot</span>
                 </span>
               </div>
             </Link>
 
-            <p className="text-muted-foreground text-sm leading-relaxed max-w-xs font-medium">
+            <p className="text-foreground/50 text-sm leading-relaxed max-w-xs font-medium">
               Consolidating community architecture through the synthesis of artificial intelligence
               and robust infrastructure.
             </p>
 
             {/* Social Nodes */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 pt-2">
               {[
                 { icon: GithubIcon, href: 'https://github.com/VolvoxLLC' },
                 {
@@ -274,29 +278,29 @@ export function Footer() {
                   href={social.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-11 h-11 rounded-xl bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/30 transition-all shadow-sm group/social"
+                  className="w-10 h-10 rounded-lg bg-background border border-border/60 flex items-center justify-center text-foreground/40 hover:text-foreground hover:bg-card transition-colors shadow-sm"
                 >
-                  <social.icon className="w-5 h-5 transition-transform group-hover/social:scale-110" />
+                  <social.icon className="w-[18px] h-[18px]" />
                 </Link>
               ))}
             </div>
           </div>
 
           {/* Link Columns */}
-          <div className="lg:col-span-7 grid grid-cols-2 md:grid-cols-3 gap-12">
+          <div className="lg:col-span-8 grid grid-cols-2 md:grid-cols-3 gap-12">
             {footerLinks.map((col) => (
-              <div key={col.title} className="footer-link-col space-y-8">
-                <h4 className="text-[10px] font-mono font-black tracking-[0.4em] text-primary uppercase">
-                  [{col.title}]
+              <div key={col.title} className="footer-link-col space-y-6">
+                <h4 className="text-[11px] font-bold text-foreground/40 uppercase tracking-widest">
+                  {col.title.replace('_', ' ')}
                 </h4>
-                <ul className="space-y-4">
+                <ul className="space-y-3">
                   {col.links.map((link) => (
                     <li key={link.label}>
                       <Link
                         href={link.href}
-                        className="text-[15px] font-medium text-muted-foreground hover:text-foreground transition-all flex items-center gap-2 group"
+                        className="text-[14px] font-medium text-foreground/60 hover:text-foreground transition-colors flex items-center gap-1.5 group"
                       >
-                        <ChevronRight className="w-3.5 h-3.5 opacity-0 -ml-4 group-hover:opacity-100 group-hover:ml-0 transition-all text-primary" />
+                        <ChevronRight className="w-3.5 h-3.5 opacity-0 -ml-5 group-hover:opacity-40 group-hover:ml-0 transition-all" />
                         {link.label}
                       </Link>
                     </li>
@@ -308,39 +312,32 @@ export function Footer() {
         </div>
 
         {/* ─── STATUS & LEGAL ─── */}
-        <div className="pt-12 flex flex-col md:flex-row justify-between items-center gap-8">
-          <div className="flex items-center gap-6">
-            <span className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-widest">
+        <div className="pt-10 flex flex-col md:flex-row justify-between items-center gap-8">
+          <div className="flex items-center gap-5">
+            <span className="text-[11px] font-medium text-foreground/40 uppercase tracking-widest">
               &copy; {new Date().getFullYear()} Volvox LLC
             </span>
             <div className="h-[1px] w-6 bg-border/40" />
-            <div className="status-indicator flex items-center gap-3 px-4 py-1.5 rounded-xl bg-primary/5 border border-primary/20">
-              <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary))]" />
-              <span className="text-[9px] font-mono font-black text-primary uppercase tracking-widest">
+            <div className="status-indicator flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-foreground/40" />
+              <span className="text-[10px] font-bold text-foreground/40 uppercase tracking-widest">
                 Status: Nominal
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-8">
-            <div className="flex items-center gap-3 opacity-40 hover:opacity-100 transition-opacity">
-              <Cpu className="w-4 h-4 text-primary" />
-              <span className="text-[10px] font-mono uppercase tracking-[0.2em] font-bold">
-                Node_v2.4
-              </span>
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2 opacity-30 hover:opacity-100 transition-opacity">
+              <Cpu className="w-3.5 h-3.5 text-foreground" />
+              <span className="text-[10px] uppercase tracking-widest font-bold">Node_v2.4</span>
             </div>
-            <div className="flex items-center gap-3 opacity-40 hover:opacity-100 transition-opacity">
-              <Activity className="w-4 h-4 text-primary" />
-              <span className="text-[10px] font-mono uppercase tracking-[0.2em] font-bold">
-                Latency: 12ms
-              </span>
+            <div className="flex items-center gap-2 opacity-30 hover:opacity-100 transition-opacity">
+              <Activity className="w-3.5 h-3.5 text-foreground" />
+              <span className="text-[10px] uppercase tracking-widest font-bold">Latency: 12ms</span>
             </div>
           </div>
         </div>
       </div>
-
-      {/* Bottom Grain/Fade */}
-      <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-background via-background/60 to-transparent z-20 pointer-events-none" />
     </footer>
   );
 }

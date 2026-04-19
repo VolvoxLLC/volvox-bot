@@ -69,7 +69,7 @@ describe('Footer', () => {
   it('should render locked state when no invite URL', () => {
     mockGetBotInviteUrl.mockReturnValue(null);
     render(<Footer />);
-    expect(screen.getByText(/OVERSIGHT_LOCKED/i)).toBeInTheDocument();
+    expect(screen.getByText('[Locked]')).toBeInTheDocument();
   });
 
   it('should render footer navigation links', () => {
@@ -82,6 +82,6 @@ describe('Footer', () => {
   it('should render the brand tagline and logo', () => {
     render(<Footer />);
     expect(screen.getByText(/synthesis of artificial intelligence/i)).toBeInTheDocument();
-    expect(screen.getByAltText('Volvox')).toBeInTheDocument();
+    expect(screen.getByAltText('Volvox.Bot')).toBeInTheDocument();
   });
 });

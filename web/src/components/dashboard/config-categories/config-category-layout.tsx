@@ -57,7 +57,7 @@ export function ConfigCategoryLayout({
           transition={{ duration: 0.2 }}
           className="space-y-6"
         >
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl shadow-sm">
             <div className="space-y-1 relative z-10">
               <div className="flex items-center gap-2.5">
                 <currentTab.icon className="h-5 w-5 text-primary" />

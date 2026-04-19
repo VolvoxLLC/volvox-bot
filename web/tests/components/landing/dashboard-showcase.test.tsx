@@ -74,14 +74,14 @@ describe('DashboardShowcase', () => {
     globalThis.cancelAnimationFrame = originalCaf;
   });
 
-  it('should render section header with THE PRODUCT label', async () => {
+  it('should render section header with Control Center label', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
       json: async () => mockStats,
     } as Response);
 
     render(<DashboardShowcase />);
-    expect(screen.getByText('THE PRODUCT')).toBeInTheDocument();
+    expect(screen.getByText('Control Center')).toBeInTheDocument();
     expect(screen.getByText('Your server, at a glance')).toBeInTheDocument();
   });
 
@@ -116,7 +116,7 @@ describe('DashboardShowcase', () => {
     vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}));
     render(<DashboardShowcase />);
     // Loading state shows animate-pulse skeleton divs and the section header
-    expect(screen.getByText('THE PRODUCT')).toBeInTheDocument();
+    expect(screen.getByText('Control Center')).toBeInTheDocument();
     expect(screen.getByText('Your server, at a glance')).toBeInTheDocument();
   });
 

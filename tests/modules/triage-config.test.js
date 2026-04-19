@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   getDynamicInterval,
   isChannelEligible,
+  isMessageTypeEligible,
+  isRoleEligible,
   resolveTriageConfig,
 } from '../../src/modules/triage-config.js';
 
@@ -15,7 +17,6 @@ describe('triage-config', () => {
       expect(result.classifyBudget).toBe(0.05);
       expect(result.respondBudget).toBe(0.2);
       expect(result.timeout).toBe(30000);
-      expect(result.tokenRecycleLimit).toBe(20000);
     });
 
     it('should resolve PR #68 flat format as fallback', () => {
@@ -70,6 +71,98 @@ describe('triage-config', () => {
     });
   });
 
+  describe('isRoleEligible', () => {
+    /**
+     * Create a mock GuildMember with specified role IDs.
+     * @param {string[]} roleIds - Array of role IDs the member has
+     * @param {string} guildId - Guild ID (used to filter @everyone role)
+     */
+    function makeMember(roleIds, guildId = 'guild-1') {
+      const rolesMap = new Map();
+      // Add @everyone role (id === guildId)
+      rolesMap.set(guildId, { id: guildId, name: '@everyone' });
+      // Add specified roles
+      for (const id of roleIds) {
+        rolesMap.set(id, { id, name: `role-${id}` });
+      }
+      return {
+        guild: { id: guildId },
+        roles: {
+          cache: {
+            filter: (fn) => {
+              const filtered = [];
+              for (const [, role] of rolesMap) {
+                if (fn(role)) filtered.push(role);
+              }
+              return {
+                map: (mapFn) => filtered.map(mapFn),
+              };
+            },
+          },
+        },
+      };
+    }
+
+    it('should return true when allowedRoles is empty (all allowed)', () => {
+      const member = makeMember(['role-1', 'role-2']);
+      expect(isRoleEligible(member, {})).toBe(true);
+      expect(isRoleEligible(member, { allowedRoles: [] })).toBe(true);
+    });
+
+    it('should return false when user has excluded role', () => {
+      const member = makeMember(['role-1', 'role-2']);
+      expect(isRoleEligible(member, { excludedRoles: ['role-1'] })).toBe(false);
+      expect(isRoleEligible(member, { excludedRoles: ['role-2'] })).toBe(false);
+    });
+
+    it('should return true when user has allowed role', () => {
+      const member = makeMember(['role-1', 'role-2']);
+      expect(isRoleEligible(member, { allowedRoles: ['role-1'] })).toBe(true);
+      expect(isRoleEligible(member, { allowedRoles: ['role-3', 'role-2'] })).toBe(true);
+    });
+
+    it('should return false when user has no allowed roles (allowedRoles non-empty)', () => {
+      const member = makeMember(['role-1', 'role-2']);
+      expect(isRoleEligible(member, { allowedRoles: ['role-3', 'role-4'] })).toBe(false);
+    });
+
+    it('should have exclusion take precedence over inclusion', () => {
+      const member = makeMember(['role-1', 'role-2']);
+      // role-1 is in both allowed and excluded — should be excluded
+      expect(isRoleEligible(member, { allowedRoles: ['role-1'], excludedRoles: ['role-1'] })).toBe(
+        false,
+      );
+      // role-2 is allowed, role-1 is excluded — user has role-1 so should be excluded
+      expect(isRoleEligible(member, { allowedRoles: ['role-2'], excludedRoles: ['role-1'] })).toBe(
+        false,
+      );
+    });
+
+    it('should return true when member is null (DM)', () => {
+      expect(isRoleEligible(null, { allowedRoles: ['role-1'] })).toBe(true);
+      expect(isRoleEligible(null, { excludedRoles: ['role-1'] })).toBe(true);
+    });
+
+    it('should ignore @everyone role in allowedRoles check', () => {
+      // Member only has @everyone (guild-1), no other roles
+      const member = makeMember([]);
+      // allowedRoles contains the guild ID (@everyone) — should NOT match
+      expect(isRoleEligible(member, { allowedRoles: ['guild-1'] })).toBe(false);
+    });
+
+    it('should ignore @everyone role in excludedRoles check', () => {
+      // Member only has @everyone (guild-1), no other roles
+      const member = makeMember([]);
+      // excludedRoles contains the guild ID (@everyone) — should NOT exclude
+      expect(isRoleEligible(member, { excludedRoles: ['guild-1'] })).toBe(true);
+    });
+
+    it('should return true when user has no roles and no restrictions', () => {
+      const member = makeMember([]);
+      expect(isRoleEligible(member, {})).toBe(true);
+    });
+  });
+
   describe('getDynamicInterval', () => {
     it('should return baseInterval for queueSize <= 1', () => {
       expect(getDynamicInterval(0)).toBe(5000);
@@ -84,6 +177,37 @@ describe('triage-config', () => {
     it('should return fifth for 5+ messages', () => {
       expect(getDynamicInterval(5)).toBe(1000);
       expect(getDynamicInterval(10)).toBe(1000);
+    });
+  });
+
+  describe('isMessageTypeEligible', () => {
+    it('should return true for default messages (type 0)', () => {
+      expect(isMessageTypeEligible({ type: 0, webhookId: null })).toBe(true);
+    });
+
+    it('should return true for reply messages (type 19)', () => {
+      expect(isMessageTypeEligible({ type: 19, webhookId: null })).toBe(true);
+    });
+
+    it('should return true when type is undefined (defaults to 0)', () => {
+      expect(isMessageTypeEligible({ webhookId: null })).toBe(true);
+    });
+
+    it('should return false for system messages (joins, boosts, pins)', () => {
+      // Type 7 = GuildMemberJoin
+      expect(isMessageTypeEligible({ type: 7, webhookId: null })).toBe(false);
+      // Type 8 = UserPremiumGuildSubscription (boost)
+      expect(isMessageTypeEligible({ type: 8, webhookId: null })).toBe(false);
+      // Type 6 = ChannelPinnedMessage
+      expect(isMessageTypeEligible({ type: 6, webhookId: null })).toBe(false);
+    });
+
+    it('should return false for webhook messages', () => {
+      expect(isMessageTypeEligible({ type: 0, webhookId: '12345' })).toBe(false);
+    });
+
+    it('should return false for webhook messages regardless of type', () => {
+      expect(isMessageTypeEligible({ type: 19, webhookId: '12345' })).toBe(false);
     });
   });
 });

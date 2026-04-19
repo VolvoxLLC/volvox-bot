@@ -185,7 +185,7 @@ export function ModerationSafetyCategory() {
       {/* Moderation Layout */}
       {activeTab === 'moderation' && (
         <div className="space-y-6">
-          <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-6">
+          <div className="p-4 sm:p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-6">
             <div className="space-y-1">
               <h3 className="text-sm font-semibold tracking-wide text-foreground/90">
                 Core Settings
@@ -255,7 +255,7 @@ export function ModerationSafetyCategory() {
             </div>
           </div>
 
-          <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-6">
+          <div className="p-4 sm:p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-6">
             <div className="space-y-1">
               <h3 className="text-sm font-semibold tracking-wide text-foreground/90">
                 Enforcement Rules
@@ -401,7 +401,7 @@ export function ModerationSafetyCategory() {
             </div>
           </div>
 
-          <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-4">
+          <div className="p-4 sm:p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-foreground">
@@ -443,7 +443,7 @@ export function ModerationSafetyCategory() {
             </div>
           </div>
 
-          <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 space-y-4">
+          <div className="p-4 sm:p-6 rounded-[24px] border border-border/40 bg-muted/20 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-foreground">
@@ -512,7 +512,7 @@ export function ModerationSafetyCategory() {
       {/* Starboard Layout */}
       {activeTab === 'starboard' && (
         <div className="space-y-6">
-          <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-6">
+          <div className="p-4 sm:p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-6">
             <div className="space-y-3">
               <label
                 htmlFor="starboard-channel-id"
@@ -621,7 +621,7 @@ export function ModerationSafetyCategory() {
       {/* Permissions Layout */}
       {activeTab === 'permissions' && (
         <div className="space-y-6">
-          <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-6">
+          <div className="p-4 sm:p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-6">
             <div className="space-y-3">
               <label
                 htmlFor="admin-role-ids"
@@ -677,7 +677,7 @@ export function ModerationSafetyCategory() {
             </div>
           </div>
 
-          <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl">
+          <div className="p-4 sm:p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl">
             <div className="space-y-3">
               <label
                 htmlFor="bot-owners"
@@ -710,7 +710,7 @@ export function ModerationSafetyCategory() {
       {/* Audit Log Layout */}
       {activeTab === 'audit-log' && (
         <div className="space-y-6">
-          <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl">
+          <div className="p-4 sm:p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl">
             <AuditLogSection
               draftConfig={draftConfig ?? {}}
               saving={saving}

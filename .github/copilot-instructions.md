@@ -1,4 +1,4 @@
-# Copilot Coding Agent Instructions — Volvox Bot
+# Copilot Coding Agent Instructions — Volvox.Bot
 
 ## Quick Start
 
@@ -23,12 +23,12 @@ pnpm --prefix web build          # Build the Next.js dashboard
 
 ## Project Overview
 
-**Volvox Bot** is a Discord bot with AI chat (Claude), moderation, engagement tracking, and a web dashboard. Key technologies:
+**Volvox.Bot** is a Discord bot with AI chat (Claude), moderation, engagement tracking, and a web dashboard. Key technologies:
 
 | Component | Tech |
 |-----------|------|
 | Bot runtime | Node.js 22+, ESM JavaScript, discord.js v14 |
-| AI features | Anthropic Claude SDK (`@anthropic-ai/sdk`, `@anthropic-ai/claude-code`) |
+| AI features | Vercel AI SDK (`ai`, `@ai-sdk/anthropic`) |
 | Database | PostgreSQL 17+ with node-pg-migrate |
 | Caching | Redis 7+ (ioredis) with in-memory fallback |
 | API | Express 5 REST API |
@@ -121,7 +121,7 @@ pnpm --prefix web test:coverage    # Run with coverage
 
 - Place bot tests in `tests/` mirroring the `src/` structure
 - Place web tests in `web/tests/` mirroring `web/src/`
-- Mock external dependencies (Discord.js, database, Redis, Claude SDK)
+- Mock external dependencies (Discord.js, database, Redis, Vercel AI SDK (`ai`, `@ai-sdk/anthropic`))
 - Use `vi.mock()` for module mocking; use `vi.fn()` for function stubs
 - Test timeout is 10 seconds
 

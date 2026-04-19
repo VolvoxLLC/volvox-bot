@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  AIClientError,
   classifyError,
   ErrorType,
   getSuggestedNextSteps,
@@ -169,6 +170,19 @@ describe('classifyError', () => {
     expect(classifyError(err, { statusCode: 500 })).toBe(ErrorType.API_SERVER_ERROR);
   });
 
+  it('should use error.statusCode from Vercel AI SDK APICallError', () => {
+    const err = new Error('API call failed');
+    err.statusCode = 429;
+    expect(classifyError(err)).toBe(ErrorType.API_RATE_LIMIT);
+  });
+
+  it('should prefer error.status over error.statusCode', () => {
+    const err = new Error('conflict');
+    err.status = 401;
+    err.statusCode = 500;
+    expect(classifyError(err)).toBe(ErrorType.API_UNAUTHORIZED);
+  });
+
   it('should use context.code for network errors', () => {
     const err = new Error('something');
     expect(classifyError(err, { code: 'ECONNREFUSED' })).toBe(ErrorType.NETWORK);
@@ -217,7 +231,7 @@ describe('getSuggestedNextSteps', () => {
   it('should return suggestion for NETWORK errors', () => {
     const err = new Error('fetch failed');
     const steps = getSuggestedNextSteps(err);
-    expect(steps).toContain('Anthropic API');
+    expect(steps).toContain('AI provider API');
   });
 
   it('should return suggestion for TIMEOUT errors', () => {
@@ -235,13 +249,13 @@ describe('getSuggestedNextSteps', () => {
   it('should return suggestion for API_UNAUTHORIZED errors', () => {
     const err = new Error('unauth');
     const steps = getSuggestedNextSteps(err, { status: 401 });
-    expect(steps).toContain('CLAUDE_CODE_OAUTH_TOKEN');
+    expect(steps).toContain('AI provider API key');
   });
 
   it('should return suggestion for API_NOT_FOUND errors', () => {
     const err = new Error('not found');
     const steps = getSuggestedNextSteps(err, { status: 404 });
-    expect(steps).toContain('Anthropic API');
+    expect(steps).toContain('AI provider API');
   });
 
   it('should return suggestion for API_SERVER_ERROR', () => {
@@ -326,5 +340,22 @@ describe('isRetryable', () => {
   it('should return false for DISCORD_PERMISSION', () => {
     const err = new Error('Missing Permissions');
     expect(isRetryable(err)).toBe(false);
+  });
+});
+
+describe('classifyError — AIClientError.reason', () => {
+  it('should use AIClientError.reason for timeout classification', () => {
+    const err = new AIClientError('Request timed out or was cancelled', 'timeout');
+    expect(classifyError(err)).toBe(ErrorType.TIMEOUT);
+  });
+
+  it('should classify AIClientError with reason aborted as TIMEOUT', () => {
+    const err = new AIClientError('Aborted', 'aborted');
+    expect(classifyError(err)).toBe(ErrorType.TIMEOUT);
+  });
+
+  it('should fall through to status code checks for AIClientError with reason api', () => {
+    const err = new AIClientError('API error: Bad request', 'api', { statusCode: 429 });
+    expect(classifyError(err)).toBe(ErrorType.API_RATE_LIMIT);
   });
 });

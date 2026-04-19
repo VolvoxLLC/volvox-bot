@@ -41,7 +41,7 @@ vi.mock('../../src/utils/splitMessage.js', () => ({
 
 vi.mock('../../src/utils/debugFooter.js', () => ({
   buildDebugEmbed: vi.fn(() => ({ title: 'Debug' })),
-  extractStats: vi.fn((_msg, model) => ({
+  extractStats: vi.fn((_msg, model, _providerName) => ({
     model,
     promptTokens: 100,
     completionTokens: 50,
@@ -121,7 +121,7 @@ describe('triage-respond', () => {
       expect(result[1].messageId).toBe('msg2');
     });
 
-    it('should mark bot messages with [BOT] suffix', async () => {
+    it('should mark bot messages with [BOT] suffix when included', async () => {
       const mockMessages = new Map([
         [
           'msg1',
@@ -146,9 +146,137 @@ describe('triage-respond', () => {
         },
       };
 
-      const result = await fetchChannelContext('channel1', mockClient, [], 15);
+      // With includeBotsInContext: true, bot messages should be included
+      const config = { triage: { includeBotsInContext: true } };
+      const result = await fetchChannelContext('channel1', mockClient, [], 15, config);
 
       expect(result[0].author).toBe('BotUser [BOT]');
+    });
+
+    it('should filter out bot messages by default', async () => {
+      const mockMessages = new Map([
+        [
+          'msg1',
+          {
+            id: 'msg1',
+            content: 'Human message',
+            author: { id: 'user1', username: 'Alice', bot: false },
+            createdTimestamp: 1000,
+          },
+        ],
+        [
+          'msg2',
+          {
+            id: 'msg2',
+            content: 'Bot message',
+            author: { id: 'bot1', username: 'BotUser', bot: true },
+            createdTimestamp: 2000,
+          },
+        ],
+      ]);
+
+      const mockChannel = {
+        messages: {
+          fetch: vi.fn(async () => mockMessages),
+        },
+      };
+
+      const mockClient = {
+        channels: {
+          fetch: vi.fn(async () => mockChannel),
+        },
+      };
+
+      // Default config (no includeBotsInContext) should filter bot messages
+      const result = await fetchChannelContext('channel1', mockClient, [], 15);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].author).toBe('Alice');
+    });
+
+    it('should filter out webhook messages entirely', async () => {
+      const mockMessages = new Map([
+        [
+          'msg1',
+          {
+            id: 'msg1',
+            content: 'Human message',
+            author: { id: 'user1', username: 'Alice', bot: false },
+            createdTimestamp: 1000,
+          },
+        ],
+        [
+          'msg2',
+          {
+            id: 'msg2',
+            content: 'GitHub: PR merged',
+            author: { id: 'webhook1', username: 'GitHub', bot: true },
+            webhookId: 'webhook-123',
+            createdTimestamp: 2000,
+          },
+        ],
+      ]);
+
+      const mockChannel = {
+        messages: {
+          fetch: vi.fn(async () => mockMessages),
+        },
+      };
+
+      const mockClient = {
+        channels: {
+          fetch: vi.fn(async () => mockChannel),
+        },
+      };
+
+      // Even with includeBotsInContext: true, webhooks should be filtered
+      const config = { triage: { includeBotsInContext: true } };
+      const result = await fetchChannelContext('channel1', mockClient, [], 15, config);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].author).toBe('Alice');
+    });
+
+    it('should include allowlisted bot in context', async () => {
+      const mockMessages = new Map([
+        [
+          'msg1',
+          {
+            id: 'msg1',
+            content: 'Allowed bot message',
+            author: { id: 'allowed-bot-id', username: 'AllowedBot', bot: true },
+            createdTimestamp: 1000,
+          },
+        ],
+        [
+          'msg2',
+          {
+            id: 'msg2',
+            content: 'Other bot message',
+            author: { id: 'other-bot-id', username: 'OtherBot', bot: true },
+            createdTimestamp: 2000,
+          },
+        ],
+      ]);
+
+      const mockChannel = {
+        messages: {
+          fetch: vi.fn(async () => mockMessages),
+        },
+      };
+
+      const mockClient = {
+        channels: {
+          fetch: vi.fn(async () => mockChannel),
+        },
+      };
+
+      // Only allowed-bot-id should be included
+      const config = { triage: { botAllowlist: ['allowed-bot-id'] } };
+      const result = await fetchChannelContext('channel1', mockClient, [], 15, config);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].author).toBe('AllowedBot [BOT]');
     });
 
     it('should handle fetch errors gracefully', async () => {
@@ -587,11 +715,11 @@ describe('triage-respond', () => {
   describe('buildStatsAndLog', () => {
     it('should build stats and fetch channel', async () => {
       const classifyMessage = {
-        total_cost_usd: 0.001,
+        costUsd: 0.001,
       };
 
       const respondMessage = {
-        total_cost_usd: 0.002,
+        costUsd: 0.002,
       };
 
       const resolved = {

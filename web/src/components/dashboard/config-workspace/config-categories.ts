@@ -139,8 +139,8 @@ export const CONFIG_SEARCH_ITEMS: ConfigSearchItem[] = [
     featureId: 'triage',
     categoryId: 'ai-automation',
     label: 'Triage Debug Controls',
-    description: 'Streaming, debug footer, status reactions.',
-    keywords: ['debug', 'streaming', 'status reactions', 'footer'],
+    description: 'Debug footer, status reactions.',
+    keywords: ['debug', 'status reactions', 'footer'],
     isAdvanced: true,
   },
   {

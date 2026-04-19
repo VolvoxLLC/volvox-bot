@@ -75,25 +75,29 @@ function CellValueDisplay({ value, isVolvox }: Readonly<{ value: CellValue; isVo
       <div
         className={cn(
           'mx-auto flex h-6 w-6 items-center justify-center rounded-full',
-          isVolvox ? 'bg-primary/20 text-primary' : 'bg-foreground/5 text-foreground/40',
+          isVolvox
+            ? 'bg-primary/10 text-primary shadow-[0_0_12px_hsl(var(--primary)/0.1)]'
+            : 'bg-foreground/5 text-foreground/50',
         )}
       >
-        <Check className="h-4 w-4 stroke-[3px]" />
+        <Check className="h-[14px] w-[14px] stroke-[3px]" />
       </div>
     );
   }
   if (value === false) {
     return (
-      <div className="mx-auto flex h-6 w-6 items-center justify-center rounded-full bg-foreground/[0.02] text-foreground/10">
-        <X className="h-4 w-4 stroke-[3px]" />
+      <div className="mx-auto flex h-6 w-6 items-center justify-center rounded-full bg-foreground/5 text-foreground/40">
+        <X className="h-4 w-4 stroke-[2.5px]" />
       </div>
     );
   }
   return (
     <span
       className={cn(
-        'rounded-md px-2 py-0.5 font-mono text-[11px] font-bold uppercase tracking-tighter',
-        isVolvox ? 'bg-primary/10 text-primary' : 'text-muted-foreground',
+        'rounded-md px-2 py-1 font-mono text-[10px] font-black uppercase tracking-widest transition-colors',
+        isVolvox
+          ? 'bg-primary/10 text-primary shadow-[0_0_12px_hsl(var(--primary)/0.05)]'
+          : 'bg-foreground/5 text-foreground/70',
       )}
     >
       {value}
@@ -131,7 +135,7 @@ function ComparisonRow({
   const glowBg = useTransform(
     [mouseX, mouseY, glowOpacity],
     ([x, y, opacity]) =>
-      `radial-gradient(600px circle at ${x}px ${y}px, hsl(var(--primary) / ${0.08 * (opacity as number)}), transparent 80%)`,
+      `radial-gradient(600px circle at ${x}px ${y}px, hsl(var(--foreground) / ${0.03 * (opacity as number)}), transparent 80%)`,
   );
 
   return (
@@ -140,43 +144,40 @@ function ComparisonRow({
       onMouseMove={handleMouseMove}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      initial={shouldReduceMotion ? false : { opacity: 0, x: -20 }}
-      whileInView={{ opacity: 1, x: 0 }}
+      initial={shouldReduceMotion ? false : { opacity: 0, y: 10 }}
+      whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{
-        duration: 0.6,
+        duration: 0.4,
         delay: shouldReduceMotion ? 0 : index * 0.05,
-        ease: [0.22, 1, 0.36, 1],
       }}
       style={{ backgroundImage: glowBg }}
       className={cn(
-        'group border-b border-border/40 transition-all duration-500',
+        'group border-b border-border/40 transition-colors duration-200',
         row.highlight ? 'bg-primary/[0.02]' : 'hover:bg-foreground/[0.01]',
       )}
     >
-      <th scope="row" className="relative px-6 py-3.5 text-left align-middle">
-        <div className="flex flex-col gap-0.5">
-          <span className="text-[13px] font-black uppercase tracking-tight text-foreground transition-colors group-hover:text-primary">
+      <th scope="row" className="relative px-6 py-4 text-left align-middle font-normal">
+        <div className="flex flex-col gap-1">
+          <span className="text-[14px] font-semibold tracking-tight text-foreground/90">
             {row.feature}
           </span>
-          <span className="text-[10px] font-medium leading-tight text-muted-foreground/60">
-            {row.description}
-          </span>
+          <span className="text-[12px] font-medium text-foreground/40">{row.description}</span>
         </div>
         {row.highlight && (
-          <div className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-primary" />
+          <div className="absolute left-0 top-1/2 h-8 w-1 -translate-y-1/2 rounded-r-full bg-primary/60" />
         )}
       </th>
-      <td className="h-full border-x border-primary/10 bg-primary/[0.03] px-3 py-3.5 text-center align-middle dark:bg-primary/[0.01]">
+      <td className="h-full border-x border-border/30 bg-background/50 px-3 py-4 text-center align-middle group-hover:bg-background">
         <CellValueDisplay value={row.volvox} isVolvox />
       </td>
-      <td className="px-3 py-3.5 text-center align-middle">
+      <td className="px-3 py-4 text-center align-middle">
         <CellValueDisplay value={row.mee6} />
       </td>
-      <td className="px-3 py-3.5 text-center align-middle">
+      <td className="px-3 py-4 text-center align-middle">
         <CellValueDisplay value={row.dyno} />
       </td>
-      <td className="px-3 py-3.5 text-center align-middle">
+      <td className="px-3 py-4 text-center align-middle">
         <CellValueDisplay value={row.carlbot} />
       </td>
     </motion.tr>
@@ -184,40 +185,41 @@ function ComparisonRow({
 }
 
 export function ComparisonTable() {
-  const shouldReduceMotion = useReducedMotion() ?? false;
+  const [mounted, setMounted] = useState(false);
+  const reducedMotion = useReducedMotion();
+  const [localDate] = useState(() => new Date().toLocaleDateString());
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const shouldReduceMotion = mounted ? (reducedMotion ?? false) : false;
 
   return (
-    <section className="relative overflow-hidden bg-background px-4 py-32 sm:px-6 lg:px-8">
-      <div className="absolute inset-0 pointer-events-none opacity-[0.03] dark:opacity-[0.05]">
-        <div className="absolute left-1/2 top-1/2 h-full w-full -translate-x-1/2 -translate-y-1/2 bg-[radial-gradient(circle_at_center,hsl(var(--primary))_0%,transparent_70%)] blur-[100px]" />
-      </div>
-
+    <section className="relative bg-background px-4 py-32 sm:px-6 lg:px-8">
       <div className="relative z-10 mx-auto max-w-4xl">
-        <div className="mb-16 flex flex-col items-center text-center">
+        <div className="mb-20 flex flex-col items-center text-center">
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            whileInView={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
-            className="mb-6 inline-flex items-center gap-3 rounded-full border border-secondary/20 bg-secondary/10 px-3 py-1 font-mono text-[9px] font-black uppercase tracking-[0.3em] text-secondary"
+            className="mb-8 inline-flex items-center gap-3 rounded-full border border-border/60 bg-card px-4 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-foreground/60 shadow-sm"
           >
             [BENCHMARK_ANALYSIS]
           </motion.div>
 
-          <h2 className="mb-4 text-3xl font-black leading-[0.95] tracking-tighter text-foreground md:text-5xl">
-            Engineered for <br />
-            <span className="text-aurora">Superiority.</span>
+          <h2 className="mb-6 text-4xl font-bold leading-tight tracking-tight text-foreground md:text-5xl">
+            Engineered for superiority
           </h2>
-          <p className="max-w-xl text-base font-light text-muted-foreground">
+          <p className="max-w-xl text-lg font-medium text-foreground/50">
             Volvox isn't just another bot. It's a complete architectural overhaul of community
             governance.
           </p>
         </div>
 
-        <div className="overflow-hidden rounded-[2rem] border border-border/60 bg-card/30 shadow-xl backdrop-blur-3xl">
+        <div className="overflow-hidden rounded-[2rem] border border-border/80 bg-card shadow-sm">
           <div className="overflow-x-auto scrollbar-none">
             <table
-              // biome-ignore lint/a11y/noRedundantRoles: keep an explicit role so the E2E selector can target the comparison table consistently
-              role="table"
               aria-label="Feature comparison"
               className="min-w-[700px] w-full table-fixed border-separate border-spacing-0"
             >
@@ -229,27 +231,24 @@ export function ComparisonTable() {
                 <col className="w-[16.25%]" />
               </colgroup>
               <thead>
-                <tr className="border-b border-border bg-muted/30">
-                  <th className="px-6 py-4 text-left font-mono text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
-                    [SYSTEM_FEATURE]
+                <tr className="border-b border-border/60 bg-muted/40">
+                  <th className="px-6 py-5 text-left font-sans text-[11px] font-bold uppercase tracking-widest text-foreground/40">
+                    Feature
                   </th>
-                  <th className="border-x border-primary/20 bg-primary/10 px-3 py-4 text-center">
-                    <div className="flex flex-col items-center gap-0.5">
-                      <span className="font-mono text-[11px] font-black uppercase tracking-widest text-primary">
-                        Volvox
-                      </span>
-                      <span className="font-mono text-[8px] font-bold text-primary/60">
-                        V2.4_READY
+                  <th className="border-x border-border/30 bg-background/50 px-3 py-5 text-center">
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="font-sans text-[12px] font-bold uppercase tracking-widest text-foreground">
+                        Volvox<span className="text-primary">.Bot</span>
                       </span>
                     </div>
                   </th>
-                  <th className="px-3 py-4 text-center font-mono text-[9px] font-black uppercase tracking-widest text-muted-foreground/30">
+                  <th className="px-3 py-5 text-center font-sans text-[11px] font-bold uppercase tracking-widest text-foreground/40">
                     MEE6
                   </th>
-                  <th className="px-3 py-4 text-center font-mono text-[9px] font-black uppercase tracking-widest text-muted-foreground/30">
+                  <th className="px-3 py-5 text-center font-sans text-[11px] font-bold uppercase tracking-widest text-foreground/40">
                     DYNO
                   </th>
-                  <th className="px-3 py-4 text-center font-mono text-[9px] font-black uppercase tracking-widest text-muted-foreground/30">
+                  <th className="px-3 py-5 text-center font-sans text-[11px] font-bold uppercase tracking-widest text-foreground/40">
                     CARL-BOT
                   </th>
                 </tr>
@@ -266,21 +265,21 @@ export function ComparisonTable() {
               </tbody>
             </table>
 
-            <div className="flex min-w-[700px] items-center justify-between border-t border-border/40 bg-muted/10 px-6 py-4">
-              <div className="flex items-center gap-3 font-mono text-[8px] uppercase tracking-[0.2em] text-muted-foreground/30">
-                <Info className="h-2.5 w-2.5" />
-                Validated: {new Date().toLocaleDateString()}
+            <div className="flex min-w-[700px] items-center justify-between border-t border-border/60 bg-background px-6 py-4">
+              <div className="flex items-center gap-2 font-mono text-[10px] font-medium tracking-wide text-foreground/40">
+                <Info className="h-3.5 w-3.5 opacity-60" />
+                Validated: {localDate}
               </div>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-6">
                 <div className="flex items-center gap-2">
-                  <Zap className="h-2.5 w-2.5 text-primary" />
-                  <span className="font-mono text-[8px] font-black uppercase text-primary/40">
+                  <Zap className="h-3.5 w-3.5 text-primary opacity-80" />
+                  <span className="font-mono text-[10px] font-bold uppercase text-foreground/50">
                     High_Speed
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Shield className="h-2.5 w-2.5 text-secondary" />
-                  <span className="font-mono text-[8px] font-black uppercase text-secondary/40">
+                  <Shield className="h-3.5 w-3.5 text-foreground/40" />
+                  <span className="font-mono text-[10px] font-bold uppercase text-foreground/50">
                     Zero_Trust
                   </span>
                 </div>
@@ -288,14 +287,6 @@ export function ComparisonTable() {
             </div>
           </div>
         </div>
-
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 0.4 }}
-          className="mt-12 text-center font-mono text-[10px] font-bold uppercase tracking-[0.5em] text-muted-foreground"
-        >
-          SECURE_MATRIX_ENVIRONMENT [ENCRYPTED]
-        </motion.div>
       </div>
     </section>
   );

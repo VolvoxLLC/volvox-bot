@@ -4,9 +4,11 @@
  */
 
 import { EmbedBuilder } from 'discord.js';
+import { isMessageTypeEligible } from './triage-config.js';
 import { info, error as logError, warn } from '../logger.js';
 import { buildDebugEmbed, extractStats, logAiUsage } from '../utils/debugFooter.js';
 import { fetchChannelCached } from '../utils/discordCache.js';
+import { parseProviderModel } from '../utils/modelString.js';
 import { safeSend } from '../utils/safeSend.js';
 import { splitMessage } from '../utils/splitMessage.js';
 import { addToHistory } from './ai.js';
@@ -51,19 +53,27 @@ function logAssistantHistory(channelId, guildId, fallbackContent, sentMsg) {
  * - `isContext`: true,
  * - `channelName`, `channelTopic`.
  *
+ * Bot and webhook messages are filtered from context by default. Use `config.triage.includeBotsInContext`
+ * to include bot messages, or `config.triage.botAllowlist` to include specific bot IDs.
+ *
  * @param {string} channelId - ID of the channel to fetch history from.
  * @param {import('discord.js').Client} client - Discord client used to access the channel messages API.
  * @param {Array} bufferSnapshot - Current buffer snapshot; messages are fetched before the oldest entry if present.
  * @param {number} [limit=15] - Maximum number of messages to fetch.
+ * @param {Object} [config] - Optional config object; when provided, used to determine bot filtering behavior.
  * @returns {Promise<Array<Object>>} Context message objects in chronological order.
  */
-export async function fetchChannelContext(channelId, client, bufferSnapshot, limit = 15) {
+export async function fetchChannelContext(channelId, client, bufferSnapshot, limit = 15, config) {
   try {
     const channel = await fetchChannelCached(client, channelId);
     if (!channel?.messages) {
       warn('Channel fetch returned no messages API', { channelId });
       return [];
     }
+
+    // Determine bot filtering behavior from config
+    const includeBotsInContext = config?.triage?.includeBotsInContext ?? false;
+    const botAllowlist = new Set(config?.triage?.botAllowlist ?? []);
 
     const toContextEntry = (m) => ({
       author: m.author.bot ? `${m.author.username} [BOT]` : m.author.username,
@@ -76,16 +86,37 @@ export async function fetchChannelContext(channelId, client, bufferSnapshot, lim
       channelTopic: channel.topic ?? null,
     });
 
-    // Fetch messages before the oldest buffered message (historical context)
+    /**
+     * Determine if a message should be included in context.
+     * Mirrors accumulateMessage() guards: default/reply only, no webhooks, bots filtered by config.
+     */
+    const shouldIncludeInContext = (m) => {
+      // Skip webhooks and system messages (joins, boosts, pins, etc.)
+      if (!isMessageTypeEligible(m)) return false;
+
+      // Filter bot messages based on config
+      if (m.author.bot) {
+        // Include if globally enabled or bot is in allowlist
+        return includeBotsInContext || botAllowlist.has(m.author.id);
+      }
+
+      return true;
+    };
+
+    // Fetch historical context + recent messages in parallel.
+    // When the buffer is empty we have no `before` anchor, so the history
+    // fetch already returns the most recent messages — skip the redundant
+    // second fetch in that case.
     const oldest = bufferSnapshot[0];
     const historyOptions = { limit };
     if (oldest) historyOptions.before = oldest.messageId;
-    const historyFetched = await channel.messages.fetch(historyOptions);
-
-    // Also fetch the most recent messages (catches replies that arrived after
-    // the buffer started accumulating — fixes the "already being helped" blind spot)
     const RECENT_LIMIT = 5;
-    const recentFetched = await channel.messages.fetch({ limit: RECENT_LIMIT });
+
+    const fetchPromises = [channel.messages.fetch(historyOptions)];
+    if (oldest) fetchPromises.push(channel.messages.fetch({ limit: RECENT_LIMIT }));
+    const fetchResults = await Promise.all(fetchPromises);
+    const historyFetched = fetchResults[0];
+    const recentFetched = fetchResults[1] ?? new Map();
 
     // Merge and deduplicate by messageId, excluding messages already in the buffer
     const bufferIds = new Set(bufferSnapshot.map((m) => m.messageId));
@@ -94,6 +125,8 @@ export async function fetchChannelContext(channelId, client, bufferSnapshot, lim
 
     for (const m of [...historyFetched.values(), ...recentFetched.values()]) {
       if (bufferIds.has(m.id) || seen.has(m.id)) continue;
+      // Apply bot/webhook filtering
+      if (!shouldIncludeInContext(m)) continue;
       seen.add(m.id);
       merged.push(m);
     }
@@ -354,9 +387,12 @@ export async function buildStatsAndLog(
   const targetEntry = snapshot.find((m) => classification.targetMessageIds?.includes(m.messageId));
   const targetUserId = targetEntry?.userId || null;
 
+  const { providerName: classifyProvider } = parseProviderModel(resolved.classifyModel);
+  const { providerName: respondProvider } = parseProviderModel(resolved.respondModel);
+
   const stats = {
-    classify: extractStats(classifyMessage, resolved.classifyModel),
-    respond: extractStats(respondMessage, resolved.respondModel),
+    classify: extractStats(classifyMessage, resolved.classifyModel, classifyProvider),
+    respond: extractStats(respondMessage, resolved.respondModel, respondProvider),
     userId: targetUserId,
     searchCount,
   };

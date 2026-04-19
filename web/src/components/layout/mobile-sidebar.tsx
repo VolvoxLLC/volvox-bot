@@ -27,7 +27,7 @@ export function MobileSidebar() {
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent
           side="left"
-          className="flex h-full w-[min(21.5rem,90vw)] flex-col border-r border-border/70 bg-gradient-to-b from-card via-card/90 to-background p-0"
+          className="flex h-full w-[min(21.5rem,90vw)] flex-col border-r border-border/70 bg-background p-0"
         >
           <SheetTitle className="sr-only">Dashboard Navigation</SheetTitle>
           <SheetDescription className="sr-only">

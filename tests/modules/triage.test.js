@@ -2,13 +2,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ── Mocks (must be before imports) ──────────────────────────────────────────
 
-// Mock CLIProcess — triage.js creates instances and calls .send()
-const mockClassifierSend = vi.fn();
-const mockResponderSend = vi.fn();
-const mockClassifierStart = vi.fn().mockResolvedValue(undefined);
-const mockResponderStart = vi.fn().mockResolvedValue(undefined);
-const mockClassifierClose = vi.fn();
-const mockResponderClose = vi.fn();
+const { mockGenerate, mockStream } = vi.hoisted(() => ({
+  mockGenerate: vi.fn(),
+  mockStream: vi.fn(),
+}));
+
+vi.mock('../../src/utils/aiClient.js', () => ({
+  generate: (...args) => mockGenerate(...args),
+  stream: (...args) => mockStream(...args),
+  warmConnection: vi.fn().mockResolvedValue(undefined),
+}));
 
 // Mock discordCache to pass through to the underlying client.channels.fetch
 vi.mock('../../src/utils/discordCache.js', () => ({
@@ -26,35 +29,6 @@ vi.mock('../../src/utils/discordCache.js', () => ({
   fetchMemberCached: vi.fn().mockResolvedValue(null),
   invalidateGuildCache: vi.fn().mockResolvedValue(undefined),
 }));
-
-vi.mock('../../src/modules/cli-process.js', () => {
-  class CLIProcessError extends Error {
-    constructor(message, reason, meta = {}) {
-      super(message);
-      this.name = 'CLIProcessError';
-      this.reason = reason;
-      Object.assign(this, meta);
-    }
-  }
-  return {
-    CLIProcess: vi.fn().mockImplementation(function MockCLIProcess(name) {
-      if (name === 'classifier') {
-        this.name = 'classifier';
-        this.send = mockClassifierSend;
-        this.start = mockClassifierStart;
-        this.close = mockClassifierClose;
-        this.alive = true;
-      } else {
-        this.name = 'responder';
-        this.send = mockResponderSend;
-        this.start = mockResponderStart;
-        this.close = mockResponderClose;
-        this.alive = true;
-      }
-    }),
-    CLIProcessError,
-  };
-});
 vi.mock('../../src/modules/spam.js', () => ({
   isSpam: vi.fn().mockReturnValue(false),
 }));
@@ -108,36 +82,34 @@ import { safeSend } from '../../src/utils/safeSend.js';
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 /**
- * Create a mock SDK message for the classifier.
+ * Create a mock SDK result for the classifier (generate()).
  * @param {Object} classifyObj - { classification, reasoning, targetMessageIds }
  */
 function mockClassifyResult(classifyObj) {
   return {
-    type: 'result',
-    subtype: 'success',
-    result: JSON.stringify(classifyObj),
-    is_error: false,
-    errors: [],
-    structured_output: classifyObj,
-    total_cost_usd: 0.0005,
-    duration_ms: 50,
+    text: JSON.stringify(classifyObj),
+    costUsd: 0.0005,
+    usage: { inputTokens: 100, outputTokens: 50 },
+    durationMs: 50,
+    finishReason: 'stop',
+    sources: [],
+    providerMetadata: { anthropic: {} },
   };
 }
 
 /**
- * Create a mock SDK message for the responder.
+ * Create a mock SDK result for the responder (stream()).
  * @param {Object} respondObj - { responses: [...] }
  */
 function mockRespondResult(respondObj) {
   return {
-    type: 'result',
-    subtype: 'success',
-    result: JSON.stringify(respondObj),
-    is_error: false,
-    errors: [],
-    structured_output: respondObj,
-    total_cost_usd: 0.005,
-    duration_ms: 200,
+    text: JSON.stringify(respondObj),
+    costUsd: 0.005,
+    usage: { inputTokens: 500, outputTokens: 200 },
+    durationMs: 200,
+    finishReason: 'stop',
+    sources: [],
+    providerMetadata: { anthropic: {} },
   };
 }
 
@@ -155,7 +127,6 @@ function makeConfig(overrides = {}) {
       classifyBudget: 0.05,
       respondModel: 'claude-sonnet-4-5',
       respondBudget: 0.2,
-      tokenRecycleLimit: 20000,
       timeout: 30000,
       moderationResponse: true,
       defaultInterval: 5000,
@@ -169,6 +140,7 @@ function makeMessage(channelId, content, extras = {}) {
   return {
     id: extras.id || 'msg-default',
     content,
+    type: 0, // MessageType.Default
     channel: {
       id: channelId,
       name: extras.channelName || 'test-channel',
@@ -262,14 +234,14 @@ describe('triage module', () => {
       const respondResult = {
         responses: [{ targetMessageId: 'msg-default', targetUser: 'testuser', response: 'Hi!' }],
       };
-      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
-      mockResponderSend.mockResolvedValue(mockRespondResult(respondResult));
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
+      mockStream.mockResolvedValue(mockRespondResult(respondResult));
 
       accumulateMessage(makeMessage('ch1', 'hello'), config);
       await evaluateNow('ch1', config, client, healthMonitor);
 
-      expect(mockClassifierSend).toHaveBeenCalled();
-      expect(mockResponderSend).toHaveBeenCalled();
+      expect(mockGenerate).toHaveBeenCalled();
+      expect(mockStream).toHaveBeenCalled();
     });
 
     it('should call addToHistory with correct args for guild message', () => {
@@ -303,7 +275,7 @@ describe('triage module', () => {
       accumulateMessage(makeMessage('ch1', 'hello'), disabledConfig);
       await evaluateNow('ch1', config, client, healthMonitor);
 
-      expect(mockClassifierSend).not.toHaveBeenCalled();
+      expect(mockGenerate).not.toHaveBeenCalled();
     });
 
     it('should skip excluded channels', async () => {
@@ -312,7 +284,7 @@ describe('triage module', () => {
       accumulateMessage(makeMessage('ch1', 'hello'), excConfig);
       await evaluateNow('ch1', config, client, healthMonitor);
 
-      expect(mockClassifierSend).not.toHaveBeenCalled();
+      expect(mockGenerate).not.toHaveBeenCalled();
     });
 
     it('should skip channels not in allow list when allow list is non-empty', async () => {
@@ -321,7 +293,7 @@ describe('triage module', () => {
       accumulateMessage(makeMessage('not-allowed-ch', 'hello'), restrictedConfig);
       await evaluateNow('not-allowed-ch', config, client, healthMonitor);
 
-      expect(mockClassifierSend).not.toHaveBeenCalled();
+      expect(mockGenerate).not.toHaveBeenCalled();
     });
 
     it('should allow any channel when allow list is empty', async () => {
@@ -330,12 +302,12 @@ describe('triage module', () => {
         reasoning: 'test',
         targetMessageIds: [],
       };
-      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
 
       accumulateMessage(makeMessage('any-channel', 'hello'), config);
       await evaluateNow('any-channel', config, client, healthMonitor);
 
-      expect(mockClassifierSend).toHaveBeenCalled();
+      expect(mockGenerate).toHaveBeenCalled();
     });
 
     it('should skip blocked channels (early return, no addToHistory)', async () => {
@@ -354,7 +326,7 @@ describe('triage module', () => {
       expect(addToHistory).not.toHaveBeenCalled();
       // Should NOT trigger any classifier activity
       await evaluateNow('blocked-ch', config, client, healthMonitor);
-      expect(mockClassifierSend).not.toHaveBeenCalled();
+      expect(mockGenerate).not.toHaveBeenCalled();
     });
 
     it('should only check parentId for threads, not category channels', async () => {
@@ -396,14 +368,245 @@ describe('triage module', () => {
       accumulateMessage(makeMessage('ch1', ''), config);
       await evaluateNow('ch1', config, client, healthMonitor);
 
-      expect(mockClassifierSend).not.toHaveBeenCalled();
+      expect(mockGenerate).not.toHaveBeenCalled();
     });
 
     it('should skip whitespace-only messages', async () => {
       accumulateMessage(makeMessage('ch1', '   '), config);
       await evaluateNow('ch1', config, client, healthMonitor);
 
-      expect(mockClassifierSend).not.toHaveBeenCalled();
+      expect(mockGenerate).not.toHaveBeenCalled();
+    });
+
+    it('should skip bot messages (defense-in-depth)', async () => {
+      const botMsg = makeMessage('ch1', 'hello from bot', {
+        id: 'msg-bot',
+        username: 'SomeBot',
+        userId: 'bot-123',
+      });
+      botMsg.author.bot = true;
+
+      accumulateMessage(botMsg, config);
+      await evaluateNow('ch1', config, client, healthMonitor);
+
+      expect(addToHistory).not.toHaveBeenCalled();
+      expect(mockGenerate).not.toHaveBeenCalled();
+    });
+
+    it('should skip webhook messages (GitHub, Jira integrations)', async () => {
+      const webhookMsg = makeMessage('ch1', 'GitHub: PR merged', {
+        id: 'msg-webhook',
+        username: 'GitHub',
+        userId: 'webhook-user',
+      });
+      webhookMsg.webhookId = 'webhook-123';
+
+      accumulateMessage(webhookMsg, config);
+      await evaluateNow('ch1', config, client, healthMonitor);
+
+      expect(addToHistory).not.toHaveBeenCalled();
+      expect(mockGenerate).not.toHaveBeenCalled();
+    });
+
+    it('should skip system messages (joins, boosts, pins)', async () => {
+      // MessageType.GuildMemberJoin = 7
+      const joinMsg = makeMessage('ch1', 'NewUser joined the server', {
+        id: 'msg-join',
+        username: 'NewUser',
+        userId: 'u-new',
+      });
+      joinMsg.type = 7; // GuildMemberJoin
+
+      accumulateMessage(joinMsg, config);
+      await evaluateNow('ch1', config, client, healthMonitor);
+
+      expect(addToHistory).not.toHaveBeenCalled();
+      expect(mockGenerate).not.toHaveBeenCalled();
+    });
+
+    it('should allow reply messages (type 19)', async () => {
+      const classResult = {
+        classification: 'ignore',
+        reasoning: 'test',
+        targetMessageIds: [],
+      };
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
+
+      const replyMsg = makeMessage('ch1', 'this is a reply', {
+        id: 'msg-reply',
+        username: 'alice',
+        userId: 'u1',
+      });
+      replyMsg.type = 19; // MessageType.Reply
+
+      accumulateMessage(replyMsg, config);
+      await evaluateNow('ch1', config, client, healthMonitor);
+
+      expect(addToHistory).toHaveBeenCalled();
+      expect(mockGenerate).toHaveBeenCalled();
+    });
+
+    it('should skip users with excluded roles', async () => {
+      const roleConfig = makeConfig({ triage: { excludedRoles: ['bot-role'] } });
+      mockGlobalConfig = roleConfig;
+
+      const msg = makeMessage('ch1', 'hello', {
+        id: 'msg-excluded',
+        username: 'botuser',
+        userId: 'u-bot',
+        guild: { id: 'g1' },
+      });
+      // Mock member with excluded role
+      msg.member = {
+        guild: { id: 'g1' },
+        roles: {
+          cache: {
+            filter: (fn) => {
+              const roles = [
+                { id: 'g1', name: '@everyone' },
+                { id: 'bot-role', name: 'Bot' },
+              ];
+              const filtered = roles.filter(fn);
+              return { map: (mapFn) => filtered.map(mapFn) };
+            },
+          },
+        },
+      };
+
+      accumulateMessage(msg, roleConfig);
+      await evaluateNow('ch1', roleConfig, client, healthMonitor);
+
+      expect(addToHistory).not.toHaveBeenCalled();
+      expect(mockGenerate).not.toHaveBeenCalled();
+    });
+
+    it('should allow users with allowed roles', async () => {
+      const classResult = {
+        classification: 'ignore',
+        reasoning: 'test',
+        targetMessageIds: [],
+      };
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
+
+      const roleConfig = makeConfig({ triage: { allowedRoles: ['vip-role'] } });
+      mockGlobalConfig = roleConfig;
+
+      const msg = makeMessage('ch1', 'hello', {
+        id: 'msg-allowed',
+        username: 'vipuser',
+        userId: 'u-vip',
+        guild: { id: 'g1' },
+      });
+      msg.type = 0; // MessageType.Default
+      // Mock member with allowed role
+      msg.member = {
+        guild: { id: 'g1' },
+        roles: {
+          cache: {
+            filter: (fn) => {
+              const roles = [
+                { id: 'g1', name: '@everyone' },
+                { id: 'vip-role', name: 'VIP' },
+              ];
+              const filtered = roles.filter(fn);
+              return { map: (mapFn) => filtered.map(mapFn) };
+            },
+          },
+        },
+      };
+
+      accumulateMessage(msg, roleConfig);
+      await evaluateNow('ch1', roleConfig, client, healthMonitor);
+
+      expect(addToHistory).toHaveBeenCalled();
+      expect(mockGenerate).toHaveBeenCalled();
+    });
+
+    it('should skip users without allowed roles when list is non-empty', async () => {
+      const roleConfig = makeConfig({ triage: { allowedRoles: ['vip-role'] } });
+      mockGlobalConfig = roleConfig;
+
+      const msg = makeMessage('ch1', 'hello', {
+        id: 'msg-not-allowed',
+        username: 'regularuser',
+        userId: 'u-regular',
+        guild: { id: 'g1' },
+      });
+      // Mock member without the allowed role
+      msg.member = {
+        guild: { id: 'g1' },
+        roles: {
+          cache: {
+            filter: (fn) => {
+              const roles = [
+                { id: 'g1', name: '@everyone' },
+                { id: 'other-role', name: 'Other' },
+              ];
+              const filtered = roles.filter(fn);
+              return { map: (mapFn) => filtered.map(mapFn) };
+            },
+          },
+        },
+      };
+
+      accumulateMessage(msg, roleConfig);
+      await evaluateNow('ch1', roleConfig, client, healthMonitor);
+
+      expect(addToHistory).not.toHaveBeenCalled();
+      expect(mockGenerate).not.toHaveBeenCalled();
+    });
+
+    it('should skip users with no roles when allowedRoles is non-empty', async () => {
+      const roleConfig = makeConfig({ triage: { allowedRoles: ['vip-role', 'mod-role'] } });
+      mockGlobalConfig = roleConfig;
+
+      const msg = makeMessage('ch1', 'hello', {
+        id: 'msg-no-roles',
+        username: 'newuser',
+        userId: 'u-new',
+        guild: { id: 'g1' },
+      });
+      // Mock member with no roles (only @everyone, which gets filtered out)
+      msg.member = {
+        guild: { id: 'g1' },
+        roles: {
+          cache: {
+            filter: (fn) => {
+              const roles = [{ id: 'g1', name: '@everyone' }];
+              const filtered = roles.filter(fn);
+              return { map: (mapFn) => filtered.map(mapFn) };
+            },
+          },
+        },
+      };
+
+      accumulateMessage(msg, roleConfig);
+      await evaluateNow('ch1', roleConfig, client, healthMonitor);
+
+      expect(addToHistory).not.toHaveBeenCalled();
+      expect(mockGenerate).not.toHaveBeenCalled();
+    });
+
+    it('should allow default messages (type 0)', async () => {
+      const classResult = {
+        classification: 'ignore',
+        reasoning: 'test',
+        targetMessageIds: [],
+      };
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
+
+      const defaultMsg = makeMessage('ch1', 'regular message', {
+        id: 'msg-default-type',
+        username: 'bob',
+        userId: 'u2',
+      });
+      defaultMsg.type = 0; // MessageType.Default
+
+      accumulateMessage(defaultMsg, config);
+      await evaluateNow('ch1', config, client, healthMonitor);
+
+      expect(addToHistory).toHaveBeenCalled();
+      expect(mockGenerate).toHaveBeenCalled();
     });
 
     it('should include channelName and channelTopic in buffer entry', () => {
@@ -431,12 +634,12 @@ describe('triage module', () => {
         reasoning: 'test',
         targetMessageIds: [],
       };
-      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
 
       await evaluateNow('ch1', smallConfig, client, healthMonitor);
 
       // The classifier prompt should contain only messages 2, 3, 4 (oldest dropped)
-      const prompt = mockClassifierSend.mock.calls[0][0];
+      const prompt = mockGenerate.mock.calls[0][0].prompt;
       expect(prompt).toContain('msg 2');
       expect(prompt).toContain('msg 4');
       expect(prompt).not.toContain('msg 0');
@@ -459,13 +662,13 @@ describe('triage module', () => {
           { targetMessageId: 'msg-default', targetUser: 'testuser', response: 'Helped!' },
         ],
       };
-      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
-      mockResponderSend.mockResolvedValue(mockRespondResult(respondResult));
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
+      mockStream.mockResolvedValue(mockRespondResult(respondResult));
 
       accumulateMessage(makeMessage('ch1', 'I need help please'), twConfig);
 
       await vi.waitFor(() => {
-        expect(mockClassifierSend).toHaveBeenCalled();
+        expect(mockGenerate).toHaveBeenCalled();
       });
     });
 
@@ -477,12 +680,12 @@ describe('triage module', () => {
         reasoning: 'bad content',
         targetMessageIds: ['msg-default'],
       };
-      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
 
       accumulateMessage(makeMessage('ch1', 'this is badword content'), modConfig);
 
       await vi.waitFor(() => {
-        expect(mockClassifierSend).toHaveBeenCalled();
+        expect(mockGenerate).toHaveBeenCalled();
       });
     });
 
@@ -493,12 +696,12 @@ describe('triage module', () => {
         reasoning: 'spam',
         targetMessageIds: [],
       };
-      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
 
       accumulateMessage(makeMessage('ch1', 'free crypto claim'), config);
 
       await vi.waitFor(() => {
-        expect(mockClassifierSend).toHaveBeenCalled();
+        expect(mockGenerate).toHaveBeenCalled();
       });
     });
   });
@@ -515,14 +718,14 @@ describe('triage module', () => {
       const respondResult = {
         responses: [{ targetMessageId: 'msg-default', targetUser: 'testuser', response: 'Hello!' }],
       };
-      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
-      mockResponderSend.mockResolvedValue(mockRespondResult(respondResult));
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
+      mockStream.mockResolvedValue(mockRespondResult(respondResult));
 
       accumulateMessage(makeMessage('ch1', 'hi there'), config);
       await evaluateNow('ch1', config, client, healthMonitor);
 
-      expect(mockClassifierSend).toHaveBeenCalledTimes(1);
-      expect(mockResponderSend).toHaveBeenCalledTimes(1);
+      expect(mockGenerate).toHaveBeenCalledTimes(1);
+      expect(mockStream).toHaveBeenCalledTimes(1);
       expect(safeSend).toHaveBeenCalledWith(
         expect.anything(),
         contentWith('Hello!', 'msg-default'),
@@ -535,19 +738,19 @@ describe('triage module', () => {
         reasoning: 'nothing relevant',
         targetMessageIds: [],
       };
-      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
 
       accumulateMessage(makeMessage('ch1', 'irrelevant chat'), config);
       await evaluateNow('ch1', config, client, healthMonitor);
 
-      expect(mockClassifierSend).toHaveBeenCalledTimes(1);
-      expect(mockResponderSend).not.toHaveBeenCalled();
+      expect(mockGenerate).toHaveBeenCalledTimes(1);
+      expect(mockStream).not.toHaveBeenCalled();
       expect(safeSend).not.toHaveBeenCalled();
     });
 
     it('should not evaluate when buffer is empty', async () => {
       await evaluateNow('empty-ch', config, client, healthMonitor);
-      expect(mockClassifierSend).not.toHaveBeenCalled();
+      expect(mockGenerate).not.toHaveBeenCalled();
     });
 
     it('should skip evaluation when channel becomes blocked after buffering', async () => {
@@ -574,7 +777,7 @@ describe('triage module', () => {
       await evaluateNow('ch-becomes-blocked', config, client, healthMonitor);
 
       // Classifier should NOT have been called despite buffered messages
-      expect(mockClassifierSend).not.toHaveBeenCalled();
+      expect(mockGenerate).not.toHaveBeenCalled();
 
       // Reset the mock to not affect subsequent tests
       isChannelBlocked.mockReturnValue(false);
@@ -603,16 +806,16 @@ describe('triage module', () => {
       };
 
       let resolveFirst;
-      mockClassifierSend.mockImplementationOnce(
+      mockGenerate.mockImplementationOnce(
         () =>
           new Promise((resolve) => {
             resolveFirst = resolve;
           }),
       );
       // Re-eval uses fresh classifier call
-      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult2));
-      mockResponderSend.mockResolvedValueOnce(mockRespondResult(respondResult));
-      mockResponderSend.mockResolvedValue(mockRespondResult(respondResult2));
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult2));
+      mockStream.mockResolvedValueOnce(mockRespondResult(respondResult));
+      mockStream.mockResolvedValue(mockRespondResult(respondResult2));
 
       accumulateMessage(makeMessage('ch1', 'first'), config);
 
@@ -630,7 +833,7 @@ describe('triage module', () => {
       await second;
 
       await vi.waitFor(() => {
-        expect(mockClassifierSend).toHaveBeenCalledTimes(2);
+        expect(mockGenerate).toHaveBeenCalledTimes(2);
       });
     });
   });
@@ -644,7 +847,7 @@ describe('triage module', () => {
         reasoning: 'nothing relevant',
         targetMessageIds: [],
       };
-      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
 
       accumulateMessage(makeMessage('ch1', 'irrelevant chat'), config);
       await evaluateNow('ch1', config, client, healthMonitor);
@@ -663,8 +866,8 @@ describe('triage module', () => {
           { targetMessageId: 'msg-default', targetUser: 'spammer', response: 'Rule #4: no spam' },
         ],
       };
-      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
-      mockResponderSend.mockResolvedValue(mockRespondResult(respondResult));
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
+      mockStream.mockResolvedValue(mockRespondResult(respondResult));
 
       accumulateMessage(makeMessage('ch1', 'spammy content'), config);
       await evaluateNow('ch1', config, client, healthMonitor);
@@ -690,8 +893,8 @@ describe('triage module', () => {
       const respondResult = {
         responses: [{ targetMessageId: 'msg-default', targetUser: 'spammer', response: 'Rule #4' }],
       };
-      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
-      mockResponderSend.mockResolvedValue(mockRespondResult(respondResult));
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
+      mockStream.mockResolvedValue(mockRespondResult(respondResult));
 
       accumulateMessage(makeMessage('ch1', 'spammy content'), modConfig);
       await evaluateNow('ch1', modConfig, client, healthMonitor);
@@ -714,8 +917,8 @@ describe('triage module', () => {
           { targetMessageId: 'msg-123', targetUser: 'testuser', response: 'Quick answer' },
         ],
       };
-      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
-      mockResponderSend.mockResolvedValue(mockRespondResult(respondResult));
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
+      mockStream.mockResolvedValue(mockRespondResult(respondResult));
 
       accumulateMessage(makeMessage('ch1', 'what time is it', { id: 'msg-123' }), config);
       await evaluateNow('ch1', config, client, healthMonitor);
@@ -737,8 +940,8 @@ describe('triage module', () => {
           { targetMessageId: 'msg-a1', targetUser: 'alice', response: 'Interesting point!' },
         ],
       };
-      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
-      mockResponderSend.mockResolvedValue(mockRespondResult(respondResult));
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
+      mockStream.mockResolvedValue(mockRespondResult(respondResult));
 
       accumulateMessage(
         makeMessage('ch1', 'anyone know about Rust?', {
@@ -765,8 +968,8 @@ describe('triage module', () => {
       const respondResult = {
         responses: [{ targetMessageId: 'msg-default', targetUser: 'testuser', response: 'hi' }],
       };
-      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
-      mockResponderSend.mockResolvedValue(mockRespondResult(respondResult));
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
+      mockStream.mockResolvedValue(mockRespondResult(respondResult));
 
       accumulateMessage(makeMessage('ch1', 'test'), config);
       await evaluateNow('ch1', config, client, healthMonitor);
@@ -791,8 +994,8 @@ describe('triage module', () => {
           { targetMessageId: 'msg-b1', targetUser: 'bob', response: 'Reply to Bob' },
         ],
       };
-      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
-      mockResponderSend.mockResolvedValue(mockRespondResult(respondResult));
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
+      mockStream.mockResolvedValue(mockRespondResult(respondResult));
 
       accumulateMessage(
         makeMessage('ch1', 'hello from alice', {
@@ -836,8 +1039,8 @@ describe('triage module', () => {
           { targetMessageId: 'msg-b1', targetUser: 'bob', response: 'Reply to Bob' },
         ],
       };
-      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
-      mockResponderSend.mockResolvedValue(mockRespondResult(respondResult));
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
+      mockStream.mockResolvedValue(mockRespondResult(respondResult));
 
       accumulateMessage(
         makeMessage('ch1', 'hi', { username: 'alice', userId: 'u-alice', id: 'msg-a1' }),
@@ -864,8 +1067,8 @@ describe('triage module', () => {
         targetMessageIds: ['msg-default'],
       };
       const respondResult = { responses: [] };
-      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
-      mockResponderSend.mockResolvedValue(mockRespondResult(respondResult));
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
+      mockStream.mockResolvedValue(mockRespondResult(respondResult));
 
       accumulateMessage(makeMessage('ch1', 'test'), config);
       await evaluateNow('ch1', config, client, healthMonitor);
@@ -896,8 +1099,8 @@ describe('triage module', () => {
           },
         ],
       };
-      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
-      mockResponderSend.mockResolvedValue(mockRespondResult(respondResult));
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
+      mockStream.mockResolvedValue(mockRespondResult(respondResult));
 
       accumulateMessage(
         makeMessage('ch1', 'hello', { username: 'alice', userId: 'u-alice', id: 'msg-real' }),
@@ -926,8 +1129,8 @@ describe('triage module', () => {
           },
         ],
       };
-      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
-      mockResponderSend.mockResolvedValue(mockRespondResult(respondResult));
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
+      mockStream.mockResolvedValue(mockRespondResult(respondResult));
 
       accumulateMessage(
         makeMessage('ch1', 'hello', { username: 'alice', userId: 'u-alice', id: 'msg-alice' }),
@@ -953,16 +1156,16 @@ describe('triage module', () => {
           { targetMessageId: 'msg-default', targetUser: 'testuser', response: 'Response!' },
         ],
       };
-      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
-      mockResponderSend.mockResolvedValue(mockRespondResult(respondResult));
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
+      mockStream.mockResolvedValue(mockRespondResult(respondResult));
 
       accumulateMessage(makeMessage('ch1', 'hello'), config);
       await evaluateNow('ch1', config, client, healthMonitor);
 
       // Buffer should be cleared — second evaluateNow should find nothing
-      mockClassifierSend.mockClear();
+      mockGenerate.mockClear();
       await evaluateNow('ch1', config, client, healthMonitor);
-      expect(mockClassifierSend).not.toHaveBeenCalled();
+      expect(mockGenerate).not.toHaveBeenCalled();
     });
 
     it('should clear buffer on ignore classification', async () => {
@@ -971,14 +1174,14 @@ describe('triage module', () => {
         reasoning: 'not relevant',
         targetMessageIds: [],
       };
-      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
 
       accumulateMessage(makeMessage('ch1', 'random chat'), config);
       await evaluateNow('ch1', config, client, healthMonitor);
 
-      mockClassifierSend.mockClear();
+      mockGenerate.mockClear();
       await evaluateNow('ch1', config, client, healthMonitor);
-      expect(mockClassifierSend).not.toHaveBeenCalled();
+      expect(mockGenerate).not.toHaveBeenCalled();
     });
 
     it('should clear buffer on moderate classification', async () => {
@@ -988,15 +1191,15 @@ describe('triage module', () => {
         targetMessageIds: [],
       };
       const respondResult = { responses: [] };
-      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
-      mockResponderSend.mockResolvedValue(mockRespondResult(respondResult));
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
+      mockStream.mockResolvedValue(mockRespondResult(respondResult));
 
       accumulateMessage(makeMessage('ch1', 'bad content'), config);
       await evaluateNow('ch1', config, client, healthMonitor);
 
-      mockClassifierSend.mockClear();
+      mockGenerate.mockClear();
       await evaluateNow('ch1', config, client, healthMonitor);
-      expect(mockClassifierSend).not.toHaveBeenCalled();
+      expect(mockGenerate).not.toHaveBeenCalled();
     });
   });
 
@@ -1006,7 +1209,7 @@ describe('triage module', () => {
     it('should use 5000ms interval for 0-1 messages', () => {
       accumulateMessage(makeMessage('ch1', 'single'), config);
       vi.advanceTimersByTime(4999);
-      expect(mockClassifierSend).not.toHaveBeenCalled();
+      expect(mockGenerate).not.toHaveBeenCalled();
     });
 
     it('should use 2500ms interval for 2-4 messages', async () => {
@@ -1015,17 +1218,17 @@ describe('triage module', () => {
         reasoning: 'test',
         targetMessageIds: [],
       };
-      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
 
       accumulateMessage(makeMessage('ch1', 'msg1'), config);
       accumulateMessage(makeMessage('ch1', 'msg2'), config);
 
       // Should not fire before 2500ms
       vi.advanceTimersByTime(2499);
-      expect(mockClassifierSend).not.toHaveBeenCalled();
+      expect(mockGenerate).not.toHaveBeenCalled();
 
       await vi.advanceTimersByTimeAsync(1);
-      expect(mockClassifierSend).toHaveBeenCalled();
+      expect(mockGenerate).toHaveBeenCalled();
     });
 
     it('should use 1000ms interval for 5+ messages', async () => {
@@ -1034,7 +1237,7 @@ describe('triage module', () => {
         reasoning: 'test',
         targetMessageIds: [],
       };
-      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
 
       for (let i = 0; i < 5; i++) {
         accumulateMessage(makeMessage('ch1', `msg${i}`), config);
@@ -1042,10 +1245,10 @@ describe('triage module', () => {
 
       // Should not fire before 1000ms
       vi.advanceTimersByTime(999);
-      expect(mockClassifierSend).not.toHaveBeenCalled();
+      expect(mockGenerate).not.toHaveBeenCalled();
 
       await vi.advanceTimersByTimeAsync(1);
-      expect(mockClassifierSend).toHaveBeenCalled();
+      expect(mockGenerate).toHaveBeenCalled();
     });
 
     it('should use config.triage.defaultInterval as base interval', () => {
@@ -1053,36 +1256,39 @@ describe('triage module', () => {
       mockGlobalConfig = customConfig;
       accumulateMessage(makeMessage('ch1', 'single'), customConfig);
       vi.advanceTimersByTime(19999);
-      expect(mockClassifierSend).not.toHaveBeenCalled();
+      expect(mockGenerate).not.toHaveBeenCalled();
     });
   });
 
   // ── startTriage / stopTriage ──────────────────────────────────────────
 
   describe('startTriage / stopTriage', () => {
-    it('should initialize CLI processes', () => {
-      // startTriage already called in beforeEach — processes were created
-      expect(mockClassifierStart).toHaveBeenCalled();
-      expect(mockResponderStart).toHaveBeenCalled();
+    it('should configure AI SDK settings', () => {
+      // startTriage already called in beforeEach — config was set up
+      expect(info).toHaveBeenCalledWith(
+        'Triage configured',
+        expect.objectContaining({
+          classifyModel: expect.any(String),
+          respondModel: expect.any(String),
+        }),
+      );
     });
 
-    it('should clear all state and close processes on stop', () => {
+    it('should clear all state on stop', () => {
       accumulateMessage(makeMessage('ch1', 'msg1'), config);
       accumulateMessage(makeMessage('ch2', 'msg2'), config);
       stopTriage();
 
-      expect(mockClassifierClose).toHaveBeenCalled();
-      expect(mockResponderClose).toHaveBeenCalled();
+      // Buffers should be cleared
+      expect(channelBuffers.size).toBe(0);
     });
 
     it('should log with split config fields', () => {
       expect(info).toHaveBeenCalledWith(
-        'Triage processes started',
+        'Triage configured',
         expect.objectContaining({
           classifyModel: 'claude-haiku-4-5',
           respondModel: 'claude-sonnet-4-5',
-          tokenRecycleLimit: 20000,
-          streaming: false,
         }),
       );
     });
@@ -1098,9 +1304,9 @@ describe('triage module', () => {
 
       accumulateMessage(makeMessage('ch-new', 'hi'), config);
 
-      mockClassifierSend.mockClear();
+      mockGenerate.mockClear();
       await evaluateNow('ch-old', config, client, healthMonitor);
-      expect(mockClassifierSend).not.toHaveBeenCalled();
+      expect(mockGenerate).not.toHaveBeenCalled();
     });
 
     it('should evict oldest channels when over 100-channel cap', async () => {
@@ -1112,15 +1318,15 @@ describe('triage module', () => {
         reasoning: 'test',
         targetMessageIds: [],
       };
-      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
 
       for (let i = 0; i < 102; i++) {
         accumulateMessage(makeMessage(`ch-cap-${i}`, 'msg'), longConfig);
       }
 
-      mockClassifierSend.mockClear();
+      mockGenerate.mockClear();
       await evaluateNow('ch-cap-0', longConfig, client, healthMonitor);
-      expect(mockClassifierSend).not.toHaveBeenCalled();
+      expect(mockGenerate).not.toHaveBeenCalled();
 
       const classResult2 = {
         classification: 'respond',
@@ -1130,10 +1336,10 @@ describe('triage module', () => {
       const respondResult = {
         responses: [{ targetMessageId: 'msg-default', targetUser: 'testuser', response: 'hi' }],
       };
-      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult2));
-      mockResponderSend.mockResolvedValue(mockRespondResult(respondResult));
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult2));
+      mockStream.mockResolvedValue(mockRespondResult(respondResult));
       await evaluateNow('ch-cap-101', longConfig, client, healthMonitor);
-      expect(mockClassifierSend).toHaveBeenCalled();
+      expect(mockGenerate).toHaveBeenCalled();
     });
   });
 
@@ -1146,7 +1352,7 @@ describe('triage module', () => {
         reasoning: 'test',
         targetMessageIds: [],
       };
-      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
 
       accumulateMessage(
         makeMessage('ch1', 'hello world', { username: 'alice', userId: 'u42', id: 'msg-42' }),
@@ -1155,7 +1361,7 @@ describe('triage module', () => {
 
       await evaluateNow('ch1', config, client, healthMonitor);
 
-      const prompt = mockClassifierSend.mock.calls[0][0];
+      const prompt = mockGenerate.mock.calls[0][0].prompt;
       expect(prompt).toContain('[msg-42] alice (<@u42>): hello world');
     });
   });
@@ -1172,8 +1378,8 @@ describe('triage module', () => {
       const respondResult = {
         responses: [{ targetMessageId: 'msg-default', targetUser: 'testuser', response: 'Hi!' }],
       };
-      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
-      mockResponderSend.mockResolvedValue(mockRespondResult(respondResult));
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
+      mockStream.mockResolvedValue(mockRespondResult(respondResult));
 
       accumulateMessage(makeMessage('ch1', 'hello'), config);
       await evaluateNow('ch1', config, client, healthMonitor);
@@ -1192,8 +1398,8 @@ describe('triage module', () => {
       const respondResult = {
         responses: [{ targetMessageId: 'msg-default', targetUser: 'testuser', response: 'Hi!' }],
       };
-      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
-      mockResponderSend.mockResolvedValue(mockRespondResult(respondResult));
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
+      mockStream.mockResolvedValue(mockRespondResult(respondResult));
 
       accumulateMessage(makeMessage('ch1', 'hello'), noReactConfig);
       await evaluateNow('ch1', noReactConfig, client, healthMonitor);
@@ -1212,16 +1418,12 @@ describe('triage module', () => {
           { targetMessageId: 'msg-default', targetUser: 'testuser', response: 'Found it!' },
         ],
       };
-      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
 
-      // Simulate onEvent being called with a WebSearch tool_use, then return the result
-      mockResponderSend.mockImplementation(async (_prompt, _opts, { onEvent } = {}) => {
-        if (onEvent) {
-          await onEvent({
-            message: {
-              content: [{ type: 'tool_use', name: 'WebSearch', input: { query: 'test' } }],
-            },
-          });
+      // Simulate onChunk being called with a web_search tool, then return the result
+      mockStream.mockImplementation(async (opts) => {
+        if (opts.onChunk) {
+          opts.onChunk('web_search', { query: 'test' });
         }
         return mockRespondResult(respondResult);
       });
@@ -1243,15 +1445,11 @@ describe('triage module', () => {
       const respondResult = {
         responses: [{ targetMessageId: 'msg-default', targetUser: 'testuser', response: 'Done!' }],
       };
-      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
 
-      mockResponderSend.mockImplementation(async (_prompt, _opts, { onEvent } = {}) => {
-        if (onEvent) {
-          await onEvent({
-            message: {
-              content: [{ type: 'tool_use', name: 'WebSearch', input: { query: 'test' } }],
-            },
-          });
+      mockStream.mockImplementation(async (opts) => {
+        if (opts.onChunk) {
+          opts.onChunk('web_search', { query: 'test' });
         }
         return mockRespondResult(respondResult);
       });
@@ -1273,8 +1471,8 @@ describe('triage module', () => {
       const respondResult = {
         responses: [{ targetMessageId: 'msg-default', targetUser: 'testuser', response: 'Hi!' }],
       };
-      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
-      mockResponderSend.mockResolvedValue(mockRespondResult(respondResult));
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
+      mockStream.mockResolvedValue(mockRespondResult(respondResult));
 
       accumulateMessage(makeMessage('ch1', 'hello'), noThinkConfig);
       await evaluateNow('ch1', noThinkConfig, client, healthMonitor);
@@ -1287,18 +1485,19 @@ describe('triage module', () => {
       expect(mockRemove).toHaveBeenCalledWith('bot-id');
     });
 
-    it('should transition 👀 → 🧠 → removed (thinking tokens configured)', async () => {
+    it('should transition 👀 → 🧠 → removed (classifier requests thinking)', async () => {
       const thinkConfig = makeConfig({ triage: { thinkingTokens: 1000 } });
       const classResult = {
         classification: 'respond',
         reasoning: 'test',
         targetMessageIds: ['msg-default'],
+        needsThinking: true,
       };
       const respondResult = {
         responses: [{ targetMessageId: 'msg-default', targetUser: 'testuser', response: 'Hi!' }],
       };
-      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
-      mockResponderSend.mockResolvedValue(mockRespondResult(respondResult));
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
+      mockStream.mockResolvedValue(mockRespondResult(respondResult));
 
       accumulateMessage(makeMessage('ch1', 'hello'), thinkConfig);
       await evaluateNow('ch1', thinkConfig, client, healthMonitor);
@@ -1320,8 +1519,8 @@ describe('triage module', () => {
       const respondResult = {
         responses: [{ targetMessageId: 'msg-default', targetUser: 'testuser', response: 'Hi!' }],
       };
-      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
-      mockResponderSend.mockResolvedValue(mockRespondResult(respondResult));
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
+      mockStream.mockResolvedValue(mockRespondResult(respondResult));
 
       accumulateMessage(makeMessage('ch1', 'hello'), noReactConfig);
       await evaluateNow('ch1', noReactConfig, client, healthMonitor);
@@ -1342,8 +1541,8 @@ describe('triage module', () => {
       const respondResult = {
         responses: [{ targetMessageId: 'msg-default', targetUser: 'testuser', response: 'Hi!' }],
       };
-      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
-      mockResponderSend.mockResolvedValue(mockRespondResult(respondResult));
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
+      mockStream.mockResolvedValue(mockRespondResult(respondResult));
 
       accumulateMessage(makeMessage('ch1', 'hello'), config);
       await evaluateNow('ch1', config, client, healthMonitor);
@@ -1367,26 +1566,26 @@ describe('triage module', () => {
       const respondResult = {
         responses: [{ targetMessageId: 'msg-default', targetUser: 'testuser', response: 'On it!' }],
       };
-      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
-      mockResponderSend.mockResolvedValue(mockRespondResult(respondResult));
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
+      mockStream.mockResolvedValue(mockRespondResult(respondResult));
 
       accumulateMessage(makeMessage('ch1', 'this is urgent'), twConfig);
 
       await vi.waitFor(() => {
-        expect(mockClassifierSend).toHaveBeenCalled();
+        expect(mockGenerate).toHaveBeenCalled();
       });
     });
 
     it('should schedule a timer for non-trigger messages', () => {
       accumulateMessage(makeMessage('ch1', 'normal message'), config);
-      expect(mockClassifierSend).not.toHaveBeenCalled();
+      expect(mockGenerate).not.toHaveBeenCalled();
 
       const classResult = {
         classification: 'ignore',
         reasoning: 'test',
         targetMessageIds: [],
       };
-      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
       vi.advanceTimersByTime(5000);
     });
   });
@@ -1395,7 +1594,7 @@ describe('triage module', () => {
 
   describe('CLI edge cases', () => {
     it('should handle classifier error gracefully and send fallback', async () => {
-      mockClassifierSend.mockRejectedValue(new Error('CLI process failed'));
+      mockGenerate.mockRejectedValue(new Error('CLI process failed'));
 
       accumulateMessage(makeMessage('ch1', 'test'), config);
       await evaluateNow('ch1', config, client, healthMonitor);
@@ -1407,14 +1606,14 @@ describe('triage module', () => {
     });
 
     it('should handle classifier returning unparseable result', async () => {
-      mockClassifierSend.mockResolvedValue({
-        type: 'result',
-        subtype: 'success',
-        result: '',
-        is_error: false,
-        errors: [],
-        total_cost_usd: 0.001,
-        duration_ms: 100,
+      mockGenerate.mockResolvedValue({
+        text: '',
+        costUsd: 0.001,
+        usage: { inputTokens: 100, outputTokens: 10 },
+        durationMs: 100,
+        finishReason: 'stop',
+        sources: [],
+        providerMetadata: { anthropic: {} },
       });
 
       accumulateMessage(makeMessage('ch1', 'test'), config);
@@ -1433,8 +1632,8 @@ describe('triage module', () => {
         reasoning: 'test',
         targetMessageIds: ['msg-default'],
       };
-      mockClassifierSend.mockResolvedValue(mockClassifyResult(classResult));
-      mockResponderSend.mockRejectedValue(new Error('Responder failed'));
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
+      mockStream.mockRejectedValue(new Error('Responder failed'));
 
       accumulateMessage(makeMessage('ch1', 'test'), config);
       await evaluateNow('ch1', config, client, healthMonitor);
@@ -1473,7 +1672,7 @@ describe('triage module', () => {
 
       // The process should have been created with resolved values
       expect(info).toHaveBeenCalledWith(
-        'Triage processes started',
+        'Triage configured',
         expect.objectContaining({
           classifyModel: 'claude-haiku-4-5',
           respondModel: 'claude-sonnet-4-5',
@@ -1497,11 +1696,64 @@ describe('triage module', () => {
       await startTriage(client, splitConfig, healthMonitor);
 
       expect(info).toHaveBeenCalledWith(
-        'Triage processes started',
+        'Triage configured',
         expect.objectContaining({
           classifyModel: 'claude-haiku-4-5',
           respondModel: 'claude-sonnet-4-5',
         }),
+      );
+    });
+  });
+
+  // ── Remediation: responder error and truncated confidence ────────────────
+
+  describe('responder error handling', () => {
+    it('should show user-friendly "having trouble thinking" message on stream error', async () => {
+      const { AIClientError } = await import('../../src/utils/errors.js');
+      const classResult = {
+        classification: 'respond',
+        reasoning: 'question',
+        targetMessageIds: ['msg-default'],
+      };
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
+      mockStream.mockRejectedValue(
+        new AIClientError('API error: server down', 'api', { statusCode: 500 }),
+      );
+
+      accumulateMessage(makeMessage('ch1', 'hello'), config);
+      await evaluateNow('ch1', config, client, healthMonitor);
+
+      expect(safeSend).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('having trouble thinking'),
+      );
+    });
+  });
+
+  describe('truncated classification confidence', () => {
+    it('should get confidence 0.5 from truncated JSON recovery and be dropped by threshold', async () => {
+      // Simulate a truncated JSON response that parseSDKResult recovers via regex.
+      // The recovered object gets confidence: 0.5, which is below the default threshold of 0.6.
+      const truncatedJson = '{"classification":"respond","reasoning":"partial respon';
+      mockGenerate.mockResolvedValue({
+        text: truncatedJson,
+        costUsd: 0.0005,
+        usage: { inputTokens: 100, outputTokens: 50 },
+        durationMs: 50,
+        finishReason: 'length',
+        sources: [],
+        providerMetadata: { anthropic: {} },
+      });
+
+      accumulateMessage(makeMessage('ch1', 'test message'), config);
+      await evaluateNow('ch1', config, client, healthMonitor);
+
+      // With confidence 0.5 (< default threshold 0.6), the respond classification
+      // should be skipped, so the responder (stream) should NOT be called.
+      expect(mockStream).not.toHaveBeenCalled();
+      expect(info).toHaveBeenCalledWith(
+        'Triage: confidence below threshold, skipping',
+        expect.objectContaining({ confidence: 0.5 }),
       );
     });
   });

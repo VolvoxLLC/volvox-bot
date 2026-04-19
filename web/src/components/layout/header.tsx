@@ -227,15 +227,18 @@ export function Header() {
       <div className="mx-auto flex h-12 md:h-14 w-full items-center gap-2 md:gap-4 px-2 md:px-4">
         <MobileSidebar />
         <div className="flex min-w-0 shrink-0 items-center gap-2 md:gap-3.5">
-          <div className="group relative flex h-8 w-8 md:h-9 md:w-9 items-center justify-center rounded-xl md:rounded-2xl bg-gradient-to-br from-primary/80 to-secondary/80 p-[1px] shadow-lg shadow-primary/5 transition-all hover:scale-105 active:scale-95">
+          <div
+            className="group relative flex h-8 w-8 md:h-9 md:w-9 items-center justify-center rounded-xl md:rounded-2xl bg-gradient-to-br from-primary/80 to-secondary/80 p-[1px] shadow-lg shadow-primary/5 transition-all hover:scale-105 active:scale-95"
+            style={{ WebkitMaskImage: '-webkit-radial-gradient(white, black)' }}
+          >
             <div className="flex h-full w-full items-center justify-center rounded-[11px] md:rounded-[15px] bg-background/20 backdrop-blur-sm overflow-hidden">
               <Image
                 src="/icon-192.png"
-                alt="Volvox Logo"
+                alt="Volvox.Bot Logo"
                 width={192}
                 height={192}
                 sizes="36px"
-                className="h-full w-full drop-shadow-sm"
+                className="h-full w-full drop-shadow-sm rounded-[inherit]"
               />
             </div>
           </div>
@@ -243,8 +246,12 @@ export function Header() {
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
               <h2 className="text-xs md:text-sm font-black tracking-tight text-foreground/90">
-                <span className="sm:hidden">Volvox</span>
-                <span className="hidden sm:inline italic">VOLVOX</span>
+                <span className="sm:hidden">
+                  Volvox<span className="text-primary">.Bot</span>
+                </span>
+                <span className="hidden sm:inline italic">
+                  VOLVOX<span className="text-primary not-italic">.BOT</span>
+                </span>
               </h2>
               <div className="hidden h-1 w-1 rounded-full bg-border/40 sm:block" />
               <span className="hidden text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/30 sm:block">
@@ -279,7 +286,7 @@ export function Header() {
 
         {isDashboard && (
           <div className="flex items-center gap-2">
-            <div className="h-6 w-[1px] bg-border/40 mx-1 hidden sm:block" />
+            <div className="h-6 w-[1px] bg-border/40 mx-1 hidden md:block" />
 
             {/* Time Range Dropdown */}
             <DropdownMenu modal={false}>
@@ -367,7 +374,11 @@ export function Header() {
                 className="w-56 p-2 rounded-[28px] backdrop-blur-3xl border-t border-border/20 bg-gradient-to-b from-popover/95 to-popover/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_32px_64px_-16px_rgba(0,0,0,0.6)]"
               >
                 <DropdownMenuPage id="main">
-                  <DropdownMenuItem onClick={() => refresh()} disabled={loading}>
+                  <DropdownMenuItem
+                    onClick={() => refresh()}
+                    disabled={loading}
+                    className="hidden md:flex"
+                  >
                     <RefreshCw
                       className={cn('h-3.5 w-3.5 opacity-60', loading && 'animate-spin')}
                     />
@@ -406,8 +417,8 @@ export function Header() {
         )}
 
         {isModerationDashboard && (
-          <div className="flex items-center gap-2">
-            <div className="h-6 w-[1px] bg-border/40 mx-1 hidden sm:block" />
+          <div className="hidden md:flex items-center gap-2">
+            <div className="h-6 w-[1px] bg-border/40 mx-1" />
             <button
               type="button"
               onClick={handleModerationRefresh}
@@ -430,8 +441,8 @@ export function Header() {
         )}
 
         {isMembersDashboard && (
-          <div className="flex items-center gap-2">
-            <div className="h-6 w-[1px] bg-border/40 mx-1 hidden sm:block" />
+          <div className="hidden md:flex items-center gap-2">
+            <div className="h-6 w-[1px] bg-border/40 mx-1" />
             <button
               type="button"
               onClick={handleMembersRefresh}
@@ -454,8 +465,8 @@ export function Header() {
         )}
 
         {isTicketsDashboard && (
-          <div className="flex items-center gap-2">
-            <div className="h-6 w-[1px] bg-border/40 mx-1 hidden sm:block" />
+          <div className="hidden md:flex items-center gap-2">
+            <div className="h-6 w-[1px] bg-border/40 mx-1" />
             <button
               type="button"
               onClick={handleTicketsRefresh}
@@ -478,8 +489,8 @@ export function Header() {
         )}
 
         {isConversationsDashboard && (
-          <div className="flex items-center gap-2">
-            <div className="h-6 w-[1px] bg-border/40 mx-1 hidden sm:block" />
+          <div className="hidden md:flex items-center gap-2">
+            <div className="h-6 w-[1px] bg-border/40 mx-1" />
             <button
               type="button"
               onClick={handleConversationsRefresh}
@@ -502,8 +513,8 @@ export function Header() {
         )}
 
         {isAuditLogDashboard && (
-          <div className="flex items-center gap-2">
-            <div className="h-6 w-[1px] bg-border/40 mx-1 hidden sm:block" />
+          <div className="hidden md:flex items-center gap-2">
+            <div className="h-6 w-[1px] bg-border/40 mx-1" />
             <button
               type="button"
               onClick={handleAuditLogRefresh}
@@ -526,8 +537,8 @@ export function Header() {
         )}
 
         {isTempRolesDashboard && (
-          <div className="flex items-center gap-2">
-            <div className="h-6 w-[1px] bg-border/40 mx-1 hidden sm:block" />
+          <div className="hidden md:flex items-center gap-2">
+            <div className="h-6 w-[1px] bg-border/40 mx-1" />
             <button
               type="button"
               onClick={handleTempRolesRefresh}
@@ -550,8 +561,8 @@ export function Header() {
         )}
 
         {isPerformanceDashboard && (
-          <div className="flex items-center gap-2">
-            <div className="h-6 w-[1px] bg-border/40 mx-1 hidden sm:block" />
+          <div className="hidden md:flex items-center gap-2">
+            <div className="h-6 w-[1px] bg-border/40 mx-1" />
             <button
               type="button"
               onClick={handlePerformanceRefresh}
@@ -574,8 +585,8 @@ export function Header() {
         )}
 
         {isLogsDashboard && (
-          <div className="flex items-center gap-2">
-            <div className="h-6 w-[1px] bg-border/40 mx-1 hidden sm:block" />
+          <div className="hidden md:flex items-center gap-2">
+            <div className="h-6 w-[1px] bg-border/40 mx-1" />
             <button
               type="button"
               onClick={handleHealthRefresh}

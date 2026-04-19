@@ -18,15 +18,14 @@ vi.mock('../../src/utils/safeSend.js', () => ({
   safeEditReply: vi.fn((interaction, opts) => interaction.editReply(opts)),
 }));
 
-// Mock CLIProcess
-const { mockSend } = vi.hoisted(() => ({ mockSend: vi.fn() }));
-vi.mock('../../src/modules/cli-process.js', () => {
-  function MockCLIProcess() {
-    this.start = vi.fn().mockResolvedValue(undefined);
-    this.send = mockSend;
-  }
-  return { CLIProcess: MockCLIProcess };
-});
+// Mock aiClient
+const { mockGenerate } = vi.hoisted(() => ({
+  mockGenerate: vi.fn(),
+}));
+vi.mock('../../src/utils/aiClient.js', () => ({
+  generate: (...args) => mockGenerate(...args),
+  stream: vi.fn(),
+}));
 
 // Mock discord.js builders
 vi.mock('discord.js', () => {
@@ -155,10 +154,15 @@ beforeEach(() => {
     tldr: { enabled: true, defaultMessages: 50, maxMessages: 200, cooldownSeconds: 300 },
   });
 
-  // Default AI response (CLIProcess result format)
-  mockSend.mockResolvedValue({
-    result:
-      'Key Topics\nSome topic\n\nDecisions Made\nSome decision\n\nAction Items\nSome action\n\nNotable Links\nhttp://example.com',
+  // Default AI response (aiClient result format)
+  mockGenerate.mockResolvedValue({
+    text: 'Key Topics\nSome topic\n\nDecisions Made\nSome decision\n\nAction Items\nSome action\n\nNotable Links\nhttp://example.com',
+    costUsd: 0,
+    usage: { inputTokens: 0, outputTokens: 0 },
+    durationMs: 0,
+    finishReason: 'stop',
+    sources: [],
+    providerMetadata: {},
   });
 });
 
@@ -236,10 +240,10 @@ describe('execute — hours option', () => {
     );
 
     // Verify AI was called (only triggered when messages > 0)
-    expect(mockSend).toHaveBeenCalled();
+    expect(mockGenerate).toHaveBeenCalled();
 
     // The conversation text sent to AI should only contain "New" messages
-    const prompt = mockSend.mock.calls[0][0];
+    const prompt = mockGenerate.mock.calls[0][0].prompt;
     expect(prompt).toContain('New 0');
     expect(prompt).not.toContain('Old 0');
   });
@@ -282,7 +286,7 @@ describe('execute — disabled config', () => {
     await execute(interaction);
 
     expect(interaction.editReply).toHaveBeenCalledWith(expect.stringContaining('not enabled'));
-    expect(mockSend).not.toHaveBeenCalled();
+    expect(mockGenerate).not.toHaveBeenCalled();
   });
 });
 
@@ -308,7 +312,7 @@ describe('execute — empty channel', () => {
     expect(interaction.editReply).toHaveBeenCalledWith(
       expect.stringContaining('No messages found'),
     );
-    expect(mockSend).not.toHaveBeenCalled();
+    expect(mockGenerate).not.toHaveBeenCalled();
   });
 
   it('handles empty fetch result gracefully', async () => {
@@ -325,8 +329,14 @@ describe('execute — empty channel', () => {
 
 describe('execute — null/empty AI response', () => {
   it('returns error message when summarizeWithAI returns null', async () => {
-    mockSend.mockResolvedValue({
-      result: '', // empty result → null summary
+    mockGenerate.mockResolvedValue({
+      text: '',
+      costUsd: 0,
+      usage: { inputTokens: 0, outputTokens: 0 },
+      durationMs: 0,
+      finishReason: 'stop',
+      sources: [],
+      providerMetadata: {},
     });
 
     const interaction = createInteraction();
@@ -338,9 +348,14 @@ describe('execute — null/empty AI response', () => {
   });
 
   it('uses channelId when channel.name is null', async () => {
-    mockSend.mockResolvedValue({
-      result:
-        '1) Key Topics\n- Test\n\n2) Decisions Made\n- None\n\n3) Action Items\n- None\n\n4) Notable Links\n- None',
+    mockGenerate.mockResolvedValue({
+      text: '1) Key Topics\n- Test\n\n2) Decisions Made\n- None\n\n3) Action Items\n- None\n\n4) Notable Links\n- None',
+      costUsd: 0,
+      usage: { inputTokens: 0, outputTokens: 0 },
+      durationMs: 0,
+      finishReason: 'stop',
+      sources: [],
+      providerMetadata: {},
     });
 
     const interaction = createInteraction();
@@ -355,11 +370,30 @@ describe('execute — null/empty AI response', () => {
   });
 });
 
+describe('execute — summarizeWithAI timeout', () => {
+  it('should show error in embed when generate() throws (timeout)', async () => {
+    mockGenerate.mockRejectedValue(new Error('Request timed out or was cancelled'));
+
+    const interaction = createInteraction();
+    await execute(interaction);
+
+    // summarizeWithAI catches the error and returns '', so execute shows "Failed to generate"
+    expect(interaction.editReply).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to generate summary'),
+    );
+  });
+});
+
 describe('execute — AI response formatted into embed', () => {
   it('builds embed with all four sections', async () => {
-    mockSend.mockResolvedValue({
-      result:
-        '1) Key Topics\n- Deployment pipeline\n- CI/CD fixes\n\n2) Decisions Made\n- Use GitHub Actions\n\n3) Action Items\n- Set up workflow\n\n4) Notable Links\n- https://github.com/actions',
+    mockGenerate.mockResolvedValue({
+      text: '1) Key Topics\n- Deployment pipeline\n- CI/CD fixes\n\n2) Decisions Made\n- Use GitHub Actions\n\n3) Action Items\n- Set up workflow\n\n4) Notable Links\n- https://github.com/actions',
+      costUsd: 0,
+      usage: { inputTokens: 0, outputTokens: 0 },
+      durationMs: 0,
+      finishReason: 'stop',
+      sources: [],
+      providerMetadata: {},
     });
 
     const interaction = createInteraction();

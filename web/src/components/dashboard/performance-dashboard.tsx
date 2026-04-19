@@ -486,7 +486,7 @@ export function PerformanceDashboard() {
               Command & API response times (500ms buckets)
             </p>
           </div>
-          <div className="h-[250px] w-full">
+          <div className="latency-distribution-chart h-[250px] w-full">
             {rtHistogram.length === 0 ? (
               <div className="flex h-full items-center justify-center text-xs text-muted-foreground/40 italic">
                 No samples yet...
@@ -545,9 +545,9 @@ export function PerformanceDashboard() {
                 {[...(data?.responseTimes ?? [])]
                   .reverse()
                   .slice(0, 20)
-                  .map((s, index) => (
+                  .map((s, i) => (
                     <tr
-                      key={`${index}-${s.timestamp}-${s.type}-${s.name}`}
+                      key={`perf-${i}-${s.timestamp}-${s.type}-${s.name}`}
                       className="transition-colors hover:bg-muted/30"
                     >
                       <td className="py-2 text-muted-foreground/60 tabular-nums">

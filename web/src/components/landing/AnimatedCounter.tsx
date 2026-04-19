@@ -39,6 +39,12 @@ export function AnimatedCounter({
 
   useEffect(() => {
     if (!isInView) return;
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setCount(target);
+      return;
+    }
+
     let startTime: number | null = null;
     const animate = (timestamp: number) => {
       if (startTime === null) startTime = timestamp;
