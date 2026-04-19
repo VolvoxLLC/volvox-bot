@@ -1,0 +1,27 @@
+# Volvox
+
+> Volvox is an AI-powered Discord bot for modern communities. It provides intelligent moderation, AI chat, dynamic welcome messages, spam detection, configurable auto-mod, and a fully featured web dashboard for server management.
+
+Volvox combines large language models with community governance to give server admins powerful, configurable tools that scale from small friend groups to large public servers.
+
+## Documentation
+
+- Documentation: https://docs.volvox.bot
+- Dashboard: https://volvox.dev
+- Privacy Policy: https://volvox.dev/privacy
+- Terms of Service: https://volvox.dev/terms
+
+## Features
+
+- AI Chat: Conversational AI powered by configurable LLM providers with context-aware responses
+- Smart Moderation: Automated content moderation with configurable rules, spam detection, and audit logging
+- Welcome System: Dynamic welcome messages with rich embeds and auto-role assignment
+- Ticket System: Support ticket creation and management with configurable categories
+- XP & Levels: Gamification with configurable experience points, level-ups, and rewards
+- Web Dashboard: Full-featured dashboard for configuration, analytics, moderation logs, and member management
+- Anti-Spam: Multi-layer spam detection including rate limiting, content analysis, and pattern matching
+
+## Optional
+
+- Source Code: https://github.com/VolvoxLLC/volvox-bot
+- Support Discord: https://discord.gg/volvox
