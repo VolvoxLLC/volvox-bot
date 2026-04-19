@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next';
 
-const PRODUCTION_URL = 'https://volvox.dev';
+const PRODUCTION_URL = 'https://volvox.bot';
 
 /**
  * robots.txt — Next.js Metadata API
