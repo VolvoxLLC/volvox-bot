@@ -21,6 +21,24 @@ export const metadata: Metadata = {
   },
   description:
     'The AI-powered Discord bot for modern communities. Moderation, AI chat, dynamic welcomes, spam detection, and a fully configurable web dashboard.',
+  metadataBase: new URL('https://volvox.dev'),
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    url: 'https://volvox.dev',
+    siteName: 'Volvox',
+    title: 'Volvox.Bot — AI-Powered Discord Bot',
+    description:
+      'The AI-powered Discord bot for modern communities. Moderation, AI chat, dynamic welcomes, spam detection, and a fully configurable web dashboard.',
+    images: ['/opengraph-image'],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Volvox.Bot — AI-Powered Discord Bot',
+    description:
+      'The AI-powered Discord bot for modern communities. Moderation, AI chat, dynamic welcomes, spam detection, and a fully configurable web dashboard.',
+    images: ['/opengraph-image'],
+  },
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: '48x48' },
