@@ -15,7 +15,7 @@
  * - triage-respond.js  : Discord response sending and moderation logging
  */
 
-import { MessageType } from 'discord.js';
+// MessageType no longer needed — moved to triage-config.js
 import { debug, info, error as logError, warn } from '../logger.js';
 import { loadPrompt } from '../prompts/index.js';
 import { generate, stream, warmConnection } from '../utils/aiClient.js';
@@ -39,6 +39,7 @@ import {
 import {
   getDynamicInterval,
   isChannelEligible,
+  isMessageTypeEligible,
   isRoleEligible,
   resolveTriageConfig,
 } from './triage-config.js';
@@ -849,11 +850,8 @@ export async function accumulateMessage(message, msgConfig) {
   // Skip bot messages (defense-in-depth — messageCreate.js also filters)
   if (message.author.bot) return;
 
-  // Skip webhook messages (GitHub, Jira integrations, etc.)
-  if (message.webhookId) return;
-
-  // Skip system messages (joins, boosts, pins, etc.)
-  if (message.type !== MessageType.Default && message.type !== MessageType.Reply) return;
+  // Skip webhooks and system messages (joins, boosts, pins, etc.)
+  if (!isMessageTypeEligible(message)) return;
 
   // Config-dependent guards
   // Skip blocked channels (no triage processing)

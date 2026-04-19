@@ -3,6 +3,8 @@
  * Config resolution with 3-layer legacy fallback and channel eligibility checks.
  */
 
+import { MessageType } from 'discord.js';
+
 // ── Config resolution ───────────────────────────────────────────────────────
 
 /**
@@ -107,6 +109,23 @@ export function isRoleEligible(member, triageConfig) {
 
   // Check if user has ANY of the allowed roles (OR logic)
   return allowedRoles.some((roleId) => memberRoleIds.has(roleId));
+}
+
+// ── Message type eligibility ─────────────────────────────────────────────────
+
+/**
+ * Check if a message type is eligible for triage (default or reply only).
+ * Rejects system messages (joins, boosts, pins) and webhook messages.
+ * @param {Object} message - Discord message object
+ * @returns {boolean} true if message type is eligible
+ */
+export function isMessageTypeEligible(message) {
+  // Skip webhook messages (GitHub, Jira integrations, etc.)
+  if (message.webhookId) return false;
+
+  // Skip system messages — only default messages and replies are eligible
+  const messageType = message.type ?? 0;
+  return messageType === MessageType.Default || messageType === MessageType.Reply;
 }
 
 // ── Dynamic interval thresholds ──────────────────────────────────────────────

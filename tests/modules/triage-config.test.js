@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   getDynamicInterval,
   isChannelEligible,
+  isMessageTypeEligible,
   isRoleEligible,
   resolveTriageConfig,
 } from '../../src/modules/triage-config.js';
@@ -169,6 +170,37 @@ describe('triage-config', () => {
     it('should return fifth for 5+ messages', () => {
       expect(getDynamicInterval(5)).toBe(1000);
       expect(getDynamicInterval(10)).toBe(1000);
+    });
+  });
+
+  describe('isMessageTypeEligible', () => {
+    it('should return true for default messages (type 0)', () => {
+      expect(isMessageTypeEligible({ type: 0, webhookId: null })).toBe(true);
+    });
+
+    it('should return true for reply messages (type 19)', () => {
+      expect(isMessageTypeEligible({ type: 19, webhookId: null })).toBe(true);
+    });
+
+    it('should return true when type is undefined (defaults to 0)', () => {
+      expect(isMessageTypeEligible({ webhookId: null })).toBe(true);
+    });
+
+    it('should return false for system messages (joins, boosts, pins)', () => {
+      // Type 7 = GuildMemberJoin
+      expect(isMessageTypeEligible({ type: 7, webhookId: null })).toBe(false);
+      // Type 8 = UserPremiumGuildSubscription (boost)
+      expect(isMessageTypeEligible({ type: 8, webhookId: null })).toBe(false);
+      // Type 6 = ChannelPinnedMessage
+      expect(isMessageTypeEligible({ type: 6, webhookId: null })).toBe(false);
+    });
+
+    it('should return false for webhook messages', () => {
+      expect(isMessageTypeEligible({ type: 0, webhookId: '12345' })).toBe(false);
+    });
+
+    it('should return false for webhook messages regardless of type', () => {
+      expect(isMessageTypeEligible({ type: 19, webhookId: '12345' })).toBe(false);
     });
   });
 });
