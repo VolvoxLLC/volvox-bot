@@ -52,19 +52,27 @@ function logAssistantHistory(channelId, guildId, fallbackContent, sentMsg) {
  * - `isContext`: true,
  * - `channelName`, `channelTopic`.
  *
+ * Bot and webhook messages are filtered from context by default. Use `config.triage.includeBotsInContext`
+ * to include bot messages, or `config.triage.botAllowlist` to include specific bot IDs.
+ *
  * @param {string} channelId - ID of the channel to fetch history from.
  * @param {import('discord.js').Client} client - Discord client used to access the channel messages API.
  * @param {Array} bufferSnapshot - Current buffer snapshot; messages are fetched before the oldest entry if present.
  * @param {number} [limit=15] - Maximum number of messages to fetch.
+ * @param {Object} [config] - Optional config object; when provided, used to determine bot filtering behavior.
  * @returns {Promise<Array<Object>>} Context message objects in chronological order.
  */
-export async function fetchChannelContext(channelId, client, bufferSnapshot, limit = 15) {
+export async function fetchChannelContext(channelId, client, bufferSnapshot, limit = 15, config) {
   try {
     const channel = await fetchChannelCached(client, channelId);
     if (!channel?.messages) {
       warn('Channel fetch returned no messages API', { channelId });
       return [];
     }
+
+    // Determine bot filtering behavior from config
+    const includeBotsInContext = config?.triage?.includeBotsInContext ?? false;
+    const botAllowlist = new Set(config?.triage?.botAllowlist ?? []);
 
     const toContextEntry = (m) => ({
       author: m.author.bot ? `${m.author.username} [BOT]` : m.author.username,
@@ -76,6 +84,23 @@ export async function fetchChannelContext(channelId, client, bufferSnapshot, lim
       channelName: channel.name ?? null,
       channelTopic: channel.topic ?? null,
     });
+
+    /**
+     * Determine if a message should be included in context.
+     * Excludes webhooks entirely and filters bots based on config.
+     */
+    const shouldIncludeInContext = (m) => {
+      // Always exclude webhook messages (GitHub, Jira, etc.)
+      if (m.webhookId) return false;
+
+      // Filter bot messages based on config
+      if (m.author.bot) {
+        // Include if globally enabled or bot is in allowlist
+        return includeBotsInContext || botAllowlist.has(m.author.id);
+      }
+
+      return true;
+    };
 
     // Fetch historical context + recent messages in parallel.
     // When the buffer is empty we have no `before` anchor, so the history
@@ -99,6 +124,8 @@ export async function fetchChannelContext(channelId, client, bufferSnapshot, lim
 
     for (const m of [...historyFetched.values(), ...recentFetched.values()]) {
       if (bufferIds.has(m.id) || seen.has(m.id)) continue;
+      // Apply bot/webhook filtering
+      if (!shouldIncludeInContext(m)) continue;
       seen.add(m.id);
       merged.push(m);
     }
