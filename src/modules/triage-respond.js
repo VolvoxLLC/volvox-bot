@@ -3,7 +3,8 @@
  * Discord message dispatch, moderation audit logging, and channel context fetching.
  */
 
-import { EmbedBuilder, MessageType } from 'discord.js';
+import { EmbedBuilder } from 'discord.js';
+import { isMessageTypeEligible } from './triage-config.js';
 import { info, error as logError, warn } from '../logger.js';
 import { buildDebugEmbed, extractStats, logAiUsage } from '../utils/debugFooter.js';
 import { fetchChannelCached } from '../utils/discordCache.js';
@@ -90,12 +91,8 @@ export async function fetchChannelContext(channelId, client, bufferSnapshot, lim
      * Mirrors accumulateMessage() guards: default/reply only, no webhooks, bots filtered by config.
      */
     const shouldIncludeInContext = (m) => {
-      // Skip system messages (joins, boosts, pins, etc.) — align with accumulateMessage()
-      const messageType = m.type ?? 0;
-      if (messageType !== MessageType.Default && messageType !== MessageType.Reply) return false;
-
-      // Always exclude webhook messages (GitHub, Jira, etc.)
-      if (m.webhookId) return false;
+      // Skip webhooks and system messages (joins, boosts, pins, etc.)
+      if (!isMessageTypeEligible(m)) return false;
 
       // Filter bot messages based on config
       if (m.author.bot) {
