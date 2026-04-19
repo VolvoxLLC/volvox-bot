@@ -233,6 +233,8 @@ export interface TriageConfig {
   moderationResponse: boolean;
   channels: string[];
   excludeChannels: string[];
+  allowedRoles?: string[];
+  excludedRoles?: string[];
   debugFooter: boolean;
   debugFooterLevel?: string | null;
   moderationLogChannel: string | null;

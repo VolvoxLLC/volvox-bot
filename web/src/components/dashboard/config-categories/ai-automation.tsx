@@ -5,6 +5,7 @@ import { inputClasses, parseNumberInput } from '@/components/dashboard/config-ed
 import { ChannelModeSection } from '@/components/dashboard/config-sections/ChannelModeSection';
 import type { ConfigFeatureId } from '@/components/dashboard/config-workspace/types';
 import { ChannelSelector } from '@/components/ui/channel-selector';
+import { RoleSelector } from '@/components/ui/role-selector';
 import { cn } from '@/lib/utils';
 import type { ChannelMode } from '@/types/config';
 import { SYSTEM_PROMPT_MAX_LENGTH } from '@/types/config';
@@ -427,6 +428,57 @@ export function AiAutomationCategory() {
                   placeholder="Select a channel for triage history..."
                   maxSelections={1}
                   filter="text"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4 sm:p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl">
+            <div className="mb-6 space-y-1">
+              <h3 className="text-sm font-semibold tracking-wide text-foreground/90">
+                Role Filtering
+              </h3>
+              <p className="text-[11px] text-muted-foreground/60 uppercase tracking-wider">
+                Control which users the AI responds to
+              </p>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label
+                  htmlFor="triage-allowed-roles"
+                  className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground ml-1"
+                >
+                  Allowed Roles
+                </label>
+                <p className="text-[10px] text-muted-foreground/60 ml-1">
+                  Only triage messages from users with these roles. Empty = everyone allowed.
+                </p>
+                <RoleSelector
+                  id="triage-allowed-roles"
+                  guildId={guildId}
+                  selected={draftConfig.triage?.allowedRoles ?? []}
+                  onChange={(selected) => updateTriageField('allowedRoles', selected)}
+                  disabled={saving}
+                  placeholder="Select allowed roles..."
+                />
+              </div>
+              <div className="space-y-2">
+                <label
+                  htmlFor="triage-excluded-roles"
+                  className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground ml-1"
+                >
+                  Excluded Roles
+                </label>
+                <p className="text-[10px] text-muted-foreground/60 ml-1">
+                  Never triage messages from users with these roles. Takes precedence over allowed.
+                </p>
+                <RoleSelector
+                  id="triage-excluded-roles"
+                  guildId={guildId}
+                  selected={draftConfig.triage?.excludedRoles ?? []}
+                  onChange={(selected) => updateTriageField('excludedRoles', selected)}
+                  disabled={saving}
+                  placeholder="Select excluded roles..."
                 />
               </div>
             </div>

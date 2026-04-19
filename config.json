@@ -39,6 +39,8 @@
     "moderationResponse": true,
     "channels": [],
     "excludeChannels": [],
+    "allowedRoles": [],
+    "excludedRoles": [],
     "debugFooter": true,
     "debugFooterLevel": "verbose",
     "moderationLogChannel": "1473219285651292201",

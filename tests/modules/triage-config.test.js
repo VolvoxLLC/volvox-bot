@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   getDynamicInterval,
   isChannelEligible,
+  isRoleEligible,
   resolveTriageConfig,
 } from '../../src/modules/triage-config.js';
 
@@ -66,6 +67,91 @@ describe('triage-config', () => {
     it('should exclude from global pool when excludeChannels set with empty allow-list', () => {
       expect(isChannelEligible('ch-1', { excludeChannels: ['ch-1'] })).toBe(false);
       expect(isChannelEligible('ch-2', { excludeChannels: ['ch-1'] })).toBe(true);
+    });
+  });
+
+  describe('isRoleEligible', () => {
+    /**
+     * Create a mock GuildMember with specified role IDs.
+     * @param {string[]} roleIds - Array of role IDs the member has
+     * @param {string} guildId - Guild ID (used to filter @everyone role)
+     */
+    function makeMember(roleIds, guildId = 'guild-1') {
+      const rolesMap = new Map();
+      // Add @everyone role (id === guildId)
+      rolesMap.set(guildId, { id: guildId, name: '@everyone' });
+      // Add specified roles
+      for (const id of roleIds) {
+        rolesMap.set(id, { id, name: `role-${id}` });
+      }
+      return {
+        guild: { id: guildId },
+        roles: {
+          cache: {
+            filter: (fn) => {
+              const filtered = [];
+              for (const [, role] of rolesMap) {
+                if (fn(role)) filtered.push(role);
+              }
+              return {
+                map: (mapFn) => filtered.map(mapFn),
+              };
+            },
+          },
+        },
+      };
+    }
+
+    it('should return true when allowedRoles is empty (all allowed)', () => {
+      const member = makeMember(['role-1', 'role-2']);
+      expect(isRoleEligible(member, {})).toBe(true);
+      expect(isRoleEligible(member, { allowedRoles: [] })).toBe(true);
+    });
+
+    it('should return false when user has excluded role', () => {
+      const member = makeMember(['role-1', 'role-2']);
+      expect(isRoleEligible(member, { excludedRoles: ['role-1'] })).toBe(false);
+      expect(isRoleEligible(member, { excludedRoles: ['role-2'] })).toBe(false);
+    });
+
+    it('should return true when user has allowed role', () => {
+      const member = makeMember(['role-1', 'role-2']);
+      expect(isRoleEligible(member, { allowedRoles: ['role-1'] })).toBe(true);
+      expect(isRoleEligible(member, { allowedRoles: ['role-3', 'role-2'] })).toBe(true);
+    });
+
+    it('should return false when user has no allowed roles (allowedRoles non-empty)', () => {
+      const member = makeMember(['role-1', 'role-2']);
+      expect(isRoleEligible(member, { allowedRoles: ['role-3', 'role-4'] })).toBe(false);
+    });
+
+    it('should have exclusion take precedence over inclusion', () => {
+      const member = makeMember(['role-1', 'role-2']);
+      // role-1 is in both allowed and excluded — should be excluded
+      expect(isRoleEligible(member, { allowedRoles: ['role-1'], excludedRoles: ['role-1'] })).toBe(
+        false,
+      );
+      // role-2 is allowed, role-1 is excluded — user has role-1 so should be excluded
+      expect(isRoleEligible(member, { allowedRoles: ['role-2'], excludedRoles: ['role-1'] })).toBe(
+        false,
+      );
+    });
+
+    it('should return true when member is null (DM)', () => {
+      expect(isRoleEligible(null, { allowedRoles: ['role-1'] })).toBe(true);
+      expect(isRoleEligible(null, { excludedRoles: ['role-1'] })).toBe(true);
+    });
+
+    it('should ignore @everyone role in role checks', () => {
+      // Member only has @everyone (guild-1), no other roles
+      const member = makeMember([]);
+      // allowedRoles contains the guild ID (@everyone) — should NOT match
+      expect(isRoleEligible(member, { allowedRoles: ['guild-1'] })).toBe(false);
+    });
+
+    it('should return true when user has no roles and no restrictions', () => {
+      const member = makeMember([]);
+      expect(isRoleEligible(member, {})).toBe(true);
     });
   });
 
