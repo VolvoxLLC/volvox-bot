@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     url: 'https://volvox.bot',
-    siteName: 'Volvox',
+    siteName: 'Volvox.Bot',
     title: 'Volvox.Bot — AI-Powered Discord Bot',
     description:
       'The AI-powered Discord bot for modern communities. Moderation, AI chat, dynamic welcomes, spam detection, and a fully configurable web dashboard.',
