@@ -3,7 +3,7 @@
  * Discord message dispatch, moderation audit logging, and channel context fetching.
  */
 
-import { EmbedBuilder } from 'discord.js';
+import { EmbedBuilder, MessageType } from 'discord.js';
 import { info, error as logError, warn } from '../logger.js';
 import { buildDebugEmbed, extractStats, logAiUsage } from '../utils/debugFooter.js';
 import { fetchChannelCached } from '../utils/discordCache.js';
@@ -87,9 +87,13 @@ export async function fetchChannelContext(channelId, client, bufferSnapshot, lim
 
     /**
      * Determine if a message should be included in context.
-     * Excludes webhooks entirely and filters bots based on config.
+     * Mirrors accumulateMessage() guards: default/reply only, no webhooks, bots filtered by config.
      */
     const shouldIncludeInContext = (m) => {
+      // Skip system messages (joins, boosts, pins, etc.) — align with accumulateMessage()
+      const messageType = m.type ?? 0;
+      if (messageType !== MessageType.Default && messageType !== MessageType.Reply) return false;
+
       // Always exclude webhook messages (GitHub, Jira, etc.)
       if (m.webhookId) return false;
 
