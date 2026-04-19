@@ -193,6 +193,8 @@ export const CONFIG_SCHEMA = {
       moderationResponse: { type: 'boolean' },
       channels: { type: 'array' },
       excludeChannels: { type: 'array' },
+      allowedRoles: { type: 'array', items: { type: 'string' } },
+      excludedRoles: { type: 'array', items: { type: 'string' } },
       debugFooter: { type: 'boolean' },
       debugFooterLevel: { type: 'string', nullable: true },
       moderationLogChannel: { type: 'string', nullable: true },

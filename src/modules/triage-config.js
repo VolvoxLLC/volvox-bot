@@ -78,6 +78,37 @@ export function isChannelEligible(channelId, triageConfig) {
   return channels.includes(channelId);
 }
 
+// ── Role eligibility ─────────────────────────────────────────────────────────
+
+/**
+ * Determine whether a user's roles make them eligible for triage.
+ * @param {import('discord.js').GuildMember|null} member - The guild member to evaluate.
+ * @param {Object} triageConfig - Triage configuration containing role lists.
+ * @param {string[]} [triageConfig.allowedRoles] - Whitelisted role IDs; empty = all allowed.
+ * @param {string[]} [triageConfig.excludedRoles] - Blacklisted role IDs; exclusions win.
+ * @returns {boolean} `true` if the member is eligible, `false` otherwise.
+ */
+export function isRoleEligible(member, triageConfig) {
+  const { allowedRoles = [], excludedRoles = [] } = triageConfig;
+
+  // No member (DM) — cannot check roles, allow through
+  if (!member) return true;
+
+  // Get member's role IDs (excluding @everyone which has id === guildId)
+  const memberRoleIds = member.roles.cache
+    .filter((role) => role.id !== member.guild.id)
+    .map((role) => role.id);
+
+  // Explicit exclusion always wins (OR logic — any match excludes)
+  if (excludedRoles.some((roleId) => memberRoleIds.includes(roleId))) return false;
+
+  // Empty allow-list means all roles are allowed
+  if (allowedRoles.length === 0) return true;
+
+  // Check if user has ANY of the allowed roles (OR logic)
+  return allowedRoles.some((roleId) => memberRoleIds.includes(roleId));
+}
+
 // ── Dynamic interval thresholds ──────────────────────────────────────────────
 
 /**

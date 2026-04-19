@@ -445,6 +445,116 @@ describe('triage module', () => {
       expect(mockGenerate).toHaveBeenCalled();
     });
 
+    it('should skip users with excluded roles', async () => {
+      const roleConfig = makeConfig({ triage: { excludedRoles: ['bot-role'] } });
+      mockGlobalConfig = roleConfig;
+
+      const msg = makeMessage('ch1', 'hello', {
+        id: 'msg-excluded',
+        username: 'botuser',
+        userId: 'u-bot',
+        guild: { id: 'g1' },
+      });
+      // Mock member with excluded role
+      msg.member = {
+        guild: { id: 'g1' },
+        roles: {
+          cache: {
+            filter: (fn) => {
+              const roles = [
+                { id: 'g1', name: '@everyone' },
+                { id: 'bot-role', name: 'Bot' },
+              ];
+              const filtered = roles.filter(fn);
+              return { map: (mapFn) => filtered.map(mapFn) };
+            },
+          },
+        },
+      };
+
+      accumulateMessage(msg, roleConfig);
+      await evaluateNow('ch1', roleConfig, client, healthMonitor);
+
+      expect(addToHistory).not.toHaveBeenCalled();
+      expect(mockGenerate).not.toHaveBeenCalled();
+    });
+
+    it('should allow users with allowed roles', async () => {
+      const classResult = {
+        classification: 'ignore',
+        reasoning: 'test',
+        targetMessageIds: [],
+      };
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
+
+      const roleConfig = makeConfig({ triage: { allowedRoles: ['vip-role'] } });
+      mockGlobalConfig = roleConfig;
+
+      const msg = makeMessage('ch1', 'hello', {
+        id: 'msg-allowed',
+        username: 'vipuser',
+        userId: 'u-vip',
+        guild: { id: 'g1' },
+      });
+      msg.type = 0; // MessageType.Default
+      // Mock member with allowed role
+      msg.member = {
+        guild: { id: 'g1' },
+        roles: {
+          cache: {
+            filter: (fn) => {
+              const roles = [
+                { id: 'g1', name: '@everyone' },
+                { id: 'vip-role', name: 'VIP' },
+              ];
+              const filtered = roles.filter(fn);
+              return { map: (mapFn) => filtered.map(mapFn) };
+            },
+          },
+        },
+      };
+
+      accumulateMessage(msg, roleConfig);
+      await evaluateNow('ch1', roleConfig, client, healthMonitor);
+
+      expect(addToHistory).toHaveBeenCalled();
+      expect(mockGenerate).toHaveBeenCalled();
+    });
+
+    it('should skip users without allowed roles when list is non-empty', async () => {
+      const roleConfig = makeConfig({ triage: { allowedRoles: ['vip-role'] } });
+      mockGlobalConfig = roleConfig;
+
+      const msg = makeMessage('ch1', 'hello', {
+        id: 'msg-not-allowed',
+        username: 'regularuser',
+        userId: 'u-regular',
+        guild: { id: 'g1' },
+      });
+      // Mock member without the allowed role
+      msg.member = {
+        guild: { id: 'g1' },
+        roles: {
+          cache: {
+            filter: (fn) => {
+              const roles = [
+                { id: 'g1', name: '@everyone' },
+                { id: 'other-role', name: 'Other' },
+              ];
+              const filtered = roles.filter(fn);
+              return { map: (mapFn) => filtered.map(mapFn) };
+            },
+          },
+        },
+      };
+
+      accumulateMessage(msg, roleConfig);
+      await evaluateNow('ch1', roleConfig, client, healthMonitor);
+
+      expect(addToHistory).not.toHaveBeenCalled();
+      expect(mockGenerate).not.toHaveBeenCalled();
+    });
+
     it('should allow default messages (type 0)', async () => {
       const classResult = {
         classification: 'ignore',

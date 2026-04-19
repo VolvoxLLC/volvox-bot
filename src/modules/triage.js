@@ -35,7 +35,12 @@ import {
   pushToBuffer,
   setLastResponseAt,
 } from './triage-buffer.js';
-import { getDynamicInterval, isChannelEligible, resolveTriageConfig } from './triage-config.js';
+import {
+  getDynamicInterval,
+  isChannelEligible,
+  isRoleEligible,
+  resolveTriageConfig,
+} from './triage-config.js';
 
 import { checkTriggerWords, isGratitude, sanitizeText } from './triage-filter.js';
 
@@ -853,6 +858,9 @@ export async function accumulateMessage(message, msgConfig) {
   // Skip system messages (joins, boosts, pins, etc.)
   // MessageType.Default = 0, MessageType.Reply = 19
   if (message.type !== 0 && message.type !== 19) return;
+
+  // Skip users without eligible roles
+  if (!isRoleEligible(message.member, triageConfig)) return;
 
   // Skip empty or attachment-only messages
   if (!message.content || message.content.trim() === '') return;
