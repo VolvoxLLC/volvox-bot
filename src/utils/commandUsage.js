@@ -5,8 +5,8 @@
  * This decouples dashboard analytics from log transport availability.
  */
 
-import { queryWithLogging } from './dbUtils.js';
 import { error as logError } from '../logger.js';
+import { queryWithLogging } from './dbUtils.js';
 
 /**
  * Log a command usage event to the database.
@@ -33,8 +33,7 @@ export async function logCommandUsage({ guildId, userId, commandName, channelId 
       `INSERT INTO command_usage (guild_id, user_id, command_name, channel_id)
        VALUES ($1, $2, $3, $4)`,
       [guildId, userId, commandName, channelId ?? null],
-      'logCommandUsage'
-    );
+      'logCommandUsage',
     );
   } catch (err) {
     // Don't fail command execution if logging fails
@@ -100,7 +99,7 @@ export async function getCommandUsageStats(guildId, options = {}) {
      ORDER BY uses DESC, command_name ASC
      LIMIT $${paramIndex}`,
     values,
-    'getCommandUsageStats'
+    'getCommandUsageStats',
   );
 
   return rows;

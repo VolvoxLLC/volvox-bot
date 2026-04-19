@@ -10,6 +10,14 @@ vi.mock('../../src/db.js', () => ({
   getPool: () => mockGetPool(),
 }));
 
+vi.mock('../../src/utils/dbUtils.js', () => ({
+  queryWithLogging: (sql, params, ctx) => mockQuery(sql, params).then((result) => {
+    // queryWithLogging returns rows array; mock pool.query returns { rows, rowCount }
+    if (result && Array.isArray(result.rows)) return result.rows;
+    return result;
+  }),
+}));
+
 vi.mock('../../src/logger.js', () => ({
   warn: vi.fn(),
   debug: vi.fn(),
