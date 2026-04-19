@@ -1,4 +1,4 @@
-# Copilot Coding Agent Instructions — Volvox Bot
+# Copilot Coding Agent Instructions — Volvox.Bot
 
 ## Quick Start
 
@@ -23,7 +23,7 @@ pnpm --prefix web build          # Build the Next.js dashboard
 
 ## Project Overview
 
-**Volvox Bot** is a Discord bot with AI chat (Claude), moderation, engagement tracking, and a web dashboard. Key technologies:
+**Volvox.Bot** is a Discord bot with AI chat (Claude), moderation, engagement tracking, and a web dashboard. Key technologies:
 
 | Component | Tech |
 |-----------|------|
