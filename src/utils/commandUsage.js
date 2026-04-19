@@ -5,7 +5,7 @@
  * This decouples dashboard analytics from log transport availability.
  */
 
-import { getPool } from '../db.js';
+import { queryWithLogging } from './dbUtils.js';
 import { error as logError } from '../logger.js';
 
 /**
@@ -29,11 +29,12 @@ export async function logCommandUsage({ guildId, userId, commandName, channelId 
   }
 
   try {
-    const pool = getPool();
-    await pool.query(
+    await queryWithLogging(
       `INSERT INTO command_usage (guild_id, user_id, command_name, channel_id)
        VALUES ($1, $2, $3, $4)`,
       [guildId, userId, commandName, channelId ?? null],
+      'logCommandUsage'
+    );
     );
   } catch (err) {
     // Don't fail command execution if logging fails
@@ -89,8 +90,7 @@ export async function getCommandUsageStats(guildId, options = {}) {
 
   values.push(limit);
 
-  const pool = getPool();
-  const { rows } = await pool.query(
+  const rows = await queryWithLogging(
     `SELECT
        command_name AS "commandName",
        COUNT(*)::int AS uses
@@ -100,6 +100,7 @@ export async function getCommandUsageStats(guildId, options = {}) {
      ORDER BY uses DESC, command_name ASC
      LIMIT $${paramIndex}`,
     values,
+    'getCommandUsageStats'
   );
 
   return rows;
