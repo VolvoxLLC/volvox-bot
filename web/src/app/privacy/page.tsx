@@ -227,13 +227,6 @@ export default function PrivacyPage() {
             </p>
           </div>
         </section>
-
-        <footer className="rounded-2xl border border-border/60 bg-muted/30 p-4">
-          <p className="text-sm leading-7 text-muted-foreground">
-            Note: This Privacy Policy was generated with AI assistance and should be reviewed by
-            legal counsel before production use.
-          </p>
-        </footer>
       </div>
     </main>
   );
