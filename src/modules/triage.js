@@ -15,6 +15,7 @@
  * - triage-respond.js  : Discord response sending and moderation logging
  */
 
+import { MessageType } from 'discord.js';
 import { debug, info, error as logError, warn } from '../logger.js';
 import { loadPrompt } from '../prompts/index.js';
 import { generate, stream, warmConnection } from '../utils/aiClient.js';
@@ -844,11 +845,7 @@ export async function accumulateMessage(message, msgConfig) {
   if (!triageConfig?.enabled) return;
   if (!isChannelEligible(message.channel.id, triageConfig)) return;
 
-  // Skip blocked channels (no triage processing)
-  // Only check parentId for threads - for regular channels, parentId is the category ID
-  const parentId = message.channel.isThread?.() ? message.channel.parentId : null;
-  if (isChannelBlocked(message.channel.id, parentId, message.guild?.id)) return;
-
+  // Cheap guards first (no config lookups)
   // Skip bot messages (defense-in-depth — messageCreate.js also filters)
   if (message.author.bot) return;
 
@@ -856,8 +853,13 @@ export async function accumulateMessage(message, msgConfig) {
   if (message.webhookId) return;
 
   // Skip system messages (joins, boosts, pins, etc.)
-  // MessageType.Default = 0, MessageType.Reply = 19
-  if (message.type !== 0 && message.type !== 19) return;
+  if (message.type !== MessageType.Default && message.type !== MessageType.Reply) return;
+
+  // Config-dependent guards
+  // Skip blocked channels (no triage processing)
+  // Only check parentId for threads - for regular channels, parentId is the category ID
+  const parentId = message.channel.isThread?.() ? message.channel.parentId : null;
+  if (isChannelBlocked(message.channel.id, parentId, message.guild?.id)) return;
 
   // Skip users without eligible roles
   if (!isRoleEligible(message.member, triageConfig)) return;

@@ -235,6 +235,8 @@ export interface TriageConfig {
   excludeChannels: string[];
   allowedRoles?: string[];
   excludedRoles?: string[];
+  includeBotsInContext?: boolean;
+  botAllowlist?: string[];
   debugFooter: boolean;
   debugFooterLevel?: string | null;
   moderationLogChannel: string | null;

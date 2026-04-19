@@ -140,6 +140,7 @@ function makeMessage(channelId, content, extras = {}) {
   return {
     id: extras.id || 'msg-default',
     content,
+    type: 0, // MessageType.Default
     channel: {
       id: channelId,
       name: extras.channelName || 'test-channel',
@@ -409,7 +410,7 @@ describe('triage module', () => {
 
     it('should skip system messages (joins, boosts, pins)', async () => {
       // MessageType.GuildMemberJoin = 7
-      const joinMsg = makeMessage('ch1', '', {
+      const joinMsg = makeMessage('ch1', 'NewUser joined the server', {
         id: 'msg-join',
         username: 'NewUser',
         userId: 'u-new',
@@ -541,6 +542,37 @@ describe('triage module', () => {
                 { id: 'g1', name: '@everyone' },
                 { id: 'other-role', name: 'Other' },
               ];
+              const filtered = roles.filter(fn);
+              return { map: (mapFn) => filtered.map(mapFn) };
+            },
+          },
+        },
+      };
+
+      accumulateMessage(msg, roleConfig);
+      await evaluateNow('ch1', roleConfig, client, healthMonitor);
+
+      expect(addToHistory).not.toHaveBeenCalled();
+      expect(mockGenerate).not.toHaveBeenCalled();
+    });
+
+    it('should skip users with no roles when allowedRoles is non-empty', async () => {
+      const roleConfig = makeConfig({ triage: { allowedRoles: ['vip-role', 'mod-role'] } });
+      mockGlobalConfig = roleConfig;
+
+      const msg = makeMessage('ch1', 'hello', {
+        id: 'msg-no-roles',
+        username: 'newuser',
+        userId: 'u-new',
+        guild: { id: 'g1' },
+      });
+      // Mock member with no roles (only @everyone, which gets filtered out)
+      msg.member = {
+        guild: { id: 'g1' },
+        roles: {
+          cache: {
+            filter: (fn) => {
+              const roles = [{ id: 'g1', name: '@everyone' }];
               const filtered = roles.filter(fn);
               return { map: (mapFn) => filtered.map(mapFn) };
             },
