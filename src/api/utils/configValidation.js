@@ -175,7 +175,7 @@ export const CONFIG_SCHEMA = {
       enabled: { type: 'boolean' },
       defaultInterval: { type: 'number', min: 1, max: 3600 },
       maxBufferSize: { type: 'number', min: 1, max: 1000 },
-      includeBotsInContext: { type: 'boolean', nullable: true },
+      includeBotsInContext: { type: 'boolean' },
       botAllowlist: { type: 'array', items: { type: 'string' } },
       triggerWords: { type: 'array' },
       moderationKeywords: { type: 'array' },
