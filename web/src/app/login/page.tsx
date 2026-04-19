@@ -105,7 +105,7 @@ function LoginForm() {
             />
           </div>
           <span className="text-lg md:text-xl font-black uppercase tracking-tighter text-foreground">
-            Volvox
+            Volvox<span className="text-primary">.Bot</span>
           </span>
         </Link>
         <div className="rounded-full bg-card/40 backdrop-blur-xl border border-border/50 p-0.5 md:p-1 shadow-sm">

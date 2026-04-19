@@ -246,8 +246,8 @@ export function Header() {
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
               <h2 className="text-xs md:text-sm font-black tracking-tight text-foreground/90">
-                <span className="sm:hidden">Volvox</span>
-                <span className="hidden sm:inline italic">VOLVOX</span>
+                <span className="sm:hidden">Volvox<span className="text-primary">.Bot</span></span>
+                <span className="hidden sm:inline italic">VOLVOX<span className="text-primary not-italic">.BOT</span></span>
               </h2>
               <div className="hidden h-1 w-1 rounded-full bg-border/40 sm:block" />
               <span className="hidden text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/30 sm:block">

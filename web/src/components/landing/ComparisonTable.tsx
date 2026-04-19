@@ -238,7 +238,7 @@ export function ComparisonTable() {
                   <th className="border-x border-border/30 bg-background/50 px-3 py-5 text-center">
                     <div className="flex flex-col items-center gap-1">
                       <span className="font-sans text-[12px] font-bold uppercase tracking-widest text-foreground">
-                        Volvox
+                        Volvox<span className="text-primary">.Bot</span>
                       </span>
                     </div>
                   </th>

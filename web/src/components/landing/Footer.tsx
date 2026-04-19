@@ -246,7 +246,7 @@ export function Footer() {
               </div>
               <div>
                 <span className="text-xl font-black tracking-tight uppercase block leading-none text-foreground">
-                  Volvox
+                  Volvox<span className="text-primary">.Bot</span>
                 </span>
               </div>
             </Link>

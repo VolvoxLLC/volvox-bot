@@ -116,7 +116,7 @@ export function LandingNavbar() {
                   !isMobile && scrolled && 'md:block hidden',
                 )}
               >
-                Volvox
+                Volvox<span className="text-primary">.Bot</span>
               </span>
             </button>
           </div>
