@@ -94,19 +94,19 @@ export function isRoleEligible(member, triageConfig) {
   // No member (DM) — cannot check roles, allow through
   if (!member) return true;
 
-  // Get member's role IDs (excluding @everyone which has id === guildId)
-  const memberRoleIds = member.roles.cache
-    .filter((role) => role.id !== member.guild.id)
-    .map((role) => role.id);
+  // Get member's role IDs as Set for O(1) lookups (excluding @everyone which has id === guildId)
+  const memberRoleIds = new Set(
+    member.roles.cache.filter((role) => role.id !== member.guild.id).map((role) => role.id),
+  );
 
   // Explicit exclusion always wins (OR logic — any match excludes)
-  if (excludedRoles.some((roleId) => memberRoleIds.includes(roleId))) return false;
+  if (excludedRoles.some((roleId) => memberRoleIds.has(roleId))) return false;
 
   // Empty allow-list means all roles are allowed
   if (allowedRoles.length === 0) return true;
 
   // Check if user has ANY of the allowed roles (OR logic)
-  return allowedRoles.some((roleId) => memberRoleIds.includes(roleId));
+  return allowedRoles.some((roleId) => memberRoleIds.has(roleId));
 }
 
 // ── Dynamic interval thresholds ──────────────────────────────────────────────
