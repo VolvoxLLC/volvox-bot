@@ -377,6 +377,96 @@ describe('triage module', () => {
       expect(mockGenerate).not.toHaveBeenCalled();
     });
 
+    it('should skip bot messages (defense-in-depth)', async () => {
+      const botMsg = makeMessage('ch1', 'hello from bot', {
+        id: 'msg-bot',
+        username: 'SomeBot',
+        userId: 'bot-123',
+      });
+      botMsg.author.bot = true;
+
+      accumulateMessage(botMsg, config);
+      await evaluateNow('ch1', config, client, healthMonitor);
+
+      expect(addToHistory).not.toHaveBeenCalled();
+      expect(mockGenerate).not.toHaveBeenCalled();
+    });
+
+    it('should skip webhook messages (GitHub, Jira integrations)', async () => {
+      const webhookMsg = makeMessage('ch1', 'GitHub: PR merged', {
+        id: 'msg-webhook',
+        username: 'GitHub',
+        userId: 'webhook-user',
+      });
+      webhookMsg.webhookId = 'webhook-123';
+
+      accumulateMessage(webhookMsg, config);
+      await evaluateNow('ch1', config, client, healthMonitor);
+
+      expect(addToHistory).not.toHaveBeenCalled();
+      expect(mockGenerate).not.toHaveBeenCalled();
+    });
+
+    it('should skip system messages (joins, boosts, pins)', async () => {
+      // MessageType.GuildMemberJoin = 7
+      const joinMsg = makeMessage('ch1', '', {
+        id: 'msg-join',
+        username: 'NewUser',
+        userId: 'u-new',
+      });
+      joinMsg.type = 7; // GuildMemberJoin
+
+      accumulateMessage(joinMsg, config);
+      await evaluateNow('ch1', config, client, healthMonitor);
+
+      expect(addToHistory).not.toHaveBeenCalled();
+      expect(mockGenerate).not.toHaveBeenCalled();
+    });
+
+    it('should allow reply messages (type 19)', async () => {
+      const classResult = {
+        classification: 'ignore',
+        reasoning: 'test',
+        targetMessageIds: [],
+      };
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
+
+      const replyMsg = makeMessage('ch1', 'this is a reply', {
+        id: 'msg-reply',
+        username: 'alice',
+        userId: 'u1',
+      });
+      replyMsg.type = 19; // MessageType.Reply
+
+      accumulateMessage(replyMsg, config);
+      await evaluateNow('ch1', config, client, healthMonitor);
+
+      expect(addToHistory).toHaveBeenCalled();
+      expect(mockGenerate).toHaveBeenCalled();
+    });
+
+    it('should allow default messages (type 0)', async () => {
+      const classResult = {
+        classification: 'ignore',
+        reasoning: 'test',
+        targetMessageIds: [],
+      };
+      mockGenerate.mockResolvedValue(mockClassifyResult(classResult));
+
+      const defaultMsg = makeMessage('ch1', 'regular message', {
+        id: 'msg-default-type',
+        username: 'bob',
+        userId: 'u2',
+      });
+      defaultMsg.type = 0; // MessageType.Default
+
+      accumulateMessage(defaultMsg, config);
+      await evaluateNow('ch1', config, client, healthMonitor);
+
+      expect(addToHistory).toHaveBeenCalled();
+      expect(mockGenerate).toHaveBeenCalled();
+    });
+
     it('should include channelName and channelTopic in buffer entry', () => {
       const msg = makeMessage('ch1', 'hello', {
         id: 'msg-meta',

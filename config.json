@@ -19,6 +19,8 @@
     "enabled": true,
     "defaultInterval": 3000,
     "maxBufferSize": 30,
+    "includeBotsInContext": false,
+    "botAllowlist": [],
     "triggerWords": [
       "volvox"
     ],

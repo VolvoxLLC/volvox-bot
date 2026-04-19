@@ -149,7 +149,7 @@ async function runClassification(channelId, snapshot, evalConfig, evalClient, ab
   const contextLimit = evalConfig.triage?.contextMessages ?? 10;
   const context =
     contextLimit > 0
-      ? await fetchChannelContext(channelId, evalClient, snapshot, contextLimit)
+      ? await fetchChannelContext(channelId, evalClient, snapshot, contextLimit, evalConfig)
       : [];
   timings.contextFetched = Date.now();
 
@@ -843,6 +843,16 @@ export async function accumulateMessage(message, msgConfig) {
   // Only check parentId for threads - for regular channels, parentId is the category ID
   const parentId = message.channel.isThread?.() ? message.channel.parentId : null;
   if (isChannelBlocked(message.channel.id, parentId, message.guild?.id)) return;
+
+  // Skip bot messages (defense-in-depth — messageCreate.js also filters)
+  if (message.author.bot) return;
+
+  // Skip webhook messages (GitHub, Jira integrations, etc.)
+  if (message.webhookId) return;
+
+  // Skip system messages (joins, boosts, pins, etc.)
+  // MessageType.Default = 0, MessageType.Reply = 19
+  if (message.type !== 0 && message.type !== 19) return;
 
   // Skip empty or attachment-only messages
   if (!message.content || message.content.trim() === '') return;
