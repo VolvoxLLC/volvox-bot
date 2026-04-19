@@ -104,7 +104,7 @@ export function LandingNavbar() {
               >
                 <Image
                   src="/icon-192.png"
-                  alt="Volvox Logo"
+                  alt="Volvox.Bot Logo"
                   fill
                   className="object-cover"
                   sizes="36px"

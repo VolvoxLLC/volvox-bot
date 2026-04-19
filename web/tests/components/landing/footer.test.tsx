@@ -82,6 +82,6 @@ describe('Footer', () => {
   it('should render the brand tagline and logo', () => {
     render(<Footer />);
     expect(screen.getByText(/synthesis of artificial intelligence/i)).toBeInTheDocument();
-    expect(screen.getByAltText('Volvox')).toBeInTheDocument();
+    expect(screen.getByAltText('Volvox.Bot')).toBeInTheDocument();
   });
 });

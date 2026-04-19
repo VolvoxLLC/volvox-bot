@@ -98,7 +98,7 @@ function LoginForm() {
           <div className="relative h-8 w-8 md:h-9 md:w-9 overflow-hidden rounded-full border border-white/10 shadow-lg transition-transform group-hover:scale-105">
             <NextImage
               src="/icon-192.png"
-              alt="Volvox"
+              alt="Volvox.Bot"
               fill
               sizes="36px"
               className="object-cover"

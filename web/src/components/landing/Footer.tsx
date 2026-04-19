@@ -238,7 +238,7 @@ export function Footer() {
               <div className="relative h-10 w-10 overflow-hidden rounded-xl border border-border/80 shadow-sm transition-transform group-hover:rotate-6 bg-card">
                 <Image
                   src="/icon-192.png"
-                  alt="Volvox"
+                  alt="Volvox.Bot"
                   fill
                   sizes="40px"
                   className="object-cover"

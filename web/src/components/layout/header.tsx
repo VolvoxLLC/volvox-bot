@@ -234,7 +234,7 @@ export function Header() {
             <div className="flex h-full w-full items-center justify-center rounded-[11px] md:rounded-[15px] bg-background/20 backdrop-blur-sm overflow-hidden">
               <Image
                 src="/icon-192.png"
-                alt="Volvox Logo"
+                alt="Volvox.Bot Logo"
                 width={192}
                 height={192}
                 sizes="36px"
@@ -246,8 +246,12 @@ export function Header() {
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
               <h2 className="text-xs md:text-sm font-black tracking-tight text-foreground/90">
-                <span className="sm:hidden">Volvox<span className="text-primary">.Bot</span></span>
-                <span className="hidden sm:inline italic">VOLVOX<span className="text-primary not-italic">.BOT</span></span>
+                <span className="sm:hidden">
+                  Volvox<span className="text-primary">.Bot</span>
+                </span>
+                <span className="hidden sm:inline italic">
+                  VOLVOX<span className="text-primary not-italic">.BOT</span>
+                </span>
               </h2>
               <div className="hidden h-1 w-1 rounded-full bg-border/40 sm:block" />
               <span className="hidden text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/30 sm:block">
