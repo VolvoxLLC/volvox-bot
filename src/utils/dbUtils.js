@@ -43,7 +43,7 @@ export async function isDatabaseAvailable() {
   try {
     const pool = getPool();
     if (!pool) return false;
-    
+
     await pool.query('SELECT 1');
     return true;
   } catch (err) {
