@@ -90,7 +90,7 @@ function LoginForm() {
   ];
 
   return (
-    <div className="relative flex min-h-screen flex-col overflow-hidden bg-background font-sans selection:bg-primary/20">
+    <div className="relative flex min-h-[100dvh] flex-col overflow-hidden bg-background font-sans selection:bg-primary/20">
       <PrismaticBackground />
 
       {/* Floating Header - Ultra High on Mobile */}
@@ -114,7 +114,7 @@ function LoginForm() {
         </div>
       </nav>
 
-      <main className="relative z-10 flex min-h-[100dvh] w-full flex-col items-center justify-center px-0 md:px-6 py-20">
+      <main className="relative z-10 flex min-h-0 flex-1 w-full flex-col items-center justify-center px-0 md:px-6 py-20">
         <div className="w-full max-w-4xl flex flex-col items-center text-center">
           {/* ─── MAIN CONTENT ─── */}
           {prefersReducedMotion ? (
@@ -282,7 +282,7 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="flex min-h-[100dvh] items-center justify-center bg-background">
           <div className="flex flex-col items-center gap-4">
             <div className="h-12 w-12 rounded-full border border-border bg-card animate-pulse" />
             <span className="animate-pulse font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-foreground/20">
