@@ -104,7 +104,7 @@ export function LandingNavbar() {
               >
                 <Image
                   src="/icon-192.png"
-                  alt="Volvox Logo"
+                  alt="Volvox.Bot Logo"
                   fill
                   className="object-cover"
                   sizes="36px"
@@ -116,7 +116,7 @@ export function LandingNavbar() {
                   !isMobile && scrolled && 'md:block hidden',
                 )}
               >
-                Volvox
+                Volvox<span className="text-primary">.Bot</span>
               </span>
             </button>
           </div>
