@@ -403,6 +403,14 @@ describe('configValidation', () => {
       expect(errors.some((e) => e.includes('must be an integer'))).toBe(true);
     });
 
+    it('should reject duplicate level action milestones', () => {
+      const errors = validateSingleValue('xp.levelActions', [
+        { level: 5, actions: [{ type: 'grantRole' }] },
+        { level: 5, actions: [{ type: 'sendDm', message: 'Duplicate level' }] },
+      ]);
+      expect(errors.some((e) => e.includes('duplicate value "5"'))).toBe(true);
+    });
+
     it('should reject actions missing type', () => {
       const errors = validateSingleValue('xp.levelActions', [
         { level: 5, actions: [{ roleId: '123' }] },
@@ -433,6 +441,18 @@ describe('configValidation', () => {
 
       expect(defaultActionErrors.some((error) => error.includes('>= 1'))).toBe(true);
       expect(levelActionErrors.some((error) => error.includes('>= 1'))).toBe(true);
+    });
+
+    it('should reject fractional and oversized xpBonus amounts', () => {
+      const fractionalErrors = validateSingleValue('xp.defaultActions', [
+        { type: 'xpBonus', amount: 1.5 },
+      ]);
+      const oversizedErrors = validateSingleValue('xp.levelActions', [
+        { level: 5, actions: [{ type: 'xpBonus', amount: 1000001 }] },
+      ]);
+
+      expect(fractionalErrors.some((error) => error.includes('must be an integer'))).toBe(true);
+      expect(oversizedErrors.some((error) => error.includes('<= 1000000'))).toBe(true);
     });
 
     it('should accept explicit embed schemas for xp actions', () => {

@@ -115,7 +115,7 @@ const XP_ACTION_ITEM_SCHEMA = {
     },
     channelId: { type: 'string', nullable: true },
     emoji: { type: 'string', nullable: true },
-    amount: { type: 'number', min: 1, nullable: true },
+    amount: { type: 'number', integer: true, min: 1, max: 1000000, nullable: true },
     prefix: { type: 'string', nullable: true },
     suffix: { type: 'string', nullable: true },
     url: { type: 'string', nullable: true },
@@ -404,6 +404,7 @@ export const CONFIG_SCHEMA = {
       levelActions: {
         type: 'array',
         items: XP_LEVEL_ACTION_ENTRY_SCHEMA,
+        uniqueBy: 'level',
       },
       defaultActions: {
         type: 'array',

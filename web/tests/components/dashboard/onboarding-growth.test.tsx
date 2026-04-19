@@ -26,11 +26,38 @@ vi.mock('@/components/ui/role-selector', () => ({
 }));
 
 vi.mock('@/components/dashboard/config-categories/config-category-layout', () => ({
-  ConfigCategoryLayout: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  ConfigCategoryLayout: ({
+    children,
+    toggle,
+  }: {
+    children: React.ReactNode;
+    toggle?: { checked: boolean; onChange: (checked: boolean) => void; label?: string } | null;
+  }) => (
+    <>
+      {toggle && (
+        <button type="button" onClick={() => toggle.onChange(!toggle.checked)}>
+          {toggle.label ?? 'Toggle current feature'}
+        </button>
+      )}
+      {children}
+    </>
+  ),
 }));
 
 vi.mock('@/components/dashboard/toggle-switch', () => ({
-  ToggleSwitch: ({ label }: { label: string }) => <button type="button">{label}</button>,
+  ToggleSwitch: ({
+    checked,
+    label,
+    onChange,
+  }: {
+    checked: boolean;
+    label: string;
+    onChange: (checked: boolean) => void;
+  }) => (
+    <button type="button" onClick={() => onChange(!checked)}>
+      {label}
+    </button>
+  ),
 }));
 
 vi.mock('@/components/ui/tooltip', () => ({
@@ -49,8 +76,18 @@ vi.mock('@/components/ui/button', () => ({
 }));
 
 vi.mock('@/components/ui/discord-markdown-editor', () => ({
-  DiscordMarkdownEditor: ({ placeholder }: { placeholder?: string }) => (
-    <div data-testid="discord-markdown-editor" data-placeholder={placeholder} />
+  DiscordMarkdownEditor: ({
+    placeholder,
+    value,
+  }: {
+    placeholder?: string;
+    value?: string;
+  }) => (
+    <div
+      data-testid="discord-markdown-editor"
+      data-placeholder={placeholder}
+      data-value={value}
+    />
   ),
 }));
 
@@ -117,6 +154,88 @@ describe('OnboardingGrowthCategory', () => {
     expect(screen.getByTestId('discord-markdown-editor')).toHaveAttribute(
       'data-placeholder',
       'Welcome {{user}} to {{server}}!',
+    );
+  });
+
+  it('mounts the level-up actions editor from the xp-level-actions tab', () => {
+    mockUseConfigContext.mockReturnValue({
+      draftConfig: {
+        xp: {
+          enabled: true,
+          defaultActions: [{ id: 'default-1', type: 'xpBonus', amount: 100 }],
+          levelActions: [{ id: 'level-5', level: 5, actions: [] }],
+        },
+        reputation: { enabled: true },
+      },
+      saving: false,
+      guildId: 'guild-1',
+      visibleFeatureIds: new Set(['xp-level-actions']),
+      activeTabId: 'xp-level-actions',
+      updateDraftConfig: vi.fn(),
+    });
+
+    render(<OnboardingGrowthCategory />);
+
+    expect(screen.getAllByText('Default Actions').length).toBeGreaterThan(0);
+    expect(screen.getByText('Per-Level Actions')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Add Level/i })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Grant XP Bonus' })).toBeInTheDocument();
+  });
+
+  it('toggles xp and reputation for the level-up actions tab', async () => {
+    const user = userEvent.setup();
+    const updateDraftConfig = vi.fn((updater) =>
+      updater({
+        xp: { enabled: false, defaultActions: [], levelActions: [] },
+        reputation: { enabled: false },
+      }),
+    );
+
+    mockUseConfigContext.mockReturnValue({
+      draftConfig: {
+        xp: { enabled: false, defaultActions: [], levelActions: [] },
+        reputation: { enabled: false },
+      },
+      saving: false,
+      guildId: 'guild-1',
+      visibleFeatureIds: new Set(['xp-level-actions']),
+      activeTabId: 'xp-level-actions',
+      updateDraftConfig,
+    });
+
+    render(<OnboardingGrowthCategory />);
+
+    await user.click(screen.getByRole('button', { name: 'Toggle current feature' }));
+
+    expect(updateDraftConfig).toHaveBeenCalledTimes(1);
+    expect(updateDraftConfig.mock.results[0]?.value).toEqual({
+      xp: { enabled: true, defaultActions: [], levelActions: [] },
+      reputation: { enabled: true },
+    });
+  });
+
+  it('hydrates legacy action templates into editor messages', () => {
+    mockUseConfigContext.mockReturnValue({
+      draftConfig: {
+        xp: {
+          enabled: true,
+          defaultActions: [{ id: 'default-1', type: 'sendDm', template: 'Saved {{level}}' }],
+          levelActions: [],
+        },
+        reputation: { enabled: true },
+      },
+      saving: false,
+      guildId: 'guild-1',
+      visibleFeatureIds: new Set(['xp-level-actions']),
+      activeTabId: 'xp-level-actions',
+      updateDraftConfig: vi.fn(),
+    });
+
+    render(<OnboardingGrowthCategory />);
+
+    expect(screen.getByTestId('discord-markdown-editor')).toHaveAttribute(
+      'data-value',
+      'Saved {{level}}',
     );
   });
 });

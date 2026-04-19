@@ -150,11 +150,16 @@ function normalizeDraftEmbed(
 
 function normalizeDraftAction(action?: DeepPartial<XpLevelAction> | null): XpLevelAction {
   const type = action?.type ?? 'grantRole';
+  const hydratedAction =
+    action && typeof action.template === 'string' && !action.message
+      ? { ...action, message: action.template }
+      : action;
+
   return {
     ...createAction(type),
-    ...action,
-    id: action?.id ?? createStableId(),
-    embed: normalizeDraftEmbed(action?.embed),
+    ...hydratedAction,
+    id: hydratedAction?.id ?? createStableId(),
+    embed: normalizeDraftEmbed(hydratedAction?.embed),
     type,
   };
 }
