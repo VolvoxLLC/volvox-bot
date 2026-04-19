@@ -390,8 +390,24 @@ async function startup() {
     startEngagementFlushInterval();
   }
 
-  // Load commands and login
+  // Load commands and start API server before Discord login so the
+  // healthcheck endpoint is reachable during the startup window.
   await loadCommands();
+
+  {
+    let wsTransport = null;
+    try {
+      wsTransport = addWebSocketTransport();
+      await startServer(client, dbPool, { wsTransport });
+    } catch (err) {
+      if (wsTransport) {
+        removeWebSocketTransport(wsTransport);
+      }
+      error('REST API server failed to start', { error: err.message });
+      throw err;
+    }
+  }
+
   await client.login(token);
 
   // Start configurable bot presence rotation after login so client.user is available
@@ -409,21 +425,6 @@ async function startup() {
       }
     })
     .catch(() => {});
-
-  // Start REST API server with WebSocket log streaming (non-fatal — bot continues without it)
-  {
-    let wsTransport = null;
-    try {
-      wsTransport = addWebSocketTransport();
-      await startServer(client, dbPool, { wsTransport });
-    } catch (err) {
-      // Clean up orphaned transport if startServer failed after it was created
-      if (wsTransport) {
-        removeWebSocketTransport(wsTransport);
-      }
-      error('REST API server failed to start — continuing without API', { error: err.message });
-    }
-  }
 }
 
 startup().catch((err) => {
