@@ -20,7 +20,7 @@ test.describe('Header', () => {
   });
 
   test('displays the Volvox logo text', async ({ page }) => {
-    await expect(page.locator('header').getByText('Volvox', { exact: true })).toBeVisible();
+    await expect(page.locator('header').getByText('Volvox.Bot', { exact: true })).toBeVisible();
   });
 
   test('shows Sign In link', async ({ page }) => {
