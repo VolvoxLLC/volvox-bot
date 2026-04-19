@@ -8,6 +8,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn, useSession } from 'next-auth/react';
 import { Suspense, useEffect } from 'react';
 import { PrismaticBackground } from '@/components/landing/Hero';
+import { SiteFooter } from '@/components/layout/site-footer';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { cn } from '@/lib/utils';
@@ -89,7 +90,7 @@ function LoginForm() {
   ];
 
   return (
-    <div className="relative min-h-[100dvh] overflow-hidden bg-background font-sans selection:bg-primary/20">
+    <div className="relative flex min-h-screen flex-col overflow-hidden bg-background font-sans selection:bg-primary/20">
       <PrismaticBackground />
 
       {/* Floating Header - Ultra High on Mobile */}
@@ -269,14 +270,10 @@ function LoginForm() {
         </div>
       </main>
 
-      {/* Decorative Overlays */}
-      <div
-        className="absolute inset-0 pointer-events-none opacity-[0.03] dark:opacity-[0.02]"
-        style={{
-          backgroundImage: `linear-gradient(to right, hsl(var(--foreground)) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--foreground)) 1px, transparent 1px)`,
-          backgroundSize: '40px 40px',
-        }}
-      />
+      {/* Footer */}
+      <div className="relative z-10 mt-auto">
+        <SiteFooter />
+      </div>
     </div>
   );
 }

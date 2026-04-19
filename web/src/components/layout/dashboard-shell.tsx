@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { SiteFooter } from '@/components/layout/site-footer';
 import { AnalyticsProvider } from '@/contexts/analytics-context';
 import { DashboardTitleSync } from './dashboard-title-sync';
 import { Header } from './header';
@@ -34,6 +35,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
             <div className="mx-auto w-full max-w-[1440px] px-4 py-6 md:px-8 lg:px-10">
               <div className="dashboard-fade-in pb-12">{children}</div>
             </div>
+            <SiteFooter />
           </main>
         </div>
       </div>
