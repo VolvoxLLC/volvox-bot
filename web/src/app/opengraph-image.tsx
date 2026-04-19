@@ -5,7 +5,19 @@ export const alt = 'Volvox.Bot — AI-Powered Discord Bot';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
-export default function Image() {
+export default async function Image() {
+  const logoRes = await fetch(
+    new URL('../public/icon-512.png', import.meta.url),
+  );
+  const logoArrayBuffer = await logoRes.arrayBuffer();
+  const logoBase64 = btoa(
+    new Uint8Array(logoArrayBuffer).reduce(
+      (data, byte) => data + String.fromCharCode(byte),
+      '',
+    ),
+  );
+  const logoDataUrl = `data:image/png;base64,${logoBase64}`;
+
   return new ImageResponse(
     <div
       style={{
@@ -36,19 +48,21 @@ export default function Image() {
           style={{
             width: '400px',
             height: '3px',
-            background: 'linear-gradient(90deg, transparent, #6366f1, #8b5cf6, transparent)',
+            background:
+              'linear-gradient(90deg, transparent, #6366f1, #8b5cf6, transparent)',
           }}
         />
       </div>
 
-      {/* Icon placeholder */}
-      <div
+      {/* Logo */}
+      <img
+        src={logoDataUrl}
+        alt="Volvox Logo"
+        width={96}
+        height={96}
         style={{
-          width: 96,
-          height: 96,
           marginBottom: '32px',
           borderRadius: '24px',
-          background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
         }}
       />
 
@@ -121,7 +135,8 @@ export default function Image() {
           style={{
             width: '400px',
             height: '3px',
-            background: 'linear-gradient(90deg, transparent, #6366f1, #8b5cf6, transparent)',
+            background:
+              'linear-gradient(90deg, transparent, #6366f1, #8b5cf6, transparent)',
           }}
         />
       </div>
