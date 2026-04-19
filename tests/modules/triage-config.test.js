@@ -143,11 +143,18 @@ describe('triage-config', () => {
       expect(isRoleEligible(null, { excludedRoles: ['role-1'] })).toBe(true);
     });
 
-    it('should ignore @everyone role in role checks', () => {
+    it('should ignore @everyone role in allowedRoles check', () => {
       // Member only has @everyone (guild-1), no other roles
       const member = makeMember([]);
       // allowedRoles contains the guild ID (@everyone) — should NOT match
       expect(isRoleEligible(member, { allowedRoles: ['guild-1'] })).toBe(false);
+    });
+
+    it('should ignore @everyone role in excludedRoles check', () => {
+      // Member only has @everyone (guild-1), no other roles
+      const member = makeMember([]);
+      // excludedRoles contains the guild ID (@everyone) — should NOT exclude
+      expect(isRoleEligible(member, { excludedRoles: ['guild-1'] })).toBe(true);
     });
 
     it('should return true when user has no roles and no restrictions', () => {
