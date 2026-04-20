@@ -77,6 +77,9 @@ const TEMPLATE_SAMPLES: Record<string, string> = {
   nextLevel: '11',
 };
 
+const MAX_XP_BONUS_AMOUNT = 1_000_000;
+const DEFAULT_EMBED_DESCRIPTION = '{{mention}} reached **Level {{level}}**!';
+
 function createStableId(): string {
   return generateId();
 }
@@ -300,6 +303,32 @@ function fromBuilderConfig(config: EmbedConfig): XpActionEmbedConfig {
   };
 }
 
+function createDefaultActionEmbed(
+  action: XpLevelAction,
+  format: Extract<XpLevelAction['format'], 'embed' | 'both'>,
+): XpActionEmbedConfig {
+  return fromBuilderConfig({
+    ...defaultEmbedConfig(),
+    description: action.message ?? action.template ?? DEFAULT_EMBED_DESCRIPTION,
+    format,
+  });
+}
+
+function withMessageFormat(
+  action: XpLevelAction,
+  format: NonNullable<XpLevelAction['format']>,
+): XpLevelAction {
+  if (format === 'text' || action.embed) {
+    return { ...action, format };
+  }
+
+  return {
+    ...action,
+    format,
+    embed: createDefaultActionEmbed(action, format),
+  };
+}
+
 function reorderItem<T>(items: T[], index: number, direction: -1 | 1): T[] {
   const nextIndex = index + direction;
   if (nextIndex < 0 || nextIndex >= items.length) return items;
@@ -460,10 +489,7 @@ function ActionCard({
               value={format}
               disabled={saving}
               onChange={(event) =>
-                onChange({
-                  ...action,
-                  format: event.target.value as 'text' | 'embed' | 'both',
-                })
+                onChange(withMessageFormat(action, event.target.value as 'text' | 'embed' | 'both'))
               }
             >
               <option value="text">Text</option>
@@ -513,13 +539,20 @@ function ActionCard({
             id={`${actionId}-bonus-xp`}
             type="number"
             min={1}
+            max={MAX_XP_BONUS_AMOUNT}
             step={1}
             value={action.amount ?? 100}
             disabled={saving}
             onChange={(event) =>
               onChange({
                 ...action,
-                amount: Math.max(1, Number.parseInt(event.target.value || '0', 10) || 1),
+                amount: Math.max(
+                  1,
+                  Math.min(
+                    MAX_XP_BONUS_AMOUNT,
+                    Number.parseInt(event.target.value || '0', 10) || 1,
+                  ),
+                ),
               })
             }
           />
@@ -727,18 +760,21 @@ export function XpLevelActionsEditor({
   };
 
   const handleAddLevelEntry = () => {
-    if (nextUnusedLevel == null) {
-      return;
-    }
+    updateLevelEntries((entries) => {
+      const level = getNextUnusedLevel(entries);
+      if (level == null) {
+        return entries;
+      }
 
-    updateLevelEntries((entries) => [
-      ...entries,
-      {
-        id: createStableId(),
-        level: nextUnusedLevel,
-        actions: [],
-      },
-    ]);
+      return [
+        ...entries,
+        {
+          id: createStableId(),
+          level,
+          actions: [],
+        },
+      ];
+    });
   };
 
   return (

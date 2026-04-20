@@ -6,6 +6,8 @@
  * truth without creating an inverted dependency (utils → routes).
  */
 
+import { validateUrlForSsrfSync } from './ssrfProtection.js';
+
 /** Module-level cache for compiled regex patterns used during validation. */
 const _compiledPatterns = new Map();
 
@@ -118,7 +120,7 @@ const XP_ACTION_ITEM_SCHEMA = {
     amount: { type: 'number', integer: true, min: 1, max: 1000000, nullable: true },
     prefix: { type: 'string', nullable: true },
     suffix: { type: 'string', nullable: true },
-    url: { type: 'string', nullable: true },
+    url: { type: 'string', nullable: true, ssrfUrl: true, allowHttp: true },
     payload: { type: 'string', nullable: true },
     embed: XP_EMBED_SCHEMA,
   },
@@ -499,6 +501,14 @@ export function validateValue(value, schema, path) {
         }
         if (schema.pattern && !getCompiledPattern(schema.pattern).test(value)) {
           errors.push(`${path}: does not match required pattern`);
+        }
+        if (schema.ssrfUrl) {
+          const ssrfResult = validateUrlForSsrfSync(value, {
+            allowHttp: schema.allowHttp === true,
+          });
+          if (!ssrfResult.valid) {
+            errors.push(`${path}: ${ssrfResult.error}`);
+          }
         }
       }
       break;

@@ -291,9 +291,9 @@ export interface ReputationConfig extends ToggleSectionConfig {
 /** XP level-up action definition. */
 export interface XpActionEmbedField {
   id?: string;
-  name: string;
-  value: string;
-  inline: boolean;
+  name: string | null;
+  value: string | null;
+  inline: boolean | null;
 }
 
 export type XpActionEmbedThumbnailType = 'none' | 'user_avatar' | 'server_icon' | 'custom';
@@ -301,20 +301,20 @@ export type XpActionEmbedThumbnailType = 'none' | 'user_avatar' | 'server_icon' 
 export interface XpActionEmbedConfig {
   // The dashboard writes thumbnailType/thumbnailUrl, footerText/footerIconUrl, imageUrl, and
   // showTimestamp. Runtime normalization still accepts legacy thumbnail/footer/image/timestamp aliases.
-  color?: string;
-  title?: string;
-  description?: string;
-  thumbnail?: string;
-  thumbnailType?: XpActionEmbedThumbnailType;
-  thumbnailUrl?: string;
-  fields?: XpActionEmbedField[];
-  footer?: string | { text?: string; iconURL?: string };
-  footerText?: string;
-  footerIconUrl?: string;
-  image?: string;
-  imageUrl?: string;
-  timestamp?: boolean;
-  showTimestamp?: boolean;
+  color?: string | null;
+  title?: string | null;
+  description?: string | null;
+  thumbnail?: string | null;
+  thumbnailType?: XpActionEmbedThumbnailType | null;
+  thumbnailUrl?: string | null;
+  fields?: XpActionEmbedField[] | null;
+  footer?: string | { text?: string | null; iconURL?: string | null } | null;
+  footerText?: string | null;
+  footerIconUrl?: string | null;
+  image?: string | null;
+  imageUrl?: string | null;
+  timestamp?: boolean | null;
+  showTimestamp?: boolean | null;
 }
 
 export interface XpLevelAction {

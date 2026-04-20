@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -91,7 +91,27 @@ vi.mock('@/components/ui/discord-markdown-editor', () => ({
   ),
 }));
 
+vi.mock('@/components/ui/embed-builder', () => ({
+  defaultEmbedConfig: () => ({
+    color: '#5865F2',
+    title: '',
+    description: '',
+    thumbnailType: 'none',
+    thumbnailUrl: '',
+    fields: [],
+    footerText: '',
+    footerIconUrl: '',
+    imageUrl: '',
+    showTimestamp: false,
+    format: 'embed',
+  }),
+  EmbedBuilder: ({ value }: { value: { description?: string; format?: string } }) => (
+    <div data-testid="embed-builder" data-description={value.description} data-format={value.format} />
+  ),
+}));
+
 import { OnboardingGrowthCategory } from '@/components/dashboard/config-categories/onboarding-growth';
+import { XpLevelActionsEditor } from '@/components/dashboard/xp-level-actions-editor';
 
 describe('OnboardingGrowthCategory', () => {
   it('shows the full dynamic variable guide for welcome messages', async () => {
@@ -237,5 +257,111 @@ describe('OnboardingGrowthCategory', () => {
       'data-value',
       'Saved {{level}}',
     );
+  });
+});
+
+describe('XpLevelActionsEditor', () => {
+  it('initializes an embed when switching a message action to embed format', async () => {
+    const user = userEvent.setup();
+    const updateDraftConfig = vi.fn((updater) =>
+      updater({
+        xp: {
+          defaultActions: [
+            { id: 'action-1', type: 'sendDm', format: 'text', message: 'Saved {{level}}' },
+          ],
+          levelActions: [],
+        },
+      }),
+    );
+
+    render(
+      <XpLevelActionsEditor
+        draftConfig={{
+          xp: {
+            defaultActions: [
+              { id: 'action-1', type: 'sendDm', format: 'text', message: 'Saved {{level}}' },
+            ],
+            levelActions: [],
+          },
+        }}
+        guildId="guild-1"
+        saving={false}
+        updateDraftConfig={updateDraftConfig}
+      />,
+    );
+
+    await user.selectOptions(screen.getByLabelText('Message Format'), 'embed');
+
+    expect(updateDraftConfig).toHaveBeenCalledTimes(1);
+    expect(updateDraftConfig.mock.results[0]?.value.xp.defaultActions[0]).toMatchObject({
+      format: 'embed',
+      embed: { description: 'Saved {{level}}' },
+    });
+  });
+
+  it('clamps bonus XP to the backend maximum', () => {
+    const updateDraftConfig = vi.fn((updater) =>
+      updater({
+        xp: {
+          defaultActions: [{ id: 'action-1', type: 'xpBonus', amount: 100 }],
+          levelActions: [],
+        },
+      }),
+    );
+
+    render(
+      <XpLevelActionsEditor
+        draftConfig={{
+          xp: {
+            defaultActions: [{ id: 'action-1', type: 'xpBonus', amount: 100 }],
+            levelActions: [],
+          },
+        }}
+        guildId="guild-1"
+        saving={false}
+        updateDraftConfig={updateDraftConfig}
+      />,
+    );
+
+    const bonusInput = screen.getByLabelText('Bonus XP');
+    expect(bonusInput).toHaveAttribute('max', '1000000');
+
+    fireEvent.change(bonusInput, { target: { value: '1000001' } });
+
+    expect(updateDraftConfig.mock.results[0]?.value.xp.defaultActions[0]).toMatchObject({
+      amount: 1_000_000,
+    });
+  });
+
+  it('recomputes the next unused level from the latest updater state', () => {
+    const updateDraftConfig = vi.fn((updater) =>
+      updater({
+        xp: {
+          defaultActions: [],
+          levelActions: [{ id: 'level-1', level: 1, actions: [] }],
+        },
+      }),
+    );
+
+    render(
+      <XpLevelActionsEditor
+        draftConfig={{
+          xp: {
+            defaultActions: [],
+            levelActions: [],
+          },
+        }}
+        guildId="guild-1"
+        saving={false}
+        updateDraftConfig={updateDraftConfig}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Add Level/i }));
+
+    expect(updateDraftConfig.mock.results[0]?.value.xp.levelActions).toEqual([
+      { id: 'level-1', level: 1, actions: [] },
+      expect.objectContaining({ level: 2, actions: [] }),
+    ]);
   });
 });

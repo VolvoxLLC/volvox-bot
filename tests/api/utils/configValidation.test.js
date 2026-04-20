@@ -431,6 +431,27 @@ describe('configValidation', () => {
       ).toEqual([]);
     });
 
+    it('should reject webhook action URLs targeting private networks', () => {
+      const defaultActionErrors = validateSingleValue('xp.defaultActions', [
+        { type: 'webhook', url: 'https://localhost/hook' },
+      ]);
+      const levelActionErrors = validateSingleValue('xp.levelActions', [
+        { level: 5, actions: [{ type: 'webhook', url: 'https://169.254.169.254/hook' }] },
+      ]);
+
+      expect(defaultActionErrors.some((error) => error.includes('private/internal'))).toBe(true);
+      expect(levelActionErrors.some((error) => error.includes('private/internal'))).toBe(true);
+    });
+
+    it('should accept public HTTP and HTTPS webhook action URLs', () => {
+      expect(
+        validateSingleValue('xp.defaultActions', [
+          { type: 'webhook', url: 'http://example.com/hook' },
+          { type: 'webhook', url: 'https://example.com/hook' },
+        ]),
+      ).toEqual([]);
+    });
+
     it('should reject non-positive xpBonus amounts', () => {
       const defaultActionErrors = validateSingleValue('xp.defaultActions', [
         { type: 'xpBonus', amount: 0 },
