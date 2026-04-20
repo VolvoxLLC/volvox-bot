@@ -230,6 +230,7 @@ export function CommunityToolsCategory() {
                       },
                     }));
                   }}
+                  onFocus={(e) => e.target.select()}
                   disabled={saving}
                   className={cn(inputClasses, 'pr-12')}
                 />

@@ -171,6 +171,7 @@ describe('ai module', () => {
         'testuser',
         null,
         null,
+        null,
       ]);
     });
 
@@ -188,6 +189,7 @@ describe('ai module', () => {
         'testuser',
         'msg-123',
         'guild-456',
+        null,
       ]);
     });
   });

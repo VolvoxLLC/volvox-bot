@@ -91,6 +91,7 @@ export function PermissionsSection({
             type="text"
             value={botOwnersRaw}
             onChange={(e) => setBotOwnersRaw(e.target.value)}
+            onFocus={(e) => e.target.select()}
             onBlur={() =>
               onFieldChange(
                 'botOwners',

@@ -5,7 +5,9 @@
  * case creation, mod log, success reply, and error handling.
  */
 
+import { getPool } from '../db.js';
 import { debug, info, error as logError, warn } from '../logger.js';
+import { logAuditEvent } from '../modules/auditLogger.js';
 import { getConfig } from '../modules/config.js';
 import {
   checkHierarchy,
@@ -149,7 +151,17 @@ export async function executeModAction(interaction, opts) {
     if (targetResult.earlyReturn) {
       return await safeEditReply(interaction, targetResult.earlyReturn);
     }
-    const { target, targetId, targetTag } = targetResult;
+    const { target, targetId, targetTag: rawTargetTag } = targetResult;
+
+    // Build a descriptive tag that includes display name and username
+    const resolvedTargetUser =
+      target?.user || (await interaction.client.users.fetch(targetId).catch(() => null));
+    const targetTag = resolvedTargetUser
+      ? resolvedTargetUser.globalName &&
+        resolvedTargetUser.globalName !== resolvedTargetUser.username
+        ? `${resolvedTargetUser.globalName} (@${resolvedTargetUser.username})`
+        : resolvedTargetUser.tag
+      : rawTargetTag;
 
     // Pre-action checks (self-mod, protected, hierarchy)
     const checkError = runPreActionChecks(interaction, target, targetTag, action, {
@@ -177,6 +189,29 @@ export async function executeModAction(interaction, opts) {
       moderatorTag: interaction.user.tag,
       reason,
       ...extraCaseData,
+    });
+
+    // Audit log
+    let pool;
+    try {
+      pool = getPool();
+    } catch {
+      pool = null;
+    }
+
+    logAuditEvent(pool, {
+      guildId: interaction.guild.id,
+      userId: interaction.user.id,
+      userTag: interaction.user.tag,
+      action: `mod.${action}`,
+      targetType: 'member',
+      targetId,
+      targetTag,
+      details: {
+        caseNumber: caseData.case_number,
+        reason,
+        ...extraCaseData,
+      },
     });
 
     // Send mod log

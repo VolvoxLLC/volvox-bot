@@ -363,7 +363,12 @@ function PreviewImage({
   height: number;
   className: string;
 }) {
-  return <img src={src} alt={alt} width={width} height={height} className={className} />;
+  return (
+    <>
+      {/* biome-ignore lint/performance/noImgElement: Discord embed image component */}
+      <img src={src} alt={alt} width={width} height={height} className={className} />
+    </>
+  );
 }
 
 // ── CharCount indicator ─────────────────────────────────────────────

@@ -55,6 +55,13 @@ const DYNAMIC_VARIABLE_DEFINITIONS = [
   },
 ] as const;
 
+/**
+ * Renders the Onboarding & Growth configuration category UI that allows editing multiple feature sections based on the active tab.
+ *
+ * Displays controls for Welcome, Engagement, Reputation, TL;DR & AFK, and Challenges features; reads from and updates the editable draft configuration from context, and disables inputs while saving.
+ *
+ * @returns The configuration UI element for the selected onboarding/growth feature, or `null` if no draft configuration or active tab is available.
+ */
 export function OnboardingGrowthCategory() {
   const { draftConfig, saving, guildId, updateDraftConfig, activeTabId } = useConfigContext();
 
@@ -448,6 +455,7 @@ export function OnboardingGrowthCategory() {
                         opts[i] = { ...opts[i], label: e.target.value };
                         updateWelcomeRoleMenu('options', opts);
                       }}
+                      onFocus={(e) => e.target.select()}
                       className={cn(inputClasses, 'text-xs font-bold')}
                       placeholder="Display Label"
                     />
@@ -540,6 +548,7 @@ export function OnboardingGrowthCategory() {
                             engagement: { ...prev.engagement, activityBadges: badges },
                           }));
                         }}
+                        onFocus={(e) => e.target.select()}
                         className={cn(inputClasses, 'text-center pr-8')}
                       />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-bold text-muted-foreground/40">
@@ -558,6 +567,7 @@ export function OnboardingGrowthCategory() {
                           engagement: { ...prev.engagement, activityBadges: badges },
                         }));
                       }}
+                      onFocus={(e) => e.target.select()}
                       className={cn(inputClasses, 'flex-1')}
                       placeholder="Badge Name"
                     />
@@ -649,6 +659,7 @@ export function OnboardingGrowthCategory() {
                           reputation: { ...prev.reputation, xpPerMessage: range },
                         }));
                       }}
+                      onFocus={(e) => e.target.select()}
                       className={cn(inputClasses, 'text-center pr-10')}
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-bold text-muted-foreground/40">
@@ -669,6 +680,7 @@ export function OnboardingGrowthCategory() {
                           reputation: { ...prev.reputation, xpPerMessage: range },
                         }));
                       }}
+                      onFocus={(e) => e.target.select()}
                       className={cn(inputClasses, 'text-center pr-10')}
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-bold text-muted-foreground/40">
@@ -696,6 +708,7 @@ export function OnboardingGrowthCategory() {
                         reputation: { ...prev.reputation, xpCooldownSeconds: val },
                       }));
                     }}
+                    onFocus={(e) => e.target.select()}
                     className={cn(inputClasses, 'pr-12')}
                   />
                   <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-muted-foreground/40">
@@ -837,6 +850,7 @@ export function OnboardingGrowthCategory() {
                           tldr: { ...p.tldr, [cfg.key]: parseInt(e.target.value, 10) || 1 },
                         }))
                       }
+                      onFocus={(e) => e.target.select()}
                       className={cn(inputClasses, 'pr-12 text-center')}
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-muted-foreground/30">
@@ -892,6 +906,7 @@ export function OnboardingGrowthCategory() {
                         challenges: { ...p.challenges, postTime: e.target.value },
                       }))
                     }
+                    onFocus={(e) => e.target.select()}
                     className={cn(inputClasses, 'text-center')}
                     placeholder="HH:MM"
                   />
@@ -913,6 +928,7 @@ export function OnboardingGrowthCategory() {
                         challenges: { ...p.challenges, timezone: e.target.value },
                       }))
                     }
+                    onFocus={(e) => e.target.select()}
                     className={cn(inputClasses, 'text-xs font-mono')}
                   />
                 </div>

@@ -35,19 +35,19 @@ import { info, error as logError, warn } from '../logger.js';
  * @property {string}  action     - Dot-namespaced action identifier (e.g. 'config.update')
  * @property {string}  [targetType] - What kind of thing was affected (e.g. 'member', 'warning')
  * @property {string}  [targetId]   - The ID of the affected entity
+ * @property {string}  [targetTag]  - Cached display name / tag of the affected target
  * @property {Object}  [details]    - Freeform JSONB payload (before/after diffs, reason, etc.)
  * @property {string}  [ipAddress]  - Client IP address (optional)
  */
 
 /**
- * Insert an audit log event into the database.
+ * Record an audit event in the `audit_logs` table.
  *
- * Non-blocking by design: if the DB is unavailable or the insert fails, the
- * error is logged at WARN level but **never rethrown**. This ensures audit
- * logging never interrupts the primary request flow.
+ * If the DB pool is unavailable, required fields are missing, or insertion fails,
+ * the function logs the condition and returns without throwing, ensuring callers are not interrupted.
  *
- * @param {import('pg').Pool|null} pool - Database connection pool (may be null — graceful skip)
- * @param {AuditEventOptions} event     - Audit event fields
+ * @param {import('pg').Pool|null} pool - Database connection pool; if null or falsy the event is skipped.
+ * @param {AuditEventOptions} event - Audit event data (must include `guildId`, `userId`, and `action`).
  * @returns {Promise<void>}
  */
 export async function logAuditEvent(pool, event) {
@@ -59,7 +59,7 @@ export async function logAuditEvent(pool, event) {
     return;
   }
 
-  const { guildId, userId, userTag, action, targetType, targetId, details, ipAddress } =
+  const { guildId, userId, userTag, action, targetType, targetId, targetTag, details, ipAddress } =
     event ?? {};
 
   if (!guildId || !userId || !action) {
@@ -74,8 +74,8 @@ export async function logAuditEvent(pool, event) {
   try {
     await pool.query(
       `INSERT INTO audit_logs
-         (guild_id, user_id, user_tag, action, target_type, target_id, details, ip_address)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+         (guild_id, user_id, user_tag, action, target_type, target_id, target_tag, details, ip_address)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
       [
         guildId,
         userId,
@@ -83,6 +83,7 @@ export async function logAuditEvent(pool, event) {
         action,
         targetType ?? null,
         targetId ?? null,
+        targetTag ?? '',
         details != null ? JSON.stringify(details) : null,
         ipAddress ?? null,
       ],

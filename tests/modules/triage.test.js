@@ -259,14 +259,27 @@ describe('triage module', () => {
         'alice',
         'msg-99',
         'g1',
+        'u99',
       );
     });
 
     it('should call addToHistory with null guildId for DM (no guild)', () => {
-      const msg = makeMessage('ch1', 'dm message', { id: 'msg-dm', username: 'bob', userId: 'u2' });
+      const msg = makeMessage('ch1', 'dm message', {
+        id: 'msg-dm',
+        username: 'bob',
+        userId: 'u2',
+      });
       // No guild property — guild?.id resolves to undefined, coerced to null
       accumulateMessage(msg, config);
-      expect(addToHistory).toHaveBeenCalledWith('ch1', 'user', 'dm message', 'bob', 'msg-dm', null);
+      expect(addToHistory).toHaveBeenCalledWith(
+        'ch1',
+        'user',
+        'dm message',
+        'bob',
+        'msg-dm',
+        null,
+        'u2',
+      );
     });
 
     it('should skip when triage is disabled', async () => {

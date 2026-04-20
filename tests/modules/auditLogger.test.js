@@ -32,6 +32,7 @@ const BASE_EVENT = {
   action: 'config.update',
   targetType: 'config',
   targetId: 'guild1',
+  targetTag: 'Admin#0001',
   details: { before: { key: 'old' }, after: { key: 'new' } },
   ipAddress: '127.0.0.1',
 };
@@ -56,8 +57,9 @@ describe('logAuditEvent', () => {
     expect(params[3]).toBe('config.update');
     expect(params[4]).toBe('config');
     expect(params[5]).toBe('guild1');
-    expect(JSON.parse(params[6])).toEqual(BASE_EVENT.details);
-    expect(params[7]).toBe('127.0.0.1');
+    expect(params[6]).toBe('Admin#0001');
+    expect(JSON.parse(params[7])).toEqual(BASE_EVENT.details);
+    expect(params[8]).toBe('127.0.0.1');
   });
 
   it('logs info after successful insert', async () => {
@@ -80,8 +82,9 @@ describe('logAuditEvent', () => {
     expect(params[2]).toBeNull(); // userTag
     expect(params[4]).toBeNull(); // targetType
     expect(params[5]).toBeNull(); // targetId
-    expect(params[6]).toBeNull(); // details
-    expect(params[7]).toBeNull(); // ipAddress
+    expect(params[6]).toBe(''); // targetTag (NOT NULL column)
+    expect(params[7]).toBeNull(); // details
+    expect(params[8]).toBeNull(); // ipAddress
   });
 
   it('serialises details as JSON string', async () => {
@@ -89,7 +92,7 @@ describe('logAuditEvent', () => {
     const details = { amount: 100, reason: 'test' };
     await logAuditEvent(pool, { ...BASE_EVENT, details });
     const params = pool.query.mock.calls[0][1];
-    expect(params[6]).toBe(JSON.stringify(details));
+    expect(params[7]).toBe(JSON.stringify(details));
   });
 
   it('warns and skips when pool is null', async () => {

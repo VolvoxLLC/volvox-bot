@@ -301,7 +301,7 @@ describe('CSV helpers', () => {
     it('should produce header line for empty array', () => {
       const csv = rowsToCsv([]);
       expect(csv).toBe(
-        'id,guild_id,user_id,action,target_type,target_id,details,ip_address,created_at',
+        'id,guild_id,user_id,user_tag,action,target_type,target_id,target_tag,details,ip_address,created_at',
       );
     });
 
@@ -311,9 +311,11 @@ describe('CSV helpers', () => {
           id: 1,
           guild_id: 'guild1',
           user_id: 'user1',
+          user_tag: 'User#0001',
           action: 'config.update',
           target_type: null,
           target_id: null,
+          target_tag: null,
           details: null,
           ip_address: '127.0.0.1',
           created_at: '2026-01-01T00:00:00Z',
@@ -424,7 +426,7 @@ describe('GET /:id/audit-log/export', () => {
     expect(res.status).toBe(200);
     expect(res.headers['content-type']).toContain('text/csv');
     expect(res.headers['content-disposition']).toContain('attachment');
-    expect(res.text).toContain('guild_id,user_id,action');
+    expect(res.text).toContain('guild_id,user_id,user_tag,action');
     expect(res.text).toContain('config.update');
   });
 

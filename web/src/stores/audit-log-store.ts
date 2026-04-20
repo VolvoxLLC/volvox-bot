@@ -5,9 +5,11 @@ interface AuditEntry {
   id: number;
   guild_id: string;
   user_id: string;
+  user_tag?: string | null;
   action: string;
   target_type: string | null;
   target_id: string | null;
+  target_tag?: string | null;
   details: Record<string, unknown> | null;
   ip_address: string | null;
   created_at: string;

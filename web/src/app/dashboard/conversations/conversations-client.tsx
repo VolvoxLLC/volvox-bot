@@ -1,6 +1,7 @@
 'use client';
 
 import { Hash, MessageSquare, Search, X } from 'lucide-react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { EmptyState } from '@/components/dashboard/empty-state';
@@ -52,6 +53,18 @@ function formatDuration(first: string, last: string): string {
 
 const PAGE_SIZE = 25;
 
+/**
+ * Renders the Conversations client UI for a selected guild, including filters, stats, results table, and pagination.
+ *
+ * Displays an empty prompt when no guild is selected. When a guild is selected the component:
+ * - loads and shows text channels for channel filtering,
+ * - fetches and displays paginated conversations with debounced search and channel filters,
+ * - shows loading skeletons, error banner, or empty states as appropriate,
+ * - navigates to a conversation detail on row click,
+ * - redirects to `/login` if the conversation fetch reports `'unauthorized'`.
+ *
+ * @returns The Conversations client UI as a JSX element.
+ */
 export default function ConversationsClient() {
   const router = useRouter();
   const {
@@ -66,6 +79,7 @@ export default function ConversationsClient() {
   const [channelFilter, setChannelFilter] = useState(currentOpts.channel);
   const [page, setPage] = useState(currentOpts.page);
   const [channels, setChannels] = useState<Channel[]>([]);
+  const [brokenAvatars, setBrokenAvatars] = useState<Set<string>>(() => new Set());
   const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [debouncedSearch, setDebouncedSearch] = useState(currentOpts.search);
 
@@ -74,6 +88,7 @@ export default function ConversationsClient() {
     setSearch('');
     setChannelFilter('');
     setPage(1);
+    setBrokenAvatars(new Set());
   }, []);
   const guildId = useGuildSelection({ onGuildChange });
 
@@ -287,15 +302,41 @@ export default function ConversationsClient() {
                         </TableCell>
                         <TableCell>
                           <div className="flex -space-x-1">
-                            {convo.participants.slice(0, 3).map((p) => (
-                              <div
-                                key={p.username}
-                                className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-white ring-2 ring-card ${p.role === 'user' ? 'bg-primary/80' : 'bg-muted-foreground/50'}`}
-                                title={`${p.username} (${p.role})`}
-                              >
-                                {p.username.slice(0, 2).toUpperCase()}
-                              </div>
-                            ))}
+                            {convo.participants.slice(0, 3).map((p) => {
+                              const avatarKey = `${p.userId ?? p.username}:${p.avatar ?? ''}`;
+                              const avatarSrc = p.avatar ?? '';
+                              const showAvatar =
+                                avatarSrc.length > 0 && !brokenAvatars.has(avatarKey);
+
+                              return (
+                                <div
+                                  key={`${p.userId ?? 'unknown'}-${p.username}`}
+                                  className="group relative"
+                                  title={`${p.username} (${p.role})`}
+                                >
+                                  {showAvatar ? (
+                                    <Image
+                                      src={avatarSrc}
+                                      alt={p.username}
+                                      width={24}
+                                      height={24}
+                                      className="h-6 w-6 rounded-full border-2 border-card object-cover"
+                                      onError={() => {
+                                        setBrokenAvatars((current) =>
+                                          new Set(current).add(avatarKey),
+                                        );
+                                      }}
+                                    />
+                                  ) : (
+                                    <div
+                                      className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-white ring-2 ring-card ${p.role === 'user' ? 'bg-primary/80' : 'bg-muted-foreground/50'}`}
+                                    >
+                                      {p.username.slice(0, 2).toUpperCase()}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
                             {convo.participants.length > 3 && (
                               <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-[10px] font-bold ring-2 ring-card">
                                 +{convo.participants.length - 3}

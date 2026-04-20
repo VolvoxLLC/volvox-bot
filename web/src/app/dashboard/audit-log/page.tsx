@@ -1,7 +1,8 @@
 'use client';
 
-import { ChevronDown, ChevronRight, ClipboardList, Search, X } from 'lucide-react';
+import { Check, ChevronDown, ChevronRight, ClipboardList, Copy, Search, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import type { MouseEvent } from 'react';
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { EmptyState } from '@/components/dashboard/empty-state';
 import { Badge } from '@/components/ui/badge';
@@ -35,6 +36,12 @@ function formatDate(iso: string): string {
   });
 }
 
+/**
+ * Selects a UI variant name based on keywords present in an audit action string.
+ *
+ * @param action - The audit action identifier to inspect; substring matches are case-sensitive.
+ * @returns `destructive` if `action` includes "delete", `default` if it includes "create", `secondary` if it includes "update", `outline` otherwise.
+ */
 function actionVariant(action: string): 'default' | 'secondary' | 'destructive' | 'outline' {
   if (action.includes('delete')) return 'destructive';
   if (action.includes('create')) return 'default';
@@ -42,8 +49,66 @@ function actionVariant(action: string): 'default' | 'secondary' | 'destructive' 
   return 'outline';
 }
 
+/**
+ * Copies the provided string to the clipboard and shows a transient visual confirmation while preventing the click from bubbling.
+ *
+ * @param value - The string to copy to the user's clipboard
+ */
+function CopyButton({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+  const resetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (resetTimeoutRef.current) {
+        clearTimeout(resetTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleCopy = async (e: MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+
+    if (!navigator.clipboard?.writeText) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+
+      if (resetTimeoutRef.current) {
+        clearTimeout(resetTimeoutRef.current);
+      }
+
+      resetTimeoutRef.current = setTimeout(() => {
+        setCopied(false);
+        resetTimeoutRef.current = null;
+      }, 2000);
+    } catch {
+      setCopied(false);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className="ml-2 inline-flex items-center justify-center rounded p-1 text-muted-foreground/30 transition-colors hover:bg-muted/50 hover:text-foreground active:scale-95"
+      aria-label="Copy ID"
+    >
+      {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+    </button>
+  );
+}
+
 const PAGE_SIZE = 25;
 
+/**
+ * Renders a non-interactive skeleton table that mirrors the audit log's columns and responsive layout.
+ *
+ * @returns A JSX element containing placeholder rows and cells matching the audit log table structure for loading states.
+ */
 function AuditLogSkeleton() {
   return (
     <div className="overflow-x-auto rounded-[24px] border border-border/40 bg-card/40 backdrop-blur-2xl shadow-lg">
@@ -106,6 +171,16 @@ const ACTION_OPTIONS = [
   'tickets.update',
 ];
 
+/**
+ * Render the audit log page for the currently selected guild, showing stats, filter controls,
+ * a paginated table of audit entries with expandable details, and error/empty states.
+ *
+ * The component manages local UI state (expanded rows, debounced user search) and drives the
+ * audit log store for filtering and fetching. If a fetch result indicates `"unauthorized"`,
+ * the router is redirected to `/login`.
+ *
+ * @returns A React element that renders the audit log UI.
+ */
 export default function AuditLogPage() {
   const router = useRouter();
   const { entries, total, loading, error, filters, setFilters, fetch } = useAuditLogStore();
@@ -341,13 +416,35 @@ export default function AuditLogPage() {
                             <TableCell>
                               <Badge variant={actionVariant(entry.action)}>{entry.action}</Badge>
                             </TableCell>
-                            <TableCell className="font-mono text-sm text-foreground/80">
-                              {entry.user_id}
+                            <TableCell className="text-sm text-foreground/80">
+                              <div className="flex flex-col">
+                                <span className="font-semibold">
+                                  {entry.user_tag || `User ${entry.user_id.slice(-4)}`}
+                                </span>
+                                <div className="flex items-center text-[10px] font-mono text-muted-foreground/50">
+                                  {entry.user_id}
+                                  <CopyButton value={entry.user_id} />
+                                </div>
+                              </div>
                             </TableCell>
                             <TableCell className="hidden text-sm text-muted-foreground/60 md:table-cell">
-                              {entry.target_type && entry.target_id
-                                ? `${entry.target_type}:${entry.target_id}`
-                                : '—'}
+                              {entry.target_id ? (
+                                <div className="flex flex-col">
+                                  <span className="font-semibold text-foreground/70">
+                                    {entry.target_tag || `Target ${entry.target_id.slice(-4)}`}
+                                  </span>
+                                  <div className="flex items-center text-[10px] font-mono text-muted-foreground/40">
+                                    <span>
+                                      {entry.target_type
+                                        ? `${entry.target_type}:${entry.target_id}`
+                                        : entry.target_id}
+                                    </span>
+                                    <CopyButton value={entry.target_id} />
+                                  </div>
+                                </div>
+                              ) : (
+                                '—'
+                              )}
                             </TableCell>
                             <TableCell className="text-sm text-muted-foreground/60">
                               {formatDate(entry.created_at)}
@@ -358,10 +455,12 @@ export default function AuditLogPage() {
                           </TableRow>
                           {isExpanded && entry.details && (
                             <TableRow key={`${entry.id}-details`} className="border-border/10">
-                              <TableCell colSpan={6} className="bg-background/20 p-4">
-                                <pre className="max-h-64 overflow-auto rounded-[14px] border border-border/30 bg-background/50 p-3 text-xs text-foreground/70">
-                                  {JSON.stringify(entry.details, null, 2)}
-                                </pre>
+                              <TableCell colSpan={6} className="max-w-0 bg-background/20 p-4">
+                                <div className="w-full overflow-hidden rounded-[14px] border border-border/30 bg-background/50">
+                                  <pre className="max-h-64 w-full overflow-x-auto p-3 text-xs text-foreground/70 scrollbar-thin scrollbar-thumb-border/20">
+                                    {JSON.stringify(entry.details, null, 2)}
+                                  </pre>
+                                </div>
                               </TableCell>
                             </TableRow>
                           )}

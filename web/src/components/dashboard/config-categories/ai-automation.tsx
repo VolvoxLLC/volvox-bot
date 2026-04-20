@@ -14,7 +14,13 @@ import { ToggleSwitch } from '../toggle-switch';
 import { ConfigCategoryLayout } from './config-category-layout';
 
 /**
- * AI & Automation category — managing chat, automod, triage, and memory.
+ * Render the AI & Automation configuration UI for the chat, automod, triage, and memory feature tabs.
+ *
+ * Renders controls and panels appropriate to the currently active feature tab and wires updates into
+ * the shared draft configuration via the config context. Returns `null` when the draft configuration
+ * or the active tab is not available.
+ *
+ * @returns The component's rendered JSX element, or `null` when configuration or the active feature is unavailable.
  */
 export function AiAutomationCategory() {
   const { draftConfig, saving, guildId, updateDraftConfig, activeTabId } = useConfigContext();
@@ -296,6 +302,7 @@ export function AiAutomationCategory() {
                               [cat]: v,
                             });
                           }}
+                          onFocus={(e) => e.target.select()}
                           disabled={saving}
                           className={cn(
                             inputClasses,
@@ -382,6 +389,7 @@ export function AiAutomationCategory() {
                     type="text"
                     value={draftConfig.triage?.classifyModel ?? ''}
                     onChange={(e) => updateTriageField('classifyModel', e.target.value)}
+                    onFocus={(e) => e.target.select()}
                     disabled={saving}
                     className={inputClasses}
                     placeholder="e.g. gpt-4o-mini"
@@ -399,6 +407,7 @@ export function AiAutomationCategory() {
                     type="text"
                     value={draftConfig.triage?.respondModel ?? ''}
                     onChange={(e) => updateTriageField('respondModel', e.target.value)}
+                    onFocus={(e) => e.target.select()}
                     disabled={saving}
                     className={inputClasses}
                     placeholder="e.g. claude-3-5-sonnet"
@@ -509,6 +518,7 @@ export function AiAutomationCategory() {
                       const num = parseNumberInput(e.target.value, 0);
                       if (num !== undefined) updateTriageField('classifyBudget', num);
                     }}
+                    onFocus={(e) => e.target.select()}
                     disabled={saving}
                     className={inputClasses}
                   />
@@ -527,6 +537,7 @@ export function AiAutomationCategory() {
                       const num = parseNumberInput(e.target.value, 0);
                       if (num !== undefined) updateTriageField('respondBudget', num);
                     }}
+                    onFocus={(e) => e.target.select()}
                     disabled={saving}
                     className={inputClasses}
                   />
@@ -600,6 +611,7 @@ export function AiAutomationCategory() {
                   const num = parseNumberInput(e.target.value, 1);
                   if (num !== undefined) updateMemoryField('maxContextMemories', num);
                 }}
+                onFocus={(e) => e.target.select()}
                 disabled={saving}
                 className={cn(inputClasses, 'w-40')}
               />

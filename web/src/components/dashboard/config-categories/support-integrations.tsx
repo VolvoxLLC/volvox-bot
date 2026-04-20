@@ -7,6 +7,14 @@ import { RoleSelector } from '@/components/ui/role-selector';
 import { cn } from '@/lib/utils';
 import { ConfigCategoryLayout } from './config-category-layout';
 
+/**
+ * Renders the integrations configuration panel for the currently active tab (tickets or GitHub feed).
+ *
+ * The component reads editable state from the config context and renders controls for toggling the feature
+ * and editing its settings. If no draft configuration or no active tab is available, nothing is rendered.
+ *
+ * @returns The rendered configuration UI for the active integration tab, or `null` when no draft config or active tab exists.
+ */
 export function SupportIntegrationsCategory() {
   const { draftConfig, saving, guildId, updateDraftConfig, activeTabId } = useConfigContext();
 
@@ -147,6 +155,7 @@ export function SupportIntegrationsCategory() {
                         }));
                       }
                     }}
+                    onFocus={(e) => e.target.select()}
                     disabled={saving}
                     className={cn(inputClasses, 'pr-12 text-center')}
                   />
@@ -177,6 +186,7 @@ export function SupportIntegrationsCategory() {
                       }));
                     }
                   }}
+                  onFocus={(e) => e.target.select()}
                   disabled={saving}
                   className={cn(inputClasses, 'text-center')}
                 />
@@ -274,6 +284,7 @@ export function SupportIntegrationsCategory() {
                       }));
                     }
                   }}
+                  onFocus={(e) => e.target.select()}
                   disabled={saving}
                   className={cn(inputClasses, 'pr-12 text-center')}
                 />

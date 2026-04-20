@@ -57,7 +57,7 @@ export interface ModStats {
   byAction: Partial<Record<ModAction, number>>;
   topTargets: Array<{
     userId: string;
-    tag: string;
+    tag: string | null;
     count: number;
   }>;
 }

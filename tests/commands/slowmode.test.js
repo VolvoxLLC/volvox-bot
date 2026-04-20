@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('../../src/db.js', () => ({ getPool: vi.fn().mockReturnValue(null) }));
+vi.mock('../../src/modules/auditLogger.js', () => ({
+  logAuditEvent: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock('../../src/utils/safeSend.js', () => ({
   safeSend: (ch, opts) => ch.send(opts),
   safeReply: (t, opts) => t.reply(opts),
@@ -53,7 +58,7 @@ function createInteraction(duration = '5m', channel = null) {
     channel: mockChannel,
     guild: { id: 'guild1' },
     user: { id: 'mod1', tag: 'Mod#0001' },
-    client: {},
+    client: { users: { fetch: vi.fn().mockResolvedValue(null) } },
     deferReply: vi.fn().mockResolvedValue(undefined),
     editReply: vi.fn().mockResolvedValue(undefined),
   };
