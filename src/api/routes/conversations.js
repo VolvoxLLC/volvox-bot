@@ -289,7 +289,7 @@ router.get('/', conversationsRateLimit, requireGuildAdmin, validateGuild, async 
     const result = await dbPool.query(
       `WITH lag_step AS (
          SELECT
-           id, channel_id, username, role, content, created_at,
+           id, channel_id, username, role, content, created_at, user_id,
            CASE
              WHEN LAG(created_at) OVER (PARTITION BY channel_id ORDER BY created_at) IS NULL
                OR EXTRACT(EPOCH FROM (
@@ -317,7 +317,7 @@ router.get('/', conversationsRateLimit, requireGuildAdmin, validateGuild, async 
            COUNT(*)::int                                        AS message_count,
            (ARRAY_AGG(content ORDER BY created_at))[1]         AS preview_content,
            ARRAY_AGG(DISTINCT
-             COALESCE(username, 'unknown') || ':::' || role
+             COALESCE(username, 'unknown') || ':::' || role || ':::' || COALESCE(user_id, 'unknown')
            )                                                    AS participant_pairs
          FROM numbered
          GROUP BY channel_id, conv_num
@@ -339,12 +339,22 @@ router.get('/', conversationsRateLimit, requireGuildAdmin, validateGuild, async 
       const preview = content.slice(0, 100) + (content.length > 100 ? '\u2026' : '');
       const channelName = req.guild?.channels?.cache?.get(row.channel_id)?.name || null;
 
-      // Parse participant_pairs encoded as "username:::role"
+      // Parse participant_pairs encoded as "username:::role:::userId"
       const participants = (row.participant_pairs || []).map((p) => {
-        const sepIdx = p.lastIndexOf(':::');
-        return sepIdx === -1
-          ? { username: p, role: 'unknown' }
-          : { username: p.slice(0, sepIdx), role: p.slice(sepIdx + 3) };
+        const parts = p.split(':::');
+        const userId = parts.pop();
+        const role = parts.pop();
+        const username = parts.join(':::');
+
+        const resolvedUserId = userId === 'unknown' ? null : userId;
+        const member = resolvedUserId ? req.guild?.members.cache.get(resolvedUserId) : null;
+
+        return {
+          username: username || 'unknown',
+          role: role || 'unknown',
+          userId: resolvedUserId,
+          avatar: member?.user.displayAvatarURL() || null,
+        };
       });
 
       return {
@@ -814,7 +824,7 @@ router.get(
       // Fetch messages in a bounded time window around the anchor (±2 hours)
       // to avoid loading the entire channel history
       const messagesResult = await dbPool.query(
-        `SELECT id, channel_id, role, content, username, created_at, discord_message_id
+        `SELECT id, channel_id, role, content, username, created_at, discord_message_id, user_id
          FROM conversations
          WHERE guild_id = $1 AND channel_id = $2
            AND created_at BETWEEN ($3::timestamptz - interval '2 hours')
@@ -836,6 +846,7 @@ router.get(
         role: msg.role,
         content: msg.content,
         username: msg.username,
+        userId: msg.user_id || null,
         createdAt: msg.created_at,
         discordMessageId: msg.discord_message_id || null,
       }));
@@ -863,14 +874,35 @@ router.get(
 
       const channelName = req.guild?.channels?.cache?.get(anchor.channel_id)?.name || null;
 
-      const enrichedMessages = messages.map((m) => ({
-        ...m,
-        flagStatus: flaggedMessageIds.get(m.id) || null,
-        messageUrl:
-          m.discordMessageId && guildId
-            ? `https://discord.com/channels/${guildId}/${anchor.channel_id}/${m.discordMessageId}`
-            : null,
-      }));
+      const enrichedMessages = messages.map((m) => {
+        const member = m.userId ? req.guild?.members.cache.get(m.userId) : null;
+        return {
+          ...m,
+          avatarUrl: member?.user.displayAvatarURL() || null,
+          flagStatus: flaggedMessageIds.get(m.id) || null,
+          messageUrl:
+            m.discordMessageId && guildId
+              ? `https://discord.com/channels/${guildId}/${anchor.channel_id}/${m.discordMessageId}`
+              : null,
+        };
+      });
+
+      // Resolve all mentions found in the conversation
+      const mentionIds = new Set();
+      for (const msg of messages) {
+        const matches = msg.content?.matchAll(/<@!?(\d+)>/g) || [];
+        for (const match of matches) {
+          mentionIds.add(match[1]);
+        }
+      }
+
+      const mentionMap = {};
+      for (const id of mentionIds) {
+        const member = req.guild?.members.cache.get(id);
+        if (member) {
+          mentionMap[id] = member.user.username;
+        }
+      }
 
       res.json({
         messages: enrichedMessages,
@@ -878,6 +910,7 @@ router.get(
         channelName,
         duration: Math.round(durationMs / 1000),
         tokenEstimate: estimateTokens(messages.map((m) => m.content || '').join('')),
+        mentionMap,
       });
     } catch (err) {
       logError('Failed to fetch conversation detail', {

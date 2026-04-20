@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { SiteFooter } from '@/components/layout/site-footer';
 import { AnalyticsProvider } from '@/contexts/analytics-context';
 import { DashboardTitleSync } from './dashboard-title-sync';
 import { Header } from './header';
@@ -30,10 +31,11 @@ export function DashboardShell({ children }: DashboardShellProps) {
         <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <Header />
 
-          <main className="min-h-0 flex-1 overflow-y-auto scrollbar-thin">
-            <div className="mx-auto w-full max-w-[1440px] px-4 py-6 md:px-8 lg:px-10">
+          <main className="min-h-0 flex-1 flex flex-col overflow-y-auto scrollbar-thin">
+            <div className="mx-auto w-full max-w-[1440px] flex-1 px-4 py-6 md:px-8 lg:px-10">
               <div className="dashboard-fade-in pb-12">{children}</div>
             </div>
+            <SiteFooter />
           </main>
         </div>
       </div>

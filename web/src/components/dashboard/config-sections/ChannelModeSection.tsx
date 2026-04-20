@@ -315,6 +315,7 @@ export function ChannelModeSection({
             placeholder="Search channels..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            onFocus={(e) => e.target.select()}
             disabled={saving || loading}
             aria-label="Search channels by name"
             className={cn(

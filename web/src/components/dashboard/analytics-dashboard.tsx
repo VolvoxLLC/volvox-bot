@@ -274,6 +274,17 @@ function LiveActivityFeed() {
   );
 }
 
+/**
+ * Render the analytics dashboard UI showing workspace metrics, charts, and interactive filters.
+ *
+ * Renders KPI cards with optional comparison deltas, realtime metrics and activity feed, message
+ * volume and AI cost charts, top channels and command telemetry tables, community engagement and
+ * XP economy summaries, an activity heatmap, and CSV export functionality. Handles loading,
+ * empty, and error states based on analytics data and exposes channel filtering and refresh actions
+ * via hooks.
+ *
+ * @returns A React element representing the complete analytics dashboard interface
+ */
 export function AnalyticsDashboard() {
   const chart = useChartTheme();
   const { analytics, loading, error, compareMode, channelFilter, setChannelFilter, refresh } =
@@ -658,25 +669,40 @@ export function AnalyticsDashboard() {
           <div className="flex flex-wrap gap-2">
             <Button
               size="sm"
-              variant={channelFilter === null ? 'default' : 'outline'}
+              variant={channelFilter === null ? 'default' : 'ghost'}
               onClick={() => setChannelFilter(null)}
-              className="rounded-full shadow-none"
+              aria-pressed={channelFilter === null}
+              className={cn(
+                'rounded-full px-5 transition-all duration-300 font-bold text-[11px] uppercase',
+                'tracking-wider',
+                channelFilter === null
+                  ? 'shadow-[0_0_20px_hsl(var(--primary)/0.25)]'
+                  : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/30',
+              )}
             >
               System Wide
             </Button>
-            {topChannels.map((channel) => (
-              <Button
-                key={channel.channelId}
-                size="sm"
-                variant={channelFilter === channel.channelId ? 'default' : 'outline'}
-                className="rounded-full shadow-none bg-muted/30 hover:bg-muted/50"
-                onClick={() =>
-                  setChannelFilter(channel.channelId === channelFilter ? null : channel.channelId)
-                }
-              >
-                {channel.name}
-              </Button>
-            ))}
+            {topChannels.map((channel) => {
+              const isActive = channelFilter === channel.channelId;
+              return (
+                <Button
+                  key={channel.channelId}
+                  size="sm"
+                  variant={isActive ? 'default' : 'ghost'}
+                  aria-pressed={isActive}
+                  className={cn(
+                    'rounded-full px-5 transition-all duration-300 font-bold',
+                    'text-[11px] uppercase tracking-wider',
+                    isActive
+                      ? 'shadow-[0_0_20px_hsl(var(--primary)/0.25)]'
+                      : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/30',
+                  )}
+                  onClick={() => setChannelFilter(isActive ? null : channel.channelId)}
+                >
+                  {channel.name}
+                </Button>
+              );
+            })}
           </div>
         </DashboardCard>
       </div>
@@ -834,6 +860,7 @@ export function AnalyticsDashboard() {
                         tickLine={false}
                       />
                       <RechartsTooltip
+                        cursor={{ fill: 'transparent' }}
                         contentStyle={{
                           backgroundColor: chart.tooltipBg,
                           borderColor: chart.tooltipBorder,
@@ -901,6 +928,7 @@ export function AnalyticsDashboard() {
                       tickLine={false}
                     />
                     <RechartsTooltip
+                      cursor={{ fill: 'transparent' }}
                       contentStyle={{
                         backgroundColor: chart.tooltipBg,
                         borderColor: chart.tooltipBorder,

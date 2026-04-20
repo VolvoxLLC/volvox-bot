@@ -109,19 +109,24 @@ export function escapeCsvValue(value) {
 }
 
 /**
- * Convert an array of audit log rows to CSV string.
+ * Serialize audit log rows into an RFC 4180-compatible CSV string using a fixed header order.
  *
- * @param {Object[]} rows
- * @returns {string}
+ * The CSV header and per-row columns are: id, guild_id, user_id, user_tag, action, target_type,
+ * target_id, target_tag, details, ip_address, created_at.
+ *
+ * @param {Object[]} rows - Array of audit log row objects containing the header keys above.
+ * @returns {string} CSV text with a header row followed by one line per input row; values are escaped as needed.
  */
 export function rowsToCsv(rows) {
   const headers = [
     'id',
     'guild_id',
     'user_id',
+    'user_tag',
     'action',
     'target_type',
     'target_id',
+    'target_tag',
     'details',
     'ip_address',
     'created_at',
@@ -161,7 +166,7 @@ router.get('/:id/audit-log', auditRateLimit, requireGuildAdmin, validateGuild, a
     const [countResult, entriesResult] = await Promise.all([
       pool.query(`SELECT COUNT(*)::int AS total FROM audit_logs WHERE ${whereClause}`, params),
       pool.query(
-        `SELECT id, guild_id, user_id, action, target_type, target_id, details, ip_address, created_at
+        `SELECT id, guild_id, user_id, user_tag, action, target_type, target_id, target_tag, details, ip_address, created_at
            FROM audit_logs
            WHERE ${whereClause}
            ORDER BY created_at DESC
@@ -218,7 +223,7 @@ router.get(
       const whereClause = conditions.join(' AND ');
 
       const result = await pool.query(
-        `SELECT id, guild_id, user_id, action, target_type, target_id, details, ip_address, created_at
+        `SELECT id, guild_id, user_id, user_tag, action, target_type, target_id, target_tag, details, ip_address, created_at
            FROM audit_logs
            WHERE ${whereClause}
            ORDER BY created_at DESC

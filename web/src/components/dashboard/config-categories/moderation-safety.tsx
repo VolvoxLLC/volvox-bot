@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { type FocusEvent, useCallback } from 'react';
 import { useConfigContext } from '@/components/dashboard/config-context';
 import { inputClasses, parseNumberInput } from '@/components/dashboard/config-editor-utils';
 import { AuditLogSection } from '@/components/dashboard/config-sections/AuditLogSection';
@@ -11,10 +11,26 @@ import { cn } from '@/lib/utils';
 import { ToggleSwitch } from '../toggle-switch';
 import { ConfigCategoryLayout } from './config-category-layout';
 
+/**
+ * Render the configuration UI for moderation, starboard, permissions, and audit-log feature categories.
+ *
+ * Displays the controls for the currently active category obtained from the configuration context,
+ * wiring feature enable toggles and handlers that update the draft configuration. Returns `null`
+ * when the draft configuration or the active tab is not available.
+ *
+ * @returns The rendered category UI element, or `null` if configuration or active tab is absent.
+ */
 export function ModerationSafetyCategory() {
   const { draftConfig, saving, guildId, updateDraftConfig, activeTabId } = useConfigContext();
 
   const activeTab = activeTabId;
+
+  const selectNumericValueOnFocus = useCallback((event: FocusEvent<HTMLInputElement>) => {
+    // Number inputs do not expose a better cross-browser text selection API than
+    // select(). Keep the current best-effort behavior without changing the control
+    // type, which still highlights the value in Chromium-based browsers.
+    event.currentTarget.select();
+  }, []);
 
   // Moderation state updates
   const updateModerationEnabled = useCallback(
@@ -310,6 +326,7 @@ export function ModerationSafetyCategory() {
                       const num = parseNumberInput(e.target.value, 1);
                       if (num !== undefined) updateRateLimitField('maxMessages', num);
                     }}
+                    onFocus={selectNumericValueOnFocus}
                     disabled={saving}
                     className={cn(inputClasses, 'text-center')}
                   />
@@ -330,6 +347,7 @@ export function ModerationSafetyCategory() {
                       const num = parseNumberInput(e.target.value, 1);
                       if (num !== undefined) updateRateLimitField('windowSeconds', num);
                     }}
+                    onFocus={selectNumericValueOnFocus}
                     disabled={saving}
                     className={cn(inputClasses, 'text-center')}
                   />
@@ -353,6 +371,7 @@ export function ModerationSafetyCategory() {
                       const num = parseNumberInput(e.target.value, 1);
                       if (num !== undefined) updateRateLimitField('muteAfterTriggers', num);
                     }}
+                    onFocus={selectNumericValueOnFocus}
                     disabled={saving}
                     className={cn(inputClasses, 'text-center')}
                   />
@@ -373,6 +392,7 @@ export function ModerationSafetyCategory() {
                       const num = parseNumberInput(e.target.value, 1);
                       if (num !== undefined) updateRateLimitField('muteWindowSeconds', num);
                     }}
+                    onFocus={selectNumericValueOnFocus}
                     disabled={saving}
                     className={cn(inputClasses, 'text-center')}
                   />
@@ -393,6 +413,7 @@ export function ModerationSafetyCategory() {
                       const num = parseNumberInput(e.target.value, 1);
                       if (num !== undefined) updateRateLimitField('muteDurationSeconds', num);
                     }}
+                    onFocus={selectNumericValueOnFocus}
                     disabled={saving}
                     className={cn(inputClasses, 'text-center')}
                   />
@@ -436,6 +457,7 @@ export function ModerationSafetyCategory() {
                       .filter(Boolean),
                   )
                 }
+                onFocus={(e) => e.target.select()}
                 disabled={saving}
                 className={inputClasses}
                 placeholder="example.com, spam.net"
@@ -549,6 +571,7 @@ export function ModerationSafetyCategory() {
                     const num = parseNumberInput(e.target.value, 1);
                     if (num !== undefined) updateStarboardField('threshold', num);
                   }}
+                  onFocus={selectNumericValueOnFocus}
                   disabled={saving}
                   className={inputClasses}
                 />
@@ -567,6 +590,7 @@ export function ModerationSafetyCategory() {
                     type="text"
                     value={draftConfig.starboard?.emoji ?? '*'}
                     onChange={(e) => updateStarboardField('emoji', e.target.value.trim() || '*')}
+                    onFocus={(e) => e.target.select()}
                     disabled={saving}
                     className={inputClasses}
                     placeholder="*"
@@ -698,6 +722,7 @@ export function ModerationSafetyCategory() {
                       .filter(Boolean),
                   )
                 }
+                onFocus={(e) => e.target.select()}
                 disabled={saving}
                 className={inputClasses}
                 placeholder="Comma-separated user IDs"

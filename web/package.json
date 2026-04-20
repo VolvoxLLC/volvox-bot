@@ -41,12 +41,13 @@
     "react-dom": "^19.2.5",
     "recharts": "^3.8.1",
     "server-only": "^0.0.1",
-    "simple-icons": "^16.16.0",
+    "simple-icons": "^16.17.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.5.0",
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.4.12",
     "@playwright/test": "^1.59.0",
     "@tailwindcss/postcss": "^4.2.2",
     "@testing-library/jest-dom": "^6.9.1",
@@ -61,7 +62,7 @@
     "postcss": "^8.5.10",
     "tailwindcss": "^4.2.2",
     "typescript": "^6.0.3",
-    "vite": "8.0.8",
+    "vite": "8.0.9",
     "vitest": "^4.1.3"
   }
 }

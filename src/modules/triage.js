@@ -829,16 +829,15 @@ export function stopTriage() {
 }
 
 /**
- * Append a Discord message to the channel's triage buffer and trigger evaluation when conditions are met.
+ * Append a Discord message to the channel's triage buffer and trigger evaluation when appropriate.
  *
- * Skips processing if triage is disabled, the channel is not eligible, or the message is empty/attachment-only.
- * Truncates message content to 1000 characters and, when the message is a reply, captures up to 500 characters of the referenced message as reply context.
- * Adds the entry to the per-channel bounded ring buffer and records the message in conversation history.
- * If configured trigger words are present, forces an immediate evaluation (and falls back to scheduling if forcing fails); otherwise schedules a dynamic evaluation timer for the channel.
+ * Builds a sanitized buffer entry (truncating message content to 1000 characters), optionally attaches up to
+ * 500 characters of referenced message context for replies, stores the entry in the per-channel ring buffer,
+ * and records the message in conversation history. If configured trigger words are present, attempts an immediate
+ * evaluation and falls back to scheduling; otherwise sets or refreshes the dynamic evaluation timer for the channel.
  *
  * @param {import('discord.js').Message} message - The Discord message to accumulate.
- * @param {Object} [msgConfig] - Optional config override. When provided, used directly instead
- *   of calling {@link getConfig}. Live config is fetched via getConfig when not provided.
+ * @param {Object} [msgConfig] - Optional configuration override; when provided it is used instead of calling getConfig.
  */
 export async function accumulateMessage(message, msgConfig) {
   const liveConfig = msgConfig || getConfig(message.guild?.id || null);
@@ -917,6 +916,7 @@ export async function accumulateMessage(message, msgConfig) {
     entry.author,
     entry.messageId,
     message.guild?.id || null,
+    entry.userId,
   );
 
   // Check for trigger words -- instant evaluation

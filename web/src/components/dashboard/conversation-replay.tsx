@@ -1,7 +1,7 @@
 'use client';
 
 import { AlertTriangle, Clock, ExternalLink, Flag, Hash, Zap } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -27,6 +27,8 @@ export interface ConversationMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
   username: string;
+  userId?: string | null;
+  avatarUrl?: string | null;
   createdAt: string;
   flagStatus?: string | null;
   messageUrl?: string | null;
@@ -38,6 +40,7 @@ interface ConversationReplayProps {
   channelName?: string | null;
   duration: number;
   tokenEstimate: number;
+  mentionMap?: Record<string, string>;
   guildId: string;
   onFlagSubmitted?: () => void;
 }
@@ -65,12 +68,28 @@ function shouldShowTimestamp(current: string, previous: string | null): boolean 
   return diff > 5 * 60 * 1000;
 }
 
+/**
+ * Renders a read-only replay of a conversation with timestamps, participant avatars, mention resolution, and AI response flagging UI.
+ *
+ * Renders messages with compact stats (channel, duration, token estimate, message count), resolves Discord-style mentions (`<@123>` / `<@!123>`) to usernames using `mentionMap` (fallbacks to participants observed in `messages`), displays avatars when available, and provides a dialog to flag assistant responses which sends a POST to the guild conversation flag endpoint and calls `onFlagSubmitted` on success.
+ *
+ * @param props.messages - Ordered list of conversation messages to display.
+ * @param props.channelId - Channel identifier used when `channelName` is not provided.
+ * @param props.channelName - Optional human-readable channel name.
+ * @param props.duration - Conversation duration in seconds used for the stats strip.
+ * @param props.tokenEstimate - Estimated token count shown in the stats strip.
+ * @param props.mentionMap - Optional mapping of userId → username used when resolving mention tokens.
+ * @param props.guildId - Guild identifier required for submitting flag requests.
+ * @param props.onFlagSubmitted - Optional callback invoked after a successful flag submission.
+ * @returns The conversation replay React element.
+ */
 export function ConversationReplay({
   messages,
   channelId,
   channelName,
   duration,
   tokenEstimate,
+  mentionMap,
   guildId,
   onFlagSubmitted,
 }: ConversationReplayProps) {
@@ -80,6 +99,7 @@ export function ConversationReplay({
   const [flagNotes, setFlagNotes] = useState('');
   const [flagSubmitting, setFlagSubmitting] = useState(false);
   const [flagError, setFlagError] = useState<string | null>(null);
+  const [brokenAvatarMessageIds, setBrokenAvatarMessageIds] = useState<Set<number>>(new Set());
 
   const conversationId = messages[0]?.id;
 
@@ -121,6 +141,27 @@ export function ConversationReplay({
     }
   }, [flagMessageId, flagReason, flagNotes, conversationId, guildId, onFlagSubmitted]);
 
+  const participantMap = useMemo(() => {
+    const map = new Map<string, string>();
+
+    for (const msg of messages) {
+      if (msg.userId && msg.username) {
+        map.set(msg.userId, msg.username);
+      }
+    }
+
+    return map;
+  }, [messages]);
+
+  const resolveMentions = useMemo(
+    () => (content: string) =>
+      content.replace(/<@!?(\d+)>/g, (match, userId) => {
+        const username = mentionMap?.[userId] || participantMap.get(userId);
+        return username ? `@${username}` : match;
+      }),
+    [mentionMap, participantMap],
+  );
+
   return (
     <div className="space-y-6">
       {/* Stats Strip */}
@@ -158,6 +199,7 @@ export function ConversationReplay({
             const isFlagged = msg.flagStatus === 'open';
             const isUser = msg.role === 'user';
             const isSystem = msg.role === 'system';
+            const hasAvatar = Boolean(msg.avatarUrl) && !brokenAvatarMessageIds.has(msg.id);
 
             if (isSystem) {
               return (
@@ -182,13 +224,31 @@ export function ConversationReplay({
                   {/* Avatar */}
                   <div
                     className={cn(
-                      'flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl text-[10px] font-black text-white shadow-lg ring-1 ring-white/10 transition-transform hover:scale-110',
+                      'flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl text-[10px] font-black text-white shadow-lg ring-1 ring-white/10 transition-transform hover:scale-110 overflow-hidden',
                       isUser
                         ? 'bg-gradient-to-br from-primary to-primary/60'
                         : 'bg-gradient-to-br from-muted-foreground/40 to-muted-foreground/20',
                     )}
                   >
-                    {(msg.username || msg.role).slice(0, 2).toUpperCase()}
+                    {hasAvatar ? (
+                      <>
+                        {/* biome-ignore lint/performance/noImgElement: dynamic Discord avatars with fallback */}
+                        <img
+                          src={msg.avatarUrl ?? ''}
+                          alt={msg.username}
+                          className="h-full w-full object-cover"
+                          onError={() => {
+                            setBrokenAvatarMessageIds((prev) => {
+                              const next = new Set(prev);
+                              next.add(msg.id);
+                              return next;
+                            });
+                          }}
+                        />
+                      </>
+                    ) : (
+                      (msg.username || msg.role).slice(0, 2).toUpperCase()
+                    )}
                   </div>
 
                   {/* Bubble Container */}
@@ -229,7 +289,7 @@ export function ConversationReplay({
                       )}
                     >
                       <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">
-                        {msg.content}
+                        {resolveMentions(msg.content)}
                       </p>
 
                       {/* Flagging actions for assistant messages */}
