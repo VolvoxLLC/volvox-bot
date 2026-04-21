@@ -123,7 +123,7 @@ describe('handleWebhook', () => {
 
     expect(mockFetch).not.toHaveBeenCalled();
     expect(warn).toHaveBeenCalledWith(
-      'webhook action failed SSRF validation â€” skipping',
+      'webhook action failed SSRF validation - skipping',
       expect.objectContaining({
         blockedIp: '10.0.0.1',
         reason: 'URL hostname resolves to blocked IP address 10.0.0.1',
@@ -158,7 +158,7 @@ describe('handleWebhook', () => {
 
     expect(mockFetch).not.toHaveBeenCalled();
     expect(warn).toHaveBeenCalledWith(
-      'webhook action has invalid URL — skipping',
+      'webhook action has invalid URL - skipping',
       expect.any(Object),
     );
   });

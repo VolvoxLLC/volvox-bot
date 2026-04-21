@@ -27,12 +27,7 @@ export function validateWebhookUrl(urlString) {
     return { valid: false, reason: ssrfResult.error };
   }
 
-  try {
-    const url = new URL(urlString);
-    return { valid: true, url };
-  } catch {
-    return { valid: false, reason: 'Invalid URL format' };
-  }
+  return { valid: true, url: new URL(urlString) };
 }
 
 /**
@@ -49,13 +44,13 @@ export async function handleWebhook(action, context) {
   // Validate URL
   const { valid, reason } = validateWebhookUrl(action.url);
   if (!valid) {
-    warn('webhook action has invalid URL — skipping', { guildId, userId, url: action.url, reason });
+    warn('webhook action has invalid URL - skipping', { guildId, userId, url: action.url, reason });
     return;
   }
 
   const ssrfResult = await validateUrlForSsrf(action.url, { allowHttp: true });
   if (!ssrfResult.valid) {
-    warn('webhook action failed SSRF validation â€” skipping', {
+    warn('webhook action failed SSRF validation - skipping', {
       guildId,
       userId,
       url: action.url,
@@ -72,7 +67,7 @@ export async function handleWebhook(action, context) {
   try {
     JSON.parse(rendered);
   } catch {
-    warn('webhook payload is not valid JSON after template rendering — sending as-is', {
+    warn('webhook payload is not valid JSON after template rendering - sending as-is', {
       guildId,
       userId,
     });

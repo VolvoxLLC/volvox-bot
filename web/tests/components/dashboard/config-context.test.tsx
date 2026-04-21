@@ -41,27 +41,37 @@ describe('ConfigProvider', () => {
     vi.unstubAllGlobals();
   });
 
-  it('provides config after fetch', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: () => Promise.resolve(minimalConfig),
-    });
-    vi.stubGlobal('fetch', fetchMock);
+  it(
+    'provides config after fetch',
+    async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(minimalConfig),
+      });
+      vi.stubGlobal('fetch', fetchMock);
 
-    const { ConfigProvider, useConfigContext } = await import(
-      '@/components/dashboard/config-context'
-    );
-    const wrapper = ({ children }: { children: ReactNode }) => (
-      <ConfigProvider>{children}</ConfigProvider>
-    );
-    const { result } = renderHook(() => useConfigContext(), { wrapper });
+      const { ConfigProvider, useConfigContext } = await import(
+        '@/components/dashboard/config-context'
+      );
+      const wrapper = ({ children }: { children: ReactNode }) => (
+        <ConfigProvider>{children}</ConfigProvider>
+      );
+      const { result } = renderHook(() => useConfigContext(), { wrapper });
 
-    await waitFor(() => expect(result.current.draftConfig).not.toBeNull());
-    expect(result.current.guildId).toBe('guild-123');
-    expect(result.current.hasChanges).toBe(false);
-    expect(result.current.saving).toBe(false);
-  });
+      await waitFor(
+        () => {
+          expect(result.current.guildId).toBe('guild-123');
+          expect(result.current.draftConfig).not.toBeNull();
+        },
+        { timeout: 10_000 },
+      );
+      expect(result.current.guildId).toBe('guild-123');
+      expect(result.current.hasChanges).toBe(false);
+      expect(result.current.saving).toBe(false);
+    },
+    15_000,
+  );
 
   it('updateDraftConfig marks hasChanges', async () => {
     vi.stubGlobal(

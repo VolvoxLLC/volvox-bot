@@ -1,7 +1,7 @@
 'use client';
 
 import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { generateId } from '@/components/dashboard/config-editor-utils';
 import { Button } from '@/components/ui/button';
 import { ChannelSelector } from '@/components/ui/channel-selector';
@@ -173,6 +173,30 @@ function normalizeDraftEntry(entry?: DeepPartial<XpLevelActionEntry> | null): Xp
     level: entry?.level ?? 1,
     actions: Array.isArray(entry?.actions) ? entry.actions.map(normalizeDraftAction) : [],
   };
+}
+
+function draftEmbedNeedsStableIds(embed?: DeepPartial<XpActionEmbedConfig> | null): boolean {
+  if (!embed || !Array.isArray(embed.fields)) {
+    return false;
+  }
+
+  return embed.fields.some((field) => field && !field.id);
+}
+
+function draftActionNeedsStableIds(action?: DeepPartial<XpLevelAction> | null): boolean {
+  if (!action?.id) {
+    return true;
+  }
+
+  return draftEmbedNeedsStableIds(action.embed);
+}
+
+function draftEntryNeedsStableIds(entry?: DeepPartial<XpLevelActionEntry> | null): boolean {
+  if (!entry?.id) {
+    return true;
+  }
+
+  return Array.isArray(entry.actions) && entry.actions.some(draftActionNeedsStableIds);
 }
 
 function toSingleSelection(value?: string | null): string[] {
@@ -723,6 +747,32 @@ export function XpLevelActionsEditor({
     [rawDefaultActions],
   );
   const nextUnusedLevel = getNextUnusedLevel(levelEntries);
+
+  useEffect(() => {
+    const shouldNormalizeLevelActions = rawLevelActions.some(draftEntryNeedsStableIds);
+    const shouldNormalizeDefaultActions = rawDefaultActions.some(draftActionNeedsStableIds);
+
+    if (!shouldNormalizeLevelActions && !shouldNormalizeDefaultActions) {
+      return;
+    }
+
+    updateDraftConfig((prev) => ({
+      ...prev,
+      xp: {
+        ...prev.xp,
+        levelActions: shouldNormalizeLevelActions
+          ? (Array.isArray(prev.xp?.levelActions) ? prev.xp.levelActions : []).map(
+              normalizeDraftEntry,
+            )
+          : prev.xp?.levelActions,
+        defaultActions: shouldNormalizeDefaultActions
+          ? (Array.isArray(prev.xp?.defaultActions) ? prev.xp.defaultActions : []).map(
+              normalizeDraftAction,
+            )
+          : prev.xp?.defaultActions,
+      },
+    }));
+  }, [rawDefaultActions, rawLevelActions, updateDraftConfig]);
 
   const updateLevelEntries = (updater: (entries: XpLevelActionEntry[]) => XpLevelActionEntry[]) => {
     updateDraftConfig((prev) => ({

@@ -364,4 +364,59 @@ describe('XpLevelActionsEditor', () => {
       expect.objectContaining({ level: 2, actions: [] }),
     ]);
   });
+
+  it('persists generated ids for actions and embed fields back into the draft config', () => {
+    const updateDraftConfig = vi.fn((updater) =>
+      updater({
+        xp: {
+          defaultActions: [
+            {
+              type: 'sendDm',
+              format: 'embed',
+              embed: {
+                description: 'Saved {{level}}',
+                fields: [{ name: 'Level', value: '{{level}}', inline: true }],
+              },
+            },
+          ],
+          levelActions: [{ level: 5, actions: [{ type: 'grantRole', roleId: 'role-1' }] }],
+        },
+      }),
+    );
+
+    render(
+      <XpLevelActionsEditor
+        draftConfig={{
+          xp: {
+            defaultActions: [
+              {
+                type: 'sendDm',
+                format: 'embed',
+                embed: {
+                  description: 'Saved {{level}}',
+                  fields: [{ name: 'Level', value: '{{level}}', inline: true }],
+                },
+              },
+            ],
+            levelActions: [{ level: 5, actions: [{ type: 'grantRole', roleId: 'role-1' }] }],
+          },
+        }}
+        guildId="guild-1"
+        saving={false}
+        updateDraftConfig={updateDraftConfig}
+      />,
+    );
+
+    expect(updateDraftConfig).toHaveBeenCalledTimes(1);
+    expect(updateDraftConfig.mock.results[0]?.value.xp.defaultActions[0]).toMatchObject({
+      id: expect.any(String),
+      embed: {
+        fields: [expect.objectContaining({ id: expect.any(String), name: 'Level' })],
+      },
+    });
+    expect(updateDraftConfig.mock.results[0]?.value.xp.levelActions[0]).toMatchObject({
+      id: expect.any(String),
+      actions: [expect.objectContaining({ id: expect.any(String), roleId: 'role-1' })],
+    });
+  });
 });
