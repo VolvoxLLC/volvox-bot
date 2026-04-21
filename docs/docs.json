@@ -25,6 +25,12 @@
       {
         "tab": "API Reference",
         "openapi": "openapi.json"
+      },
+      {
+        "tab": "Changelog",
+        "pages": [
+          "changelog"
+        ]
       }
     ]
   },

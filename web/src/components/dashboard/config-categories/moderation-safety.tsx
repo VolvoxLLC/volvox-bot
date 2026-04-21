@@ -700,35 +700,6 @@ export function ModerationSafetyCategory() {
               />
             </div>
           </div>
-
-          <div className="p-4 sm:p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl">
-            <div className="space-y-3">
-              <label
-                htmlFor="bot-owners"
-                className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1 block"
-              >
-                Bot Owners (Overrides)
-              </label>
-              <input
-                id="bot-owners"
-                type="text"
-                value={(draftConfig.permissions?.botOwners ?? []).join(', ')}
-                onChange={(e) =>
-                  updatePermissionsField(
-                    'botOwners',
-                    e.target.value
-                      .split(',')
-                      .map((s) => s.trim())
-                      .filter(Boolean),
-                  )
-                }
-                onFocus={(e) => e.target.select()}
-                disabled={saving}
-                className={inputClasses}
-                placeholder="Comma-separated user IDs"
-              />
-            </div>
-          </div>
         </div>
       )}
 

@@ -17,7 +17,7 @@ vi.mock('../../../src/modules/config.js', () => ({
     spam: { enabled: true },
     moderation: { enabled: true },
     triage: { enabled: true, classifyApiKey: 'sk-secret', respondApiKey: 'sk-resp' },
-    permissions: { botOwners: ['owner-user-id'] },
+    permissions: {},
   }),
   setConfigValue: vi.fn().mockResolvedValue({}),
 }));
@@ -133,6 +133,7 @@ describe('backup routes', () => {
 
     it('allows bot-owner OAuth', async () => {
       vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
+      vi.stubEnv('BOT_OWNER_IDS', 'owner-user-id');
       const token = createOwnerToken();
       const res = await request(app).get('/api/v1/backups').set('Authorization', `Bearer ${token}`);
       expect(res.status).toBe(200);

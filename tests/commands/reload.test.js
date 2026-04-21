@@ -10,7 +10,7 @@ vi.mock('../../src/logger.js', () => ({
 
 vi.mock('../../src/modules/config.js', () => ({
   getConfig: vi.fn().mockReturnValue({
-    permissions: { botOwners: ['owner-123'] },
+    permissions: {},
   }),
   loadConfig: vi.fn().mockResolvedValue({}),
 }));

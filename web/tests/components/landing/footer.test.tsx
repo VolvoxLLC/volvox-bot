@@ -75,7 +75,6 @@ describe('Footer', () => {
   it('should render footer navigation links', () => {
     render(<Footer />);
     expect(screen.getByText('Documentation')).toBeInTheDocument();
-    expect(screen.getByText('Source Code')).toBeInTheDocument();
     expect(screen.getByText('Support Node')).toBeInTheDocument();
   });
 
