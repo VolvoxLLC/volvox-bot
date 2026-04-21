@@ -7,22 +7,24 @@ vi.mock('../../src/logger.js', () => ({
   error: vi.fn(),
 }));
 
-const { calculateCost, _normaliseModelId, _pricingMap } = await import('../../src/utils/aiCost.js');
+const { calculateCost, _normaliseModelId, _getPricingMap } = await import(
+  '../../src/utils/aiCost.js'
+);
 
 describe('pricingMap', () => {
   it('should load models from the provider registry', () => {
-    // minimax (7) + moonshot (3) + openrouter (6) = 16 minimum
-    expect(_pricingMap.size).toBeGreaterThanOrEqual(16);
+    // minimax (8 — including M2-stable) + moonshot (3) + openrouter (6) = 17 minimum
+    expect(_getPricingMap().size).toBeGreaterThanOrEqual(17);
   });
 
   it('should have all keys lowercase', () => {
-    for (const key of _pricingMap.keys()) {
+    for (const key of _getPricingMap().keys()) {
       expect(key).toBe(key.toLowerCase());
     }
   });
 
   it('should have all four price fields per model', () => {
-    for (const entry of _pricingMap.values()) {
+    for (const entry of _getPricingMap().values()) {
       expect(entry).toHaveProperty('input');
       expect(entry).toHaveProperty('output');
       expect(entry).toHaveProperty('cacheRead');
@@ -35,7 +37,7 @@ describe('pricingMap', () => {
   });
 
   it('should include the three supported providers', () => {
-    const providers = new Set(Array.from(_pricingMap.keys(), (k) => k.split(':')[0]));
+    const providers = new Set(Array.from(_getPricingMap().keys(), (k) => k.split(':')[0]));
     expect(providers.has('minimax')).toBe(true);
     expect(providers.has('moonshot')).toBe(true);
     expect(providers.has('openrouter')).toBe(true);
@@ -98,10 +100,12 @@ describe('calculateCost', () => {
       cachedInputTokens: 20_000,
       cacheCreationInputTokens: 0,
     });
+    // Moonshot K2.5 official rates: input $0.60, output $3.00, cacheRead $0.10,
+    // cacheWrite $0 (see providers.json).
     // regularInput = 100000 - 20000 = 80000
-    // 80000/1M * 0.60 + 20000/1M * 0 + 0 + 50000/1M * 2.50
-    // = 0.048 + 0 + 0 + 0.125 = 0.173
-    expect(cost).toBeCloseTo(0.173);
+    // 80000/1M * 0.60 + 20000/1M * 0.10 + 0 + 50000/1M * 3.00
+    // = 0.048 + 0.002 + 0 + 0.15 = 0.200
+    expect(cost).toBeCloseTo(0.2);
   });
 
   it('should resolve date-suffixed model IDs via the registry', () => {

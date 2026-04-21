@@ -162,11 +162,10 @@ async function fetchAndFormatMessages(channel, opts) {
 }
 
 /**
- * Call Claude via Vercel AI SDK to summarize a conversation.
- * Uses the configured AI provider credentials.
+ * Call the configured AI provider via Vercel AI SDK to summarize a conversation.
  * @param {string} conversationText
  * @param {string} [systemPrompt] - Per-guild system prompt override
- * @returns {Promise<string>} Raw summary text from Claude
+ * @returns {Promise<string>} Raw summary text from the AI provider
  */
 async function summarizeWithAI(conversationText, systemPrompt) {
   const truncated = conversationText.slice(0, MAX_INPUT_CHARS);

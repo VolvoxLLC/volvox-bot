@@ -18,32 +18,43 @@ describe('triage-config', () => {
     });
 
     it('should resolve PR #68 flat format as fallback', () => {
-      const result = resolveTriageConfig({ model: 'my-model', budget: 0.5, timeout: 10000 });
-      expect(result.respondModel).toBe('my-model');
+      const result = resolveTriageConfig({
+        model: 'moonshot:kimi-k2.6',
+        budget: 0.5,
+        timeout: 10000,
+      });
+      expect(result.respondModel).toBe('moonshot:kimi-k2.6');
       expect(result.respondBudget).toBe(0.5);
       expect(result.timeout).toBe(10000);
     });
 
     it('should resolve original nested format as last fallback', () => {
       const result = resolveTriageConfig({
-        models: { default: 'nested-model' },
+        models: { default: 'moonshot:kimi-k2.5' },
         budget: { response: 0.3 },
         timeouts: { response: 5000 },
       });
-      expect(result.respondModel).toBe('nested-model');
+      expect(result.respondModel).toBe('moonshot:kimi-k2.5');
       expect(result.respondBudget).toBe(0.3);
       expect(result.timeout).toBe(5000);
     });
 
     it('should prefer new split format over legacy formats', () => {
       const result = resolveTriageConfig({
-        respondModel: 'new-model',
+        respondModel: 'openrouter:minimax/minimax-m2.5',
         respondBudget: 0.99,
-        model: 'legacy-model',
+        model: 'minimax:MiniMax-M2.1',
         budget: 0.1,
       });
-      expect(result.respondModel).toBe('new-model');
+      expect(result.respondModel).toBe('openrouter:minimax/minimax-m2.5');
       expect(result.respondBudget).toBe(0.99);
+    });
+
+    it('should fall back to the default model when legacy value is a bare string (invalid)', () => {
+      const result = resolveTriageConfig({ model: 'legacy-bare-name', budget: 0.5 });
+      // Bare string does not parse as provider:model → warn + fall back to default.
+      expect(result.respondModel).toBe('minimax:MiniMax-M2.7');
+      expect(result.respondBudget).toBe(0.5);
     });
   });
 

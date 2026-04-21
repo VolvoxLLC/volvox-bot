@@ -39,8 +39,18 @@ export const READABLE_CONFIG_KEYS = [...SAFE_CONFIG_KEYS, 'logging'];
 /**
  * Dot-notation paths to config values that contain secrets (e.g. API keys).
  * These are masked in GET responses but still writable via PATCH/PUT.
+ *
+ * Base-URL overrides are masked too because they may embed internal routing
+ * topology (proxy hosts, staging URLs) or, in unusual deployments, credentials
+ * in the URL itself (`https://user:pass@proxy.example.com`). Expose only the
+ * mask sentinel in GET responses; writes still go through.
  */
-export const SENSITIVE_FIELDS = new Set(['triage.classifyApiKey', 'triage.respondApiKey']);
+export const SENSITIVE_FIELDS = new Set([
+  'triage.classifyApiKey',
+  'triage.respondApiKey',
+  'triage.classifyBaseUrl',
+  'triage.respondBaseUrl',
+]);
 
 /**
  * Mask sentinel used to hide sensitive field values in GET responses.

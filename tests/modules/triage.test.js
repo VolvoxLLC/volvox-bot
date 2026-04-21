@@ -1428,12 +1428,17 @@ describe('triage module', () => {
           moderationKeywords: [],
           moderationResponse: true,
           defaultInterval: 5000,
-          // Legacy nested format — only `models.default` maps into respondModel;
-          // classifyModel has no legacy equivalent and falls back to the registry default.
+          // Legacy nested format — `models.triage` maps into classifyModel and
+          // `models.default` maps into respondModel, preserving guild customisation
+          // through the unified-catalog migration. Legacy values MUST already be in
+          // `provider:model` form because the strict D1 parser rejects bare strings.
           // Clear the makeConfig helper defaults so the legacy fallback path runs.
           classifyModel: undefined,
           respondModel: undefined,
-          models: { triage: 'legacy-triage', default: 'openrouter:minimax/minimax-m2.5' },
+          models: {
+            triage: 'moonshot:kimi-k2.6',
+            default: 'openrouter:minimax/minimax-m2.5',
+          },
           budget: { triage: 0.01, response: 0.25 },
           timeouts: { triage: 15000, response: 20000 },
         },
@@ -1447,7 +1452,7 @@ describe('triage module', () => {
       expect(info).toHaveBeenCalledWith(
         'Triage configured',
         expect.objectContaining({
-          classifyModel: 'minimax:MiniMax-M2.7',
+          classifyModel: 'moonshot:kimi-k2.6',
           respondModel: 'openrouter:minimax/minimax-m2.5',
         }),
       );

@@ -36,14 +36,20 @@ function formatCost(cost) {
 }
 
 /**
- * Shorten a model name by removing the `claude-` prefix.
+ * Shorten a model name for display. Strips a leading `provider:` prefix so
+ * `minimax:MiniMax-M2.7` → `MiniMax-M2.7`. Historical `claude-` prefix
+ * handling is preserved for legacy fixtures but no current catalog model
+ * has one.
  *
- * @param {string} model - Full model name (e.g. "claude-haiku-4-5")
- * @returns {string} Short name (e.g. "haiku-4-5")
+ * @param {string} model - Full model name (e.g. `"minimax:MiniMax-M2.7"`).
+ * @returns {string} Short name suitable for Discord embeds.
  */
 function shortModel(model) {
   if (!model) return 'unknown';
-  return model.replace(/^claude-/, '');
+  // Strip `provider:` prefix (e.g. `minimax:MiniMax-M2.7` → `MiniMax-M2.7`).
+  const afterColon = model.includes(':') ? model.slice(model.indexOf(':') + 1) : model;
+  // Legacy claude- prefix strip — kept so older log fixtures still render tidily.
+  return afterColon.replace(/^claude-/, '');
 }
 
 /**
@@ -51,6 +57,8 @@ function shortModel(model) {
  *
  * @param {Object} result - Result from generate()/stream() in aiClient.js.
  * @param {string} model - Model name used for the request.
+ * @param {string} providerName - Logical provider name (e.g. `'minimax'`). Required;
+ *   a missing value throws so silent miscounting never ships.
  * @returns {Object} An object with normalized fields:
  *  - model {string} - Model name (or 'unknown').
  *  - cost {number} - Total cost in USD.
@@ -61,11 +69,25 @@ function shortModel(model) {
  *  - cacheRead {number} - Tokens consumed reading from cache.
  */
 function extractStats(result, model, providerName) {
+  if (typeof providerName !== 'string' || !providerName) {
+    throw new TypeError(
+      'extractStats: providerName is required (pass the logical provider name, ' +
+        'e.g. the first segment of a `provider:model` string).',
+    );
+  }
+
   const usage = result?.usage || {};
 
   // Provider-specific cache token stats live in providerMetadata, not in usage.
-  // Callers MUST pass `providerName` — no silent default (see issue #553).
-  const providerMeta = result?.providerMetadata?.[providerName] || {};
+  //
+  // Today every catalog provider routes through `createAnthropic`, so the
+  // Vercel AI SDK populates `providerMetadata.anthropic` — not a per-provider
+  // bucket. Prefer the provider-keyed bucket if present (future-proofs against
+  // non-anthropic SDK paths landing via #530) and fall back to the
+  // anthropic-shape bucket so MiniMax/Moonshot/OpenRouter cache stats actually
+  // display instead of silently reporting 0.
+  const providerMeta =
+    result?.providerMetadata?.[providerName] ?? result?.providerMetadata?.anthropic ?? {};
 
   return {
     model: model || 'unknown',

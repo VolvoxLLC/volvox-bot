@@ -75,10 +75,42 @@ const SENSITIVE_FIELDS = [
 
 /**
  * Case-insensitive suffix patterns that mark a key as sensitive. Any env var
- * following the `<PROVIDER>_API_KEY` / `<PROVIDER>_AUTH_TOKEN` convention is
- * redacted without requiring per-provider maintenance.
+ * following the `<PROVIDER>_API_KEY` / `<PROVIDER>_AUTH_TOKEN` /
+ * `<NAME>_SECRET` convention is redacted without requiring per-provider
+ * maintenance. `_SECRET` catches SESSION_SECRET, NEXTAUTH_SECRET,
+ * BOT_API_SECRET, WEBHOOK_SECRET, DISCORD_CLIENT_SECRET, etc.
  */
-const SENSITIVE_PATTERNS = [/_api_key$/i, /_auth_token$/i];
+const SENSITIVE_PATTERNS = [/_api_key$/i, /_auth_token$/i, /_secret$/i];
+
+/**
+ * Inline-value patterns that redact substrings inside log messages. Used as a
+ * last-line defence when a credential appears inside a message string rather
+ * than as a metadata key (e.g. when an SDK reflects auth headers into its
+ * error message).
+ *
+ * Each pattern replaces the matched substring with `[REDACTED]`. Keep these
+ * tight — an over-broad pattern corrupts legitimate messages.
+ */
+const INLINE_SECRET_PATTERNS = [
+  /Bearer\s+[A-Za-z0-9._~+/-]+=*/g,
+  /sk-[A-Za-z0-9_-]{20,}/g,
+  /sk-ant-[A-Za-z0-9_-]{20,}/g,
+];
+
+/**
+ * Scrub inline secrets from a free-form string. Returns the original value
+ * unchanged if nothing matches or input is non-string.
+ * @param {unknown} value
+ * @returns {unknown}
+ */
+function scrubInlineSecrets(value) {
+  if (typeof value !== 'string') return value;
+  let out = value;
+  for (const pattern of INLINE_SECRET_PATTERNS) {
+    out = out.replace(pattern, '[REDACTED]');
+  }
+  return out;
+}
 
 /**
  * Determine whether a key name is sensitive.
@@ -96,14 +128,29 @@ function isSensitiveKey(key) {
 }
 
 /**
- * Recursively filter sensitive data from objects
+ * Recursively filter sensitive data from objects.
+ * - Keys matching the sensitive list/patterns → `[REDACTED]`.
+ * - String values get scrubbed for inline secrets (e.g. `Bearer <token>`).
+ * - Nested objects/arrays recurse.
+ *
+ * `Error` instances are treated as plain objects — their `message` is scrubbed
+ * inline by the top-level `redactSensitiveData` format; here we preserve them
+ * so winston's own error formatter can serialize them normally.
  */
 function filterSensitiveData(obj) {
   if (obj === null || obj === undefined) {
     return obj;
   }
 
+  if (typeof obj === 'string') {
+    return scrubInlineSecrets(obj);
+  }
+
   if (typeof obj !== 'object') {
+    return obj;
+  }
+
+  if (obj instanceof Error) {
     return obj;
   }
 
@@ -117,6 +164,8 @@ function filterSensitiveData(obj) {
       filtered[key] = '[REDACTED]';
     } else if (typeof value === 'object' && value !== null) {
       filtered[key] = filterSensitiveData(value);
+    } else if (typeof value === 'string') {
+      filtered[key] = scrubInlineSecrets(value);
     } else {
       filtered[key] = value;
     }
@@ -129,7 +178,9 @@ function filterSensitiveData(obj) {
  * Winston format that redacts sensitive data
  */
 const redactSensitiveData = winston.format((info) => {
-  // Reserved winston properties that should not be filtered
+  // Reserved winston properties that should not be recursively filtered as
+  // metadata — but `message` and `stack` are still scanned for inline secrets
+  // (SDK errors sometimes reflect `Bearer <token>` into their message text).
   const reserved = ['level', 'message', 'timestamp', 'stack'];
 
   // Filter each property in the info object
@@ -140,8 +191,20 @@ const redactSensitiveData = winston.format((info) => {
       } else if (typeof info[key] === 'object' && info[key] !== null) {
         // Recursively filter nested objects
         info[key] = filterSensitiveData(info[key]);
+      } else if (typeof info[key] === 'string') {
+        info[key] = scrubInlineSecrets(info[key]);
       }
     }
+  }
+
+  // Scrub the message string and stack trace for inline credentials. This is
+  // the last line of defence against an SDK leaking a token into its error
+  // message before Sentry/Postgres/file transports persist it.
+  if (typeof info.message === 'string') {
+    info.message = scrubInlineSecrets(info.message);
+  }
+  if (typeof info.stack === 'string') {
+    info.stack = scrubInlineSecrets(info.stack);
   }
 
   return info;

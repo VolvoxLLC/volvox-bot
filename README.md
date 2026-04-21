@@ -6,7 +6,7 @@
 [![Node.js](https://img.shields.io/badge/Node.js-22+-green.svg)](https://nodejs.org)
 [![pnpm](https://img.shields.io/badge/pnpm-10.33+-orange.svg)](https://pnpm.io)
 
-AI-powered Discord bot for the [Volvox](https://volvox.dev) developer community — a pnpm monorepo containing the bot (Node.js, ESM JavaScript, discord.js v14) and a web dashboard (Next.js 16, TypeScript, React 19). Powered by [Claude](https://anthropic.com).
+AI-powered Discord bot for the [Volvox](https://volvox.dev) developer community — a pnpm monorepo containing the bot (Node.js, ESM JavaScript, discord.js v14) and a web dashboard (Next.js 16, TypeScript, React 19). Routes to any Anthropic-shape provider declared in `src/data/providers.json` — ships with MiniMax, Moonshot (Kimi), and OpenRouter.
 
 ---
 
@@ -58,7 +58,7 @@ pnpm mono:dev              # Start bot + dashboard together
 
 ### AI & Chat
 
-- **🧠 AI Chat** — Mention the bot to chat with Claude. Per-channel conversation history with context management.
+- **🧠 AI Chat** — Mention the bot to chat with the configured AI provider. Per-channel conversation history with context management.
 - **🎯 Smart Triage** — Two-step evaluation (fast classifier + responder) for chime-ins and rule enforcement.
 - **🤖 AI Auto-Moderation** — Automated toxicity, spam, and harassment detection with configurable thresholds.
 - **👍👎 AI Feedback** — Thumbs up/down reactions on AI responses, tracked in dashboard analytics.

@@ -182,54 +182,72 @@ async function resolveModel(modelString, overrides = {}) {
     );
   }
 
-  // Cache key uses the raw apiKey as a discriminator. Safe because the Map
-  // lives in-process and is never serialized, logged, or exported. Using the
-  // raw key avoids node:crypto for a non-security discriminator (CodeQL
-  // flagged the prior SHA-256 as "insecure password hash").
-  const cacheKey = `${providerName}\x00${overrides.apiKey ?? ''}\x00${overrides.baseUrl ?? ''}`;
+  // Resolve credential + base URL BEFORE building the cache key so env rotation,
+  // <PROVIDER>_BASE_URL changes, and fallback-key pickups each invalidate the
+  // cached factory. Keying on just overrides would collapse all env-backed
+  // calls onto one entry and skip the env/missing-key check on second call.
+  const envKey = providerConfig.envKey;
+  // Sanitize provider names: uppercase + replace `-` with `_` so hyphenated
+  // provider keys (e.g. `open-router`) still produce legal shell env var names.
+  const envPrefix = providerName.toUpperCase().replace(/-/g, '_');
+
+  // Env lookup order: the declared envKey first, then <PROVIDER>_API_KEY as
+  // a permissive fallback so ad-hoc deployments don't need to edit the
+  // catalog to ship a new provider name.
+  const apiKey = overrides.apiKey || process.env[envKey] || process.env[`${envPrefix}_API_KEY`];
+
+  if (!apiKey) {
+    throw new AIClientError(
+      `Missing API key for provider '${providerName}'. Set ${envKey} or pass an apiKey override.`,
+      'api',
+    );
+  }
+
+  // baseUrl resolution: explicit override > <PROVIDER>_BASE_URL env > registry default.
+  // registry may declare `null` for SDK-default providers (see issue #553/#530).
+  const baseUrl =
+    overrides.baseUrl || process.env[`${envPrefix}_BASE_URL`] || providerConfig.baseUrl;
+
+  if (baseUrl === undefined || baseUrl === '' || baseUrl === false) {
+    throw new AIClientError(
+      `Missing base URL for provider '${providerName}'. Set ${envPrefix}_BASE_URL, ` +
+        `pass a baseUrl override, or populate baseUrl in src/data/providers.json.`,
+      'api',
+    );
+  }
+
+  // Cache key: include resolved apiKey + baseUrl so any change (env rotation,
+  // override swap, registry reload) produces a distinct cache entry and picks
+  // up a fresh factory instead of returning a stale TLS pool.
+  // Canonicalise provider name to lowercase so `minimax:…` and `MiniMax:…` share
+  // one pool instead of forking TCP/TLS resources.
+  // Safe to embed the raw apiKey — the Map is module-private, never serialized,
+  // logged, or exported.
+  const canonicalName = providerName.toLowerCase();
+  const cacheKey = `${canonicalName}\x00${apiKey}\x00${baseUrl ?? ''}`;
 
   if (!providerCache.has(cacheKey)) {
-    const envKey = providerConfig.envKey;
-    const envPrefix = providerName.toUpperCase();
-
-    // Env lookup order: the declared envKey first, then <PROVIDER>_API_KEY as
-    // a permissive fallback so ad-hoc deployments don't need to edit the
-    // catalog to ship a new provider name.
-    const apiKey = overrides.apiKey || process.env[envKey] || process.env[`${envPrefix}_API_KEY`];
-
-    if (!apiKey) {
-      throw new AIClientError(
-        `Missing API key for provider '${providerName}'. Set ${envKey} or pass an apiKey override.`,
-        'api',
-      );
-    }
-
-    // baseUrl resolution: explicit override > <PROVIDER>_BASE_URL env > registry default.
-    const baseUrl =
-      overrides.baseUrl || process.env[`${envPrefix}_BASE_URL`] || providerConfig.baseUrl;
-
-    if (!baseUrl) {
-      throw new AIClientError(
-        `Missing base URL for provider '${providerName}'. Set ${envPrefix}_BASE_URL, ` +
-          `pass a baseUrl override, or populate baseUrl in src/data/providers.json.`,
-        'api',
-      );
-    }
-
     // Every catalog provider authenticates via bearer token (Anthropic's
     // `x-api-key` path is not used — our catalog contains no direct
     // api.anthropic.com entries). Always pass as `authToken`.
+    // `baseURL: null` lets the SDK use its own default (reserved for #530).
     providerCache.set(
       cacheKey,
       createAnthropic({
         authToken: apiKey,
-        baseURL: baseUrl,
+        baseURL: baseUrl ?? undefined,
       }),
     );
   }
 
   const factory = providerCache.get(cacheKey);
-  return { model: factory(modelId), providerName, modelId, factory };
+  return {
+    model: factory(modelId),
+    providerName,
+    modelId,
+    factory,
+    resolvedBaseUrl: baseUrl ?? null,
+  };
 }
 
 // ── Option builders ─────────────────────────────────────────────────────────
@@ -594,12 +612,16 @@ export function _resetSDK() {
  * @param {{ apiKey?: string, baseUrl?: string }} [overrides]
  */
 export async function warmConnection(modelString, overrides = {}) {
-  const { model } = await resolveModel(modelString, overrides);
-  // Establish TCP+TLS by making a lightweight request to the provider's base URL
-  const baseUrl = model.config?.baseURL;
-  if (baseUrl) {
+  // Use the resolved baseUrl from the registry (not SDK internals like
+  // `model.config?.baseURL`, which are undocumented and can drift between
+  // SDK versions).
+  const { resolvedBaseUrl } = await resolveModel(modelString, overrides);
+  if (resolvedBaseUrl) {
     try {
-      await fetch(baseUrl, { method: 'HEAD', signal: AbortSignal.timeout(5000) }).catch(() => {});
+      await fetch(resolvedBaseUrl, {
+        method: 'HEAD',
+        signal: AbortSignal.timeout(5000),
+      }).catch(() => {});
     } catch {
       // Swallow — warming is best-effort
     }

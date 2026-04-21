@@ -14,11 +14,19 @@ import {
   getProviderConfig,
   listProviders,
   normaliseModelId,
+  onRegistryRebuild,
 } from './providerRegistry.js';
 
 // Case-insensitive pricing map built from the provider registry on import.
 // Keys are `provider:model` (lowercase); values are the pricing block.
-const pricingMap = buildPricingMap();
+//
+// Re-built via `onRegistryRebuild` when `_resetRegistry()` is called in tests so
+// the map never diverges from the live registry state.
+//
+// Invariant: keys produced by `buildPricingMap()` are always lowercased, and
+// `lookupPricing()` lowercases its inputs too — so provider names declared in
+// `providers.json` with any casing still resolve consistently.
+let pricingMap = new Map();
 
 function buildPricingMap() {
   const map = new Map();
@@ -32,6 +40,14 @@ function buildPricingMap() {
   }
   return map;
 }
+
+function rebuildPricingMap() {
+  pricingMap = buildPricingMap();
+}
+
+// Eager initial build + registry subscription for test reloads.
+rebuildPricingMap();
+onRegistryRebuild(rebuildPricingMap);
 
 /**
  * Look up pricing for a provider:model pair (case-insensitive).
@@ -94,4 +110,13 @@ export function calculateCost(provider, modelId, usage = {}) {
 }
 
 // Exported for testing
-export { normaliseModelId as _normaliseModelId, pricingMap as _pricingMap };
+export { normaliseModelId as _normaliseModelId, rebuildPricingMap as _rebuildPricingMap };
+
+/**
+ * Test-only accessor for the current pricing map. Returns the live Map, so
+ * snapshot tests should clone first if they need a stable view.
+ * @returns {Map<string, object>}
+ */
+export function _getPricingMap() {
+  return pricingMap;
+}

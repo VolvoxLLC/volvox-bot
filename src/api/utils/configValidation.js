@@ -177,9 +177,12 @@ export const CONFIG_SCHEMA = {
       maxBufferSize: { type: 'number', min: 1, max: 1000 },
       triggerWords: { type: 'array' },
       moderationKeywords: { type: 'array' },
-      classifyModel: { type: 'string' },
+      // Model fields must be in `provider:model` format (see issue #553 D1) —
+      // `parseProviderModel` throws on bare strings at runtime. Catching it
+      // at the API boundary turns a silent-dispatch-crash into a clear 400.
+      classifyModel: { type: 'string', pattern: '^[^:\\s]+:[^\\s]+$' },
       classifyBudget: { type: 'number', min: 0, max: 100000 },
-      respondModel: { type: 'string' },
+      respondModel: { type: 'string', pattern: '^[^:\\s]+:[^\\s]+$' },
       respondBudget: { type: 'number', min: 0, max: 100000 },
       thinkingTokens: { type: 'number', min: 0, max: 100000 },
       classifyBaseUrl: { type: 'string', nullable: true },
