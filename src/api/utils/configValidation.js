@@ -127,6 +127,30 @@ const XP_ACTION_ITEM_SCHEMA = {
   openProperties: true,
 };
 
+const XP_ACTION_REQUIRED_FIELDS = {
+  grantRole: ['roleId'],
+  removeRole: ['roleId'],
+  xpBonus: ['amount'],
+  addReaction: ['emoji'],
+  nickPrefix: ['prefix'],
+  nickSuffix: ['suffix'],
+  webhook: ['url'],
+};
+
+function validateXpActionRequiredFields(action, path) {
+  const requiredFields = XP_ACTION_REQUIRED_FIELDS[action.type] ?? [];
+  const errors = [];
+
+  for (const field of requiredFields) {
+    const value = action[field];
+    if (value == null || value === '') {
+      errors.push(`${path}.${field}: required for action type "${action.type}"`);
+    }
+  }
+
+  return errors;
+}
+
 const XP_LEVEL_ACTION_ENTRY_SCHEMA = {
   type: 'object',
   required: ['level', 'actions'],
@@ -594,8 +618,12 @@ export function validateValue(value, schema, path) {
             } else if (!schema.openProperties) {
               errors.push(`${path}.${key}: unknown config key`);
             }
-            // openProperties: true — freeform map, unknown keys are allowed
+            // openProperties: true - freeform map, unknown keys are allowed
           }
+        }
+
+        if (schema === XP_ACTION_ITEM_SCHEMA) {
+          errors.push(...validateXpActionRequiredFields(value, path));
         }
       }
       break;

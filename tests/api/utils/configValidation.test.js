@@ -452,6 +452,39 @@ describe('configValidation', () => {
       ).toEqual([]);
     });
 
+    it('should require executor fields for typed xp actions', () => {
+      const defaultActionErrors = validateSingleValue('xp.defaultActions', [
+        { type: 'webhook' },
+        { type: 'grantRole' },
+        { type: 'xpBonus' },
+        { type: 'addReaction' },
+        { type: 'nickPrefix' },
+        { type: 'nickSuffix' },
+      ]);
+      const levelActionErrors = validateSingleValue('xp.levelActions', [
+        {
+          level: 5,
+          actions: [{ type: 'removeRole' }],
+        },
+      ]);
+
+      expect(defaultActionErrors).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining('xp.defaultActions[0].url: required'),
+          expect.stringContaining('xp.defaultActions[1].roleId: required'),
+          expect.stringContaining('xp.defaultActions[2].amount: required'),
+          expect.stringContaining('xp.defaultActions[3].emoji: required'),
+          expect.stringContaining('xp.defaultActions[4].prefix: required'),
+          expect.stringContaining('xp.defaultActions[5].suffix: required'),
+        ]),
+      );
+      expect(levelActionErrors).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining('xp.levelActions[0].actions[0].roleId: required'),
+        ]),
+      );
+    });
+
     it('should reject non-positive xpBonus amounts', () => {
       const defaultActionErrors = validateSingleValue('xp.defaultActions', [
         { type: 'xpBonus', amount: 0 },
