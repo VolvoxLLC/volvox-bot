@@ -348,9 +348,9 @@ describe('ServerSelector', () => {
       await screen.findByText(/Read-only spaces and servers without install access/i),
     ).toBeInTheDocument();
 
-    const communityMenuItem = screen.getByRole('menuitem', { name: /Viewer Server/i });
-    expect(communityMenuItem).toBeInTheDocument();
-    expect(communityMenuItem).toHaveAttribute('href', '/community/viewer-1');
+    const communityLink = screen.getByRole('link', { name: /Viewer Server/i });
+    expect(communityLink).toBeInTheDocument();
+    expect(communityLink).toHaveAttribute('href', '/community/viewer-1');
     expect(mockBroadcastSelectedGuild).not.toHaveBeenCalled();
   });
 
