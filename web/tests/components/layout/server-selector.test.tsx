@@ -330,44 +330,28 @@ describe('ServerSelector', () => {
       },
     ];
 
-    const originalLocation = window.location;
-    // @ts-expect-error -- mocking location
-    delete window.location;
-    // @ts-expect-error -- mocking location
-    window.location = { href: '' };
+    fetchSpy.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(guilds),
+    } as Response);
 
-    try {
-      fetchSpy.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(guilds),
-      } as Response);
+    renderServerSelector();
 
-      renderServerSelector();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Community Hubs/i })).toBeInTheDocument();
+    });
 
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: /Community Hubs/i })).toBeInTheDocument();
-      });
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /Community Hubs/i }));
 
-      const user = userEvent.setup();
-      await user.click(screen.getByRole('button', { name: /Community Hubs/i }));
+    expect(
+      await screen.findByText(/Read-only spaces and servers without install access/i),
+    ).toBeInTheDocument();
 
-      expect(
-        await screen.findByText(/Read-only spaces and servers without install access/i),
-      ).toBeInTheDocument();
-
-      const communityMenuItem = screen.getByRole('menuitem', { name: /Viewer Server/i });
-      expect(communityMenuItem).toBeInTheDocument();
-
-      await user.click(communityMenuItem);
-
-      await waitFor(() => {
-        expect(window.location.href).toBe('/community/viewer-1');
-      });
-      expect(mockBroadcastSelectedGuild).not.toHaveBeenCalled();
-    } finally {
-      // @ts-expect-error -- restoring location mock
-      window.location = originalLocation;
-    }
+    const communityMenuItem = screen.getByRole('menuitem', { name: /Viewer Server/i });
+    expect(communityMenuItem).toBeInTheDocument();
+    expect(communityMenuItem).toHaveAttribute('href', '/community/viewer-1');
+    expect(mockBroadcastSelectedGuild).not.toHaveBeenCalled();
   });
 
   it('shows add bot actions for guilds where the bot is not installed yet', async () => {
