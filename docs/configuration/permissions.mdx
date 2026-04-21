@@ -1,0 +1,39 @@
+---
+title: Permissions
+description: 'How Volvox.Bot uses Discord permissions and dashboard access control'
+---
+
+# Permissions
+
+## Discord permissions
+
+When you add Volvox.Bot to your server, it requests the permissions it needs to function. These include:
+
+| Permission | Why it's needed |
+|------------|----------------|
+| Manage Channels | Create ticket channels |
+| Manage Roles | Assign temp roles, reaction roles |
+| Kick / Ban Members | Moderation actions |
+| Timeout Members | Moderation timeouts |
+| Read Messages | Log activity, AI conversations |
+| Send Messages | Bot responses, notifications |
+| Embed Links | Rich message content |
+| Read Message History | Context for AI, search |
+
+<Callout type="info">
+Volvox.Bot only uses permissions when performing an action. It doesn't read or store messages unless a feature requires it.
+</Callout>
+
+## Dashboard access
+
+Dashboard access is controlled by Discord roles. By default, anyone with **Manage Server** permission can access the dashboard for their server.
+
+Configure who has access in **Settings → Dashboard Access**:
+
+- **Admin** — Full access to all dashboard features
+- **Moderator** — Access to moderation, tickets, and audit log
+- **Viewer** — Read-only access to analytics and settings
+
+## Per-feature permissions
+
+Each feature can be restricted to specific roles. For example, you can allow all moderators to view the audit log but restrict config changes to admins only.

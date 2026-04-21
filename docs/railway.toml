@@ -1,9 +1,0 @@
-[build]
-builder = "DOCKERFILE"
-dockerLayerCaching = true
-
-[deploy]
-healthcheckPath = "/"
-healthcheckTimeout = 15
-restartPolicyType = "ON_FAILURE"
-restartPolicyMaxRetries = 3

@@ -17,7 +17,46 @@
             "group": "Getting Started",
             "pages": [
               "introduction",
-              "authentication"
+              "getting-started",
+              "dashboard"
+            ]
+          },
+          {
+            "group": "Features",
+            "pages": [
+              "features/moderation",
+              "features/ai-conversations",
+              "features/tickets",
+              "features/analytics",
+              "features/community",
+              "features/temp-roles",
+              "features/audit-log"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/bot-settings",
+              "configuration/permissions"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "api-reference"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Support",
+        "groups": [
+          {
+            "group": "Help",
+            "pages": [
+              "faq",
+              "security",
+              "help"
             ]
           }
         ]
