@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 // Mock next/image
@@ -357,7 +357,8 @@ describe('ServerSelector', () => {
 
     const communityItem = screen.getByRole('menuitem', { name: /Viewer Server/i });
     expect(communityItem).toBeInTheDocument();
-    fireEvent.select(communityItem);
+    communityItem.focus();
+    await user.keyboard('{Enter}');
     expect(mockPush).toHaveBeenCalledTimes(1);
     expect(mockPush).toHaveBeenCalledWith('/community/viewer-1');
     expect(mockBroadcastSelectedGuild).not.toHaveBeenCalled();
@@ -397,7 +398,8 @@ describe('ServerSelector', () => {
     expect(inviteMenuItem).toBeInTheDocument();
     expect(screen.getByText('Invite Bot')).toBeInTheDocument();
 
-    fireEvent.select(inviteMenuItem);
+    inviteMenuItem.focus();
+    await user.keyboard('{Enter}');
 
     expect(openSpy).toHaveBeenCalledTimes(1);
     expect(openSpy).toHaveBeenCalledWith(
