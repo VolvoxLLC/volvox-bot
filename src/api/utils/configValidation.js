@@ -298,7 +298,7 @@ export const CONFIG_SCHEMA = {
       adminRoleId: { type: 'string', nullable: true },
       moderatorRoleId: { type: 'string', nullable: true },
       modRoles: { type: 'array', items: { type: 'string' } },
-      botOwners: { type: 'array', items: { type: 'string' } },
+
       // allowedCommands is a freeform map of command → permission level — no fixed property list
       allowedCommands: { type: 'object', openProperties: true },
     },

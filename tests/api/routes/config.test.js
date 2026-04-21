@@ -24,7 +24,7 @@ vi.mock('../../../src/modules/config.js', () => ({
       classifyApiKey: 'sk-secret-classify',
       respondApiKey: 'sk-secret-respond',
     },
-    permissions: { botOwners: [] },
+    permissions: {},
     database: { host: 'secret-host' },
     token: 'secret-token',
   }),
@@ -94,7 +94,7 @@ describe('config routes', () => {
     });
 
     it.skip('should deny non-bot-owner OAuth users', async () => {
-      // FIXME: Mock isolation issue - backup.test.js sets botOwners: ['owner-user-id']
+      // FIXME: Mock isolation issue - backup.test.js sets BOT_OWNER_IDS
       // which persists across tests due to Vitest mock hoisting
       _resetSecretCache();
       vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
@@ -113,8 +113,9 @@ describe('config routes', () => {
         welcome: { enabled: true },
         spam: { enabled: true },
         moderation: { enabled: true },
-        permissions: { botOwners: ['owner-1'] },
+        permissions: {},
       });
+      vi.stubEnv('BOT_OWNER_IDS', 'owner-1');
       const token = createOAuthToken('jwt-test-secret', 'owner-1');
 
       const res = await request(app).get('/api/v1/config').set('Authorization', `Bearer ${token}`);
@@ -143,7 +144,7 @@ describe('config routes', () => {
       expect(res.body.spam).toEqual({ enabled: true });
       expect(res.body.moderation).toEqual({ enabled: true });
       expect(res.body.triage.enabled).toBe(true);
-      expect(res.body.permissions).toEqual({ botOwners: [] });
+      expect(res.body.permissions).not.toHaveProperty('botOwners');
     });
 
     it('should exclude sensitive config keys', async () => {
@@ -177,14 +178,14 @@ describe('config routes', () => {
           welcome: { enabled: true },
           spam: { enabled: true },
           moderation: { enabled: true },
-          permissions: { botOwners: [] },
+          permissions: {},
         })
         .mockReturnValueOnce({
           ai: { enabled: false, model: 'claude-3', historyLength: 20 },
           welcome: { enabled: true },
           spam: { enabled: true },
           moderation: { enabled: true },
-          permissions: { botOwners: [] },
+          permissions: {},
         });
 
       const res = await request(app)

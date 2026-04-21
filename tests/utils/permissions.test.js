@@ -29,38 +29,39 @@ describe('isAdmin', () => {
   });
 
   it('should return true for bot owner via member.id', () => {
+    process.env.BOT_OWNER_IDS = BOT_OWNER_ID;
     const member = {
       id: BOT_OWNER_ID,
       permissions: { has: vi.fn().mockReturnValue(false) },
       roles: { cache: { has: vi.fn().mockReturnValue(false) } },
     };
-    const config = { permissions: { botOwners: [BOT_OWNER_ID] } };
-    expect(isAdmin(member, config)).toBe(true);
+    expect(isAdmin(member, {})).toBe(true);
     expect(member.permissions.has).not.toHaveBeenCalled();
   });
 
   it('should return true for bot owner via member.user.id', () => {
+    process.env.BOT_OWNER_IDS = BOT_OWNER_ID;
     const member = {
       user: { id: BOT_OWNER_ID },
       permissions: { has: vi.fn().mockReturnValue(false) },
       roles: { cache: { has: vi.fn().mockReturnValue(false) } },
     };
-    const config = { permissions: { botOwners: [BOT_OWNER_ID] } };
-    expect(isAdmin(member, config)).toBe(true);
+    expect(isAdmin(member, {})).toBe(true);
   });
 
-  it('should return true for bot owner from config.permissions.botOwners', () => {
+  it('should return true for bot owner from BOT_OWNER_IDS env var', () => {
     const customOwnerId = '999999999999999999';
+    process.env.BOT_OWNER_IDS = customOwnerId;
     const member = {
       id: customOwnerId,
       permissions: { has: vi.fn().mockReturnValue(false) },
       roles: { cache: { has: vi.fn().mockReturnValue(false) } },
     };
-    const config = { permissions: { botOwners: [customOwnerId] } };
-    expect(isAdmin(member, config)).toBe(true);
+    expect(isAdmin(member, {})).toBe(true);
   });
 
-  it('should not treat old hardcoded owner ID as bot owner when botOwners is missing', () => {
+  it('should not treat owner as bot owner when BOT_OWNER_IDS is not set', () => {
+    delete process.env.BOT_OWNER_IDS;
     const member = {
       id: BOT_OWNER_ID,
       permissions: { has: vi.fn().mockReturnValue(false) },
@@ -69,14 +70,14 @@ describe('isAdmin', () => {
     expect(isAdmin(member, {})).toBe(false);
   });
 
-  it('should not treat old hardcoded owner ID as bot owner when botOwners is empty', () => {
+  it('should not treat owner as bot owner when BOT_OWNER_IDS is empty string', () => {
+    process.env.BOT_OWNER_IDS = '';
     const member = {
       id: BOT_OWNER_ID,
       permissions: { has: vi.fn().mockReturnValue(false) },
       roles: { cache: { has: vi.fn().mockReturnValue(false) } },
     };
-    const config = { permissions: { botOwners: [] } };
-    expect(isAdmin(member, config)).toBe(false);
+    expect(isAdmin(member, {})).toBe(false);
   });
 
   it('should return true for members with Administrator permission', () => {
@@ -157,10 +158,10 @@ describe('hasPermission', () => {
   });
 
   it('should return true for bot owner regardless of permission settings', () => {
+    process.env.BOT_OWNER_IDS = BOT_OWNER_ID;
     const member = { id: BOT_OWNER_ID };
     const config = {
       permissions: {
-        botOwners: [BOT_OWNER_ID],
         enabled: true,
         usePermissions: true,
         allowedCommands: { config: 'admin' },
@@ -169,7 +170,8 @@ describe('hasPermission', () => {
     expect(hasPermission(member, 'config', config)).toBe(true);
   });
 
-  it('should not bypass for old hardcoded owner ID when botOwners is missing', () => {
+  it('should not bypass for owner when BOT_OWNER_IDS is not set', () => {
+    delete process.env.BOT_OWNER_IDS;
     const member = {
       id: BOT_OWNER_ID,
       permissions: { has: vi.fn().mockReturnValue(false) },
@@ -185,7 +187,8 @@ describe('hasPermission', () => {
     expect(hasPermission(member, 'config', config)).toBe(false);
   });
 
-  it('should not bypass for old hardcoded owner ID when botOwners is empty', () => {
+  it('should not bypass for owner when BOT_OWNER_IDS is empty string', () => {
+    process.env.BOT_OWNER_IDS = '';
     const member = {
       id: BOT_OWNER_ID,
       permissions: { has: vi.fn().mockReturnValue(false) },
@@ -193,7 +196,6 @@ describe('hasPermission', () => {
     };
     const config = {
       permissions: {
-        botOwners: [],
         enabled: true,
         usePermissions: true,
         allowedCommands: { config: 'admin' },
@@ -342,9 +344,9 @@ describe('isGuildAdmin', () => {
   });
 
   it('should return true for bot owner', () => {
+    process.env.BOT_OWNER_IDS = BOT_OWNER_ID;
     const member = { id: BOT_OWNER_ID };
-    const config = { permissions: { botOwners: [BOT_OWNER_ID] } };
-    expect(isGuildAdmin(member, config)).toBe(true);
+    expect(isGuildAdmin(member, {})).toBe(true);
   });
 
   it('should return true for members with Administrator permission', () => {
@@ -388,9 +390,9 @@ describe('isModerator', () => {
   });
 
   it('should return true for bot owner', () => {
+    process.env.BOT_OWNER_IDS = BOT_OWNER_ID;
     const member = { id: BOT_OWNER_ID };
-    const config = { permissions: { botOwners: [BOT_OWNER_ID] } };
-    expect(isModerator(member, config)).toBe(true);
+    expect(isModerator(member, {})).toBe(true);
   });
 
   it('should return true for members with Administrator permission', () => {
@@ -555,21 +557,27 @@ describe('getPermissionError', () => {
 
 describe('isBotOwner', () => {
   it('should return true for a bot owner', () => {
+    process.env.BOT_OWNER_IDS = BOT_OWNER_ID;
     const member = { id: BOT_OWNER_ID };
-    const config = { permissions: { botOwners: [BOT_OWNER_ID] } };
-    expect(isBotOwner(member, config)).toBe(true);
+    expect(isBotOwner(member, {})).toBe(true);
   });
 
   it('should return false for a non-owner', () => {
+    process.env.BOT_OWNER_IDS = BOT_OWNER_ID;
     const member = { id: '000000000000000000' };
-    const config = { permissions: { botOwners: [BOT_OWNER_ID] } };
-    expect(isBotOwner(member, config)).toBe(false);
+    expect(isBotOwner(member, {})).toBe(false);
   });
 
-  it('should return false when botOwners is empty', () => {
+  it('should return false when BOT_OWNER_IDS is not set', () => {
+    delete process.env.BOT_OWNER_IDS;
     const member = { id: BOT_OWNER_ID };
-    const config = { permissions: { botOwners: [] } };
-    expect(isBotOwner(member, config)).toBe(false);
+    expect(isBotOwner(member, {})).toBe(false);
+  });
+
+  it('should return false when BOT_OWNER_IDS is empty string', () => {
+    process.env.BOT_OWNER_IDS = '';
+    const member = { id: BOT_OWNER_ID };
+    expect(isBotOwner(member, {})).toBe(false);
   });
 });
 

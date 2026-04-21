@@ -51,7 +51,7 @@ vi.mock('../../../src/modules/config.js', () => ({
       classifyApiKey: 'sk-secret-classify',
       respondApiKey: 'sk-secret-respond',
     },
-    permissions: { botOwners: [] },
+    permissions: {},
     database: { host: 'secret-host' },
     token: 'secret-token',
   }),
@@ -349,8 +349,9 @@ describe('guilds routes', () => {
         welcome: { enabled: true },
         spam: { enabled: true },
         moderation: { enabled: true },
-        permissions: { botOwners: ['owner-1'] },
+        permissions: {},
       });
+      vi.stubEnv('BOT_OWNER_IDS', 'owner-1');
       const token = createOAuthToken('jwt-test-secret', 'owner-1');
       const fetchSpy = vi.spyOn(globalThis, 'fetch');
 
@@ -494,8 +495,9 @@ describe('guilds routes', () => {
         welcome: { enabled: true },
         spam: { enabled: true },
         moderation: { enabled: true },
-        permissions: { botOwners: ['owner-admin'] },
+        permissions: {},
       });
+      vi.stubEnv('BOT_OWNER_IDS', 'owner-admin');
       const token = createOAuthToken('jwt-test-secret', 'owner-admin');
       const fetchSpy = vi.spyOn(globalThis, 'fetch');
 
@@ -519,7 +521,7 @@ describe('guilds routes', () => {
       expect(res.body.welcome).toEqual({ enabled: true });
       expect(res.body.moderation).toEqual({ enabled: true });
       expect(res.body.triage.enabled).toBe(true);
-      expect(res.body.permissions).toEqual({ botOwners: [] });
+      expect(res.body.permissions).not.toHaveProperty('botOwners');
       expect(res.body.database).toBeUndefined();
       expect(res.body.token).toBeUndefined();
       expect(getConfig).toHaveBeenCalledWith('guild1');
@@ -1327,8 +1329,9 @@ describe('guilds routes', () => {
         welcome: { enabled: true },
         spam: { enabled: true },
         moderation: { enabled: true },
-        permissions: { botOwners: ['owner-mod'] },
+        permissions: {},
       });
+      vi.stubEnv('BOT_OWNER_IDS', 'owner-mod');
       const token = createOAuthToken('jwt-test-secret', 'owner-mod');
       const fetchSpy = vi.spyOn(globalThis, 'fetch');
       mockPool.query.mockResolvedValueOnce({ rows: [{ count: 1 }] }).mockResolvedValueOnce({

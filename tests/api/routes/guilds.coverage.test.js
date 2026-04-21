@@ -22,7 +22,7 @@ vi.mock('../../../src/modules/config.js', () => ({
     spam: { enabled: true },
     moderation: { enabled: true },
     triage: { enabled: true, classifyApiKey: 'sk-x', respondApiKey: 'sk-y' },
-    permissions: { botOwners: [] },
+    permissions: {},
     token: 'secret-token',
   }),
   setConfigValue: vi.fn().mockResolvedValue({ model: 'claude-4' }),
