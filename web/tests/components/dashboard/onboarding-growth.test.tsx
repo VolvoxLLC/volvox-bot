@@ -114,7 +114,7 @@ describe('OnboardingGrowthCategory', () => {
 
     render(<OnboardingGrowthCategory />);
 
-    expect(screen.getByTestId('discord-markdown-editor')).toHaveAttribute(
+    expect(screen.getAllByTestId('discord-markdown-editor')[0]).toHaveAttribute(
       'data-placeholder',
       'Welcome {{user}} to {{server}}!',
     );

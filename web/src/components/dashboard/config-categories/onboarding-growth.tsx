@@ -252,6 +252,7 @@ export function OnboardingGrowthCategory() {
                   checked={draftConfig.welcome?.returningMessageEnabled !== false}
                   onChange={(v) => updateWelcomeField('returningMessageEnabled', v)}
                   disabled={saving}
+                  label="Returning member message"
                 />
                 <span className="text-sm font-bold tracking-tight text-foreground/80">
                   Returning member message
