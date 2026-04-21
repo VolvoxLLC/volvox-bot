@@ -257,7 +257,7 @@ export function Footer() {
             {/* Social Nodes */}
             <div className="flex items-center gap-3 pt-2">
               {[
-                    {
+                {
                   icon: (props: { className?: string }) => (
                     <SimpleIcon path={siDiscord.path} {...props} />
                   ),
