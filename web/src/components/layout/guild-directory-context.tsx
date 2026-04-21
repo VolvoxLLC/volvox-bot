@@ -27,7 +27,11 @@ function isMutualGuild(value: unknown): value is MutualGuild {
     value !== null &&
     typeof g.id === 'string' &&
     typeof g.name === 'string' &&
-    typeof g.botPresent === 'boolean'
+    (typeof g.icon === 'string' || g.icon === null) &&
+    typeof g.owner === 'boolean' &&
+    typeof g.permissions === 'string' &&
+    Array.isArray(g.features) &&
+    (g.botPresent === undefined || typeof g.botPresent === 'boolean')
   );
 }
 

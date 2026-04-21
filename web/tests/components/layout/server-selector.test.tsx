@@ -79,7 +79,10 @@ describe('ServerSelector', () => {
   it('shows loading state initially', () => {
     fetchSpy.mockReturnValue(new Promise(() => {})); // never resolves
     renderServerSelector();
-    expect(screen.getByText('Loading workspaces...')).toBeInTheDocument();
+    expect(screen.getByText('Loading hub categories...')).toBeInTheDocument();
+    expect(screen.getByText('Infrastructure Hubs')).toBeInTheDocument();
+    expect(screen.getByText('Add Bot')).toBeInTheDocument();
+    expect(screen.getByText('Community Hubs')).toBeInTheDocument();
   });
 
   it('shows no mutual servers message when empty', async () => {
@@ -250,9 +253,8 @@ describe('ServerSelector', () => {
     await user.click(
       screen.getByRole("button", { name: /Default Server/i }),
     );
-    await user.click(
-      await screen.findByRole("menuitem", { name: "Default Server" }),
-    );
+    const entries = await screen.findAllByText('Default Server');
+    await user.click(entries[entries.length - 1]);
 
     expect(mockBroadcastSelectedGuild).toHaveBeenCalledTimes(1);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
@@ -315,18 +317,74 @@ describe('ServerSelector', () => {
     expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
 
-  it('shows member-only servers when the user cannot manage any guilds', async () => {
+  it('shows community hubs when the user cannot manage any guilds', async () => {
     const guilds = [
       {
-        id: "viewer-1",
-        name: "Viewer Server",
-        icon: "a_hash",
+        id: 'viewer-1',
+        name: 'Viewer Server',
+        icon: 'a_hash',
         owner: false,
-        permissions: "0",
+        permissions: '0',
         features: [],
         botPresent: true,
       },
     ];
+
+    const originalLocation = window.location;
+    // @ts-expect-error -- mocking location
+    delete window.location;
+    // @ts-expect-error -- mocking location
+    window.location = { href: '' };
+
+    try {
+      fetchSpy.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(guilds),
+      } as Response);
+
+      renderServerSelector();
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Community Hubs/i })).toBeInTheDocument();
+      });
+
+      const user = userEvent.setup();
+      await user.click(screen.getByRole('button', { name: /Community Hubs/i }));
+
+      expect(
+        await screen.findByText(/Read-only spaces and servers without install access/i),
+      ).toBeInTheDocument();
+
+      const communityMenuItem = screen.getByRole('menuitem', { name: /Viewer Server/i });
+      expect(communityMenuItem).toBeInTheDocument();
+
+      await user.click(communityMenuItem);
+
+      await waitFor(() => {
+        expect(window.location.href).toBe('/community/viewer-1');
+      });
+      expect(mockBroadcastSelectedGuild).not.toHaveBeenCalled();
+    } finally {
+      // @ts-expect-error -- restoring location mock
+      window.location = originalLocation;
+    }
+  });
+
+  it('shows add bot actions for guilds where the bot is not installed yet', async () => {
+    process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID = 'discord-client-id';
+    const guilds = [
+      {
+        id: 'add-bot-1',
+        name: 'Invite Me',
+        icon: null,
+        owner: false,
+        permissions: '32',
+        features: [],
+        botPresent: false,
+      },
+    ];
+
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
 
     fetchSpy.mockResolvedValue({
       ok: true,
@@ -336,14 +394,80 @@ describe('ServerSelector', () => {
     renderServerSelector();
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /No Access/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Invite Volvox\.Bot/i })).toBeInTheDocument();
     });
-    // When no guilds are manageable, the trigger shows "No Access"
-    // and the dropdown shows "Administrative clearance required"
+
     const user = userEvent.setup();
-    await user.click(screen.getByRole("button", { name: /No Access/i }));
-    expect(await screen.findByText(/Administrative clearance required/i)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Invite Volvox\.Bot/i }));
+
+    const inviteMenuItem = await screen.findByRole('menuitem', { name: /Invite Me/i });
+    expect(inviteMenuItem).toBeInTheDocument();
+    expect(screen.getByText('Invite Bot')).toBeInTheDocument();
+
+    await user.click(inviteMenuItem);
+
+    expect(openSpy).toHaveBeenCalledWith(
+      expect.stringContaining('guild_id=add-bot-1'),
+      '_blank',
+      'noopener,noreferrer',
+    );
+    expect(openSpy).toHaveBeenCalledWith(
+      expect.stringContaining('disable_guild_select=true'),
+      '_blank',
+      'noopener,noreferrer',
+    );
     expect(mockBroadcastSelectedGuild).not.toHaveBeenCalled();
+
+    openSpy.mockRestore();
+  });
+
+  it('shows unknown bot status guilds in the infrastructure bucket when the user can manage them', async () => {
+    const guilds = [
+      {
+        id: 'unknown-1',
+        name: 'Unknown Status Server',
+        icon: null,
+        owner: false,
+        permissions: '32',
+        features: [],
+      },
+    ];
+
+    const originalLocation = window.location;
+    // @ts-expect-error -- mocking location
+    delete window.location;
+    // @ts-expect-error -- mocking location
+    window.location = { href: '' };
+
+    try {
+      fetchSpy.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(guilds),
+      } as Response);
+
+      renderServerSelector();
+
+      await waitFor(() => {
+        expect(screen.getByText('Unknown Status Server')).toBeInTheDocument();
+      });
+
+      expect(screen.getByText('1 dashboard hub • 1 status unknown')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Community Hubs/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Invite Bot/i })).not.toBeInTheDocument();
+
+      const user = userEvent.setup();
+      await user.click(screen.getByText('Unknown Status Server'));
+
+      const infrastructureMenuItem = screen.getByRole('menuitem', { name: /Unknown Status Server/i });
+      expect(infrastructureMenuItem).toBeInTheDocument();
+      expect(screen.getByText('Status unknown')).toBeInTheDocument();
+      expect(screen.queryByText('Live')).not.toBeInTheDocument();
+      expect(mockBroadcastSelectedGuild).toHaveBeenCalledWith('unknown-1');
+      expect(window.location.href).toBe('');
+    } finally {
+      // @ts-expect-error -- restoring location mock
+      window.location = originalLocation;
+    }
   });
 
   it('treats explicit moderator access as manageable without discord permission bits', async () => {

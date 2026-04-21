@@ -51,6 +51,12 @@ function getAbortReason(signal: AbortSignal): unknown {
   return signal.reason ?? new DOMException('The operation was aborted.', 'AbortError');
 }
 
+function isAbortLikeError(error: unknown): boolean {
+  return (
+    error instanceof DOMException && (error.name === 'AbortError' || error.name === 'TimeoutError')
+  );
+}
+
 function throwIfAborted(signal?: AbortSignal): void {
   if (signal?.aborted) {
     throw getAbortReason(signal);
@@ -290,6 +296,10 @@ export async function fetchBotGuilds(signal?: AbortSignal): Promise<BotGuildResu
     }
     return { available: true, guilds: data as BotGuild[] };
   } catch (error) {
+    if (isAbortLikeError(error)) {
+      throw error;
+    }
+
     logger.warn(
       '[discord] Bot API is unreachable — continuing without bot guild filtering.',
       error,
@@ -298,42 +308,83 @@ export async function fetchBotGuilds(signal?: AbortSignal): Promise<BotGuildResu
   }
 }
 
-/**
- * Get guilds where both the user and the bot are present.
- * If bot guilds can't be determined (BOT_API_URL unset), returns all user
- * guilds with botPresent=false so the UI can still be useful.
- */
-export async function getMutualGuilds(
+async function getUserGuildsWithBotPresence(
   accessToken: string,
   signal?: AbortSignal,
-): Promise<MutualGuild[]> {
+): Promise<{ userGuilds: DiscordGuild[]; botResult: BotGuildResult }> {
   const [userGuilds, botResult] = await Promise.all([
     fetchUserGuilds(accessToken, signal),
-    // Defensive catch: even though fetchBotGuilds handles errors internally,
-    // wrap at the Promise.all level so an unexpected throw can never break
-    // the entire guild fetch — gracefully degrade to showing all user guilds.
     fetchBotGuilds(signal).catch((err) => {
       logger.warn('[discord] Unexpected error fetching bot guilds — degrading gracefully.', err);
       return { available: false, guilds: [] } as BotGuildResult;
     }),
   ]);
 
-  // If the bot API was unavailable, return all user guilds unfiltered so
-  // the UI can still be useful. If the API was available but the bot is
-  // genuinely in zero guilds, return an empty list.
+  return { userGuilds, botResult };
+}
+
+/**
+ * During bot API outages, auth-protected routes still need a guild list to avoid
+ * failing closed for every server the user belongs to. We intentionally mark
+ * the user's guilds as `botPresent: true` here to mean "treat as mutual for
+ * auth fallback", not "the bot is definitely installed in this guild".
+ */
+function markGuildsAsMutualGuildsForAuthFallback(mutualGuilds: DiscordGuild[]): MutualGuild[] {
+  return mutualGuilds.map((guild: DiscordGuild) => ({
+    ...guild,
+    botPresent: true,
+  }));
+}
+
+/**
+ * Get the dashboard guild directory for a user.
+ * Returns all user guilds and annotates bot presence when it can be determined.
+ * When the bot API is unavailable, botPresent is omitted so callers can treat
+ * the status as unknown instead of incorrectly classifying the guild.
+ */
+export async function getUserGuildDirectory(
+  accessToken: string,
+  signal?: AbortSignal,
+): Promise<MutualGuild[]> {
+  const { userGuilds, botResult } = await getUserGuildsWithBotPresence(accessToken, signal);
+
   if (!botResult.available) {
     return userGuilds.map((guild) => ({
       ...guild,
-      botPresent: false as const,
     }));
   }
 
   const botGuildIds = new Set(botResult.guilds.map((g) => g.id));
 
+  return userGuilds.map((guild) => ({
+    ...guild,
+    botPresent: botGuildIds.has(guild.id),
+  }));
+}
+
+/**
+ * Get guilds where both the user and the bot are present.
+ * When bot presence cannot be determined, this degrades to an auth fallback
+ * that keeps protected routes usable for the user's guilds until the bot API
+ * recovers. In that fallback path, `botPresent: true` means "treat as mutual
+ * for auth" rather than "the bot is confirmed installed".
+ */
+export async function getUserGuilds(
+  accessToken: string,
+  signal?: AbortSignal,
+): Promise<MutualGuild[]> {
+  const { userGuilds, botResult } = await getUserGuildsWithBotPresence(accessToken, signal);
+
+  if (!botResult.available) {
+    return markGuildsAsMutualGuildsForAuthFallback(userGuilds);
+  }
+
+  const botGuildIds = new Set(botResult.guilds.map((guild) => guild.id));
+
   return userGuilds
     .filter((guild) => botGuildIds.has(guild.id))
     .map((guild) => ({
       ...guild,
-      botPresent: true as const,
+      botPresent: true,
     }));
 }

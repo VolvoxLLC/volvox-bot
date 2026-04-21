@@ -2,7 +2,7 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { getBotApiBaseUrl } from '@/lib/bot-api';
-import { getMutualGuilds } from '@/lib/discord.server';
+import { getUserGuilds } from '@/lib/discord.server';
 import { logger } from '@/lib/logger';
 
 const REQUEST_TIMEOUT_MS = 10_000;
@@ -81,7 +81,7 @@ async function resolveGuildAccess(
   logPrefix: string,
   signal: AbortSignal,
 ): Promise<{ access: GuildAccessLevel; present: boolean }> {
-  const mutualGuilds = await getMutualGuilds(token.accessToken, signal);
+  const mutualGuilds = await getUserGuilds(token.accessToken, signal);
   const targetGuild = mutualGuilds.find((guild) => guild.id === guildId);
 
   if (!targetGuild) {

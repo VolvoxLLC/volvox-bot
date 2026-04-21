@@ -67,3 +67,20 @@ export function isGuildManageable(guild: MutualGuild): boolean {
   const role = getGuildDashboardRole(guild);
   return role === 'owner' || role === 'admin' || role === 'moderator';
 }
+
+/**
+ * Returns true when the user can invite the bot into the guild.
+ * Discord owners and members with ADMINISTRATOR or MANAGE_GUILD can do so.
+ */
+export function canInviteBot(guild: MutualGuild): boolean {
+  if (guild.owner) {
+    return true;
+  }
+
+  try {
+    const perms = BigInt(guild.permissions);
+    return (perms & ADMINISTRATOR) === ADMINISTRATOR || (perms & MANAGE_GUILD) === MANAGE_GUILD;
+  } catch {
+    return false;
+  }
+}

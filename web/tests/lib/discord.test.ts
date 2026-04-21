@@ -1,44 +1,71 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { getGuildIconUrl } from "@/lib/discord";
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { getBotInviteUrl, getGuildIconUrl } from '@/lib/discord';
 import {
   fetchUserGuilds,
   fetchBotGuilds,
-  getMutualGuilds,
   fetchWithRateLimit,
-} from "@/lib/discord.server";
+  getUserGuilds,
+  getUserGuildDirectory,
+} from '@/lib/discord.server';
 
-describe("getGuildIconUrl", () => {
-  it("returns null when no icon hash is provided", () => {
-    const url = getGuildIconUrl("123", null);
+describe('getBotInviteUrl', () => {
+  const originalClientId = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;
+
+  afterEach(() => {
+    if (originalClientId === undefined) {
+      delete process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;
+    } else {
+      process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID = originalClientId;
+    }
+  });
+
+  it('returns null when the client id is missing', () => {
+    delete process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;
+    expect(getBotInviteUrl()).toBeNull();
+  });
+
+  it('builds a generic invite url by default', () => {
+    process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID = 'discord-client-id';
+    expect(getBotInviteUrl()).toContain('client_id=discord-client-id');
+  });
+
+  it('can preselect a guild in the invite flow', () => {
+    process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID = 'discord-client-id';
+    const inviteUrl = getBotInviteUrl('guild-123');
+
+    expect(inviteUrl).toContain('guild_id=guild-123');
+    expect(inviteUrl).toContain('disable_guild_select=true');
+  });
+});
+
+describe('getGuildIconUrl', () => {
+  it('returns null when no icon hash is provided', () => {
+    const url = getGuildIconUrl('123', null);
     expect(url).toBeNull();
   });
 
-  it("returns null for all guilds without an icon hash", () => {
-    const url0 = getGuildIconUrl("0", null);
-    const url1 = getGuildIconUrl("1", null);
-    const url4 = getGuildIconUrl("4", null);
+  it('returns null for all guilds without an icon hash', () => {
+    const url0 = getGuildIconUrl('0', null);
+    const url1 = getGuildIconUrl('1', null);
+    const url4 = getGuildIconUrl('4', null);
     expect(url0).toBeNull();
     expect(url1).toBeNull();
     expect(url4).toBeNull();
   });
 
-  it("returns webp icon for non-animated hash", () => {
-    const url = getGuildIconUrl("123", "abc123", 128);
-    expect(url).toBe(
-      "https://cdn.discordapp.com/icons/123/abc123.webp?size=128",
-    );
+  it('returns webp icon for non-animated hash', () => {
+    const url = getGuildIconUrl('123', 'abc123', 128);
+    expect(url).toBe('https://cdn.discordapp.com/icons/123/abc123.webp?size=128');
   });
 
-  it("returns gif icon for animated hash", () => {
-    const url = getGuildIconUrl("123", "a_abc123", 64);
-    expect(url).toBe(
-      "https://cdn.discordapp.com/icons/123/a_abc123.gif?size=64",
-    );
+  it('returns gif icon for animated hash', () => {
+    const url = getGuildIconUrl('123', 'a_abc123', 64);
+    expect(url).toBe('https://cdn.discordapp.com/icons/123/a_abc123.gif?size=64');
   });
 
-  it("defaults to size 128", () => {
-    const url = getGuildIconUrl("123", "abc123");
-    expect(url).toContain("size=128");
+  it('defaults to size 128', () => {
+    const url = getGuildIconUrl('123', 'abc123');
+    expect(url).toContain('size=128');
   });
 });
 
@@ -489,7 +516,7 @@ describe("fetchBotGuilds", () => {
     expect(result).toEqual({ available: false, guilds: [] });
   });
 
-  it("forwards AbortSignal to the underlying fetch", async () => {
+  it("forwards AbortSignal to the underlying fetch and rethrows aborts", async () => {
     process.env.BOT_API_URL = "http://localhost:3001";
     process.env.BOT_API_SECRET = "test-secret";
 
@@ -498,11 +525,8 @@ describe("fetchBotGuilds", () => {
 
     fetchSpy.mockRejectedValue(new DOMException("Aborted", "AbortError"));
 
-    // fetchBotGuilds catches errors internally and returns unavailable
-    const result = await fetchBotGuilds(controller.signal);
-    expect(result).toEqual({ available: false, guilds: [] });
+    await expect(fetchBotGuilds(controller.signal)).rejects.toThrow();
 
-    // Verify signal was forwarded to fetch
     expect(fetchSpy).toHaveBeenCalledWith(
       "http://localhost:3001/api/v1/guilds",
       expect.objectContaining({
@@ -554,13 +578,13 @@ describe("fetchBotGuilds", () => {
   });
 });
 
-describe("getMutualGuilds", () => {
+describe('getUserGuildDirectory', () => {
   let fetchSpy: ReturnType<typeof vi.spyOn>;
   let savedBotApiUrl: string | undefined;
   let savedBotApiSecret: string | undefined;
 
   beforeEach(() => {
-    fetchSpy = vi.spyOn(global, "fetch");
+    fetchSpy = vi.spyOn(global, 'fetch');
     savedBotApiUrl = process.env.BOT_API_URL;
     savedBotApiSecret = process.env.BOT_API_SECRET;
   });
@@ -579,69 +603,269 @@ describe("getMutualGuilds", () => {
     }
   });
 
-  it("returns only guilds where bot is present", async () => {
+  it('returns all user guilds and marks whether the bot is present', async () => {
     const userGuilds = [
-      { id: "1", name: "Server 1", icon: null, owner: true, permissions: "8", features: [] },
-      { id: "2", name: "Server 2", icon: null, owner: false, permissions: "0", features: [] },
-      { id: "3", name: "Server 3", icon: null, owner: false, permissions: "0", features: [] },
+      { id: '1', name: 'Server 1', icon: null, owner: true, permissions: '8', features: [] },
+      { id: '2', name: 'Server 2', icon: null, owner: false, permissions: '0', features: [] },
+      { id: '3', name: 'Server 3', icon: null, owner: false, permissions: '0', features: [] },
     ];
     const botGuilds = [
-      { id: "1", name: "Server 1", icon: null },
-      { id: "3", name: "Server 3", icon: null },
+      { id: '1', name: 'Server 1', icon: null },
+      { id: '3', name: 'Server 3', icon: null },
     ];
 
-    process.env.BOT_API_URL = "http://localhost:3001";
-    process.env.BOT_API_SECRET = "test-secret";
+    process.env.BOT_API_URL = 'http://localhost:3001';
+    process.env.BOT_API_SECRET = 'test-secret';
 
     fetchSpy.mockImplementation((url: string | URL | Request) => {
       const urlStr = url.toString();
-      if (urlStr.includes("/users/@me/guilds")) {
-        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(userGuilds) } as Response);
+      if (urlStr.includes('/users/@me/guilds')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve(userGuilds),
+        } as Response);
       }
-      if (urlStr.includes("/api/v1/guilds")) {
-        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(botGuilds) } as Response);
+      if (urlStr.includes('/api/v1/guilds')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve(botGuilds),
+        } as Response);
       }
       return Promise.reject(new Error(`Unexpected fetch URL: ${urlStr}`));
     });
 
-    const mutualGuilds = await getMutualGuilds("test-token");
+    const guildDirectory = await getUserGuildDirectory('test-token');
 
-    expect(mutualGuilds).toHaveLength(2);
-    expect(mutualGuilds[0].id).toBe("1");
-    expect(mutualGuilds[1].id).toBe("3");
-    expect(mutualGuilds[0].botPresent).toBe(true);
+    expect(guildDirectory).toHaveLength(3);
+    expect(guildDirectory).toEqual([
+      expect.objectContaining({ id: '1', botPresent: true }),
+      expect.objectContaining({ id: '2', botPresent: false }),
+      expect.objectContaining({ id: '3', botPresent: true }),
+    ]);
   });
 
-  it("returns all user guilds unfiltered when bot API fails", async () => {
+  it('returns all user guilds with unknown bot presence when the bot api fails', async () => {
     const userGuilds = [
-      { id: "1", name: "Server 1", icon: null, owner: true, permissions: "8", features: [] },
-      { id: "2", name: "Server 2", icon: null, owner: false, permissions: "0", features: [] },
+      { id: '1', name: 'Server 1', icon: null, owner: true, permissions: '8', features: [] },
+      { id: '2', name: 'Server 2', icon: null, owner: false, permissions: '0', features: [] },
     ];
 
-    process.env.BOT_API_URL = "http://localhost:3001";
-    process.env.BOT_API_SECRET = "test-secret";
+    process.env.BOT_API_URL = 'http://localhost:3001';
+    process.env.BOT_API_SECRET = 'test-secret';
 
     fetchSpy.mockImplementation((url: string | URL | Request) => {
       const urlStr = url.toString();
-      if (urlStr.includes("/users/@me/guilds")) {
-        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(userGuilds) } as Response);
+      if (urlStr.includes('/users/@me/guilds')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve(userGuilds),
+        } as Response);
       }
-      if (urlStr.includes("/api/v1/guilds")) {
-        return Promise.resolve({ ok: false, status: 500, statusText: "Internal Server Error" } as Response);
+      if (urlStr.includes('/api/v1/guilds')) {
+        return Promise.resolve({
+          ok: false,
+          status: 500,
+          statusText: 'Internal Server Error',
+        } as Response);
       }
       return Promise.reject(new Error(`Unexpected fetch URL: ${urlStr}`));
     });
 
-    const mutualGuilds = await getMutualGuilds("test-token");
+    const guildDirectory = await getUserGuildDirectory('test-token');
 
-    expect(mutualGuilds).toHaveLength(2);
-    expect(mutualGuilds[0].botPresent).toBe(false);
-    expect(mutualGuilds[1].botPresent).toBe(false);
+    expect(guildDirectory).toHaveLength(2);
+    expect(guildDirectory[0]).not.toHaveProperty('botPresent');
+    expect(guildDirectory[1]).not.toHaveProperty('botPresent');
   });
 
-  it("returns all user guilds when no BOT_API_URL is set", async () => {
+  it('treats bot api aborts as unavailable in the guild directory', async () => {
     const userGuilds = [
-      { id: "1", name: "Server 1", icon: null, owner: true, permissions: "8", features: [] },
+      { id: '1', name: 'Server 1', icon: null, owner: true, permissions: '8', features: [] },
+    ];
+    const timeoutError = new DOMException('Timed out', 'TimeoutError');
+
+    process.env.BOT_API_URL = 'http://localhost:3001';
+    process.env.BOT_API_SECRET = 'test-secret';
+
+    fetchSpy.mockImplementation((url: string | URL | Request) => {
+      const urlStr = url.toString();
+      if (urlStr.includes('/users/@me/guilds')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve(userGuilds),
+        } as Response);
+      }
+      if (urlStr.includes('/api/v1/guilds')) {
+        return Promise.reject(timeoutError);
+      }
+      return Promise.reject(new Error(`Unexpected fetch URL: ${urlStr}`));
+    });
+
+    await expect(getUserGuildDirectory('test-token')).resolves.toEqual([
+      expect.not.objectContaining({ botPresent: expect.anything() }),
+    ]);
+  });
+});
+
+describe('getUserGuilds', () => {
+  let fetchSpy: ReturnType<typeof vi.spyOn>;
+  let savedBotApiUrl: string | undefined;
+  let savedBotApiSecret: string | undefined;
+
+  beforeEach(() => {
+    fetchSpy = vi.spyOn(global, 'fetch');
+    savedBotApiUrl = process.env.BOT_API_URL;
+    savedBotApiSecret = process.env.BOT_API_SECRET;
+  });
+
+  afterEach(() => {
+    fetchSpy.mockRestore();
+    if (savedBotApiUrl !== undefined) {
+      process.env.BOT_API_URL = savedBotApiUrl;
+    } else {
+      delete process.env.BOT_API_URL;
+    }
+    if (savedBotApiSecret !== undefined) {
+      process.env.BOT_API_SECRET = savedBotApiSecret;
+    } else {
+      delete process.env.BOT_API_SECRET;
+    }
+  });
+
+  it('returns only mutual guilds when the bot api is available', async () => {
+    const userGuilds = [
+      { id: '1', name: 'Server 1', icon: null, owner: true, permissions: '8', features: [] },
+      { id: '2', name: 'Server 2', icon: null, owner: false, permissions: '0', features: [] },
+      { id: '3', name: 'Server 3', icon: null, owner: false, permissions: '0', features: [] },
+    ];
+    const botGuilds = [
+      { id: '1', name: 'Server 1', icon: null },
+      { id: '3', name: 'Server 3', icon: null },
+    ];
+
+    process.env.BOT_API_URL = 'http://localhost:3001';
+    process.env.BOT_API_SECRET = 'test-secret';
+
+    fetchSpy.mockImplementation((url: string | URL | Request) => {
+      const urlStr = url.toString();
+      if (urlStr.includes('/users/@me/guilds')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve(userGuilds),
+        } as Response);
+      }
+      if (urlStr.includes('/api/v1/guilds')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve(botGuilds),
+        } as Response);
+      }
+      return Promise.reject(new Error(`Unexpected fetch URL: ${urlStr}`));
+    });
+
+    const mutualGuilds = await getUserGuilds('test-token');
+
+    expect(mutualGuilds).toEqual([
+      expect.objectContaining({ id: '1', botPresent: true }),
+      expect.objectContaining({ id: '3', botPresent: true }),
+    ]);
+  });
+
+  it('fetches bot guilds and user guilds in parallel for mutual guild checks', async () => {
+    const userGuilds = [
+      { id: '1', name: 'Server 1', icon: null, owner: true, permissions: '8', features: [] },
+    ];
+    const botGuilds = [{ id: '1', name: 'Server 1', icon: null }];
+
+    process.env.BOT_API_URL = 'http://localhost:3001';
+    process.env.BOT_API_SECRET = 'test-secret';
+
+    let userFetchStarted = false;
+    let resolveBotFetch: (value: Response) => void;
+    let resolveUserFetch: (value: Response) => void;
+
+    const botFetch = new Promise<Response>((resolve) => {
+      resolveBotFetch = resolve;
+    });
+    const userFetch = new Promise<Response>((resolve) => {
+      resolveUserFetch = resolve;
+    });
+
+    fetchSpy.mockImplementation((url: string | URL | Request) => {
+      const urlStr = url.toString();
+      if (urlStr.includes('/api/v1/guilds')) {
+        return botFetch;
+      }
+      if (urlStr.includes('/users/@me/guilds')) {
+        userFetchStarted = true;
+        return userFetch;
+      }
+      return Promise.reject(new Error(`Unexpected fetch URL: ${urlStr}`));
+    });
+
+    const mutualGuildsPromise = getUserGuilds('test-token');
+
+    expect(userFetchStarted).toBe(true);
+
+    resolveBotFetch!({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve(botGuilds),
+    } as Response);
+    resolveUserFetch!({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve(userGuilds),
+    } as Response);
+
+    await expect(mutualGuildsPromise).resolves.toEqual([
+      expect.objectContaining({ id: '1', botPresent: true }),
+    ]);
+  });
+
+  it('returns all user guilds marked present when the bot api fails', async () => {
+    const userGuilds = [
+      { id: '1', name: 'Server 1', icon: null, owner: true, permissions: '8', features: [] },
+      { id: '2', name: 'Server 2', icon: null, owner: false, permissions: '0', features: [] },
+    ];
+
+    process.env.BOT_API_URL = 'http://localhost:3001';
+    process.env.BOT_API_SECRET = 'test-secret';
+
+    fetchSpy.mockImplementation((url: string | URL | Request) => {
+      const urlStr = url.toString();
+      if (urlStr.includes('/api/v1/guilds')) {
+        return Promise.resolve({
+          ok: false,
+          status: 500,
+          statusText: 'Internal Server Error',
+        } as Response);
+      }
+      if (urlStr.includes('/users/@me/guilds')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve(userGuilds),
+        } as Response);
+      }
+      return Promise.reject(new Error(`Unexpected fetch URL: ${urlStr}`));
+    });
+
+    await expect(getUserGuilds('test-token')).resolves.toEqual([
+      expect.objectContaining({ id: '1', botPresent: true }),
+      expect.objectContaining({ id: '2', botPresent: true }),
+    ]);
+  });
+
+  it('returns all user guilds marked present when no BOT_API_URL is set', async () => {
+    const userGuilds = [
+      { id: '1', name: 'Server 1', icon: null, owner: true, permissions: '8', features: [] },
     ];
 
     fetchSpy.mockResolvedValue({
@@ -652,9 +876,13 @@ describe("getMutualGuilds", () => {
 
     delete process.env.BOT_API_URL;
 
-    const mutualGuilds = await getMutualGuilds("test-token");
-
-    expect(mutualGuilds).toHaveLength(1);
-    expect(mutualGuilds[0].botPresent).toBe(false);
+    await expect(getUserGuilds('test-token')).resolves.toEqual([
+      expect.objectContaining({ id: '1', botPresent: true }),
+    ]);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(fetchSpy).toHaveBeenCalledWith(
+      expect.stringContaining('/users/@me/guilds'),
+      expect.any(Object),
+    );
   });
 });

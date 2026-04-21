@@ -16,13 +16,24 @@ const DISCORD_CDN = 'https://cdn.discordapp.com';
 const BOT_PERMISSIONS = '1099511704582';
 
 /**
- * Build the bot OAuth2 invite URL, or return null when
- * NEXT_PUBLIC_DISCORD_CLIENT_ID is not configured.
+ * Build the bot OAuth2 invite URL, optionally pre-selecting a guild,
+ * or return null when NEXT_PUBLIC_DISCORD_CLIENT_ID is not configured.
  */
-export function getBotInviteUrl(): string | null {
+export function getBotInviteUrl(guildId?: string): string | null {
   const clientId = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;
   if (!clientId) return null;
-  return `https://discord.com/api/oauth2/authorize?client_id=${clientId}&permissions=${BOT_PERMISSIONS}&scope=bot%20applications.commands`;
+
+  const url = new URL('https://discord.com/api/oauth2/authorize');
+  url.searchParams.set('client_id', clientId);
+  url.searchParams.set('permissions', BOT_PERMISSIONS);
+  url.searchParams.set('scope', 'bot applications.commands');
+
+  if (guildId) {
+    url.searchParams.set('guild_id', guildId);
+    url.searchParams.set('disable_guild_select', 'true');
+  }
+
+  return url.toString();
 }
 
 /**

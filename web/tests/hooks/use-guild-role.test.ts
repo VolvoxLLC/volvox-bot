@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getGuildDashboardRole, isGuildManageable } from '@/hooks/use-guild-role';
+import { canInviteBot, getGuildDashboardRole, isGuildManageable } from '@/hooks/use-guild-role';
 import type { MutualGuild } from '@/types/discord';
 
 function createGuild(overrides: Partial<MutualGuild> = {}): MutualGuild {
@@ -73,5 +73,20 @@ describe('use-guild-role', () => {
 
   it('prefers ownership over a downgraded access field', () => {
     expect(getGuildDashboardRole(createGuild({ owner: true, access: 'viewer' }))).toBe('owner');
+  });
+
+  it('allows bot invites for owners, administrators, and manage guild permissions', () => {
+    expect(canInviteBot(createGuild({ owner: true, permissions: '0' }))).toBe(true);
+    expect(canInviteBot(createGuild({ permissions: '8' }))).toBe(true);
+    expect(canInviteBot(createGuild({ permissions: '32' }))).toBe(true);
+  });
+
+  it('does not let access metadata override invite eligibility', () => {
+    expect(canInviteBot(createGuild({ permissions: '0', access: 'owner' }))).toBe(false);
+    expect(canInviteBot(createGuild({ permissions: '0', access: 'admin' }))).toBe(false);
+  });
+
+  it('does not allow bot invites for viewer-only guilds', () => {
+    expect(canInviteBot(createGuild({ permissions: '0', access: 'viewer' }))).toBe(false);
   });
 });

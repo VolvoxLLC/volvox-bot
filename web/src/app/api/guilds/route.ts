@@ -2,7 +2,7 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { getBotApiBaseUrl } from '@/lib/bot-api';
-import { getMutualGuilds } from '@/lib/discord.server';
+import { getUserGuildDirectory } from '@/lib/discord.server';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
@@ -13,7 +13,7 @@ const VALID_ACCESS_LEVELS = new Set(['admin', 'moderator', 'viewer', 'bot-owner'
 const MAX_ACCESS_LOOKUP_GUILDS = 100;
 
 async function applyAccessLevels(
-  guilds: Awaited<ReturnType<typeof getMutualGuilds>>,
+  guilds: Awaited<ReturnType<typeof getUserGuildDirectory>>,
   userId: string,
   signal: AbortSignal,
 ) {
@@ -24,7 +24,7 @@ async function applyAccessLevels(
     return guilds;
   }
 
-  const botGuildIds = guilds.filter((guild) => guild.botPresent).map((guild) => guild.id);
+  const botGuildIds = guilds.filter((guild) => guild.botPresent === true).map((guild) => guild.id);
   if (botGuildIds.length === 0) {
     return guilds;
   }
@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const signal = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
-    const guilds = await getMutualGuilds(token.accessToken as string, signal);
+    const guilds = await getUserGuildDirectory(token.accessToken as string, signal);
     const userId =
       typeof token.id === 'string' ? token.id : typeof token.sub === 'string' ? token.sub : '';
     const guildsWithAccess = userId ? await applyAccessLevels(guilds, userId, signal) : guilds;

@@ -18,9 +18,9 @@ vi.mock("next-auth/jwt", () => ({
 }));
 
 // Mock discord server lib
-const mockGetMutualGuilds = vi.fn();
+const mockGetUserGuildDirectory = vi.fn();
 vi.mock("@/lib/discord.server", () => ({
-  getMutualGuilds: (...args: unknown[]) => mockGetMutualGuilds(...args),
+  getUserGuildDirectory: (...args: unknown[]) => mockGetUserGuildDirectory(...args),
 }));
 const mockGetBotApiBaseUrl = vi.fn();
 vi.mock("@/lib/bot-api", () => ({
@@ -100,14 +100,14 @@ describe("GET /api/guilds", () => {
       accessTokenExpires: Date.now() + 60_000,
       id: "discord-user-123",
     });
-    mockGetMutualGuilds.mockResolvedValue(mockGuilds);
+    mockGetUserGuildDirectory.mockResolvedValue(mockGuilds);
 
     const response = await GET(createMockRequest());
 
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body).toEqual(mockGuilds);
-    expect(mockGetMutualGuilds).toHaveBeenCalledWith(
+    expect(mockGetUserGuildDirectory).toHaveBeenCalledWith(
       "valid-discord-token",
       expect.any(AbortSignal),
     );
@@ -126,7 +126,7 @@ describe("GET /api/guilds", () => {
     expect(response.status).toBe(401);
     const body = await response.json();
     expect(body.error).toMatch(/sign in/i);
-    expect(mockGetMutualGuilds).not.toHaveBeenCalled();
+    expect(mockGetUserGuildDirectory).not.toHaveBeenCalled();
   });
 
   it("returns 500 on discord API error", async () => {
@@ -137,7 +137,7 @@ describe("GET /api/guilds", () => {
       accessTokenExpires: Date.now() + 60_000,
       id: "discord-user-123",
     });
-    mockGetMutualGuilds.mockRejectedValue(new Error("Discord API error"));
+    mockGetUserGuildDirectory.mockRejectedValue(new Error("Discord API error"));
 
     const response = await GET(createMockRequest());
 
@@ -162,7 +162,7 @@ describe("GET /api/guilds", () => {
       id: "discord-user-123",
       accessToken: "valid-discord-token",
     });
-    mockGetMutualGuilds.mockResolvedValue([
+    mockGetUserGuildDirectory.mockResolvedValue([
       {
         id: "1",
         name: "Server 1",
@@ -208,7 +208,7 @@ describe("GET /api/guilds", () => {
       id: "discord-user-123",
       accessToken: "valid-discord-token",
     });
-    mockGetMutualGuilds.mockResolvedValue([
+    mockGetUserGuildDirectory.mockResolvedValue([
       {
         id: "1",
         name: "Server 1",
@@ -251,7 +251,7 @@ describe("GET /api/guilds", () => {
       id: "discord-user-123",
       accessToken: "valid-discord-token",
     });
-    mockGetMutualGuilds.mockResolvedValue(
+    mockGetUserGuildDirectory.mockResolvedValue(
       Array.from({ length: 205 }, (_, index) => ({
         id: String(index + 1),
         name: `Server ${index + 1}`,
