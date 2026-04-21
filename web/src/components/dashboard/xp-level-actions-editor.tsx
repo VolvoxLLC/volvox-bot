@@ -1,16 +1,26 @@
 'use client';
 
-import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
-import { useEffect, useMemo } from 'react';
-import { generateId } from '@/components/dashboard/config-editor-utils';
+import { Check, ChevronDown, ChevronsUpDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { generateId, inputClasses } from '@/components/dashboard/config-editor-utils';
 import { Button } from '@/components/ui/button';
 import { ChannelSelector } from '@/components/ui/channel-selector';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 import { DiscordMarkdownEditor } from '@/components/ui/discord-markdown-editor';
 import { defaultEmbedConfig, EmbedBuilder, type EmbedConfig } from '@/components/ui/embed-builder';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { RoleSelector } from '@/components/ui/role-selector';
 import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
 import type {
   BotConfig,
   DeepPartial,
@@ -20,27 +30,74 @@ import type {
 } from '@/types/config';
 
 type GuildConfig = DeepPartial<BotConfig>;
+type SearchSelectOption<T extends string> = {
+  value: T;
+  label: string;
+  description?: string;
+};
 
-const ACTION_TYPE_OPTIONS: Array<{ value: XpLevelAction['type']; label: string }> = [
-  { value: 'grantRole', label: 'Grant Role' },
-  { value: 'removeRole', label: 'Remove Role' },
-  { value: 'sendDm', label: 'Send DM' },
-  { value: 'announce', label: 'Post Announcement' },
-  { value: 'xpBonus', label: 'Grant XP Bonus' },
-  { value: 'addReaction', label: 'Add Reaction' },
-  { value: 'nickPrefix', label: 'Nickname Prefix' },
-  { value: 'nickSuffix', label: 'Nickname Suffix' },
-  { value: 'webhook', label: 'Run Webhook' },
+const ACTION_TYPE_OPTIONS: Array<SearchSelectOption<XpLevelAction['type']>> = [
+  { value: 'grantRole', label: 'Grant Role', description: 'Add a role when this action runs.' },
+  {
+    value: 'removeRole',
+    label: 'Remove Role',
+    description: 'Remove a role when this action runs.',
+  },
+  { value: 'sendDm', label: 'Send DM', description: 'Message the member privately.' },
+  {
+    value: 'announce',
+    label: 'Post Announcement',
+    description: 'Post a level-up message in a server channel.',
+  },
+  { value: 'xpBonus', label: 'Grant XP Bonus', description: 'Award extra XP.' },
+  { value: 'addReaction', label: 'Add Reaction', description: 'React to the triggering message.' },
+  {
+    value: 'nickPrefix',
+    label: 'Nickname Prefix',
+    description: 'Add text before the member nickname.',
+  },
+  {
+    value: 'nickSuffix',
+    label: 'Nickname Suffix',
+    description: 'Add text after the member nickname.',
+  },
+  { value: 'webhook', label: 'Run Webhook', description: 'Send a templated webhook payload.' },
+];
+
+const CHANNEL_MODE_OPTIONS: Array<SearchSelectOption<NonNullable<XpLevelAction['channelMode']>>> = [
+  {
+    value: 'current',
+    label: 'Current Channel',
+    description: 'Post where the level-up happened.',
+  },
+  {
+    value: 'specific',
+    label: 'Specific Channel',
+    description: 'Always post in one configured channel.',
+  },
+  {
+    value: 'none',
+    label: 'No Public Announcement',
+    description: 'Skip the public message for this action.',
+  },
+];
+
+const MESSAGE_FORMAT_OPTIONS: Array<SearchSelectOption<NonNullable<XpLevelAction['format']>>> = [
+  { value: 'text', label: 'Text', description: 'Send a Discord markdown message.' },
+  { value: 'embed', label: 'Embed', description: 'Send a rich embed message.' },
+  { value: 'both', label: 'Text + Embed', description: 'Send both message types.' },
 ];
 
 const TEMPLATE_VARIABLES = [
   'username',
   'mention',
+  'userId',
   'level',
   'previousLevel',
   'xp',
   'xpToNext',
-  'server',
+  'serverName',
+  'serverId',
   'serverIcon',
   'memberCount',
   'channel',
@@ -58,11 +115,13 @@ const TEMPLATE_VARIABLES = [
 const TEMPLATE_SAMPLES: Record<string, string> = {
   username: 'Ada',
   mention: '<@1234567890>',
+  userId: '1234567890',
   level: '10',
   previousLevel: '9',
   xp: '4,250',
   xpToNext: '750',
-  server: 'Volvox',
+  serverName: 'Volvox',
+  serverId: '9876543210',
   serverIcon: 'https://cdn.discordapp.com/icons/server/icon.png',
   memberCount: '1,234',
   channel: '#general',
@@ -109,7 +168,7 @@ function createAction(type: XpLevelAction['type']): XpLevelAction {
         id,
         type,
         format: 'text',
-        message: '🎉 You reached **Level {{level}}** in **{{server}}**!',
+        message: '🎉 You reached **Level {{level}}** in **{{serverName}}**!',
       };
     case 'announce':
       return {
@@ -128,7 +187,13 @@ function createAction(type: XpLevelAction['type']): XpLevelAction {
     case 'nickSuffix':
       return { id, type, suffix: ' [Lvl {{level}}]' };
     case 'webhook':
-      return { id, type, url: '', payload: '{"user":"{{username}}","level":"{{level}}"}' };
+      return {
+        id,
+        type,
+        url: '',
+        payload:
+          '{"user":"{{username}}","userId":"{{userId}}","serverId":"{{serverId}}","level":"{{level}}"}',
+      };
     default:
       return { id, type };
   }
@@ -353,6 +418,136 @@ function withMessageFormat(
   };
 }
 
+interface SearchableActionSelectProps<T extends string> {
+  readonly id: string;
+  readonly value: T;
+  readonly options: Array<SearchSelectOption<T>>;
+  readonly disabled: boolean;
+  readonly placeholder: string;
+  readonly searchPlaceholder: string;
+  readonly onChange: (value: T) => void;
+}
+
+function SearchableActionSelect<T extends string>({
+  id,
+  value,
+  options,
+  disabled,
+  placeholder,
+  searchPlaceholder,
+  onChange,
+}: SearchableActionSelectProps<T>) {
+  const [open, setOpen] = useState(false);
+  const selected = options.find((option) => option.value === value);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          id={id}
+          type="button"
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          disabled={disabled}
+          className={cn(
+            inputClasses,
+            'h-auto min-h-[42px] justify-between px-4 py-2 text-left font-medium text-muted-foreground transition-all duration-500 hover:border-border hover:bg-muted/30 hover:text-foreground focus:ring-primary/20 group',
+          )}
+        >
+          <span className="min-w-0 truncate">{selected?.label ?? placeholder}</span>
+          <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-40 transition-opacity group-hover:opacity-80" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-[var(--radix-popover-trigger-width)] min-w-[260px] overflow-hidden rounded-2xl border-border bg-popover/95 p-0 shadow-2xl backdrop-blur-xl"
+        align="start"
+      >
+        <Command className="bg-transparent">
+          <CommandInput
+            placeholder={searchPlaceholder}
+            className="h-12 border-none bg-transparent text-sm focus:ring-0"
+          />
+          <CommandList className="max-h-[300px] scrollbar-thin scrollbar-track-transparent scrollbar-thumb-primary/10">
+            <CommandEmpty className="py-8 text-center text-xs font-medium uppercase tracking-widest text-muted-foreground">
+              No options found
+            </CommandEmpty>
+            <CommandGroup className="p-2">
+              {options.map((option) => {
+                const isSelected = option.value === value;
+
+                return (
+                  <CommandItem
+                    key={option.value}
+                    value={`${option.label} ${option.value} ${option.description ?? ''}`}
+                    onSelect={() => {
+                      onChange(option.value);
+                      setOpen(false);
+                    }}
+                    className={cn(
+                      'mb-1 flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-200',
+                      isSelected
+                        ? 'border border-primary/20 bg-primary/10 text-primary shadow-[inset_0_0_12px_hsl(var(--primary)/0.1)]'
+                        : 'border border-transparent text-muted-foreground hover:bg-muted/10',
+                    )}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-medium">{option.label}</div>
+                      {option.description ? (
+                        <div className="truncate text-xs text-muted-foreground">
+                          {option.description}
+                        </div>
+                      ) : null}
+                    </div>
+                    <div
+                      className={cn(
+                        'flex h-4 w-4 items-center justify-center rounded-full border transition-all duration-300',
+                        isSelected ? 'border-primary bg-primary' : 'border-border',
+                      )}
+                    >
+                      {isSelected ? (
+                        <Check className="h-2.5 w-2.5 text-primary-foreground" strokeWidth={4} />
+                      ) : null}
+                    </div>
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function TemplateVariableList() {
+  return (
+    <div className="rounded-xl border border-border/50 bg-muted/20 p-3">
+      <Label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+        Variables
+      </Label>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {TEMPLATE_VARIABLES.map((variable) => (
+          <span
+            key={variable}
+            className="inline-flex min-w-0 items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/10 px-2 py-1 font-mono text-[11px] text-primary"
+            title={
+              TEMPLATE_SAMPLES[variable] ? `Example: ${TEMPLATE_SAMPLES[variable]}` : undefined
+            }
+          >
+            {`{{${variable}}}`}
+            {TEMPLATE_SAMPLES[variable] ? (
+              <span className="max-w-28 truncate text-muted-foreground">
+                {TEMPLATE_SAMPLES[variable]}
+              </span>
+            ) : null}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function reorderItem<T>(items: T[], index: number, direction: -1 | 1): T[] {
   const nextIndex = index + direction;
   if (nextIndex < 0 || nextIndex >= items.length) return items;
@@ -433,24 +628,20 @@ function ActionCard({
 
       <div className="space-y-2">
         <Label htmlFor={`${actionId}-type`}>Action Type</Label>
-        <select
+        <SearchableActionSelect
           id={`${actionId}-type`}
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
           value={action.type}
+          options={ACTION_TYPE_OPTIONS}
           disabled={saving}
-          onChange={(event) =>
+          placeholder="Select action type"
+          searchPlaceholder="Search action types..."
+          onChange={(value) =>
             onChange({
-              ...createAction(event.target.value as XpLevelAction['type']),
+              ...createAction(value),
               id: action.id,
             })
           }
-        >
-          {ACTION_TYPE_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+        />
       </div>
 
       {(action.type === 'grantRole' || action.type === 'removeRole') && (
@@ -473,22 +664,20 @@ function ActionCard({
           {action.type === 'announce' && (
             <div className="space-y-2">
               <Label htmlFor={`${actionId}-channel-mode`}>Announcement Channel</Label>
-              <select
+              <SearchableActionSelect
                 id={`${actionId}-channel-mode`}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 value={action.channelMode ?? 'current'}
+                options={CHANNEL_MODE_OPTIONS}
                 disabled={saving}
-                onChange={(event) =>
+                placeholder="Select announcement channel"
+                searchPlaceholder="Search channel routing..."
+                onChange={(value) =>
                   onChange({
                     ...action,
-                    channelMode: event.target.value as 'current' | 'specific' | 'none',
+                    channelMode: value,
                   })
                 }
-              >
-                <option value="current">Current Channel</option>
-                <option value="specific">Specific Channel</option>
-                <option value="none">No Public Announcement</option>
-              </select>
+              />
               {(action.channelMode ?? 'current') === 'specific' && (
                 <ChannelSelector
                   guildId={guildId}
@@ -507,19 +696,15 @@ function ActionCard({
 
           <div className="space-y-2">
             <Label htmlFor={`${actionId}-format`}>Message Format</Label>
-            <select
+            <SearchableActionSelect
               id={`${actionId}-format`}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               value={format}
+              options={MESSAGE_FORMAT_OPTIONS}
               disabled={saving}
-              onChange={(event) =>
-                onChange(withMessageFormat(action, event.target.value as 'text' | 'embed' | 'both'))
-              }
-            >
-              <option value="text">Text</option>
-              <option value="embed">Embed</option>
-              <option value="both">Text + Embed</option>
-            </select>
+              placeholder="Select message format"
+              searchPlaceholder="Search formats..."
+              onChange={(value) => onChange(withMessageFormat(action, value))}
+            />
           </div>
 
           {(format === 'text' || format === 'both') && (
@@ -644,8 +829,9 @@ function ActionCard({
               disabled={saving}
               onChange={(event) => onChange({ ...action, payload: event.target.value })}
               rows={4}
-              placeholder='{"user":"{{username}}","level":"{{level}}"}'
+              placeholder='{"userId":"{{userId}}","serverId":"{{serverId}}","level":"{{level}}"}'
             />
+            <TemplateVariableList />
           </div>
         </div>
       )}

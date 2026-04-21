@@ -98,6 +98,33 @@ vi.mock('@/components/ui/button', () => ({
   ),
 }));
 
+vi.mock('@/components/ui/popover', () => ({
+  Popover: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  PopoverTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  PopoverContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}));
+
+vi.mock('@/components/ui/command', () => ({
+  Command: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  CommandInput: (props: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} />,
+  CommandList: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  CommandEmpty: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  CommandGroup: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  CommandItem: ({
+    children,
+    onSelect,
+    value,
+  }: {
+    children: React.ReactNode;
+    onSelect?: () => void;
+    value?: string;
+  }) => (
+    <button type="button" role="option" aria-label={value} onClick={onSelect}>
+      {children}
+    </button>
+  ),
+}));
+
 vi.mock('@/components/ui/discord-markdown-editor', () => ({
   DiscordMarkdownEditor: ({
     placeholder,
@@ -222,7 +249,7 @@ describe('OnboardingGrowthCategory', () => {
     expect(screen.getAllByText('Default Actions').length).toBeGreaterThan(0);
     expect(screen.getByText('Per-Level Actions')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Add Level/i })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Grant XP Bonus' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: /Grant XP Bonus/ })).toBeInTheDocument();
   });
 
   it('toggles xp and reputation for the level-up actions tab', async () => {
@@ -313,7 +340,7 @@ describe('XpLevelActionsEditor', () => {
       />,
     );
 
-    await user.selectOptions(screen.getByLabelText('Message Format'), 'embed');
+    await user.click(screen.getByRole('option', { name: /Embed embed/ }));
 
     expect(updateDraftConfig).toHaveBeenCalledTimes(1);
     expect(updateDraftConfig.mock.results[0]?.value.xp.defaultActions[0]).toMatchObject({
@@ -354,6 +381,27 @@ describe('XpLevelActionsEditor', () => {
     expect(updateDraftConfig.mock.results[0]?.value.xp.defaultActions[0]).toMatchObject({
       amount: 1_000_000,
     });
+  });
+
+  it('shows webhook template variables with user and server ids', () => {
+    render(
+      <XpLevelActionsEditor
+        draftConfig={{
+          xp: {
+            defaultActions: [{ id: 'action-1', type: 'webhook', url: '', payload: '' }],
+            levelActions: [],
+          },
+        }}
+        guildId="guild-1"
+        saving={false}
+        updateDraftConfig={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('{{userId}}')).toBeInTheDocument();
+    expect(screen.getByText('{{serverId}}')).toBeInTheDocument();
+    expect(screen.getByText('{{serverName}}')).toBeInTheDocument();
+    expect(screen.queryByText('{{server}}')).not.toBeInTheDocument();
   });
 
   it('recomputes the next unused level from the latest updater state', () => {

@@ -130,12 +130,15 @@ describe('buildTemplateContext', () => {
 
     expect(ctx.username).toBe('TestUser');
     expect(ctx.mention).toBe('<@123456789>');
+    expect(ctx.userId).toBe('123456789');
     expect(ctx.avatar).toBe('https://cdn.example.com/avatar.png');
     expect(ctx.level).toBe('5');
     expect(ctx.previousLevel).toBe('4');
     expect(ctx.xp).toBe('1,500');
     expect(ctx.xpToNext).toBe('1,000');
     expect(ctx.nextLevel).toBe('6');
+    expect(ctx.serverName).toBe('Test Server');
+    expect(ctx.serverId).toBe('guild1');
     expect(ctx.server).toBe('Test Server');
     expect(ctx.serverIcon).toBe('https://cdn.example.com/icon.png');
     expect(ctx.memberCount).toBe('1,234');
