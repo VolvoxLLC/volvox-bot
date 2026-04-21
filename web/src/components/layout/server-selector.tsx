@@ -242,11 +242,12 @@ function AddBotSection({ addBot }: Readonly<{ addBot: MutualGuild[] }>) {
 function CommunitySection({
   community,
   onSelect,
+  onNavigate,
 }: Readonly<{
   community: MutualGuild[];
   onSelect?: () => void;
+  onNavigate: (path: string) => void;
 }>) {
-  const router = useRouter();
   return (
     <div className="space-y-1.5">
       {community.length > 0 ? (
@@ -255,7 +256,7 @@ function CommunitySection({
             key={guild.id}
             className="rounded-[20px] border border-transparent transition-all hover:border-border/40 hover:bg-muted/40 active:scale-[0.98]"
             onSelect={() => {
-              router.push(`/community/${guild.id}`);
+              onNavigate(`/community/${guild.id}`);
               onSelect?.();
             }}
           >
@@ -277,6 +278,7 @@ function CommunitySection({
 }
 
 export function ServerSelector({ className, onSelect }: ServerSelectorProps) {
+  const router = useRouter();
   const [selectedGuild, setSelectedGuild] = useState<MutualGuild | null>(null);
   const { error, guilds, loading, refreshGuilds } = useGuildDirectory();
 
@@ -488,7 +490,12 @@ export function ServerSelector({ className, onSelect }: ServerSelectorProps) {
             description="Manageable servers with Volvox.Bot live or a temporarily unavailable status check."
             badge={<SectionBadge tone="success">Dashboard</SectionBadge>}
           />
-          <InfrastructureSection infrastructure={infrastructure} selectedGuild={selectedGuild} selectGuild={selectGuild} onSelect={onSelect} />
+          <InfrastructureSection
+            infrastructure={infrastructure}
+            selectedGuild={selectedGuild}
+            selectGuild={selectGuild}
+            onSelect={onSelect}
+          />
 
           <DropdownMenuSeparator className="mx-2 my-3 bg-border/20" />
           <CategoryHeader
@@ -504,7 +511,7 @@ export function ServerSelector({ className, onSelect }: ServerSelectorProps) {
             description="Read-only spaces and servers without install access."
             badge={<SectionBadge tone="muted">Community</SectionBadge>}
           />
-          <CommunitySection community={community} onSelect={onSelect} />
+          <CommunitySection community={community} onSelect={onSelect} onNavigate={router.push} />
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

@@ -9,6 +9,12 @@ vi.mock("next/image", () => ({
   ),
 }));
 
+// Mock next/navigation
+const mockPush = vi.fn();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mockPush }),
+}));
+
 const mockBroadcastSelectedGuild = vi.fn();
 vi.mock("@/lib/guild-selection", async () => {
   const actual = await vi.importActual<typeof import("@/lib/guild-selection")>(
@@ -51,6 +57,7 @@ describe('ServerSelector', () => {
   beforeEach(() => {
     localStorage.clear();
     mockBroadcastSelectedGuild.mockReset();
+    mockPush.mockReset();
     fetchSpy = vi.spyOn(global, "fetch");
     HTMLElement.prototype.animate = vi.fn(
       () =>
@@ -348,9 +355,10 @@ describe('ServerSelector', () => {
       await screen.findByText(/Read-only spaces and servers without install access/i),
     ).toBeInTheDocument();
 
-    const communityLink = screen.getByRole('link', { name: /Viewer Server/i });
-    expect(communityLink).toBeInTheDocument();
-    expect(communityLink).toHaveAttribute('href', '/community/viewer-1');
+    const communityItem = screen.getByRole('menuitem', { name: /Viewer Server/i });
+    expect(communityItem).toBeInTheDocument();
+    await user.click(communityItem);
+    expect(mockPush).toHaveBeenCalledWith('/community/viewer-1');
     expect(mockBroadcastSelectedGuild).not.toHaveBeenCalled();
   });
 
