@@ -220,8 +220,8 @@ test.describe('Footer', () => {
 
   test('has social links', async ({ page }) => {
     const footer = page.locator('footer');
-    await expect(footer.getByRole('link', { name: 'Discord' })).toBeVisible();
-    await expect(footer.getByRole('link', { name: 'X' })).toBeVisible();
+    await expect(footer.getByRole('link', { name: 'Discord', exact: true })).toBeVisible();
+    await expect(footer.getByRole('link', { name: 'X', exact: true })).toBeVisible();
   });
 
   test('has legal footer links', async ({ page }) => {
