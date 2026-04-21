@@ -40,7 +40,7 @@ const defaultSections: FooterSection[] = [
   {
     title: 'Company',
     links: [
-      { label: 'About', href: 'https://volvox.dev' },
+      { label: 'About', href: 'https://volvox.bot' },
       { label: 'LinkedIn', href: 'https://www.linkedin.com/company/volvoxllc/' },
     ],
   },

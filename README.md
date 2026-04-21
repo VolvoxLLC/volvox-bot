@@ -5,9 +5,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-22+-green.svg)](https://nodejs.org)
 
-AI-powered Discord bot and dashboard — built by the [Volvox](https://volvox.dev) team. Add Volvox.Bot to your server and get moderation, engagement tools, AI chat, and a full-featured web dashboard, all hosted for you.
+AI-powered Discord bot and dashboard — built by the [Volvox](https://volvox.bot) team. Add Volvox.Bot to your server and get moderation, engagement tools, AI chat, and a full-featured web dashboard, all hosted for you.
 
-**[Get started at volvox.dev](https://volvox.dev)** → [Add to Discord](https://volvox.dev)
+**[Get started at volvox.bot](https://volvox.bot)** → [Add to Discord](https://volvox.bot)
 
 ---
 
@@ -63,4 +63,4 @@ AI-powered Discord bot and dashboard — built by the [Volvox](https://volvox.de
 
 MIT — see [LICENSE](LICENSE).
 
-Built with ❤️ by the [Volvox](https://volvox.dev) team.
+Built with ❤️ by the [Volvox](https://volvox.bot) team.

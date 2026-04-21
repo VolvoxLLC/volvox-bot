@@ -37,7 +37,7 @@ const footerLinks = [
     links: [
       { label: 'Privacy Policy', href: '/privacy' },
       { label: 'Terms of Service', href: '/terms' },
-      { label: 'About Volvox', href: 'https://volvox.dev' },
+      { label: 'About Volvox', href: 'https://volvox.bot' },
     ],
   },
 ];
