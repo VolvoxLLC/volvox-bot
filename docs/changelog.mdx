@@ -1,0 +1,42 @@
+---
+title: Changelog
+description: Latest updates and improvements to Volvox.Bot.
+---
+
+<Update label="2026-04-21" description="April 2026" tags={["Features", "Improvements", "Fixes"]}>
+## New features
+
+**Role-based triage filtering** — You can now control which users the AI responds to by role. Set allowed roles (whitelist) or excluded roles (blacklist) in your AI Automation settings. Bot, webhook, and system messages are automatically filtered out.
+
+**Configurable level-up DMs** — Server admins can set custom DM messages sent to members when they level up. Supports per-level message overrides, a live Discord-style preview, and built-in rate limiting to prevent spam.
+
+**Discord markdown editor** — A new rich-text editor for Discord-formatted messages is available in the dashboard. Includes a formatting toolbar, variable inserter, split raw/preview mode, character counter, and keyboard shortcuts.
+
+**Visual embed builder** — Create Discord embeds visually in the dashboard with a color picker, field management, thumbnail selector, and a live embed preview.
+
+**Dashboard permission controls** — The dashboard now enforces role-based access. Viewers get read-only access, moderators can manage moderation features, and admins have full control.
+
+**Guild-scoped log viewer** — The log viewer now shows logs scoped to your current server. A new channel filter lets you narrow the live log stream to specific Discord channels.
+
+## Improvements
+
+**Landing page redesign** — The landing page has been completely rebuilt with a new visual style, interactive feature previews in a bento-box grid, animated stats, and a redesigned pricing section.
+
+**Dashboard polish** — Row hover highlighting on tables, animated KPI counters, visible heatmap tooltips, clickable member rows, corrected XP progress bars, and a live commands-served counter. Thin scrollbars on all inputs and dropdowns for a cleaner look.
+
+**Identity resolution** — Conversation replays now show real Discord profile icons. Mentions are resolved to actual usernames, and audit logs display rich user identity (display name + username).
+
+**Improved AI reliability** — The AI triage system now includes retry logic, timeout handling, and per-role budget support. You can configure separate models for classification vs. responding to optimize costs.
+
+**Mobile experience** — The settings save toolbar, header, and sidebar are now fully responsive on smaller screens. Reduced-motion accessibility support is available across all animated components.
+
+**OpenGraph previews** — Sharing Volvox.Bot links now shows rich previews on social media, Discord, and Slack. A sitemap and robots.txt have been added for better search engine discoverability.
+
+**Branding update** — All visible branding has been standardized to "Volvox.Bot" across the product.
+
+## Fixes
+
+**More reliable bot responses** — Command responses across reminders, moderation, reaction roles, and other features now handle failures gracefully (e.g., blocked DMs or deleted channels) instead of silently failing.
+
+**Bot owners setting removed** — The "Bot Owners" editor was removed from dashboard Permissions settings. Bot ownership is now managed via environment configuration only.
+</Update>
