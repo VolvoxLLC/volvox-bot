@@ -4,7 +4,6 @@
  */
 
 import { EmbedBuilder } from 'discord.js';
-import { isMessageTypeEligible } from './triage-config.js';
 import { info, error as logError, warn } from '../logger.js';
 import { buildDebugEmbed, extractStats, logAiUsage } from '../utils/debugFooter.js';
 import { fetchChannelCached } from '../utils/discordCache.js';
@@ -13,6 +12,7 @@ import { safeSend } from '../utils/safeSend.js';
 import { splitMessage } from '../utils/splitMessage.js';
 import { addToHistory } from './ai.js';
 import { isProtectedTarget } from './moderation.js';
+import { isMessageTypeEligible } from './triage-config.js';
 import { resolveMessageId, sanitizeText } from './triage-filter.js';
 
 /** Maximum characters to keep from fetched context messages. */
