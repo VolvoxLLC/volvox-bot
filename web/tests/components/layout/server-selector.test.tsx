@@ -358,7 +358,9 @@ describe('ServerSelector', () => {
     const communityItem = screen.getByRole('menuitem', { name: /Viewer Server/i });
     expect(communityItem).toBeInTheDocument();
     await user.click(communityItem);
-    expect(mockPush).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledTimes(1);
+    });
     expect(mockPush).toHaveBeenCalledWith('/community/viewer-1');
     expect(mockBroadcastSelectedGuild).not.toHaveBeenCalled();
   });
@@ -398,8 +400,9 @@ describe('ServerSelector', () => {
     expect(screen.getByText('Invite Bot')).toBeInTheDocument();
 
     await user.click(inviteMenuItem);
-
-    expect(openSpy).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(openSpy).toHaveBeenCalledTimes(1);
+    });
     expect(openSpy).toHaveBeenCalledWith(
       expect.stringContaining('guild_id=add-bot-1'),
       '_blank',
