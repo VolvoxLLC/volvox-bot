@@ -4,53 +4,10 @@
 [![Coverage Status](https://coveralls.io/repos/github/VolvoxLLC/volvox-bot/badge.svg?branch=main)](https://coveralls.io/github/VolvoxLLC/volvox-bot?branch=main)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-22+-green.svg)](https://nodejs.org)
-[![pnpm](https://img.shields.io/badge/pnpm-10.33+-orange.svg)](https://pnpm.io)
 
-AI-powered Discord bot for the [Volvox](https://volvox.dev) developer community — a pnpm monorepo containing the bot (Node.js, ESM JavaScript, discord.js v14) and a web dashboard (Next.js 16, TypeScript, React 19). Powered by [Claude](https://anthropic.com).
+AI-powered Discord bot and dashboard — built by the [Volvox](https://volvox.dev) team. Add Volvox.Bot to your server and get moderation, engagement tools, AI chat, and a full-featured web dashboard, all hosted for you.
 
----
-
-## ⚡ Quick Start
-
-### Docker Compose (recommended)
-
-```bash
-git clone https://github.com/VolvoxLLC/volvox-bot.git
-cd volvox-bot
-cp .env.example .env
-# Edit .env — fill in DISCORD_TOKEN, ANTHROPIC_API_KEY, and DISCORD_CLIENT_ID at minimum
-docker compose up --build
-```
-
-| Service | URL |
-|---------|-----|
-| Bot API | `http://localhost:6968` |
-| Web Dashboard | `http://localhost:6969` |
-| PostgreSQL | `localhost:5432` |
-| Redis | `localhost:6379` |
-
-### Local development (without Docker)
-
-Requires PostgreSQL 17+ and (optionally) Redis 7+ running on your machine.
-
-```bash
-git clone https://github.com/VolvoxLLC/volvox-bot.git
-cd volvox-bot
-pnpm install
-cp .env.example .env       # Edit .env with your tokens
-pnpm migrate               # Run database migrations
-pnpm deploy                # Register slash commands with Discord
-pnpm start                 # Start the bot
-```
-
-For the web dashboard:
-
-```bash
-pnpm --prefix web install
-pnpm mono:dev              # Start bot + dashboard together
-```
-
-> Use `pnpm dev` (bot only) or `pnpm mono:dev` (all workspaces) for file-watching dev mode.
+**[Get started at volvox.dev](https://volvox.dev)** → [Add to Discord](https://volvox.dev)
 
 ---
 
@@ -93,29 +50,12 @@ pnpm mono:dev              # Start bot + dashboard together
 
 ---
 
-## 🔑 Environment Variables
+## 🏗️ Built With
 
-Copy [`.env.example`](.env.example) to `.env` — it contains full documentation for every variable.
-
-**Required:** `DISCORD_TOKEN`, `ANTHROPIC_API_KEY`, `DATABASE_URL`, `DISCORD_CLIENT_ID`
-
-**Optional:** `REDIS_URL`, `SENTRY_DSN`, `BOT_API_SECRET`, `LOG_LEVEL`, and more — see the file.
-
----
-
-## 🛠️ Development
-
-```bash
-pnpm test              # Run bot tests
-pnpm test:coverage     # With 85% coverage enforcement
-pnpm lint              # Biome lint + format check
-pnpm lint:fix          # Auto-fix
-pnpm mono:dev          # Dev mode (all workspaces)
-pnpm mono:build        # Build all workspaces
-pnpm mono:typecheck    # Typecheck all workspaces
-```
-
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) for workflow, conventions, and PR process. See [`AGENTS.md`](AGENTS.md) for codebase rules. See [`DESIGN.md`](DESIGN.md) for the dashboard design system.
+- **Bot:** Node.js 22+, discord.js v14, PostgreSQL, Redis
+- **Dashboard:** Next.js 16, React 19, TypeScript
+- **AI:** Claude (Anthropic), mem0 for user memory
+- **Code Style:** [Biome](https://biomejs.dev/)
 
 ---
 

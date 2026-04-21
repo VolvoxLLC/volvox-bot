@@ -9,7 +9,7 @@ const PRODUCTION_URL = 'https://volvox.bot';
  * use this to discover crawlable content. Dashboard and auth routes are excluded.
  *
  * Uses VERCEL_PROJECT_PRODUCTION_URL for the production domain on Vercel,
- * falling back to volvox.dev for local/self-hosted environments.
+ * falling back to volvox.bot for local development.
  * Ensures the URL always includes the https:// protocol.
  */
 export default function sitemap(): MetadataRoute.Sitemap {
