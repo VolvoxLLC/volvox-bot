@@ -152,4 +152,25 @@ describe('buildPayload', () => {
 
     expect(payload.embeds[0].toJSON().footer).toBeUndefined();
   });
+
+  it('skips thumbnail and image URLs that render empty', () => {
+    const payload = buildPayload(
+      {
+        type: 'announce',
+        format: 'embed',
+        embed: {
+          thumbnail: '{{avatar}}',
+          image: '{{serverIcon}}',
+        },
+      },
+      {
+        avatar: '',
+        serverIcon: '',
+      },
+    );
+
+    const embed = payload.embeds[0].toJSON();
+    expect(embed.thumbnail).toBeUndefined();
+    expect(embed.image).toBeUndefined();
+  });
 });

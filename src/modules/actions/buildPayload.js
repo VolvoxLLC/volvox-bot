@@ -40,6 +40,11 @@ function renderFooter(footer, templateContext) {
   };
 }
 
+function renderOptionalUrl(template, templateContext) {
+  const rendered = renderTemplate(template, templateContext).trim();
+  return rendered.length > 0 ? rendered : null;
+}
+
 /**
  * Build a Discord message payload from action config and template context.
  *
@@ -71,8 +76,12 @@ export function buildPayload(action, templateContext) {
         ),
       );
     if (embedConfig.color) embed.setColor(embedConfig.color);
-    if (embedConfig.thumbnail)
-      embed.setThumbnail(renderTemplate(embedConfig.thumbnail, templateContext));
+    if (embedConfig.thumbnail) {
+      const thumbnailUrl = renderOptionalUrl(embedConfig.thumbnail, templateContext);
+      if (thumbnailUrl) {
+        embed.setThumbnail(thumbnailUrl);
+      }
+    }
     if (Array.isArray(embedConfig.fields) && embedConfig.fields.length > 0) {
       if (embedConfig.fields.length > MAX_EMBED_FIELDS) {
         warn('Level-up action embed fields exceed Discord limit, truncating', {
@@ -97,7 +106,10 @@ export function buildPayload(action, templateContext) {
       }
     }
     if (embedConfig.image) {
-      embed.setImage(renderTemplate(embedConfig.image, templateContext));
+      const imageUrl = renderOptionalUrl(embedConfig.image, templateContext);
+      if (imageUrl) {
+        embed.setImage(imageUrl);
+      }
     }
     if (embedConfig.timestamp) {
       embed.setTimestamp();
