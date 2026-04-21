@@ -349,9 +349,7 @@ export async function getUserGuildDirectory(
   const { userGuilds, botResult } = await getUserGuildsWithBotPresence(accessToken, signal);
 
   if (!botResult.available) {
-    return userGuilds.map((guild) => ({
-      ...guild,
-    }));
+    return userGuilds;
   }
 
   const botGuildIds = new Set(botResult.guilds.map((g) => g.id));

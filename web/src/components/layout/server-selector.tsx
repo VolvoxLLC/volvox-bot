@@ -203,6 +203,7 @@ function AddBotSection({ addBot }: Readonly<{ addBot: MutualGuild[] }>) {
           return inviteUrl ? (
             <DropdownMenuItem
               key={guild.id}
+              delayDuration={0}
               onSelect={() => {
                 window.open(inviteUrl, '_blank', 'noopener,noreferrer');
               }}
