@@ -31,11 +31,24 @@ vi.mock('@/components/dashboard/config-categories/config-category-layout', () =>
     toggle,
   }: {
     children: React.ReactNode;
-    toggle?: { checked: boolean; onChange: (checked: boolean) => void; label?: string } | null;
+    toggle?: {
+      checked: boolean;
+      disabled?: boolean;
+      onChange: (checked: boolean) => void;
+      label?: string;
+    } | null;
   }) => (
     <>
       {toggle && (
-        <button type="button" onClick={() => toggle.onChange(!toggle.checked)}>
+        <button
+          type="button"
+          disabled={toggle.disabled}
+          onClick={() => {
+            if (!toggle.disabled) {
+              toggle.onChange(!toggle.checked);
+            }
+          }}
+        >
           {toggle.label ?? 'Toggle current feature'}
         </button>
       )}
@@ -47,14 +60,24 @@ vi.mock('@/components/dashboard/config-categories/config-category-layout', () =>
 vi.mock('@/components/dashboard/toggle-switch', () => ({
   ToggleSwitch: ({
     checked,
+    disabled,
     label,
     onChange,
   }: {
     checked: boolean;
+    disabled?: boolean;
     label: string;
     onChange: (checked: boolean) => void;
   }) => (
-    <button type="button" onClick={() => onChange(!checked)}>
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={() => {
+        if (!disabled) {
+          onChange(!checked);
+        }
+      }}
+    >
       {label}
     </button>
   ),
