@@ -203,9 +203,6 @@ function AddBotSection({ addBot }: Readonly<{ addBot: MutualGuild[] }>) {
           return inviteUrl ? (
             <DropdownMenuItem
               key={guild.id}
-              onClick={() => {
-                window.open(inviteUrl, '_blank', 'noopener,noreferrer');
-              }}
               onSelect={() => {
                 window.open(inviteUrl, '_blank', 'noopener,noreferrer');
               }}
@@ -258,10 +255,6 @@ function CommunitySection({
           <DropdownMenuItem
             key={guild.id}
             className="rounded-[20px] border border-transparent transition-all hover:border-border/40 hover:bg-muted/40 active:scale-[0.98]"
-            onClick={() => {
-              onNavigate(`/community/${guild.id}`);
-              onSelect?.();
-            }}
             onSelect={() => {
               onNavigate(`/community/${guild.id}`);
               onSelect?.();
