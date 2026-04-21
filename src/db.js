@@ -102,6 +102,9 @@ async function runMigrations(databaseUrl) {
     dir: migrationsDir,
     direction: 'up',
     migrationsTable: 'pgmigrations',
+    // Historical 004_* no-op migrations were run in different orders across environments.
+    // Let node-pg-migrate apply pending files without failing on filename order drift.
+    checkOrder: false,
     log: (msg) => {
       if (typeof msg === 'string' && msg.includes("Can't determine timestamp")) return;
       info(msg);
