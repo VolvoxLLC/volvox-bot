@@ -67,14 +67,4 @@ jobs:
           cache-from: type=gha,scope=volvox-web
           cache-to: type=gha,mode=max,scope=volvox-web
 
-      - name: Build & push docs
-        uses: docker/build-push-action@v7.1.0
-        with:
-          context: docs
-          file: docs/Dockerfile
-          push: true
-          tags: |
-            ${{ env.IMAGE_PREFIX }}/docs:latest
-            ${{ env.IMAGE_PREFIX }}/docs:${{ steps.meta.outputs.sha_short }}
-          cache-from: type=gha,scope=volvox-docs
-          cache-to: type=gha,mode=max,scope=volvox-docs
+
