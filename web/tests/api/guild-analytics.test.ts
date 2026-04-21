@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
-const { mockGetToken, mockGetMutualGuilds } = vi.hoisted(() => ({
+const { mockGetToken, mockGetUserGuilds } = vi.hoisted(() => ({
   mockGetToken: vi.fn(),
-  mockGetMutualGuilds: vi.fn(),
+  mockGetUserGuilds: vi.fn(),
 }));
 
 vi.mock("next-auth/jwt", () => ({
@@ -11,7 +11,7 @@ vi.mock("next-auth/jwt", () => ({
 }));
 
 vi.mock("@/lib/discord.server", () => ({
-  getMutualGuilds: mockGetMutualGuilds,
+  getUserGuilds: mockGetUserGuilds,
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -38,7 +38,7 @@ describe("GET /api/guilds/[guildId]/analytics", () => {
     vi.clearAllMocks();
     process.env.BOT_API_URL = "http://bot.internal:3001";
     process.env.BOT_API_SECRET = "bot-secret";
-    mockGetMutualGuilds.mockResolvedValue([
+    mockGetUserGuilds.mockResolvedValue([
       {
         id: "guild-1",
         permissions: String(0x8),
@@ -68,7 +68,7 @@ describe("GET /api/guilds/[guildId]/analytics", () => {
 
   it("returns 403 when user does not have admin access to requested guild", async () => {
     mockGetToken.mockResolvedValue({ accessToken: "discord-token" });
-    mockGetMutualGuilds.mockResolvedValue([
+    mockGetUserGuilds.mockResolvedValue([
       {
         id: "guild-1",
         permissions: "0",
@@ -86,7 +86,7 @@ describe("GET /api/guilds/[guildId]/analytics", () => {
 
   it("returns 403 when requested guild is not in user's mutual guilds", async () => {
     mockGetToken.mockResolvedValue({ accessToken: "discord-token" });
-    mockGetMutualGuilds.mockResolvedValue([
+    mockGetUserGuilds.mockResolvedValue([
       {
         id: "guild-other",
         permissions: String(0x8),
@@ -104,7 +104,7 @@ describe("GET /api/guilds/[guildId]/analytics", () => {
 
   it("allows guild owner access even without ADMINISTRATOR permission bit", async () => {
     mockGetToken.mockResolvedValue({ accessToken: "discord-token" });
-    mockGetMutualGuilds.mockResolvedValue([
+    mockGetUserGuilds.mockResolvedValue([
       {
         id: "guild-1",
         permissions: "0",
@@ -128,7 +128,7 @@ describe("GET /api/guilds/[guildId]/analytics", () => {
 
   it("returns 502 when guild permission verification fails", async () => {
     mockGetToken.mockResolvedValue({ accessToken: "discord-token" });
-    mockGetMutualGuilds.mockRejectedValue(new Error("Discord unavailable"));
+    mockGetUserGuilds.mockRejectedValue(new Error("Discord unavailable"));
 
     const response = await GET(createRequest(), {
       params: Promise.resolve({ guildId: "guild-1" }),

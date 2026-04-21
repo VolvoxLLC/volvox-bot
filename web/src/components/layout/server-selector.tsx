@@ -451,10 +451,7 @@ export function ServerSelector({ className, onSelect }: ServerSelectorProps) {
                   className="rounded-[20px] border border-transparent transition-all hover:border-border/40 hover:bg-muted/40 active:scale-[0.98]"
                   onSelect={onSelect}
                 >
-                  <Link
-                    href={`/community/${guild.id}`}
-                    className="flex w-full items-center gap-3"
-                  >
+                  <Link href={`/community/${guild.id}`} className="flex w-full items-center gap-3">
                     <GuildRow guild={guild} />
                     <SectionBadge tone="muted">
                       {guild.botPresent === undefined ? 'Status unknown' : 'Read only'}
