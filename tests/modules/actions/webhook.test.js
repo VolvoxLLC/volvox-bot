@@ -131,6 +131,24 @@ describe('handleWebhook', () => {
     );
   });
 
+  it('should omit blockedIp from SSRF logs when no blocked IP is provided', async () => {
+    vi.mocked(validateUrlForSsrf).mockResolvedValue({
+      valid: false,
+      error: 'URL hostname is blocked',
+    });
+    const mockFetch = vi.fn();
+    globalThis.fetch = mockFetch;
+
+    const ctx = makeContext();
+    await handleWebhook({ type: 'webhook', url: 'https://example.com/hook', payload: '{}' }, ctx);
+
+    expect(mockFetch).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(
+      'webhook action failed SSRF validation - skipping',
+      expect.not.objectContaining({ blockedIp: expect.anything() }),
+    );
+  });
+
   it('should block redirects instead of following them', async () => {
     const mockFetch = vi.fn().mockResolvedValue({ status: 302 });
     globalThis.fetch = mockFetch;

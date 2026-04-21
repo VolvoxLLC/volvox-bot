@@ -55,7 +55,7 @@ export async function handleWebhook(action, context) {
       userId,
       url: action.url,
       reason: ssrfResult.error,
-      blockedIp: ssrfResult.blockedIp,
+      ...(ssrfResult.blockedIp ? { blockedIp: ssrfResult.blockedIp } : {}),
     });
     return;
   }
