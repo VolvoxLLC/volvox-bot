@@ -89,4 +89,8 @@ describe('use-guild-role', () => {
   it('does not allow bot invites for viewer-only guilds', () => {
     expect(canInviteBot(createGuild({ permissions: '0', access: 'viewer' }))).toBe(false);
   });
+
+  it('returns false for malformed permissions string', () => {
+    expect(canInviteBot(createGuild({ permissions: 'not-a-number' }))).toBe(false);
+  });
 });

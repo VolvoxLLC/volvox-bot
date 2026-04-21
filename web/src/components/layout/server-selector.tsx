@@ -2,7 +2,7 @@
 
 import { Bot, ChevronsUpDown, ExternalLink, RefreshCw, Server } from 'lucide-react';
 import Image from 'next/image';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -131,6 +131,147 @@ function LoadingCategory({ title }: Readonly<{ title: string }>) {
         <div className="h-11 animate-pulse rounded-[16px] bg-muted/40" />
         <div className="h-11 animate-pulse rounded-[16px] bg-muted/25" />
       </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Extracted section components (reduce cognitive complexity)          */
+/* ------------------------------------------------------------------ */
+
+function InfrastructureSection({
+  infrastructure,
+  selectedGuild,
+  selectGuild,
+  onSelect,
+}: Readonly<{
+  infrastructure: MutualGuild[];
+  selectedGuild: MutualGuild | null;
+  selectGuild: (guild: MutualGuild) => void;
+  onSelect?: () => void;
+}>) {
+  return (
+    <div className="space-y-1.5">
+      {infrastructure.length > 0 ? (
+        infrastructure.map((guild) => (
+          <DropdownMenuItem
+            key={guild.id}
+            onSelect={() => {
+              if (selectedGuild?.id === guild.id) {
+                onSelect?.();
+                return;
+              }
+              selectGuild(guild);
+              onSelect?.();
+            }}
+            className={cn(
+              'rounded-[20px] border border-transparent transition-all active:scale-[0.98]',
+              'select-none',
+              selectedGuild?.id === guild.id
+                ? 'border-primary/20 bg-primary/10 text-primary shadow-[inset_0_1px_1px_hsl(var(--foreground)/0.05)]'
+                : 'hover:border-border/40 hover:bg-muted/40 hover:shadow-[inset_0_1px_1px_hsl(var(--foreground)/0.05)]',
+            )}
+          >
+            <GuildRow guild={guild} />
+            <SectionBadge tone={guild.botPresent === undefined ? 'warning' : 'success'}>
+              {guild.botPresent === undefined ? 'Status unknown' : 'Live'}
+            </SectionBadge>
+            {selectedGuild?.id === guild.id && (
+              <div className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-primary/20 p-1 shadow-[0_0_16px_hsl(var(--primary)/0.4)]">
+                <div className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary))]" />
+              </div>
+            )}
+          </DropdownMenuItem>
+        ))
+      ) : (
+        <CategoryEmptyState
+          title="No dashboard hubs yet"
+          description="Install Volvox.Bot in a server you manage to unlock the full dashboard here."
+        />
+      )}
+    </div>
+  );
+}
+
+function AddBotSection({ addBot }: Readonly<{ addBot: MutualGuild[] }>) {
+  return (
+    <div className="space-y-1.5">
+      {addBot.length > 0 ? (
+        addBot.map((guild) => {
+          const inviteUrl = getBotInviteUrl(guild.id);
+
+          return inviteUrl ? (
+            <DropdownMenuItem
+              key={guild.id}
+              onSelect={() => {
+                window.open(inviteUrl, '_blank', 'noopener,noreferrer');
+              }}
+              className="rounded-[20px] border border-orange-500/20 bg-orange-500/5 px-4 py-3 shadow-[inset_0_1px_1px_hsl(var(--foreground)/0.05)] hover:border-orange-500/30 hover:bg-orange-500/10"
+            >
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <GuildRow guild={guild} />
+              </div>
+              <span className="pointer-events-none inline-flex h-8 items-center gap-1 rounded-full bg-orange-500 px-3 text-sm font-medium text-white shadow-xs transition-colors">
+                <Bot className="h-3 w-3" />
+                Invite Bot
+              </span>
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem
+              key={guild.id}
+              disabled
+              className="rounded-[20px] border border-orange-500/20 bg-orange-500/5 px-4 py-3 opacity-100"
+            >
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <GuildRow guild={guild} />
+              </div>
+              <SectionBadge tone="warning">Invite unavailable</SectionBadge>
+            </DropdownMenuItem>
+          );
+        })
+      ) : (
+        <CategoryEmptyState
+          title="Nothing waiting on an invite"
+          description="Any server where you can add Volvox.Bot will show up here with a one-click invite flow."
+        />
+      )}
+    </div>
+  );
+}
+
+function CommunitySection({
+  community,
+  onSelect,
+}: Readonly<{
+  community: MutualGuild[];
+  onSelect?: () => void;
+}>) {
+  const router = useRouter();
+  return (
+    <div className="space-y-1.5">
+      {community.length > 0 ? (
+        community.map((guild) => (
+          <DropdownMenuItem
+            key={guild.id}
+            className="rounded-[20px] border border-transparent transition-all hover:border-border/40 hover:bg-muted/40 active:scale-[0.98]"
+            onSelect={() => {
+              router.push(`/community/${guild.id}`);
+              onSelect?.();
+            }}
+          >
+            <GuildRow guild={guild} />
+            <SectionBadge tone="muted">
+              {guild.botPresent === undefined ? 'Status unknown' : 'Read only'}
+            </SectionBadge>
+            <ExternalLink className="ml-auto h-3 w-3 shrink-0 opacity-20" />
+          </DropdownMenuItem>
+        ))
+      ) : (
+        <CategoryEmptyState
+          title="No community hubs to browse"
+          description="Only servers with public community data available appear here."
+        />
+      )}
     </div>
   );
 }
@@ -347,45 +488,7 @@ export function ServerSelector({ className, onSelect }: ServerSelectorProps) {
             description="Manageable servers with Volvox.Bot live or a temporarily unavailable status check."
             badge={<SectionBadge tone="success">Dashboard</SectionBadge>}
           />
-          <div className="space-y-1.5">
-            {infrastructure.length > 0 ? (
-              infrastructure.map((guild) => (
-                <DropdownMenuItem
-                  key={guild.id}
-                  onSelect={() => {
-                    if (selectedGuild?.id === guild.id) {
-                      onSelect?.();
-                      return;
-                    }
-                    selectGuild(guild);
-                    onSelect?.();
-                  }}
-                  className={cn(
-                    'rounded-[20px] border border-transparent transition-all active:scale-[0.98]',
-                    'select-none',
-                    selectedGuild?.id === guild.id
-                      ? 'border-primary/20 bg-primary/10 text-primary shadow-[inset_0_1px_1px_hsl(var(--foreground)/0.05)]'
-                      : 'hover:border-border/40 hover:bg-muted/40 hover:shadow-[inset_0_1px_1px_hsl(var(--foreground)/0.05)]',
-                  )}
-                >
-                  <GuildRow guild={guild} />
-                  <SectionBadge tone={guild.botPresent === undefined ? 'warning' : 'success'}>
-                    {guild.botPresent === undefined ? 'Status unknown' : 'Live'}
-                  </SectionBadge>
-                  {selectedGuild?.id === guild.id && (
-                    <div className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-primary/20 p-1 shadow-[0_0_16px_hsl(var(--primary)/0.4)]">
-                      <div className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary))]" />
-                    </div>
-                  )}
-                </DropdownMenuItem>
-              ))
-            ) : (
-              <CategoryEmptyState
-                title="No dashboard hubs yet"
-                description="Install Volvox.Bot in a server you manage to unlock the full dashboard here."
-              />
-            )}
-          </div>
+          <InfrastructureSection infrastructure={infrastructure} selectedGuild={selectedGuild} selectGuild={selectGuild} onSelect={onSelect} />
 
           <DropdownMenuSeparator className="mx-2 my-3 bg-border/20" />
           <CategoryHeader
@@ -393,48 +496,7 @@ export function ServerSelector({ className, onSelect }: ServerSelectorProps) {
             description="Servers you can invite Volvox.Bot into right now."
             badge={<SectionBadge tone="warning">Invite</SectionBadge>}
           />
-          <div className="space-y-1.5">
-            {addBot.length > 0 ? (
-              addBot.map((guild) => {
-                const inviteUrl = getBotInviteUrl(guild.id);
-
-                return inviteUrl ? (
-                  <DropdownMenuItem
-                    key={guild.id}
-                    onSelect={() => {}}
-                    onClick={() => {
-                      window.open(inviteUrl, '_blank', 'noopener,noreferrer');
-                    }}
-                    className="rounded-[20px] border border-orange-500/20 bg-orange-500/5 px-4 py-3 shadow-[inset_0_1px_1px_hsl(var(--foreground)/0.05)] hover:border-orange-500/30 hover:bg-orange-500/10"
-                  >
-                    <div className="flex min-w-0 flex-1 items-center gap-3">
-                      <GuildRow guild={guild} />
-                    </div>
-                    <span className="pointer-events-none inline-flex h-8 items-center gap-1 rounded-full bg-orange-500 px-3 text-sm font-medium text-white shadow-xs transition-colors">
-                      <Bot className="h-3 w-3" />
-                      Invite Bot
-                    </span>
-                  </DropdownMenuItem>
-                ) : (
-                  <DropdownMenuItem
-                    key={guild.id}
-                    disabled
-                    className="rounded-[20px] border border-orange-500/20 bg-orange-500/5 px-4 py-3 opacity-100"
-                  >
-                    <div className="flex min-w-0 flex-1 items-center gap-3">
-                      <GuildRow guild={guild} />
-                    </div>
-                    <SectionBadge tone="warning">Invite unavailable</SectionBadge>
-                  </DropdownMenuItem>
-                );
-              })
-            ) : (
-              <CategoryEmptyState
-                title="Nothing waiting on an invite"
-                description="Any server where you can add Volvox.Bot will show up here with a one-click invite flow."
-              />
-            )}
-          </div>
+          <AddBotSection addBot={addBot} />
 
           <DropdownMenuSeparator className="mx-2 my-3 bg-border/20" />
           <CategoryHeader
@@ -442,31 +504,7 @@ export function ServerSelector({ className, onSelect }: ServerSelectorProps) {
             description="Read-only spaces and servers without install access."
             badge={<SectionBadge tone="muted">Community</SectionBadge>}
           />
-          <div className="space-y-1.5">
-            {community.length > 0 ? (
-              community.map((guild) => (
-                <DropdownMenuItem
-                  key={guild.id}
-                  asChild
-                  className="rounded-[20px] border border-transparent transition-all hover:border-border/40 hover:bg-muted/40 active:scale-[0.98]"
-                  onSelect={onSelect}
-                >
-                  <Link href={`/community/${guild.id}`} className="flex w-full items-center gap-3">
-                    <GuildRow guild={guild} />
-                    <SectionBadge tone="muted">
-                      {guild.botPresent === undefined ? 'Status unknown' : 'Read only'}
-                    </SectionBadge>
-                    <ExternalLink className="ml-auto h-3 w-3 shrink-0 opacity-20" />
-                  </Link>
-                </DropdownMenuItem>
-              ))
-            ) : (
-              <CategoryEmptyState
-                title="No community hubs to browse"
-                description="Only servers with public community data available appear here."
-              />
-            )}
-          </div>
+          <CommunitySection community={community} onSelect={onSelect} />
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
