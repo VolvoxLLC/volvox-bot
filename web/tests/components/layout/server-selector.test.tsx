@@ -357,8 +357,7 @@ describe('ServerSelector', () => {
 
     const communityItem = screen.getByRole('menuitem', { name: /Viewer Server/i });
     expect(communityItem).toBeInTheDocument();
-    communityItem.focus();
-    await user.keyboard('{Enter}');
+    await user.click(communityItem);
     expect(mockPush).toHaveBeenCalledTimes(1);
     expect(mockPush).toHaveBeenCalledWith('/community/viewer-1');
     expect(mockBroadcastSelectedGuild).not.toHaveBeenCalled();
@@ -398,8 +397,7 @@ describe('ServerSelector', () => {
     expect(inviteMenuItem).toBeInTheDocument();
     expect(screen.getByText('Invite Bot')).toBeInTheDocument();
 
-    inviteMenuItem.focus();
-    await user.keyboard('{Enter}');
+    await user.click(inviteMenuItem);
 
     expect(openSpy).toHaveBeenCalledTimes(1);
     expect(openSpy).toHaveBeenCalledWith(
