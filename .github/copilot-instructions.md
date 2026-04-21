@@ -23,7 +23,7 @@ pnpm --prefix web build          # Build the Next.js dashboard
 
 ## Project Overview
 
-**Volvox.Bot** is a Discord bot with registry-configured AI chat (MiniMax/Moonshot/OpenRouter by default — any Anthropic-shape provider declared in `src/data/providers.json` is supported), moderation, engagement tracking, and a web dashboard. Key technologies:
+**Volvox.Bot** is a Discord bot with AI chat (Claude), moderation, engagement tracking, and a web dashboard. Key technologies:
 
 | Component | Tech |
 |-----------|------|
