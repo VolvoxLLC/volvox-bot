@@ -39,12 +39,6 @@
               "configuration/bot-settings",
               "configuration/permissions"
             ]
-          },
-          {
-            "group": "Reference",
-            "pages": [
-              "api-reference"
-            ]
           }
         ]
       },
@@ -59,16 +53,6 @@
               "help"
             ]
           }
-        ]
-      },
-      {
-        "tab": "API Reference",
-        "openapi": "openapi.json"
-      },
-      {
-        "tab": "Changelog",
-        "pages": [
-          "changelog"
         ]
       }
     ]
