@@ -12,6 +12,7 @@ import { safeSend } from '../utils/safeSend.js';
 import { splitMessage } from '../utils/splitMessage.js';
 import { addToHistory } from './ai.js';
 import { isProtectedTarget } from './moderation.js';
+import { isMessageTypeEligible } from './triage-config.js';
 import { resolveMessageId, sanitizeText } from './triage-filter.js';
 
 /** Maximum characters to keep from fetched context messages. */
@@ -20,23 +21,31 @@ const CONTEXT_MESSAGE_CHAR_LIMIT = 500;
 // ── History helpers ──────────────────────────────────────────────────────────
 
 /**
- * Log an assistant message (or multiple messages when safeSend splits into an array)
- * to conversation history.
+ * Record one or more assistant messages into conversation history.
  *
- * `safeSend` can return either a single Message object or an array of Message objects
- * when the content was split across multiple Discord messages. Both cases are handled
- * here so history is never silently dropped.
+ * For each sent Discord message with a valid `id`, adds an "assistant" entry
+ * using the message content (or `fallbackContent` when empty) and the
+ * message's author id. Handles either a single Message, an array of Messages,
+ * or `null`; entries without an `id` are ignored.
  *
  * @param {string} channelId - The channel the message was sent in.
- * @param {string|null} guildId - The guild ID, or null for DMs.
- * @param {string} fallbackContent - Text to use when the sent message has no `.content`.
- * @param {import('discord.js').Message|import('discord.js').Message[]|null} sentMsg - Return value of safeSend.
+ * @param {string|null} guildId - The guild ID, or `null` for DMs.
+ * @param {string} fallbackContent - Text to use when a sent message has no `.content`.
+ * @param {import('discord.js').Message|import('discord.js').Message[]|null} sentMsg - The result from `safeSend`: a Message, an array of Messages, or `null`.
  */
 function logAssistantHistory(channelId, guildId, fallbackContent, sentMsg) {
   const sentMessages = Array.isArray(sentMsg) ? sentMsg : [sentMsg];
   for (const m of sentMessages) {
     if (!m?.id) continue;
-    addToHistory(channelId, 'assistant', m.content || fallbackContent, null, m.id, guildId || null);
+    addToHistory(
+      channelId,
+      'assistant',
+      m.content || fallbackContent,
+      null,
+      m.id,
+      guildId || null,
+      m.author?.id ?? null,
+    );
   }
 }
 
@@ -52,19 +61,27 @@ function logAssistantHistory(channelId, guildId, fallbackContent, sentMsg) {
  * - `isContext`: true,
  * - `channelName`, `channelTopic`.
  *
+ * Bot and webhook messages are filtered from context by default. Use `config.triage.includeBotsInContext`
+ * to include bot messages, or `config.triage.botAllowlist` to include specific bot IDs.
+ *
  * @param {string} channelId - ID of the channel to fetch history from.
  * @param {import('discord.js').Client} client - Discord client used to access the channel messages API.
  * @param {Array} bufferSnapshot - Current buffer snapshot; messages are fetched before the oldest entry if present.
  * @param {number} [limit=15] - Maximum number of messages to fetch.
+ * @param {Object} [config] - Optional config object; when provided, used to determine bot filtering behavior.
  * @returns {Promise<Array<Object>>} Context message objects in chronological order.
  */
-export async function fetchChannelContext(channelId, client, bufferSnapshot, limit = 15) {
+export async function fetchChannelContext(channelId, client, bufferSnapshot, limit = 15, config) {
   try {
     const channel = await fetchChannelCached(client, channelId);
     if (!channel?.messages) {
       warn('Channel fetch returned no messages API', { channelId });
       return [];
     }
+
+    // Determine bot filtering behavior from config
+    const includeBotsInContext = config?.triage?.includeBotsInContext ?? false;
+    const botAllowlist = new Set(config?.triage?.botAllowlist ?? []);
 
     const toContextEntry = (m) => ({
       author: m.author.bot ? `${m.author.username} [BOT]` : m.author.username,
@@ -76,6 +93,23 @@ export async function fetchChannelContext(channelId, client, bufferSnapshot, lim
       channelName: channel.name ?? null,
       channelTopic: channel.topic ?? null,
     });
+
+    /**
+     * Determine if a message should be included in context.
+     * Mirrors accumulateMessage() guards: default/reply only, no webhooks, bots filtered by config.
+     */
+    const shouldIncludeInContext = (m) => {
+      // Skip webhooks and system messages (joins, boosts, pins, etc.)
+      if (!isMessageTypeEligible(m)) return false;
+
+      // Filter bot messages based on config
+      if (m.author.bot) {
+        // Include if globally enabled or bot is in allowlist
+        return includeBotsInContext || botAllowlist.has(m.author.id);
+      }
+
+      return true;
+    };
 
     // Fetch historical context + recent messages in parallel.
     // When the buffer is empty we have no `before` anchor, so the history
@@ -99,6 +133,8 @@ export async function fetchChannelContext(channelId, client, bufferSnapshot, lim
 
     for (const m of [...historyFetched.values(), ...recentFetched.values()]) {
       if (bufferIds.has(m.id) || seen.has(m.id)) continue;
+      // Apply bot/webhook filtering
+      if (!shouldIncludeInContext(m)) continue;
       seen.add(m.id);
       merged.push(m);
     }
@@ -115,9 +151,12 @@ export async function fetchChannelContext(channelId, client, bufferSnapshot, lim
 // ── Moderation audit log ─────────────────────────────────────────────────────
 
 /**
- * Send a moderation audit embed to the configured moderation log channel summarizing the classification and flagged messages.
+ * Send a moderation audit embed to the configured moderation log channel
+ * summarizing the classification and flagged messages.
  *
- * If no moderation log channel is configured or the channel cannot be fetched, the function exits without action. Errors encountered while sending the embed are caught and ignored so the triage flow continues.
+ * If no moderation log channel is configured or the channel cannot be fetched,
+ * the function exits without action. Errors encountered while sending the embed
+ * are caught and ignored so the triage flow continues.
  *
  * @param {import('discord.js').Client} client - Discord client used to fetch the log channel.
  * @param {Object} classification - Classifier output containing fields such as `recommendedAction`, `violatedRule`, `reasoning`, and `targetMessageIds`.

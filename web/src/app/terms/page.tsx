@@ -232,14 +232,6 @@ export default function TermsPage() {
           .
         </p>
       </section>
-
-      <section className="rounded-lg border border-border/60 bg-muted/20 p-4">
-        <h3 className="text-sm font-medium text-muted-foreground/60">Important note</h3>
-        <p className="mt-2 text-muted-foreground">
-          These Terms were generated with AI assistance and should be reviewed by qualified legal
-          counsel before being relied upon as final legal terms.
-        </p>
-      </section>
     </main>
   );
 }

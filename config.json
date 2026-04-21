@@ -19,6 +19,8 @@
     "enabled": true,
     "defaultInterval": 3000,
     "maxBufferSize": 30,
+    "includeBotsInContext": false,
+    "botAllowlist": [],
     "triggerWords": [
       "volvox"
     ],
@@ -37,6 +39,8 @@
     "moderationResponse": true,
     "channels": [],
     "excludeChannels": [],
+    "allowedRoles": [],
+    "excludedRoles": [],
     "debugFooter": true,
     "debugFooterLevel": "verbose",
     "moderationLogChannel": "1473219285651292201",
@@ -174,7 +178,6 @@
     "enabled": true,
     "adminRoleIds": [],
     "moderatorRoleIds": [],
-    "botOwners": [],
     "usePermissions": true,
     "allowedCommands": {
       "ping": "everyone",

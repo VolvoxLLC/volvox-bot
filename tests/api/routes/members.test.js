@@ -21,7 +21,7 @@ vi.mock('../../../src/modules/config.js', () => ({
       enabled: true,
       levelThresholds: [100, 300, 600, 1000],
     },
-    permissions: { botOwners: [] },
+    permissions: {},
   }),
   setConfigValue: vi.fn(),
 }));

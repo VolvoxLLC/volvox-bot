@@ -5,6 +5,7 @@ import { inputClasses, parseNumberInput } from '@/components/dashboard/config-ed
 import { ChannelModeSection } from '@/components/dashboard/config-sections/ChannelModeSection';
 import type { ConfigFeatureId } from '@/components/dashboard/config-workspace/types';
 import { ChannelSelector } from '@/components/ui/channel-selector';
+import { RoleSelector } from '@/components/ui/role-selector';
 import { cn } from '@/lib/utils';
 import type { ChannelMode } from '@/types/config';
 import { SYSTEM_PROMPT_MAX_LENGTH } from '@/types/config';
@@ -13,7 +14,13 @@ import { ToggleSwitch } from '../toggle-switch';
 import { ConfigCategoryLayout } from './config-category-layout';
 
 /**
- * AI & Automation category — managing chat, automod, triage, and memory.
+ * Render the AI & Automation configuration UI for the chat, automod, triage, and memory feature tabs.
+ *
+ * Renders controls and panels appropriate to the currently active feature tab and wires updates into
+ * the shared draft configuration via the config context. Returns `null` when the draft configuration
+ * or the active tab is not available.
+ *
+ * @returns The component's rendered JSX element, or `null` when configuration or the active feature is unavailable.
  */
 export function AiAutomationCategory() {
   const { draftConfig, saving, guildId, updateDraftConfig, activeTabId } = useConfigContext();
@@ -295,6 +302,7 @@ export function AiAutomationCategory() {
                               [cat]: v,
                             });
                           }}
+                          onFocus={(e) => e.target.select()}
                           disabled={saving}
                           className={cn(
                             inputClasses,
@@ -381,6 +389,7 @@ export function AiAutomationCategory() {
                     type="text"
                     value={draftConfig.triage?.classifyModel ?? ''}
                     onChange={(e) => updateTriageField('classifyModel', e.target.value)}
+                    onFocus={(e) => e.target.select()}
                     disabled={saving}
                     className={inputClasses}
                     placeholder="e.g. gpt-4o-mini"
@@ -398,6 +407,7 @@ export function AiAutomationCategory() {
                     type="text"
                     value={draftConfig.triage?.respondModel ?? ''}
                     onChange={(e) => updateTriageField('respondModel', e.target.value)}
+                    onFocus={(e) => e.target.select()}
                     disabled={saving}
                     className={inputClasses}
                     placeholder="e.g. claude-3-5-sonnet"
@@ -432,6 +442,57 @@ export function AiAutomationCategory() {
             </div>
           </div>
 
+          <div className="p-4 sm:p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl">
+            <div className="mb-6 space-y-1">
+              <h3 className="text-sm font-semibold tracking-wide text-foreground/90">
+                Role Filtering
+              </h3>
+              <p className="text-[11px] text-muted-foreground/60 uppercase tracking-wider">
+                Control which users the AI responds to
+              </p>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label
+                  htmlFor="triage-allowed-roles"
+                  className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground ml-1"
+                >
+                  Allowed Roles
+                </label>
+                <p className="text-[10px] text-muted-foreground/60 ml-1">
+                  Only triage messages from users with these roles. Empty = everyone allowed.
+                </p>
+                <RoleSelector
+                  id="triage-allowed-roles"
+                  guildId={guildId}
+                  selected={draftConfig.triage?.allowedRoles ?? []}
+                  onChange={(selected) => updateTriageField('allowedRoles', selected)}
+                  disabled={saving}
+                  placeholder="Select allowed roles..."
+                />
+              </div>
+              <div className="space-y-2">
+                <label
+                  htmlFor="triage-excluded-roles"
+                  className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground ml-1"
+                >
+                  Excluded Roles
+                </label>
+                <p className="text-[10px] text-muted-foreground/60 ml-1">
+                  Never triage messages from users with these roles. Takes precedence over allowed.
+                </p>
+                <RoleSelector
+                  id="triage-excluded-roles"
+                  guildId={guildId}
+                  selected={draftConfig.triage?.excludedRoles ?? []}
+                  onChange={(selected) => updateTriageField('excludedRoles', selected)}
+                  disabled={saving}
+                  placeholder="Select excluded roles..."
+                />
+              </div>
+            </div>
+          </div>
+
           <div className="grid lg:grid-cols-2 gap-6">
             <div className="p-4 sm:p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl">
               <div className="mb-6 space-y-1">
@@ -457,6 +518,7 @@ export function AiAutomationCategory() {
                       const num = parseNumberInput(e.target.value, 0);
                       if (num !== undefined) updateTriageField('classifyBudget', num);
                     }}
+                    onFocus={(e) => e.target.select()}
                     disabled={saving}
                     className={inputClasses}
                   />
@@ -475,6 +537,7 @@ export function AiAutomationCategory() {
                       const num = parseNumberInput(e.target.value, 0);
                       if (num !== undefined) updateTriageField('respondBudget', num);
                     }}
+                    onFocus={(e) => e.target.select()}
                     disabled={saving}
                     className={inputClasses}
                   />
@@ -548,6 +611,7 @@ export function AiAutomationCategory() {
                   const num = parseNumberInput(e.target.value, 1);
                   if (num !== undefined) updateMemoryField('maxContextMemories', num);
                 }}
+                onFocus={(e) => e.target.select()}
                 disabled={saving}
                 className={cn(inputClasses, 'w-40')}
               />

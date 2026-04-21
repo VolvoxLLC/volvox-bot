@@ -3,6 +3,7 @@
  * Config resolution with 3-layer legacy fallback and channel eligibility checks.
  */
 
+import { MessageType } from 'discord.js';
 import { warn } from '../logger.js';
 import { parseProviderModel } from '../utils/modelString.js';
 
@@ -129,6 +130,54 @@ export function isChannelEligible(channelId, triageConfig) {
   if (channels.length === 0) return true;
 
   return channels.includes(channelId);
+}
+
+// ── Role eligibility ─────────────────────────────────────────────────────────
+
+/**
+ * Determine whether a user's roles make them eligible for triage.
+ * @param {import('discord.js').GuildMember|null} member - The guild member to evaluate.
+ * @param {Object} triageConfig - Triage configuration containing role lists.
+ * @param {string[]} [triageConfig.allowedRoles] - Whitelisted role IDs; empty = all allowed.
+ * @param {string[]} [triageConfig.excludedRoles] - Blacklisted role IDs; exclusions win.
+ * @returns {boolean} `true` if the member is eligible, `false` otherwise.
+ */
+export function isRoleEligible(member, triageConfig) {
+  const { allowedRoles = [], excludedRoles = [] } = triageConfig;
+
+  // No member (DM) — cannot check roles, allow through
+  if (!member) return true;
+
+  // Get member's role IDs as Set for O(1) lookups (excluding @everyone which has id === guildId)
+  const memberRoleIds = new Set(
+    member.roles.cache.filter((role) => role.id !== member.guild.id).map((role) => role.id),
+  );
+
+  // Explicit exclusion always wins (OR logic — any match excludes)
+  if (excludedRoles.some((roleId) => memberRoleIds.has(roleId))) return false;
+
+  // Empty allow-list means all roles are allowed
+  if (allowedRoles.length === 0) return true;
+
+  // Check if user has ANY of the allowed roles (OR logic)
+  return allowedRoles.some((roleId) => memberRoleIds.has(roleId));
+}
+
+// ── Message type eligibility ─────────────────────────────────────────────────
+
+/**
+ * Check if a message type is eligible for triage (default or reply only).
+ * Rejects system messages (joins, boosts, pins) and webhook messages.
+ * @param {Object} message - Discord message object
+ * @returns {boolean} true if message type is eligible
+ */
+export function isMessageTypeEligible(message) {
+  // Skip webhook messages (GitHub, Jira integrations, etc.)
+  if (message.webhookId) return false;
+
+  // Skip system messages — only default messages and replies are eligible
+  const messageType = message.type ?? 0;
+  return messageType === MessageType.Default || messageType === MessageType.Reply;
 }
 
 // ── Dynamic interval thresholds ──────────────────────────────────────────────

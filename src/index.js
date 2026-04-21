@@ -300,17 +300,6 @@ async function startup() {
   // Load config (from DB if available, else config.json)
   config = await loadConfig();
   info('Configuration loaded', { sections: Object.keys(config) });
-  // Warn if using default bot owner ID (upstream maintainer)
-  const defaultOwnerId = '191633014441115648';
-  const owners = config.permissions?.botOwners;
-  if (Array.isArray(owners) && owners.includes(defaultOwnerId)) {
-    warn(
-      'Default botOwners detected in config — update permissions.botOwners with your own Discord user ID(s) before deploying',
-      {
-        defaultOwnerId,
-      },
-    );
-  }
 
   // Register config change listeners for hot-reload (logging transport,
   // observability listeners for AI/spam/moderation config changes)

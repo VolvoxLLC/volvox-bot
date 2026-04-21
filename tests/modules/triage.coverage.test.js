@@ -74,6 +74,8 @@ vi.mock('../../src/modules/triage-filter.js', () => ({
 vi.mock('../../src/modules/triage-config.js', () => ({
   getDynamicInterval: vi.fn().mockReturnValue(100),
   isChannelEligible: vi.fn().mockReturnValue(true),
+  isMessageTypeEligible: vi.fn().mockReturnValue(true),
+  isRoleEligible: vi.fn().mockReturnValue(true),
   resolveTriageConfig: vi.fn().mockReturnValue({
     classifyModel: 'haiku',
     respondModel: 'sonnet',

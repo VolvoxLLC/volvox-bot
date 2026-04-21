@@ -8,6 +8,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn, useSession } from 'next-auth/react';
 import { Suspense, useEffect } from 'react';
 import { PrismaticBackground } from '@/components/landing/Hero';
+import { SiteFooter } from '@/components/layout/site-footer';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { cn } from '@/lib/utils';
@@ -89,7 +90,7 @@ function LoginForm() {
   ];
 
   return (
-    <div className="relative min-h-[100dvh] overflow-hidden bg-background font-sans selection:bg-primary/20">
+    <div className="relative flex min-h-[100dvh] flex-col overflow-hidden bg-background font-sans selection:bg-primary/20">
       <PrismaticBackground />
 
       {/* Floating Header - Ultra High on Mobile */}
@@ -113,7 +114,7 @@ function LoginForm() {
         </div>
       </nav>
 
-      <main className="relative z-10 flex min-h-[100dvh] w-full flex-col items-center justify-center px-0 md:px-6 py-20">
+      <main className="relative z-10 flex min-h-0 flex-1 w-full flex-col items-center justify-center px-0 md:px-6 py-20">
         <div className="w-full max-w-4xl flex flex-col items-center text-center">
           {/* ─── MAIN CONTENT ─── */}
           {prefersReducedMotion ? (
@@ -269,14 +270,10 @@ function LoginForm() {
         </div>
       </main>
 
-      {/* Decorative Overlays */}
-      <div
-        className="absolute inset-0 pointer-events-none opacity-[0.03] dark:opacity-[0.02]"
-        style={{
-          backgroundImage: `linear-gradient(to right, hsl(var(--foreground)) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--foreground)) 1px, transparent 1px)`,
-          backgroundSize: '40px 40px',
-        }}
-      />
+      {/* Footer */}
+      <div className="relative z-10 mt-auto">
+        <SiteFooter />
+      </div>
     </div>
   );
 }
@@ -285,7 +282,7 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="flex min-h-[100dvh] items-center justify-center bg-background">
           <div className="flex flex-col items-center gap-4">
             <div className="h-12 w-12 rounded-full border border-border bg-card animate-pulse" />
             <span className="animate-pulse font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-foreground/20">

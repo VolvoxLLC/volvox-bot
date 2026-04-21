@@ -175,6 +175,24 @@ export const CONFIG_SCHEMA = {
           includeServerOwner: { type: 'boolean' },
         },
       },
+      rateLimit: {
+        type: 'object',
+        properties: {
+          enabled: { type: 'boolean' },
+          maxMessages: { type: 'number', min: 1 },
+          windowSeconds: { type: 'number', min: 1 },
+          muteAfterTriggers: { type: 'number', min: 1 },
+          muteWindowSeconds: { type: 'number', min: 1 },
+          muteDurationSeconds: { type: 'number', min: 1 },
+        },
+      },
+      linkFilter: {
+        type: 'object',
+        properties: {
+          enabled: { type: 'boolean' },
+          blockedDomains: { type: 'array', items: { type: 'string' } },
+        },
+      },
     },
   },
   triage: {
@@ -183,6 +201,8 @@ export const CONFIG_SCHEMA = {
       enabled: { type: 'boolean' },
       defaultInterval: { type: 'number', min: 1, max: 3600 },
       maxBufferSize: { type: 'number', min: 1, max: 1000 },
+      includeBotsInContext: { type: 'boolean' },
+      botAllowlist: { type: 'array', items: { type: 'string' } },
       triggerWords: { type: 'array' },
       moderationKeywords: { type: 'array' },
       // Model fields must be in `provider:model` format (see issue #553 D1) —
@@ -202,6 +222,8 @@ export const CONFIG_SCHEMA = {
       moderationResponse: { type: 'boolean' },
       channels: { type: 'array' },
       excludeChannels: { type: 'array' },
+      allowedRoles: { type: 'array', items: { type: 'string' } },
+      excludedRoles: { type: 'array', items: { type: 'string' } },
       debugFooter: { type: 'boolean' },
       debugFooterLevel: { type: 'string', nullable: true },
       moderationLogChannel: { type: 'string', nullable: true },
@@ -287,7 +309,6 @@ export const CONFIG_SCHEMA = {
       adminRoleId: { type: 'string', nullable: true },
       moderatorRoleId: { type: 'string', nullable: true },
       modRoles: { type: 'array', items: { type: 'string' } },
-      botOwners: { type: 'array', items: { type: 'string' } },
       // allowedCommands is a freeform map of command → permission level — no fixed property list
       allowedCommands: { type: 'object', openProperties: true },
     },

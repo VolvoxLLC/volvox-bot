@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('../../src/db.js', () => ({ getPool: vi.fn().mockReturnValue(null) }));
+vi.mock('../../src/modules/auditLogger.js', () => ({
+  logAuditEvent: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock('../../src/utils/safeSend.js', () => ({
   safeSend: (ch, opts) => ch.send(opts),
   safeReply: (t, opts) => t.reply(opts),
@@ -55,7 +60,10 @@ describe('untimeout command', () => {
         },
         member: { roles: { highest: { position: 10 } } },
         user: { id: 'mod1', tag: 'Mod#0001' },
-        client: { user: { id: 'bot1', tag: 'Bot#0001' } },
+        client: {
+          user: { id: 'bot1', tag: 'Bot#0001' },
+          users: { fetch: vi.fn().mockResolvedValue(null) },
+        },
         deferReply: vi.fn().mockResolvedValue(undefined),
         editReply: vi.fn().mockResolvedValue(undefined),
         reply: vi.fn().mockResolvedValue(undefined),

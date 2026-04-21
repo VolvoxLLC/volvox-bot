@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('../../src/db.js', () => ({ getPool: vi.fn().mockReturnValue(null) }));
+vi.mock('../../src/modules/auditLogger.js', () => ({
+  logAuditEvent: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock('../../src/utils/safeSend.js', () => ({
   safeSend: (ch, opts) => ch.send(opts),
   safeReply: (t, opts) => t.reply(opts),
@@ -90,7 +95,7 @@ describe('unban command', () => {
 
   it('should fall back to raw user id when user fetch fails', async () => {
     const interaction = createInteraction();
-    interaction.client.users.fetch.mockRejectedValueOnce(new Error('not found'));
+    interaction.client.users.fetch.mockRejectedValue(new Error('not found'));
 
     await execute(interaction);
 

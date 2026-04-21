@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, Ban, Clock, Shield, TrendingUp, UserX } from 'lucide-react';
+import { AlertTriangle, Clock, Shield, TrendingUp, UserX } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { ModStats } from './moderation-types';
 import { ACTION_META } from './moderation-types';
@@ -53,6 +53,19 @@ interface ModerationStatsProps {
   error: string | null;
 }
 
+/**
+ * Render moderation statistics UI with summary cards, a top actions breakdown, and top targets.
+ *
+ * If `error` is provided, displays an alert with the error message. Otherwise renders:
+ * - Four summary `StatCard`s (total cases, last 24 hours, last 7 days, unique actions).
+ * - A "By Action Type" section showing up to four top actions or a loading/empty state.
+ * - A "Top Targets" section showing recent repeat offenders or a loading/empty state.
+ *
+ * @param stats - Moderation statistics object or `null`; used to populate cards, action counts, and top targets.
+ * @param loading - When `true`, shows skeleton placeholders instead of concrete data.
+ * @param error - Optional error message; when present, a prominent alert is shown instead of the stats UI.
+ * @returns The rendered moderation statistics JSX element.
+ */
 export function ModerationStats({ stats, loading, error }: ModerationStatsProps) {
   if (error) {
     return (
@@ -159,16 +172,18 @@ export function ModerationStats({ stats, loading, error }: ModerationStatsProps)
                 ))}
               </div>
             ) : !stats?.topTargets?.length ? (
-              <p className="text-sm text-muted-foreground">No repeat offenders. 🎉</p>
+              <p className="text-sm text-muted-foreground">No targets yet.</p>
             ) : (
               <ul className="space-y-2">
                 {stats.topTargets.map(({ userId, tag, count }) => (
-                  <li key={userId} className="flex items-center justify-between text-sm">
-                    <span className="truncate text-muted-foreground font-mono text-xs">{tag}</span>
-                    <span className="ml-2 flex shrink-0 items-center gap-1 text-destructive font-semibold tabular-nums bg-destructive/10 px-2 py-0.5 rounded-full ring-1 ring-destructive/20">
-                      <Ban className="h-3 w-3" />
-                      {count}
+                  <li
+                    key={`${userId}-${tag ?? 'unknown'}`}
+                    className="flex items-center justify-between text-sm"
+                  >
+                    <span className="truncate text-muted-foreground font-mono text-xs">
+                      {tag ?? userId}
                     </span>
+                    <span className="font-semibold tabular-nums text-foreground/90">{count}</span>
                   </li>
                 ))}
               </ul>

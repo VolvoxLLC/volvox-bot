@@ -200,7 +200,6 @@ export interface PermissionsConfig {
   /** @deprecated Use moderatorRoleIds. Kept for backward compat with legacy guild configs. */
   moderatorRoleId?: string | null;
   modRoles: string[];
-  botOwners: string[];
   usePermissions: boolean;
   allowedCommands: Record<string, string>;
 }
@@ -233,6 +232,10 @@ export interface TriageConfig {
   moderationResponse: boolean;
   channels: string[];
   excludeChannels: string[];
+  allowedRoles?: string[];
+  excludedRoles?: string[];
+  includeBotsInContext?: boolean;
+  botAllowlist?: string[];
   debugFooter: boolean;
   debugFooterLevel?: string | null;
   moderationLogChannel: string | null;

@@ -429,6 +429,15 @@ function cloneForEvent(value) {
 }
 
 /**
+ * Check whether a config path likely contains sensitive material.
+ * @param {string} path - Dot-notation config path
+ * @returns {boolean} `true` when the path should have its value redacted in logs
+ */
+function isSensitiveConfigPath(path) {
+  return path.split('.').some((segment) => /apikey|token|secret|password|key/i.test(segment));
+}
+
+/**
  * Collect leaf values from an object into a dot-notation map.
  * Plain-object leaves are flattened; arrays and primitives are treated as terminal values.
  * @param {*} value - Root value
@@ -604,6 +613,149 @@ export async function setConfigValue(path, value, guildId = 'global') {
   info('Config updated', { path, value: parsedVal, guildId, persisted: dbPersisted });
   await emitConfigChangeEvents(path, parsedVal, oldValue, guildId);
   return cacheEntry[section];
+}
+
+/**
+ * Update multiple configuration values atomically.
+ * @param {Array<{path: string, value: any}>} patches - Array of patches
+ * @param {string} [guildId='global'] - Guild ID to update, or 'global'
+ * @returns {Promise<void>}
+ */
+export async function setMultipleConfigValues(patches, guildId = 'global') {
+  if (!Array.isArray(patches) || patches.length === 0) return;
+
+  for (const patch of patches) {
+    if (typeof patch.path !== 'string' || patch.path.trim() === '') {
+      throw new Error('Path must be a non-empty string');
+    }
+    const parts = patch.path.split('.');
+    if (parts.length < 2) {
+      throw new Error('Path must include section and key (e.g., "ai.model")');
+    }
+    validatePathSegments(parts);
+  }
+
+  const sectionsToUpdate = new Set();
+  const patchesBySection = new Map();
+  for (const patch of patches) {
+    const parts = patch.path.split('.');
+    const section = parts[0];
+    sectionsToUpdate.add(section);
+    if (!patchesBySection.has(section)) {
+      patchesBySection.set(section, []);
+    }
+    patchesBySection.get(section).push(patch);
+  }
+
+  let dbPersisted = false;
+  let pool;
+  try {
+    pool = getPool();
+  } catch {
+    throw new Error('Database unavailable for bulk config write');
+  }
+
+  if (!pool) {
+    throw new Error('Database unavailable for bulk config write');
+  }
+
+  const client = await pool.connect();
+  const persistedSections = new Map();
+  try {
+    await client.query('BEGIN');
+
+    const sectionList = Array.from(sectionsToUpdate).sort((a, b) => a.localeCompare(b));
+
+    for (const section of sectionList) {
+      const guildConfig = configCache.get(guildId) || {};
+      const sectionClone = structuredClone(guildConfig[section] || {});
+
+      const { rows } = await client.query(
+        'SELECT value FROM config WHERE guild_id = $1 AND key = $2 FOR UPDATE',
+        [guildId, section],
+      );
+
+      const dbSection = rows.length > 0 ? rows[0].value : sectionClone;
+
+      for (const patch of patchesBySection.get(section)) {
+        const parts = patch.path.split('.');
+        const nestedParts = parts.slice(1);
+        const parsedVal = parseValue(patch.value);
+        // API callers validate patch.path via validateConfigPatchBody, which gates
+        // the top-level key against SAFE_CONFIG_KEYS before any property write.
+        setNestedValue(dbSection, nestedParts, parsedVal);
+      }
+
+      persistedSections.set(section, structuredClone(dbSection));
+
+      if (rows.length > 0) {
+        await client.query(
+          'UPDATE config SET value = $1, updated_at = NOW() WHERE guild_id = $2 AND key = $3',
+          [JSON.stringify(dbSection), guildId, section],
+        );
+      } else {
+        await client.query(
+          'INSERT INTO config (guild_id, key, value) VALUES ($1, $2, $3) ON CONFLICT (guild_id, key) DO UPDATE SET value = $3, updated_at = NOW()',
+          [guildId, section, JSON.stringify(dbSection)],
+        );
+      }
+    }
+
+    await client.query('COMMIT');
+    dbPersisted = true;
+  } catch (txErr) {
+    try {
+      await client.query('ROLLBACK');
+    } catch {
+      /* ignore rollback failure */
+    }
+    throw txErr;
+  } finally {
+    client.release();
+  }
+
+  if (!configCache.has(guildId)) {
+    configCache.set(guildId, {});
+  }
+  const cacheEntry = configCache.get(guildId);
+  const previousSections = new Map(
+    Array.from(persistedSections.keys(), (section) => [
+      section,
+      cacheEntry[section] === undefined ? undefined : structuredClone(cacheEntry[section]),
+    ]),
+  );
+
+  if (guildId === 'global') {
+    mergedConfigCache.clear();
+    globalConfigGeneration++;
+  } else {
+    mergedConfigCache.delete(guildId);
+  }
+
+  for (const [section, dbSection] of persistedSections) {
+    cacheEntry[section] = structuredClone(dbSection);
+  }
+
+  for (const patch of patches) {
+    const parts = patch.path.split('.');
+    const section = parts[0];
+    const nestedParts = parts.slice(1);
+
+    const rawOld = getNestedValue(previousSections.get(section), nestedParts);
+    const oldValue =
+      rawOld !== null && typeof rawOld === 'object' ? structuredClone(rawOld) : rawOld;
+    const rawNew = getNestedValue(cacheEntry[section], nestedParts);
+    const newValue =
+      rawNew !== null && typeof rawNew === 'object' ? structuredClone(rawNew) : rawNew;
+
+    info('Config updated (bulk)', {
+      path: patch.path,
+      value: isSensitiveConfigPath(patch.path) ? '***' : newValue,
+      guildId,
+      persisted: dbPersisted,
+    });
+    await emitConfigChangeEvents(patch.path, newValue, oldValue, guildId);
+  }
 }
 
 /**

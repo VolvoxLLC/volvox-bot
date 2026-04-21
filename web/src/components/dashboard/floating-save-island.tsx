@@ -1,13 +1,14 @@
 'use client';
-
-import { Loader2, RotateCcw, Save } from 'lucide-react';
+import { Loader2, RotateCcw, Save, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useConfigContext } from '@/components/dashboard/config-context';
 import { cn } from '@/lib/utils';
 import { DiscardChangesButton } from './reset-defaults-button';
 
 /**
- * Floating save island — appears at the bottom of the viewport when
- * there are unsaved config changes. Provides Save, Discard, and Undo.
+ * Render a bottom "save island" UI that appears when there are unsaved configuration changes or immediately after a save.
+ *
+ * Shows a status indicator plus action buttons for Save, Discard, and Undo. The control reflects validation and saving state (disables Save when validation errors exist or while saving, and shows a saving indicator). The island can be dismissed; once dismissed it remains hidden until new changes are made.
  */
 export function FloatingSaveIsland() {
   const {
@@ -21,7 +22,16 @@ export function FloatingSaveIsland() {
     undoLastSave,
   } = useConfigContext();
 
-  const showIsland = hasChanges || (prevSavedConfig && !hasChanges);
+  const [dismissed, setDismissed] = useState(false);
+
+  // Auto-reset dismissal when new changes are made
+  useEffect(() => {
+    if (hasChanges) {
+      setDismissed(false);
+    }
+  }, [hasChanges]);
+
+  const showIsland = (hasChanges || (prevSavedConfig && !hasChanges)) && !dismissed;
 
   if (!showIsland) return null;
 
@@ -67,15 +77,26 @@ export function FloatingSaveIsland() {
         <div className="flex items-center gap-1.5 sm:gap-2">
           {/* Undo (only after save with no new changes) */}
           {prevSavedConfig && !hasChanges && (
-            <button
-              type="button"
-              onClick={undoLastSave}
-              disabled={saving}
-              className="flex h-8 items-center gap-1.5 rounded-xl border border-white/10 bg-background/40 px-3 text-[10px] font-black uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.06] hover:text-foreground active:scale-95 backdrop-blur-xl"
-            >
-              <RotateCcw className="h-3 w-3 opacity-60" />
-              Undo
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={undoLastSave}
+                disabled={saving}
+                className="flex h-8 items-center gap-1.5 rounded-xl border border-white/10 bg-background/40 px-3 text-[10px] font-black uppercase tracking-wider text-muted-foreground/80 transition-all hover:bg-white/[0.06] hover:text-foreground active:scale-95 backdrop-blur-xl"
+              >
+                <RotateCcw className="h-3 w-3 opacity-60" />
+                Undo
+              </button>
+              <button
+                type="button"
+                onClick={() => setDismissed(true)}
+                className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-background/40 text-muted-foreground/60 transition-all hover:bg-white/[0.06] hover:text-foreground active:scale-95 backdrop-blur-xl"
+                title="Dismiss"
+                aria-label="Dismiss"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
           )}
 
           {/* Discard */}

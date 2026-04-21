@@ -51,11 +51,12 @@ vi.mock('../../../src/modules/config.js', () => ({
       classifyApiKey: 'sk-secret-classify',
       respondApiKey: 'sk-secret-respond',
     },
-    permissions: { botOwners: [] },
+    permissions: {},
     database: { host: 'secret-host' },
     token: 'secret-token',
   }),
   setConfigValue: vi.fn().mockResolvedValue({ model: 'claude-4' }),
+  setMultipleConfigValues: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../../../src/utils/safeSend.js', () => ({
@@ -66,7 +67,7 @@ import { _resetSecretCache } from '../../../src/api/middleware/verifyJwt.js';
 import { createApp } from '../../../src/api/server.js';
 import { guildCache } from '../../../src/api/utils/discordApi.js';
 import { sessionStore } from '../../../src/api/utils/sessionStore.js';
-import { getConfig, setConfigValue } from '../../../src/modules/config.js';
+import { getConfig, setConfigValue, setMultipleConfigValues } from '../../../src/modules/config.js';
 import { safeSend } from '../../../src/utils/safeSend.js';
 
 describe('guilds routes', () => {
@@ -348,8 +349,9 @@ describe('guilds routes', () => {
         welcome: { enabled: true },
         spam: { enabled: true },
         moderation: { enabled: true },
-        permissions: { botOwners: ['owner-1'] },
+        permissions: {},
       });
+      vi.stubEnv('BOT_OWNER_IDS', 'owner-1');
       const token = createOAuthToken('jwt-test-secret', 'owner-1');
       const fetchSpy = vi.spyOn(globalThis, 'fetch');
 
@@ -493,8 +495,9 @@ describe('guilds routes', () => {
         welcome: { enabled: true },
         spam: { enabled: true },
         moderation: { enabled: true },
-        permissions: { botOwners: ['owner-admin'] },
+        permissions: {},
       });
+      vi.stubEnv('BOT_OWNER_IDS', 'owner-admin');
       const token = createOAuthToken('jwt-test-secret', 'owner-admin');
       const fetchSpy = vi.spyOn(globalThis, 'fetch');
 
@@ -518,7 +521,7 @@ describe('guilds routes', () => {
       expect(res.body.welcome).toEqual({ enabled: true });
       expect(res.body.moderation).toEqual({ enabled: true });
       expect(res.body.triage.enabled).toBe(true);
-      expect(res.body.permissions).toEqual({ botOwners: [] });
+      expect(res.body.permissions).not.toHaveProperty('botOwners');
       expect(res.body.database).toBeUndefined();
       expect(res.body.token).toBeUndefined();
       expect(getConfig).toHaveBeenCalledWith('guild1');
@@ -805,6 +808,79 @@ describe('guilds routes', () => {
 
         expect(res.status).toBe(200);
       });
+    });
+  });
+
+  describe('PUT /:id/config', () => {
+    it('should bulk update config and split botStatus writes to global scope', async () => {
+      const effectiveConfig = {
+        ai: { enabled: true, model: 'claude-4', historyLength: 20 },
+        triage: {
+          enabled: true,
+          classifyApiKey: 'sk-secret-classify',
+          respondApiKey: 'sk-secret-respond',
+        },
+        botStatus: { enabled: true, status: 'idle' },
+        database: { host: 'secret-host' },
+        token: 'secret-token',
+      };
+
+      getConfig
+        .mockReturnValueOnce({})
+        .mockReturnValueOnce(effectiveConfig)
+        .mockReturnValueOnce(effectiveConfig)
+        .mockReturnValueOnce(effectiveConfig)
+        .mockReturnValueOnce(effectiveConfig);
+
+      const res = await request(app)
+        .put('/api/v1/guilds/guild1/config')
+        .set('x-api-secret', SECRET)
+        .send([
+          { path: 'ai.enabled', value: false },
+          { path: 'botStatus.status', value: 'idle' },
+        ]);
+
+      expect(res.status).toBe(200);
+      expect(setMultipleConfigValues).toHaveBeenNthCalledWith(1, [
+        { path: 'botStatus.status', value: 'idle', topLevelKey: 'botStatus' },
+      ]);
+      expect(setMultipleConfigValues).toHaveBeenNthCalledWith(
+        2,
+        [{ path: 'ai.enabled', value: false, topLevelKey: 'ai' }],
+        'guild1',
+      );
+      expect(res.body.ai).toEqual({ enabled: true, model: 'claude-4', historyLength: 20 });
+      expect(res.body.botStatus).toEqual({ enabled: true, status: 'idle' });
+      expect(res.body.triage.classifyApiKey).toBe('••••••••');
+      expect(res.body.database).toBeUndefined();
+      expect(res.body.token).toBeUndefined();
+    });
+
+    it('should require bot owner auth for bulk botStatus writes over OAuth', async () => {
+      vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
+      const token = createOAuthToken();
+      setGuildMemberPermissions({ administrator: true });
+      mockFetchGuilds([{ id: 'guild1', name: 'Test', permissions: '8' }]);
+
+      const res = await request(app)
+        .put('/api/v1/guilds/guild1/config')
+        .set('Authorization', `Bearer ${token}`)
+        .send([{ path: 'botStatus.status', value: 'idle' }]);
+
+      expect(res.status).toBe(403);
+      expect(res.body.error).toContain('Only bot owners');
+      expect(setMultipleConfigValues).not.toHaveBeenCalled();
+    });
+
+    it('should return 400 for invalid bulk patches', async () => {
+      const res = await request(app)
+        .put('/api/v1/guilds/guild1/config')
+        .set('x-api-secret', SECRET)
+        .send([{ path: 'ai', value: true }]);
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('dot separator');
+      expect(setMultipleConfigValues).not.toHaveBeenCalled();
     });
   });
 
@@ -1253,8 +1329,9 @@ describe('guilds routes', () => {
         welcome: { enabled: true },
         spam: { enabled: true },
         moderation: { enabled: true },
-        permissions: { botOwners: ['owner-mod'] },
+        permissions: {},
       });
+      vi.stubEnv('BOT_OWNER_IDS', 'owner-mod');
       const token = createOAuthToken('jwt-test-secret', 'owner-mod');
       const fetchSpy = vi.spyOn(globalThis, 'fetch');
       mockPool.query.mockResolvedValueOnce({ rows: [{ count: 1 }] }).mockResolvedValueOnce({

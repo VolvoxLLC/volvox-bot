@@ -38,12 +38,12 @@ export function mergeRoleIds(roleIds, roleId) {
 /**
  * Retrieve the configured bot owner user IDs.
  *
- * Reads the BOT_OWNER_IDS environment variable (comma-separated) and returns the parsed IDs;
- * if that variable is not set, falls back to config.permissions.botOwners.
- * @param {Object} [config] - Fallback configuration object; expected to include permissions.botOwners as an array.
+ * Reads the BOT_OWNER_IDS environment variable (comma-separated) and returns the parsed IDs.
+ * If that variable is not set, returns an empty array.
+ * @param {Object} [config] - Unused; kept for API compatibility with callers.
  * @returns {string[]} Array of bot owner user IDs.
  */
-export function getBotOwnerIds(config) {
+export function getBotOwnerIds(_config) {
   const envValue = process.env.BOT_OWNER_IDS;
   if (envValue) {
     return envValue
@@ -51,8 +51,7 @@ export function getBotOwnerIds(config) {
       .map((id) => id.trim())
       .filter(Boolean);
   }
-  const owners = config?.permissions?.botOwners;
-  return Array.isArray(owners) ? owners : [];
+  return [];
 }
 
 /**

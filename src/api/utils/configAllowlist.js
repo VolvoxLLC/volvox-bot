@@ -92,13 +92,22 @@ export function stripMaskedWrites(writes) {
  * Sensitive fields listed in SENSITIVE_FIELDS are replaced with the MASK value when present and non-empty.
  *
  * @param {Object} config - Configuration object whose top-level keys are config sections.
+ * @param {Iterable<string>} [allowedTopLevelKeys] - Optional allowlist of top-level keys to keep.
  * @returns {Object} A deep clone of `config` with sensitive values replaced by `MASK`.
  */
-export function maskSensitiveFields(config) {
+export function maskSensitiveFields(config, allowedTopLevelKeys) {
   if (config == null) {
     return {};
   }
-  const cloned = structuredClone(config);
+
+  const allowedKeys = allowedTopLevelKeys ? new Set(Array.from(allowedTopLevelKeys)) : null;
+  const cloned = allowedKeys
+    ? Object.fromEntries(
+        Object.entries(config)
+          .filter(([key]) => allowedKeys.has(key))
+          .map(([key, value]) => [key, structuredClone(value)]),
+      )
+    : structuredClone(config);
 
   for (const field of SENSITIVE_FIELDS) {
     const segments = field.split('.');

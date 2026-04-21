@@ -206,18 +206,19 @@ const SHORTCUT_MAP: Record<string, string> = {
 const EDITOR_PANE_CONTENT_CLASSES = 'w-full px-3 py-2 text-sm leading-relaxed';
 
 /**
- * A controlled Markdown editor with a formatting toolbar, variable insertion, and live HTML preview.
+ * Controlled Discord-style Markdown editor with a formatting toolbar, variable
+ * insertion, and live HTML preview.
  *
- * @param value - Current editor text value.
- * @param onChange - Callback invoked with the new text when the value changes.
- * @param variables - Optional list of variable names available for insertion.
- * @param variableDelimiters - Pair of strings used to wrap inserted variables (open, close).
- * @param variableSamples - Optional map of variable name → sample text used to render previews.
- * @param maxLength - Maximum allowed number of characters in the editor.
+ * @param value - Current editor text.
+ * @param onChange - Callback invoked with the updated text when the editor content changes.
+ * @param variables - Optional list of variable names available for insertion into the editor.
+ * @param variableSamples - Optional map of variable name → sample text used to
+ * render sample values inside the preview.
+ * @param maxLength - Maximum allowed number of characters in the editor (default: 2000).
  * @param placeholder - Placeholder text shown when the editor is empty.
  * @param className - Additional CSS class names applied to the editor container.
  * @param disabled - When true, disables user interaction with the editor and toolbar.
- * @returns The rendered Discord-style Markdown editor React element.
+ * @returns The rendered React element representing the Markdown editor UI.
  */
 export function DiscordMarkdownEditor({
   value,
@@ -392,7 +393,10 @@ export function DiscordMarkdownEditor({
                 Variables
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="max-h-48 min-w-[160px] overflow-auto p-1">
+            <DropdownMenuContent
+              align="end"
+              className="max-h-48 min-w-[160px] overflow-auto p-1 scrollbar-thin scrollbar-thumb-border/20 scrollbar-track-transparent"
+            >
               {variables.map((variable) => (
                 <DropdownMenuItem
                   key={variable}
@@ -422,7 +426,9 @@ export function DiscordMarkdownEditor({
             disabled={disabled}
             className={cn(
               EDITOR_PANE_CONTENT_CLASSES,
-              'resize-none bg-transparent font-mono [field-sizing:content] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50',
+              'resize-none bg-transparent font-mono [field-sizing:content] focus:outline-none',
+              'disabled:cursor-not-allowed disabled:opacity-50',
+              'scrollbar-thin scrollbar-thumb-border/20 scrollbar-track-transparent',
             )}
             aria-label="Markdown editor"
           />
@@ -433,7 +439,8 @@ export function DiscordMarkdownEditor({
             className={cn(
               EDITOR_PANE_CONTENT_CLASSES,
               'discord-preview relative -top-[3px] max-w-none',
-              'font-mono md:overflow-x-auto md:overflow-y-hidden md:whitespace-nowrap',
+              'font-mono',
+              'md:overflow-x-auto md:overflow-y-hidden md:whitespace-nowrap',
             )}
           >
             {previewContent}

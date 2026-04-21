@@ -473,7 +473,15 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     [savedConfig],
   );
 
-  // ── Execute save (batched PATCH per section) ───────────────────
+  /**
+   * Persist the current draft as one bulk config update.
+   *
+   * This intentionally uses a single PUT with the full patch list instead of the
+   * previous per-section save flow. The backend validates and applies the batch as
+   * one unit so related settings stay in sync, and any invalid patch causes the
+   * entire request to fail rather than leaving the dashboard in a partially-saved
+   * state.
+   */
   const executeSave = useCallback(async () => {
     if (!guildId || !savedConfig || !draftConfig) return;
 
@@ -491,87 +499,40 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const bySection = new Map<string, Array<{ path: string; value: unknown }>>();
-    for (const patch of patches) {
-      const section = patch.path.split('.')[0];
-      const sectionPatches = bySection.get(section);
-      if (sectionPatches) {
-        sectionPatches.push(patch);
-        continue;
-      }
-      bySection.set(section, [patch]);
-    }
-
     setSaving(true);
 
     const saveAbortController = new AbortController();
     const { signal } = saveAbortController;
 
-    const failedSections: string[] = [];
-
-    async function sendSection(sectionPatches: Array<{ path: string; value: unknown }>) {
-      for (const patch of sectionPatches) {
-        const res = await fetch(`/api/guilds/${encodeURIComponent(guildId)}/config`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(patch),
-          cache: 'no-store',
-          signal,
-        });
-
-        if (res.status === 401) {
-          saveAbortController.abort();
-          window.location.href = '/login';
-          throw new Error('Unauthorized');
-        }
-
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`);
-        }
-      }
-    }
-
     try {
-      const results = await Promise.allSettled(
-        Array.from(bySection.entries()).map(async ([section, sectionPatches]) => {
-          try {
-            await sendSection(sectionPatches);
-          } catch (err) {
-            failedSections.push(section);
-            throw err;
-          }
-        }),
-      );
+      const res = await fetch(`/api/guilds/${encodeURIComponent(guildId)}/config`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patches),
+        cache: 'no-store',
+        signal,
+      });
 
-      const hasFailures = results.some((r) => r.status === 'rejected');
-
-      if (hasFailures) {
-        const succeededSections = Array.from(bySection.keys()).filter(
-          (s) => !failedSections.includes(s),
-        );
-        if (succeededSections.length > 0) {
-          const snapshot = draftConfig;
-          setSavedConfig((prev) => {
-            if (!prev) return prev;
-            const updated = { ...prev };
-            for (const section of succeededSections) {
-              (updated as Record<string, unknown>)[section] = (snapshot as Record<string, unknown>)[
-                section
-              ];
-            }
-            return updated;
-          });
-        }
-        toast.error('Some sections failed to save', {
-          description: `Failed: ${failedSections.join(', ')}`,
-        });
-      } else {
-        toast.success('Config saved successfully!');
-        setShowDiffModal(false);
-        setPrevSavedConfig({ guildId, config: structuredClone(savedConfig) as GuildConfig });
-        await fetchConfig(guildId);
+      if (res.status === 401) {
+        saveAbortController.abort();
+        window.location.href = '/login';
+        throw new Error('Unauthorized');
       }
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        let errorMessage = (body as { error?: string }).error ?? `HTTP ${res.status}`;
+        const details = (body as { details?: string[] }).details;
+        if (details && Array.isArray(details) && details.length > 0) {
+          errorMessage += `: ${details[0]}`;
+        }
+        throw new Error(errorMessage);
+      }
+
+      toast.success('Config saved successfully!');
+      setShowDiffModal(false);
+      setPrevSavedConfig({ guildId, config: structuredClone(savedConfig) as GuildConfig });
+      await fetchConfig(guildId);
     } catch (err) {
       const msg = (err as Error).message || 'Failed to save config';
       toast.error('Failed to save config', { description: msg });
