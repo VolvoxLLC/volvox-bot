@@ -258,12 +258,14 @@ export function Footer() {
             <div className="flex items-center gap-3 pt-2">
               {[
                 {
+                  label: 'Discord',
                   icon: (props: { className?: string }) => (
                     <SimpleIcon path={siDiscord.path} {...props} />
                   ),
                   href: 'https://discord.gg/8ahXACdamN',
                 },
                 {
+                  label: 'X',
                   icon: (props: { className?: string }) => (
                     <SimpleIcon path={siX.path} {...props} />
                   ),
@@ -275,6 +277,7 @@ export function Footer() {
                   href={social.href}
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label={social.label}
                   className="w-10 h-10 rounded-lg bg-background border border-border/60 flex items-center justify-center text-foreground/40 hover:text-foreground hover:bg-card transition-colors shadow-sm"
                 >
                   <social.icon className="w-[18px] h-[18px]" />
