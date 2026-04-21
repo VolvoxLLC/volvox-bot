@@ -21,6 +21,12 @@ vi.mock('../../src/utils/discordCache.js', () => ({
   invalidateGuildCache: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock('../../src/modules/welcomeOnboarding.js', () => ({
+  isReturningMember: vi.fn(),
+  buildRulesAgreementMessage: vi.fn(),
+  buildRoleMenuMessage: vi.fn(),
+}));
+
 vi.mock('../../src/logger.js', () => ({
   info: vi.fn(),
   error: vi.fn(),
@@ -35,6 +41,7 @@ import {
   recordCommunityActivity,
   sendWelcomeMessage,
 } from '../../src/modules/welcome.js';
+import { isReturningMember } from '../../src/modules/welcomeOnboarding.js';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -610,6 +617,97 @@ describe('welcome module coverage', () => {
       expect(mockSend).toHaveBeenCalled();
       const msg = mockSend.mock.calls[0][0].content;
       expect(msg.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('returning member message', () => {
+    afterEach(() => {
+      vi.mocked(isReturningMember).mockReset();
+    });
+
+    it('uses custom returningMessage template for returning members', async () => {
+      vi.mocked(isReturningMember).mockReturnValue(true);
+      const mockSend = vi.fn().mockResolvedValue({ id: 'msg1' });
+      const client = makeClient(mockSend);
+      const member = makeMember({ guildId: 'guild1' });
+      const config = {
+        welcome: {
+          enabled: true,
+          channelId: 'ch1',
+          message: 'Welcome {{user}} to {{server}}!',
+          returningMessage: 'Hey {{user}}, welcome back to {{server}}!',
+          returningMessageEnabled: true,
+        },
+      };
+
+      await sendWelcomeMessage(member, client, config);
+      expect(mockSend).toHaveBeenCalled();
+      const msg = mockSend.mock.calls[0][0].content;
+      expect(msg).toContain('welcome back');
+      expect(msg).not.toContain('Jump back in');
+    });
+
+    it('falls back to hardcoded default when returningMessage is null', async () => {
+      vi.mocked(isReturningMember).mockReturnValue(true);
+      const mockSend = vi.fn().mockResolvedValue({ id: 'msg1' });
+      const client = makeClient(mockSend);
+      const member = makeMember({ guildId: 'guild1' });
+      const config = {
+        welcome: {
+          enabled: true,
+          channelId: 'ch1',
+          message: 'Welcome {{user}} to {{server}}!',
+          returningMessage: null,
+        },
+      };
+
+      await sendWelcomeMessage(member, client, config);
+      expect(mockSend).toHaveBeenCalled();
+      const msg = mockSend.mock.calls[0][0].content;
+      expect(msg).toContain('Welcome back');
+      expect(msg).toContain('Jump back in');
+    });
+
+    it('uses normal template when returningMessageEnabled is false', async () => {
+      vi.mocked(isReturningMember).mockReturnValue(true);
+      const mockSend = vi.fn().mockResolvedValue({ id: 'msg1' });
+      const client = makeClient(mockSend);
+      const member = makeMember({ guildId: 'guild1' });
+      const config = {
+        welcome: {
+          enabled: true,
+          channelId: 'ch1',
+          message: 'Welcome {{user}} to {{server}}!',
+          returningMessage: 'Hey {{user}}, welcome back!',
+          returningMessageEnabled: false,
+        },
+      };
+
+      await sendWelcomeMessage(member, client, config);
+      expect(mockSend).toHaveBeenCalled();
+      const msg = mockSend.mock.calls[0][0].content;
+      expect(msg).toContain('Welcome');
+      expect(msg).not.toContain('welcome back');
+      expect(msg).not.toContain('Welcome back');
+    });
+
+    it('treats undefined returningMessageEnabled as enabled', async () => {
+      vi.mocked(isReturningMember).mockReturnValue(true);
+      const mockSend = vi.fn().mockResolvedValue({ id: 'msg1' });
+      const client = makeClient(mockSend);
+      const member = makeMember({ guildId: 'guild1' });
+      const config = {
+        welcome: {
+          enabled: true,
+          channelId: 'ch1',
+          message: 'Welcome {{user}}!',
+        },
+      };
+
+      await sendWelcomeMessage(member, client, config);
+      expect(mockSend).toHaveBeenCalled();
+      const msg = mockSend.mock.calls[0][0].content;
+      expect(msg).toContain('Welcome back');
     });
   });
 });

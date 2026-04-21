@@ -214,7 +214,11 @@ export async function sendWelcomeMessage(member, client, config) {
    * @returns {string}
    */
   const buildMessage = (channelId) => {
-    if (returningMember) {
+    if (returningMember && config.welcome?.returningMessageEnabled !== false) {
+      const returningTemplate = config.welcome?.returningMessage;
+      if (returningTemplate) {
+        return renderWelcomeMessage(returningTemplate, memberCtx, guildCtx, dynamicCtx);
+      }
       return renderWelcomeMessage(
         'Welcome back, {{user}}! Glad to see you again. Jump back in whenever you are ready.',
         memberCtx,
