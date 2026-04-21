@@ -8,6 +8,8 @@ import { warn } from '../../logger.js';
 import { renderTemplate } from '../../utils/templateEngine.js';
 
 const MAX_EMBED_FIELDS = 25;
+const MAX_EMBED_TITLE_LENGTH = 256;
+const MAX_EMBED_DESCRIPTION_LENGTH = 4096;
 const MAX_FOOTER_TEXT_LENGTH = 2048;
 
 function renderFooter(footer, templateContext) {
@@ -57,9 +59,17 @@ export function buildPayload(action, templateContext) {
   if (format === 'embed' || format === 'both') {
     const embedConfig = action.embed ?? {};
     const embed = new EmbedBuilder();
-    if (embedConfig.title) embed.setTitle(renderTemplate(embedConfig.title, templateContext));
+    if (embedConfig.title)
+      embed.setTitle(
+        renderTemplate(embedConfig.title, templateContext).slice(0, MAX_EMBED_TITLE_LENGTH),
+      );
     if (embedConfig.description)
-      embed.setDescription(renderTemplate(embedConfig.description, templateContext));
+      embed.setDescription(
+        renderTemplate(embedConfig.description, templateContext).slice(
+          0,
+          MAX_EMBED_DESCRIPTION_LENGTH,
+        ),
+      );
     if (embedConfig.color) embed.setColor(embedConfig.color);
     if (embedConfig.thumbnail)
       embed.setThumbnail(renderTemplate(embedConfig.thumbnail, templateContext));

@@ -117,6 +117,27 @@ describe('buildPayload', () => {
     expect(payload.embeds[0].toJSON().footer?.text).toHaveLength(2048);
   });
 
+  it("truncates embed title and description to Discord's limits", () => {
+    const payload = buildPayload(
+      {
+        type: 'announce',
+        format: 'embed',
+        embed: {
+          title: '{{longTitle}}',
+          description: '{{longDescription}}',
+        },
+      },
+      {
+        longTitle: 't'.repeat(300),
+        longDescription: 'd'.repeat(5000),
+      },
+    );
+
+    const embed = payload.embeds[0].toJSON();
+    expect(embed.title).toHaveLength(256);
+    expect(embed.description).toHaveLength(4096);
+  });
+
   it('skips empty footers when no text or icon remain after rendering', () => {
     const payload = buildPayload(
       {
