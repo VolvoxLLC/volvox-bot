@@ -178,7 +178,6 @@
     "enabled": true,
     "adminRoleIds": [],
     "moderatorRoleIds": [],
-    "botOwners": [],
     "usePermissions": true,
     "allowedCommands": {
       "ping": "everyone",

@@ -200,7 +200,6 @@ export interface PermissionsConfig {
   /** @deprecated Use moderatorRoleIds. Kept for backward compat with legacy guild configs. */
   moderatorRoleId?: string | null;
   modRoles: string[];
-  botOwners: string[];
   usePermissions: boolean;
   allowedCommands: Record<string, string>;
 }

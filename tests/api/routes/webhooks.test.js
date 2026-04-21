@@ -15,7 +15,7 @@ vi.mock('../../../src/modules/config.js', () => ({
     spam: { enabled: true },
     moderation: { enabled: true },
     triage: { enabled: true },
-    permissions: { botOwners: [] },
+    permissions: {},
   }),
   setConfigValue: vi.fn().mockResolvedValue({}),
 }));
