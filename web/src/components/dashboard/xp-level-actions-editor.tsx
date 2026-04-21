@@ -341,20 +341,47 @@ function resolveImageUrl(embed?: XpActionEmbedConfig): string {
   return '';
 }
 
+function resolveLegacyThumbnailType(
+  legacyThumbnail: string | undefined,
+  embed?: XpActionEmbedConfig,
+): EmbedConfig['thumbnailType'] {
+  if (legacyThumbnail === '{{avatar}}') {
+    return 'user_avatar';
+  }
+
+  if (legacyThumbnail === '{{serverIcon}}') {
+    return 'server_icon';
+  }
+
+  if (legacyThumbnail) {
+    return 'custom';
+  }
+
+  return resolveThumbnailType(embed);
+}
+
+function resolveLegacyThumbnailUrl(
+  thumbnailType: EmbedConfig['thumbnailType'],
+  legacyThumbnail: string | undefined,
+  embed?: XpActionEmbedConfig,
+): string {
+  const configuredThumbnailUrl = typeof embed?.thumbnailUrl === 'string' ? embed.thumbnailUrl : '';
+
+  if (thumbnailType === 'custom') {
+    return legacyThumbnail ?? configuredThumbnailUrl;
+  }
+
+  return configuredThumbnailUrl;
+}
+
 function toBuilderConfig(
   embed?: XpActionEmbedConfig,
   format?: XpLevelAction['format'],
 ): EmbedConfig {
   const base = defaultEmbedConfig();
   const legacyThumbnail = typeof embed?.thumbnail === 'string' ? embed.thumbnail : undefined;
-  const thumbnailType =
-    legacyThumbnail === '{{avatar}}'
-      ? 'user_avatar'
-      : legacyThumbnail === '{{serverIcon}}'
-        ? 'server_icon'
-        : legacyThumbnail
-          ? 'custom'
-          : resolveThumbnailType(embed);
+  const thumbnailType = resolveLegacyThumbnailType(legacyThumbnail, embed);
+  const thumbnailUrl = resolveLegacyThumbnailUrl(thumbnailType, legacyThumbnail, embed);
 
   return {
     ...base,
@@ -362,12 +389,7 @@ function toBuilderConfig(
     title: typeof embed?.title === 'string' ? embed.title : '',
     description: typeof embed?.description === 'string' ? embed.description : '',
     thumbnailType,
-    thumbnailUrl:
-      thumbnailType === 'custom'
-        ? (legacyThumbnail ?? (typeof embed?.thumbnailUrl === 'string' ? embed.thumbnailUrl : ''))
-        : typeof embed?.thumbnailUrl === 'string'
-          ? embed.thumbnailUrl
-          : '',
+    thumbnailUrl,
     fields: toBuilderFields(embed),
     footerText: resolveFooterText(embed),
     footerIconUrl: resolveFooterIconUrl(embed),
@@ -546,6 +568,28 @@ function TemplateVariableList() {
       </div>
     </div>
   );
+}
+
+function normalizeLevelActionsForWriteback(
+  shouldNormalize: boolean,
+  levelActions: DeepPartial<XpLevelActionEntry>[] | undefined,
+): XpLevelActionEntry[] | DeepPartial<XpLevelActionEntry>[] | undefined {
+  if (!shouldNormalize) {
+    return levelActions;
+  }
+
+  return (Array.isArray(levelActions) ? levelActions : []).map(normalizeDraftEntry);
+}
+
+function normalizeDefaultActionsForWriteback(
+  shouldNormalize: boolean,
+  defaultActions: DeepPartial<XpLevelAction>[] | undefined,
+): XpLevelAction[] | DeepPartial<XpLevelAction>[] | undefined {
+  if (!shouldNormalize) {
+    return defaultActions;
+  }
+
+  return (Array.isArray(defaultActions) ? defaultActions : []).map(normalizeDraftAction);
 }
 
 function reorderItem<T>(items: T[], index: number, direction: -1 | 1): T[] {
@@ -946,16 +990,14 @@ export function XpLevelActionsEditor({
       ...prev,
       xp: {
         ...prev.xp,
-        levelActions: shouldNormalizeLevelActions
-          ? (Array.isArray(prev.xp?.levelActions) ? prev.xp.levelActions : []).map(
-              normalizeDraftEntry,
-            )
-          : prev.xp?.levelActions,
-        defaultActions: shouldNormalizeDefaultActions
-          ? (Array.isArray(prev.xp?.defaultActions) ? prev.xp.defaultActions : []).map(
-              normalizeDraftAction,
-            )
-          : prev.xp?.defaultActions,
+        levelActions: normalizeLevelActionsForWriteback(
+          shouldNormalizeLevelActions,
+          prev.xp?.levelActions,
+        ),
+        defaultActions: normalizeDefaultActionsForWriteback(
+          shouldNormalizeDefaultActions,
+          prev.xp?.defaultActions,
+        ),
       },
     }));
   }, [rawDefaultActions, rawLevelActions, updateDraftConfig]);
