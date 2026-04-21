@@ -21,6 +21,23 @@ import {
 
 const BOT_OWNER_ID = '191633014441115648';
 
+/**
+ * Create a permission config with common defaults.
+ * @param {object} overrides - Merged into the permissions object.
+ */
+function createPermConfig(overrides = {}) {
+  return { permissions: { enabled: true, usePermissions: true, ...overrides } };
+}
+
+/**
+ * Create a permission config with a single allowed command.
+ * @param {string} command - The command name.
+ * @param {string} level - The permission level ('everyone' | 'moderator' | 'admin').
+ */
+function createCommandConfig(command, level) {
+  return createPermConfig({ allowedCommands: { [command]: level } });
+}
+
 afterEach(() => {
   vi.unstubAllEnvs();
 });
@@ -139,43 +156,24 @@ describe('hasPermission', () => {
     expect(hasPermission({}, 'ping', null)).toBe(false);
   });
 
+  const adminConfig = createCommandConfig('config', 'admin');
+
   it('should return true for bot owner regardless of permission settings', () => {
     vi.stubEnv('BOT_OWNER_IDS', BOT_OWNER_ID);
     const member = { id: BOT_OWNER_ID };
-    const config = {
-      permissions: {
-        enabled: true,
-        usePermissions: true,
-        allowedCommands: { config: 'admin' },
-      },
-    };
-    expect(hasPermission(member, 'config', config)).toBe(true);
+    expect(hasPermission(member, 'config', adminConfig)).toBe(true);
   });
 
   it('should not bypass for owner when BOT_OWNER_IDS is not set', () => {
     vi.stubEnv('BOT_OWNER_IDS', undefined);
     const member = createMember({ id: BOT_OWNER_ID });
-    const config = {
-      permissions: {
-        enabled: true,
-        usePermissions: true,
-        allowedCommands: { config: 'admin' },
-      },
-    };
-    expect(hasPermission(member, 'config', config)).toBe(false);
+    expect(hasPermission(member, 'config', adminConfig)).toBe(false);
   });
 
   it('should not bypass for owner when BOT_OWNER_IDS is empty string', () => {
     vi.stubEnv('BOT_OWNER_IDS', '');
     const member = createMember({ id: BOT_OWNER_ID });
-    const config = {
-      permissions: {
-        enabled: true,
-        usePermissions: true,
-        allowedCommands: { config: 'admin' },
-      },
-    };
-    expect(hasPermission(member, 'config', config)).toBe(false);
+    expect(hasPermission(member, 'config', adminConfig)).toBe(false);
   });
 
   it('should return true when permissions are disabled', () => {
@@ -192,100 +190,48 @@ describe('hasPermission', () => {
 
   it('should return true for "everyone" permission level', () => {
     const member = {};
-    const config = {
-      permissions: {
-        enabled: true,
-        usePermissions: true,
-        allowedCommands: { ping: 'everyone' },
-      },
-    };
-    expect(hasPermission(member, 'ping', config)).toBe(true);
+    expect(hasPermission(member, 'ping', createCommandConfig('ping', 'everyone'))).toBe(true);
   });
+
+  const modConfig = createCommandConfig('modlog', 'moderator');
 
   it('should check moderator for "moderator" permission level', () => {
     const modMember = createMember({
       hasPermission: vi.fn().mockImplementation((perm) => perm === PermissionFlagsBits.ManageGuild),
     });
-    const config = {
-      permissions: {
-        enabled: true,
-        usePermissions: true,
-        allowedCommands: { modlog: 'moderator' },
-      },
-    };
-    expect(hasPermission(modMember, 'modlog', config)).toBe(true);
+    expect(hasPermission(modMember, 'modlog', modConfig)).toBe(true);
   });
 
   it('should deny non-moderator for "moderator" permission level', () => {
     const member = createMember();
-    const config = {
-      permissions: {
-        enabled: true,
-        usePermissions: true,
-        allowedCommands: { modlog: 'moderator' },
-      },
-    };
-    expect(hasPermission(member, 'modlog', config)).toBe(false);
+    expect(hasPermission(member, 'modlog', modConfig)).toBe(false);
   });
 
   it('should check admin for "admin" permission level', () => {
     const adminMember = createMember({ hasPermission: vi.fn().mockReturnValue(true) });
-    const config = {
-      permissions: {
-        enabled: true,
-        usePermissions: true,
-        allowedCommands: { config: 'admin' },
-      },
-    };
-    expect(hasPermission(adminMember, 'config', config)).toBe(true);
+    expect(hasPermission(adminMember, 'config', adminConfig)).toBe(true);
   });
 
   it('should deny non-admin for "admin" permission level', () => {
     const member = createMember();
-    const config = {
-      permissions: {
-        enabled: true,
-        usePermissions: true,
-        allowedCommands: { config: 'admin' },
-      },
-    };
-    expect(hasPermission(member, 'config', config)).toBe(false);
+    expect(hasPermission(member, 'config', adminConfig)).toBe(false);
   });
+
+  const emptyConfig = createPermConfig({ allowedCommands: {} });
 
   it('should default to admin-only for unknown commands', () => {
     const member = createMember();
-    const config = {
-      permissions: {
-        enabled: true,
-        usePermissions: true,
-        allowedCommands: {},
-      },
-    };
-    expect(hasPermission(member, 'unknown', config)).toBe(false);
+    expect(hasPermission(member, 'unknown', emptyConfig)).toBe(false);
   });
 
   it('should grant admin access to unknown commands', () => {
     const adminMember = createMember({ hasPermission: vi.fn().mockReturnValue(true) });
-    const config = {
-      permissions: {
-        enabled: true,
-        usePermissions: true,
-        allowedCommands: {},
-      },
-    };
-    expect(hasPermission(adminMember, 'unknown', config)).toBe(true);
+    expect(hasPermission(adminMember, 'unknown', emptyConfig)).toBe(true);
   });
 
   it('should deny for unknown permission level', () => {
     const member = createMember();
-    const config = {
-      permissions: {
-        enabled: true,
-        usePermissions: true,
-        allowedCommands: { foo: 'moderator' },
-      },
-    };
-    expect(hasPermission(member, 'foo', config)).toBe(false);
+    expect(hasPermission(member, 'foo', createCommandConfig('foo', 'moderator'))).toBe(false);
   });
 });
 
