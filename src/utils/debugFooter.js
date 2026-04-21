@@ -60,12 +60,12 @@ function shortModel(model) {
  *  - cacheCreation {number} - Tokens consumed creating cache entries.
  *  - cacheRead {number} - Tokens consumed reading from cache.
  */
-function extractStats(result, model, providerName = 'anthropic') {
+function extractStats(result, model, providerName) {
   const usage = result?.usage || {};
 
   // Provider-specific cache token stats live in providerMetadata, not in usage.
-  const providerMeta =
-    result?.providerMetadata?.[providerName] || result?.providerMetadata?.anthropic || {};
+  // Callers MUST pass `providerName` — no silent default (see issue #553).
+  const providerMeta = result?.providerMetadata?.[providerName] || {};
 
   return {
     model: model || 'unknown',

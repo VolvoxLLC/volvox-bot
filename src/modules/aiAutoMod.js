@@ -16,7 +16,7 @@ import { createCase } from './moderation.js';
 /** Default config when none is provided */
 const DEFAULTS = {
   enabled: false,
-  model: 'claude-haiku-4-5',
+  model: 'minimax:MiniMax-M2.7',
   thresholds: {
     toxicity: 0.7,
     spam: 0.8,

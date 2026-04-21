@@ -10,8 +10,8 @@ describe('triage-config', () => {
   describe('resolveTriageConfig', () => {
     it('should return defaults for an empty config', () => {
       const result = resolveTriageConfig({});
-      expect(result.classifyModel).toBe('claude-haiku-4-5');
-      expect(result.respondModel).toBe('claude-sonnet-4-6');
+      expect(result.classifyModel).toBe('minimax:MiniMax-M2.7');
+      expect(result.respondModel).toBe('minimax:MiniMax-M2.7');
       expect(result.classifyBudget).toBe(0.05);
       expect(result.respondBudget).toBe(0.2);
       expect(result.timeout).toBe(30000);

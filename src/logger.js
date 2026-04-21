@@ -56,12 +56,12 @@ if (fileOutputEnabled) {
 }
 
 /**
- * Sensitive field names that should be redacted from logs
+ * Sensitive field names that should be redacted from logs.
+ * Pattern-based matches (any env var ending in `_API_KEY` or `_AUTH_TOKEN`) are
+ * handled by `matchesSensitivePattern` so new providers are covered automatically.
  */
 const SENSITIVE_FIELDS = [
   'DISCORD_TOKEN',
-  'ANTHROPIC_API_KEY',
-  'ANTHROPIC_AUTH_TOKEN',
   'CLAUDE_CODE_OAUTH_TOKEN',
   'token',
   'password',
@@ -72,6 +72,28 @@ const SENSITIVE_FIELDS = [
   'DATABASE_URL',
   'connectionString',
 ];
+
+/**
+ * Case-insensitive suffix patterns that mark a key as sensitive. Any env var
+ * following the `<PROVIDER>_API_KEY` / `<PROVIDER>_AUTH_TOKEN` convention is
+ * redacted without requiring per-provider maintenance.
+ */
+const SENSITIVE_PATTERNS = [/_api_key$/i, /_auth_token$/i];
+
+/**
+ * Determine whether a key name is sensitive.
+ * Exact (case-insensitive) match against SENSITIVE_FIELDS, or a suffix match
+ * against SENSITIVE_PATTERNS.
+ *
+ * @param {string} key
+ * @returns {boolean}
+ */
+function isSensitiveKey(key) {
+  if (typeof key !== 'string') return false;
+  const lower = key.toLowerCase();
+  if (SENSITIVE_FIELDS.some((field) => field.toLowerCase() === lower)) return true;
+  return SENSITIVE_PATTERNS.some((pattern) => pattern.test(key));
+}
 
 /**
  * Recursively filter sensitive data from objects
@@ -91,10 +113,7 @@ function filterSensitiveData(obj) {
 
   const filtered = {};
   for (const [key, value] of Object.entries(obj)) {
-    // Check if key matches any sensitive field (case-insensitive)
-    const isSensitive = SENSITIVE_FIELDS.some((field) => key.toLowerCase() === field.toLowerCase());
-
-    if (isSensitive) {
+    if (isSensitiveKey(key)) {
       filtered[key] = '[REDACTED]';
     } else if (typeof value === 'object' && value !== null) {
       filtered[key] = filterSensitiveData(value);
@@ -116,12 +135,7 @@ const redactSensitiveData = winston.format((info) => {
   // Filter each property in the info object
   for (const key in info) {
     if (Object.hasOwn(info, key) && !reserved.includes(key)) {
-      // Check if this key is sensitive (case-insensitive)
-      const isSensitive = SENSITIVE_FIELDS.some(
-        (field) => key.toLowerCase() === field.toLowerCase(),
-      );
-
-      if (isSensitive) {
+      if (isSensitiveKey(key)) {
         info[key] = '[REDACTED]';
       } else if (typeof info[key] === 'object' && info[key] !== null) {
         // Recursively filter nested objects

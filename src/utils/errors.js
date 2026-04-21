@@ -216,7 +216,7 @@ export function getSuggestedNextSteps(error, context = {}) {
     [ErrorType.API_RATE_LIMIT]: 'Wait 60 seconds before trying again.',
 
     [ErrorType.API_UNAUTHORIZED]:
-      'Check that the AI provider API key is set and valid (ANTHROPIC_API_KEY or <PROVIDER>_API_KEY).',
+      'Check that the AI provider API key is set and valid (<PROVIDER>_API_KEY).',
 
     [ErrorType.API_NOT_FOUND]: 'Verify the AI provider API endpoint is reachable.',
 

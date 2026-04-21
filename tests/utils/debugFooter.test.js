@@ -107,7 +107,7 @@ describe('extractStats', () => {
         },
       },
     };
-    const stats = extractStats(result, 'claude-sonnet-4-6');
+    const stats = extractStats(result, 'claude-sonnet-4-6', 'anthropic');
     expect(stats).toEqual({
       model: 'claude-sonnet-4-6',
       cost: 0.005,
@@ -155,7 +155,7 @@ describe('extractStats', () => {
     expect(stats.outputTokens).toBe(100);
   });
 
-  it('should extract cache tokens from providerMetadata using default anthropic key', () => {
+  it('should extract cache tokens from the providerMetadata bucket matching the supplied providerName', () => {
     const result = {
       costUsd: 0.003,
       durationMs: 150,
@@ -170,7 +170,7 @@ describe('extractStats', () => {
         },
       },
     };
-    const stats = extractStats(result, 'multi-model');
+    const stats = extractStats(result, 'multi-model', 'anthropic');
     expect(stats.inputTokens).toBe(400);
     expect(stats.outputTokens).toBe(200);
     expect(stats.cacheCreation).toBe(60);
@@ -197,7 +197,7 @@ describe('extractStats', () => {
     expect(stats.cacheRead).toBe(100);
   });
 
-  it('should fall back to anthropic cache metadata for Anthropic-compatible providers', () => {
+  it('should NOT fall back to the anthropic bucket when providerName does not match', () => {
     const result = {
       costUsd: 0.001,
       durationMs: 50,
@@ -209,9 +209,10 @@ describe('extractStats', () => {
         },
       },
     };
+    // providerName 'minimax' does not match the 'anthropic' bucket; no silent fallback.
     const stats = extractStats(result, 'model', 'minimax');
-    expect(stats.cacheCreation).toBe(30);
-    expect(stats.cacheRead).toBe(70);
+    expect(stats.cacheCreation).toBe(0);
+    expect(stats.cacheRead).toBe(0);
   });
 
   it('should handle missing providerMetadata gracefully', () => {

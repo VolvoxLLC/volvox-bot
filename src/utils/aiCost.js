@@ -1,42 +1,42 @@
 /**
  * AI Cost Calculation
  *
- * Calculates USD cost from token usage using a local pricing JSON file
- * (`src/data/model-pricing.json`). Prices are USD per 1M tokens.
+ * Calculates USD cost from token usage using the unified provider catalog
+ * (`src/data/providers.json`) via `providerRegistry.js`. Prices are USD per 1M tokens.
  *
- * To add a new model, edit model-pricing.json — no code changes needed.
+ * To add a new model, edit providers.json — no code changes needed.
  * Falls back to 0 on unknown models — never crashes the caller.
  */
 
-import pricingData from '../data/model-pricing.json' with { type: 'json' };
 import { warn } from '../logger.js';
+import {
+  getModelConfig,
+  getProviderConfig,
+  listProviders,
+  normaliseModelId,
+} from './providerRegistry.js';
 
-// Build a case-insensitive lookup map from the JSON on import.
-const pricingMap = new Map(
-  Object.entries(pricingData.models).map(([key, val]) => [key.toLowerCase(), val]),
-);
+// Case-insensitive pricing map built from the provider registry on import.
+// Keys are `provider:model` (lowercase); values are the pricing block.
+const pricingMap = buildPricingMap();
 
-/**
- * Normalise an Anthropic API model ID to the base format used in pricing JSON.
- *
- * The Anthropic API uses hyphen-separated version numbers and optional date
- * suffixes (e.g. 'claude-haiku-4-5-20250514'), while the pricing JSON uses
- * short names (e.g. 'claude-haiku-4-5').
- *
- * @param {string} modelId - API model ID
- * @returns {string} Normalised model ID for pricing lookup
- */
-function normaliseModelId(modelId) {
-  // Strip date suffix (e.g. '-20250514', '-20250929')
-  const stripped = modelId.replace(/-\d{8}$/, '');
-
-  // Preserve the family/version format and only remove provider date suffixes.
-  return stripped;
+function buildPricingMap() {
+  const map = new Map();
+  for (const providerName of listProviders()) {
+    const provider = getProviderConfig(providerName);
+    if (!provider) continue;
+    for (const modelEntry of provider.models.values()) {
+      const key = `${providerName}:${modelEntry.id}`.toLowerCase();
+      map.set(key, modelEntry.pricing);
+    }
+  }
+  return map;
 }
 
 /**
  * Look up pricing for a provider:model pair (case-insensitive).
- * Tries the raw model ID first, then the normalised (date-stripped) version.
+ * Tries the raw model ID first, then delegates to the registry which handles
+ * date-suffix stripping and case-insensitive lookups uniformly.
  *
  * @param {string} provider
  * @param {string} modelId
@@ -46,17 +46,15 @@ function lookupPricing(provider, modelId) {
   const rawKey = `${provider}:${modelId}`.toLowerCase();
   if (pricingMap.has(rawKey)) return pricingMap.get(rawKey);
 
-  const normKey = `${provider}:${normaliseModelId(modelId)}`.toLowerCase();
-  if (normKey !== rawKey && pricingMap.has(normKey)) return pricingMap.get(normKey);
-
-  return null;
+  const modelCfg = getModelConfig(provider, modelId);
+  return modelCfg ? modelCfg.pricing : null;
 }
 
 /**
  * Calculate USD cost from token usage.
  *
- * @param {string} provider - Provider name (e.g. 'anthropic', 'openai', 'minimax')
- * @param {string} modelId - Model ID (e.g. 'claude-sonnet-4-6', 'gpt-4.1', 'MiniMax-M2.7')
+ * @param {string} provider - Provider name (e.g. 'minimax', 'moonshot', 'openrouter')
+ * @param {string} modelId - Model ID (e.g. 'MiniMax-M2.7', 'kimi-k2.6')
  * @param {Object} usage
  * @param {number} [usage.inputTokens]
  * @param {number} [usage.outputTokens]

@@ -25,8 +25,8 @@ const MAX_MESSAGE_COUNT = 200;
 /** Cooldown tracking: channelId → last-used timestamp (ms) */
 const cooldownMap = new Map();
 
-/** Claude model for cost-efficient summarization */
-const SUMMARIZE_MODEL = 'claude-haiku-4-5';
+/** Provider:model pair for cost-efficient summarization (see src/data/providers.json) */
+const SUMMARIZE_MODEL = 'minimax:MiniMax-M2.7';
 
 /** Default system prompt for summarization (used when no per-guild override is set) */
 const DEFAULT_SYSTEM_PROMPT =

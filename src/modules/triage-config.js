@@ -14,13 +14,13 @@
  * @returns {Object} Resolved configuration with canonical field names
  */
 export function resolveTriageConfig(triageConfig) {
-  const classifyModel = triageConfig.classifyModel ?? 'claude-haiku-4-5';
+  const classifyModel = triageConfig.classifyModel ?? 'minimax:MiniMax-M2.7';
 
   const respondModel =
     triageConfig.respondModel ??
     (typeof triageConfig.model === 'string' && triageConfig.model
       ? triageConfig.model
-      : (triageConfig.models?.default ?? 'claude-sonnet-4-6'));
+      : (triageConfig.models?.default ?? 'minimax:MiniMax-M2.7'));
 
   const classifyBudget = triageConfig.classifyBudget ?? 0.05;
 

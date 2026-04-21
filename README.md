@@ -18,7 +18,7 @@ AI-powered Discord bot for the [Volvox](https://volvox.dev) developer community 
 git clone https://github.com/VolvoxLLC/volvox-bot.git
 cd volvox-bot
 cp .env.example .env
-# Edit .env — fill in DISCORD_TOKEN, ANTHROPIC_API_KEY, and DISCORD_CLIENT_ID at minimum
+# Edit .env — fill in DISCORD_TOKEN, MINIMAX_API_KEY, and DISCORD_CLIENT_ID at minimum
 docker compose up --build
 ```
 
@@ -97,9 +97,11 @@ pnpm mono:dev              # Start bot + dashboard together
 
 Copy [`.env.example`](.env.example) to `.env` — it contains full documentation for every variable.
 
-**Required:** `DISCORD_TOKEN`, `ANTHROPIC_API_KEY`, `DATABASE_URL`, `DISCORD_CLIENT_ID`
+**Required:** `DISCORD_TOKEN`, `MINIMAX_API_KEY`, `DATABASE_URL`, `DISCORD_CLIENT_ID`
 
-**Optional:** `REDIS_URL`, `SENTRY_DSN`, `BOT_API_SECRET`, `LOG_LEVEL`, and more — see the file.
+**Optional:** `MOONSHOT_API_KEY`, `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY` (reserved — see [#553](https://github.com/VolvoxLLC/volvox-bot/issues/553)), `REDIS_URL`, `SENTRY_DSN`, `BOT_API_SECRET`, `LOG_LEVEL`, and more — see the file.
+
+> Provider metadata (base URLs, env keys, pricing) lives in [`src/data/providers.json`](src/data/providers.json). Add a provider by declaring it there and setting `<PROVIDER>_API_KEY` in `.env`.
 
 ---
 
