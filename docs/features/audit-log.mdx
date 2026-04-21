@@ -1,0 +1,36 @@
+---
+title: Audit Log
+description: 'Full audit trail of all bot actions in your server'
+---
+
+# Audit Log
+
+Every action Volvox.Bot takes is recorded in the audit log. Use it to review what happened and when.
+
+## What it logs
+
+- **Moderation actions** — Warns, bans, kicks, timeouts
+- **Config changes** — Who changed what setting and when
+- **Ticket events** — Created, claimed, closed, deleted
+- **AI conversations** — Started, flagged, deleted
+- **Role changes** — Temp roles assigned and expired
+- **Bot events** — Joins, leaves, errors
+
+## How to use
+
+1. Open the dashboard → **Audit Log** for your server
+2. Filter by action type, member, or date range
+3. Click any entry for full details
+
+<Callout type="info">
+Audit logs are retained for 90 days. Export via API if you need longer retention.
+</Callout>
+
+## Filtering
+
+| Filter | Description |
+|--------|-------------|
+| Action type | Moderation, config, tickets, etc. |
+| Member | Filter by who performed the action |
+| Date range | Focus on a specific time period |
+| Target | Filter by who was affected |

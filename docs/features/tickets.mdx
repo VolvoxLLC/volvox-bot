@@ -1,0 +1,38 @@
+---
+title: Tickets
+description: 'Support ticket system with categories, transcripts, and management'
+---
+
+# Tickets
+
+A built-in support ticket system for your Discord server. Members can create tickets, and your team can manage them from Discord or the dashboard.
+
+## What it does
+
+- **Ticket creation** — Members create tickets via a panel or command
+- **Categories** — Organize tickets by type (support, bug, appeal, etc.)
+- **Transcripts** — Automatic transcripts saved when tickets are closed
+- **Claiming** — Staff can claim tickets to indicate they're handling it
+- **Priority** — Set ticket priority levels
+
+## How to use
+
+1. Set up a ticket panel in **Config → Tickets**
+2. Members click the button or use the command to open a ticket
+3. A private channel is created for the conversation
+4. Staff responds and closes when resolved
+5. Transcript is saved and viewable in the dashboard
+
+<Callout type="tip">
+Set up multiple categories so tickets are routed to the right team automatically.
+</Callout>
+
+## Configuration
+
+| Setting | Description |
+|---------|-------------|
+| Ticket categories | Define ticket types and their channels |
+| Auto-close | Automatically close stale tickets after N hours |
+| Transcript channel | Where transcripts are posted |
+| Staff roles | Which roles can see and manage tickets |
+| Welcome message | Auto-sent when a ticket is opened |
