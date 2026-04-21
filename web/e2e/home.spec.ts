@@ -220,10 +220,8 @@ test.describe('Footer', () => {
 
   test('has social links', async ({ page }) => {
     const footer = page.locator('footer');
-    // Social links don't have aria-labels — verify by href instead
-    await expect(footer.locator('a[href*="github.com/VolvoxLLC"]').first()).toBeVisible();
-    await expect(footer.locator('a[href*="discord.gg"]').first()).toBeVisible();
-    await expect(footer.locator('a[href*="x.com/volvoxdev"]').first()).toBeVisible();
+    await expect(footer.getByRole('link', { name: 'Discord', exact: true })).toBeVisible();
+    await expect(footer.getByRole('link', { name: 'X', exact: true })).toBeVisible();
   });
 
   test('has legal footer links', async ({ page }) => {
