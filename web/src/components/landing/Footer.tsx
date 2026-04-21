@@ -8,7 +8,6 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRef } from 'react';
 import { siDiscord, siX } from 'simple-icons';
-import { GithubIcon } from '@/components/ui/github-icon';
 import { SimpleIcon } from '@/components/ui/simple-icon';
 import { getBotInviteUrl } from '@/lib/discord';
 
@@ -30,7 +29,6 @@ const footerLinks = [
     title: 'RESOURCES',
     links: [
       { label: 'Documentation', href: 'https://docs.volvox.bot' },
-      { label: 'Source Code', href: 'https://github.com/VolvoxLLC' },
       { label: 'Support Node', href: 'https://discord.gg/8ahXACdamN' },
     ],
   },
@@ -259,8 +257,7 @@ export function Footer() {
             {/* Social Nodes */}
             <div className="flex items-center gap-3 pt-2">
               {[
-                { icon: GithubIcon, href: 'https://github.com/VolvoxLLC' },
-                {
+                    {
                   icon: (props: { className?: string }) => (
                     <SimpleIcon path={siDiscord.path} {...props} />
                   ),

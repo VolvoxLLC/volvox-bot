@@ -1,12 +1,6 @@
 import Link from 'next/link';
-import { GithubIcon } from '@/components/ui/github-icon';
 
 const footerLinks = [
-  {
-    label: 'Source Code',
-    href: 'https://github.com/VolvoxLLC',
-    external: true,
-  },
   {
     label: 'About Volvox.Bot',
     href: 'https://volvox.bot',
@@ -63,15 +57,6 @@ export function SiteFooter() {
           <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground/40">
             © {new Date().getFullYear()} Volvox LLC
           </span>
-          <a
-            href="https://github.com/VolvoxLLC"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="GitHub"
-            className="text-muted-foreground/40 transition-colors hover:text-foreground"
-          >
-            <GithubIcon className="h-4 w-4" />
-          </a>
         </div>
 
         <p className="text-center text-[10px] text-muted-foreground/30">
