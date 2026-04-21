@@ -115,6 +115,103 @@ describe('logger module', () => {
     });
   });
 
+  // ── filterSensitiveData: Error handling ──────────────────────────────────
+  // Regression coverage for macroscope review comment 3120523562 — Error
+  // instances must be cloned and scrubbed so a nested `{ cause: Error(...) }`
+  // can't leak a credential past the top-level `info.message` / `info.stack`
+  // scrubbers.
+  describe('filterSensitiveData — Error handling', () => {
+    it('scrubs Bearer tokens from Error.message when the error rides along as meta', async () => {
+      const logger = await import('../src/logger.js');
+      const transport = logger.default.logger.transports[0];
+      const writeSpy = vi.spyOn(transport, 'log').mockImplementation((_info, cb) => cb?.());
+
+      const err = new Error('request failed: Bearer sk-abcdefghijklmnopqrstuvwxyz123');
+      logger.info('upstream error', { err });
+
+      const loggedInfo = writeSpy.mock.calls[0][0];
+      expect(loggedInfo.err).toBeInstanceOf(Error);
+      expect(loggedInfo.err.message).toContain('[REDACTED]');
+      expect(loggedInfo.err.message).not.toContain('sk-abcdefghij');
+    });
+
+    it('scrubs sk- secrets from a nested Error.cause', async () => {
+      const logger = await import('../src/logger.js');
+      const transport = logger.default.logger.transports[0];
+      const writeSpy = vi.spyOn(transport, 'log').mockImplementation((_info, cb) => cb?.());
+
+      const cause = new Error('auth header leaked: sk-anthabcdefghijklmnopqrstuvwxyz');
+      logger.info('upstream error', { cause });
+
+      const loggedInfo = writeSpy.mock.calls[0][0];
+      expect(loggedInfo.cause).toBeInstanceOf(Error);
+      expect(loggedInfo.cause.message).toContain('[REDACTED]');
+      expect(loggedInfo.cause.message).not.toContain('sk-anthabcdefghij');
+    });
+
+    it('preserves the Error subclass after cloning', async () => {
+      const logger = await import('../src/logger.js');
+      const transport = logger.default.logger.transports[0];
+      const writeSpy = vi.spyOn(transport, 'log').mockImplementation((_info, cb) => cb?.());
+
+      const err = new TypeError('Bearer sk-subclasspreservetestabcdefghij');
+      logger.info('type error', { err });
+
+      const loggedInfo = writeSpy.mock.calls[0][0];
+      expect(loggedInfo.err).toBeInstanceOf(TypeError);
+      expect(loggedInfo.err).toBeInstanceOf(Error);
+      expect(loggedInfo.err.name).toBe('TypeError');
+      expect(loggedInfo.err.message).toContain('[REDACTED]');
+    });
+
+    it('scrubs Bearer tokens from Error.stack', async () => {
+      const logger = await import('../src/logger.js');
+      const transport = logger.default.logger.transports[0];
+      const writeSpy = vi.spyOn(transport, 'log').mockImplementation((_info, cb) => cb?.());
+
+      const err = new Error('outer');
+      err.stack = 'Error: outer\n    at fn (Bearer sk-stacktokenleakedabcdefghijklmn)';
+      logger.info('stack test', { err });
+
+      const loggedInfo = writeSpy.mock.calls[0][0];
+      expect(loggedInfo.err.stack).toContain('[REDACTED]');
+      expect(loggedInfo.err.stack).not.toContain('sk-stacktoken');
+    });
+
+    it('redacts sensitive keys attached to an Error as enumerable own-properties', async () => {
+      const logger = await import('../src/logger.js');
+      const transport = logger.default.logger.transports[0];
+      const writeSpy = vi.spyOn(transport, 'log').mockImplementation((_info, cb) => cb?.());
+
+      const err = new Error('upstream');
+      err.apiKey = 'should-not-appear-in-logs';
+      err.code = 'ECONNREFUSED'; // non-sensitive — should pass through
+      logger.info('attached fields', { err });
+
+      const loggedInfo = writeSpy.mock.calls[0][0];
+      expect(loggedInfo.err.apiKey).toBe('[REDACTED]');
+      expect(loggedInfo.err.code).toBe('ECONNREFUSED');
+    });
+
+    it('scrubs Error.cause set as a non-enumerable constructor option', async () => {
+      const logger = await import('../src/logger.js');
+      const transport = logger.default.logger.transports[0];
+      const writeSpy = vi.spyOn(transport, 'log').mockImplementation((_info, cb) => cb?.());
+
+      // `cause` set via `new Error(msg, { cause })` is a non-enumerable own prop.
+      const innerCause = new Error('Bearer sk-nonenumerabletokenabcdefghijklmnop');
+      const outer = new Error('outer failed', { cause: innerCause });
+
+      logger.info('nested error', { err: outer });
+
+      const loggedInfo = writeSpy.mock.calls[0][0];
+      expect(loggedInfo.err).toBeInstanceOf(Error);
+      expect(loggedInfo.err.cause).toBeInstanceOf(Error);
+      expect(loggedInfo.err.cause.message).toContain('[REDACTED]');
+      expect(loggedInfo.err.cause.message).not.toContain('sk-nonenumerable');
+    });
+  });
+
   it('should load with file output enabled config', async () => {
     vi.resetModules();
 

@@ -13,9 +13,13 @@ import {
   getModelConfig,
   getProviderConfig,
   listProviders,
-  normaliseModelId,
   onRegistryRebuild,
 } from './providerRegistry.js';
+
+// Re-export the registry's normaliser under its `_` test-facing name without
+// introducing a local binding (SonarCloud: prefer `export … from` when a symbol
+// is imported only to be re-exported).
+export { normaliseModelId as _normaliseModelId } from './providerRegistry.js';
 
 // Case-insensitive pricing map built from the provider registry on import.
 // Keys are `provider:model` (lowercase); values are the pricing block.
@@ -109,8 +113,8 @@ export function calculateCost(provider, modelId, usage = {}) {
   );
 }
 
-// Exported for testing
-export { normaliseModelId as _normaliseModelId, rebuildPricingMap as _rebuildPricingMap };
+// Exported for testing (`_normaliseModelId` is re-exported at top of file).
+export { rebuildPricingMap as _rebuildPricingMap };
 
 /**
  * Test-only accessor for the current pricing map. Returns the live Map, so

@@ -1,12 +1,31 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
+// Mock the logger so the rebuildSubscribers-error test can assert on warn().
+// Placed BEFORE the providerRegistry import because vi.mock hoists — the
+// registry's `import { warn } from '../logger.js'` will see the mock.
+vi.mock('../../src/logger.js', () => ({
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  default: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+  addPostgresTransport: vi.fn(),
+  removePostgresTransport: vi.fn(),
+  addWebSocketTransport: vi.fn(),
+  removeWebSocketTransport: vi.fn(),
+}));
+
+import { warn } from '../../src/logger.js';
 import {
   _ALLOWED_API_SHAPES,
+  _resetRegistry,
+  _validateProvider,
   getCapabilities,
   getModelConfig,
   getProviderConfig,
   listProviders,
   normaliseModelId,
+  onRegistryRebuild,
   supportsShape,
 } from '../../src/utils/providerRegistry.js';
 
@@ -172,5 +191,146 @@ describe('listProviders', () => {
     a.push('hacked');
     const b = listProviders();
     expect(b).not.toContain('hacked');
+  });
+});
+
+// ── Regression coverage for PR #584 round-3 comments ────────────────────────
+
+// Build a structurally-valid provider config. Individual tests override the
+// specific field under test (baseUrl, models, etc.).
+const validBaseConfig = () => ({
+  displayName: 'Test Provider',
+  apiShape: 'anthropic',
+  envKey: 'TEST_API_KEY',
+  capabilities: { webSearch: false, thinking: false },
+  models: {
+    'test-model': {
+      pricing: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 },
+    },
+  },
+});
+
+describe('validateProvider — baseUrl variants (regression for macroscope 3120523566)', () => {
+  it('accepts an omitted baseUrl and normalises to null', () => {
+    const cfg = validBaseConfig();
+    // Simulate provider config that simply doesn't declare baseUrl.
+    expect('baseUrl' in cfg).toBe(false);
+    const result = _validateProvider('omitted', cfg);
+    expect(result.baseUrl).toBeNull();
+  });
+
+  it('accepts an explicit baseUrl: null and normalises to null', () => {
+    const cfg = { ...validBaseConfig(), baseUrl: null };
+    const result = _validateProvider('explicitnull', cfg);
+    expect(result.baseUrl).toBeNull();
+  });
+
+  it('accepts a non-empty string baseUrl verbatim', () => {
+    const cfg = { ...validBaseConfig(), baseUrl: 'https://example.test/v1' };
+    const result = _validateProvider('withurl', cfg);
+    expect(result.baseUrl).toBe('https://example.test/v1');
+  });
+
+  it('rejects an empty-string baseUrl', () => {
+    const cfg = { ...validBaseConfig(), baseUrl: '' };
+    expect(() => _validateProvider('emptyurl', cfg)).toThrow(/baseUrl must be/);
+  });
+
+  it('rejects a non-string / non-null baseUrl', () => {
+    const cfg = { ...validBaseConfig(), baseUrl: 42 };
+    expect(() => _validateProvider('numericurl', cfg)).toThrow(/baseUrl must be/);
+  });
+});
+
+describe('validateProvider — models guards (regression for coderabbit 3120534468)', () => {
+  it('rejects models: [] (empty array)', () => {
+    const cfg = { ...validBaseConfig(), models: [] };
+    expect(() => _validateProvider('arrmodelsEmpty', cfg)).toThrow(
+      /must declare a non-empty "models" object/,
+    );
+  });
+
+  it('rejects models: [{…}] (non-empty array)', () => {
+    const cfg = {
+      ...validBaseConfig(),
+      models: [{ pricing: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 } }],
+    };
+    expect(() => _validateProvider('arrmodelsFull', cfg)).toThrow(
+      /must declare a non-empty "models" object/,
+    );
+  });
+
+  it('still rejects missing models object', () => {
+    const cfg = validBaseConfig();
+    delete cfg.models;
+    expect(() => _validateProvider('nomodels', cfg)).toThrow(
+      /must declare a non-empty "models" object/,
+    );
+  });
+
+  it('still rejects an empty models object', () => {
+    const cfg = { ...validBaseConfig(), models: {} };
+    expect(() => _validateProvider('emptymodels', cfg)).toThrow(
+      /must declare a non-empty "models" object/,
+    );
+  });
+});
+
+describe('rebuildSubscribers — error logging (regression for coderabbit 3120534472)', () => {
+  afterEach(() => {
+    warn.mockClear();
+  });
+
+  it('logs a warning when a rebuild subscriber throws and does NOT break the registry', () => {
+    const unsubscribe = onRegistryRebuild(() => {
+      throw new Error('subscriber blew up');
+    });
+    try {
+      expect(() => _resetRegistry()).not.toThrow();
+      expect(warn).toHaveBeenCalledWith(
+        'providerRegistry: rebuild subscriber threw',
+        expect.objectContaining({ error: 'subscriber blew up' }),
+      );
+    } finally {
+      unsubscribe();
+    }
+  });
+
+  it('continues invoking remaining subscribers after one throws', () => {
+    const order = [];
+    const unsubA = onRegistryRebuild(() => {
+      order.push('A');
+      throw new Error('A failed');
+    });
+    const unsubB = onRegistryRebuild(() => {
+      order.push('B');
+    });
+    try {
+      _resetRegistry();
+      expect(order).toEqual(['A', 'B']);
+      expect(warn).toHaveBeenCalledTimes(1); // A's throw logs once; B is clean
+    } finally {
+      unsubA();
+      unsubB();
+    }
+  });
+
+  it('captures the subscriber name (or "anonymous") in the warn payload', () => {
+    function mySubscriberFn() {
+      throw new Error('named throw');
+    }
+    const unsub = onRegistryRebuild(mySubscriberFn);
+    try {
+      _resetRegistry();
+      expect(warn).toHaveBeenCalledWith(
+        'providerRegistry: rebuild subscriber threw',
+        expect.objectContaining({
+          subscriber: 'mySubscriberFn',
+          error: 'named throw',
+        }),
+      );
+    } finally {
+      unsub();
+    }
   });
 });

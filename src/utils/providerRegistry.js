@@ -9,6 +9,7 @@
  */
 
 import providersData from '../data/providers.json' with { type: 'json' };
+import { warn } from '../logger.js';
 
 // ── Allow-list ──────────────────────────────────────────────────────────────
 // Which API shapes `aiClient.js` can dispatch to today. Expand when new SDKs land
@@ -40,15 +41,18 @@ function validateRequiredString(cfg, name, field) {
 }
 
 /**
- * Validate `baseUrl`: must be either a non-empty string or `null` (SDK default).
+ * Validate `baseUrl`: must be either a non-empty string, `null`, or omitted.
+ * Omitted/`null`/`undefined` all collapse to the SDK default, matching the
+ * `cfg.baseUrl ?? null` normalisation in `validateProvider`. Only `""`,
+ * non-strings, and empty strings throw.
  * @param {object} cfg
  * @param {string} name
  */
 function validateBaseUrl(cfg, name) {
-  if (cfg.baseUrl === null) return;
+  if (cfg.baseUrl === undefined || cfg.baseUrl === null) return;
   if (typeof cfg.baseUrl !== 'string' || !cfg.baseUrl) {
     throw new TypeError(
-      `providers.json: provider "${name}" baseUrl must be null or a non-empty string`,
+      `providers.json: provider "${name}" baseUrl must be null, omitted, or a non-empty string`,
     );
   }
 }
@@ -174,7 +178,15 @@ function validateProvider(name, cfg) {
   const capabilities = validateCapabilities(cfg, name);
 
   const models = cfg.models;
-  if (!models || typeof models !== 'object' || Object.keys(models).length === 0) {
+  // `typeof [] === 'object'`, so Array.isArray rules out a `models: [...]`
+  // misconfiguration that would otherwise slip through and yield numeric-string
+  // indices as model IDs via Object.entries.
+  if (
+    !models ||
+    typeof models !== 'object' ||
+    Array.isArray(models) ||
+    Object.keys(models).length === 0
+  ) {
     throw new TypeError(
       `providers.json: provider "${name}" must declare a non-empty "models" object`,
     );
@@ -226,8 +238,15 @@ function buildRegistry() {
   for (const fn of rebuildSubscribers) {
     try {
       fn();
-    } catch (_err) {
-      // Subscribers must not break registry load; swallow.
+    } catch (err) {
+      // Subscribers must not break registry load, but a silent swallow leaves
+      // derived caches (e.g. aiCost.pricingMap) stale with zero signal.
+      // Surface via the logger so operators see the failure without blocking
+      // startup.
+      warn('providerRegistry: rebuild subscriber threw', {
+        subscriber: fn?.name || 'anonymous',
+        error: err?.message,
+      });
     }
   }
 }
@@ -386,3 +405,13 @@ export function onRegistryRebuild(fn) {
  * Test-only: expose the set of accepted API shapes.
  */
 export const _ALLOWED_API_SHAPES = ALLOWED_API_SHAPES;
+
+/**
+ * Test-only: run provider-level validation against a raw config object
+ * without touching the live registry. Used to unit-test individual validation
+ * branches (e.g. baseUrl variants, array-as-models) in isolation.
+ * @param {string} name
+ * @param {object} cfg
+ * @returns {object}
+ */
+export const _validateProvider = validateProvider;

@@ -35,6 +35,14 @@ function getCompiledPattern(pattern) {
 }
 
 /**
+ * Provider-qualified model string: `<provider>:<model>` with no whitespace on
+ * either side of the colon. Hoisted via `String.raw` to avoid doubled-up
+ * backslash escaping (keeps SonarCloud quiet) and to keep the two schema
+ * entries (classifyModel, respondModel) in sync.
+ */
+const PROVIDER_MODEL_PATTERN = String.raw`^[^:\s]+:[^\s]+$`;
+
+/**
  * Schema definitions for writable config sections.
  * Used to validate types before persisting changes.
  */
@@ -180,9 +188,9 @@ export const CONFIG_SCHEMA = {
       // Model fields must be in `provider:model` format (see issue #553 D1) —
       // `parseProviderModel` throws on bare strings at runtime. Catching it
       // at the API boundary turns a silent-dispatch-crash into a clear 400.
-      classifyModel: { type: 'string', pattern: '^[^:\\s]+:[^\\s]+$' },
+      classifyModel: { type: 'string', pattern: PROVIDER_MODEL_PATTERN },
       classifyBudget: { type: 'number', min: 0, max: 100000 },
-      respondModel: { type: 'string', pattern: '^[^:\\s]+:[^\\s]+$' },
+      respondModel: { type: 'string', pattern: PROVIDER_MODEL_PATTERN },
       respondBudget: { type: 'number', min: 0, max: 100000 },
       thinkingTokens: { type: 'number', min: 0, max: 100000 },
       classifyBaseUrl: { type: 'string', nullable: true },

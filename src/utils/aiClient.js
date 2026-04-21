@@ -189,7 +189,7 @@ async function resolveModel(modelString, overrides = {}) {
   const envKey = providerConfig.envKey;
   // Sanitize provider names: uppercase + replace `-` with `_` so hyphenated
   // provider keys (e.g. `open-router`) still produce legal shell env var names.
-  const envPrefix = providerName.toUpperCase().replace(/-/g, '_');
+  const envPrefix = providerName.toUpperCase().replaceAll('-', '_');
 
   // Env lookup order: the declared envKey first, then <PROVIDER>_API_KEY as
   // a permissive fallback so ad-hoc deployments don't need to edit the

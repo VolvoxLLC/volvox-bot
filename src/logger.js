@@ -93,8 +93,10 @@ const SENSITIVE_PATTERNS = [/_api_key$/i, /_auth_token$/i, /_secret$/i];
  */
 const INLINE_SECRET_PATTERNS = [
   /Bearer\s+[A-Za-z0-9._~+/-]+=*/g,
+  // Covers both generic `sk-…` secrets and Anthropic `sk-ant-…` tokens — the
+  // broader pattern already matches `ant-` within the character class, so a
+  // dedicated `sk-ant-…` entry would never fire.
   /sk-[A-Za-z0-9_-]{20,}/g,
-  /sk-ant-[A-Za-z0-9_-]{20,}/g,
 ];
 
 /**
@@ -128,14 +130,68 @@ function isSensitiveKey(key) {
 }
 
 /**
+ * Clone an Error, preserving its subclass and scrubbing secrets from `message`,
+ * `stack`, and every enumerable own-property (including `cause`). Called from
+ * `filterSensitiveData` whenever an Error surfaces inside log metadata.
+ *
+ * @param {Error} err
+ * @returns {Error}
+ */
+function cloneAndScrubError(err) {
+  const Ctor = err.constructor;
+  let cloned;
+  try {
+    cloned = new Ctor(scrubInlineSecrets(err.message));
+  } catch {
+    // Defensive: subclasses with non-standard constructors (e.g. AggregateError).
+    cloned = new Error(scrubInlineSecrets(err.message));
+  }
+  cloned.name = err.name;
+  if (typeof err.stack === 'string') {
+    cloned.stack = scrubInlineSecrets(err.stack);
+  }
+
+  const scrubValue = (value) => {
+    if (typeof value === 'object' && value !== null) return filterSensitiveData(value);
+    if (typeof value === 'string') return scrubInlineSecrets(value);
+    return value;
+  };
+
+  // `cause` set via `new Error(msg, { cause })` is a non-enumerable own-property,
+  // so Object.entries misses it. Preserve its non-enumerable shape on the clone.
+  if (Object.hasOwn(err, 'cause')) {
+    Object.defineProperty(cloned, 'cause', {
+      value: scrubValue(err.cause),
+      writable: true,
+      enumerable: false,
+      configurable: true,
+    });
+  }
+
+  // Copy enumerable own-properties (code, custom fields), scrubbing each the
+  // same way filterSensitiveData would for a plain object.
+  for (const [key, value] of Object.entries(err)) {
+    if (key === 'message' || key === 'stack' || key === 'name' || key === 'cause') continue;
+    if (isSensitiveKey(key)) {
+      cloned[key] = '[REDACTED]';
+    } else {
+      cloned[key] = scrubValue(value);
+    }
+  }
+  return cloned;
+}
+
+/**
  * Recursively filter sensitive data from objects.
  * - Keys matching the sensitive list/patterns → `[REDACTED]`.
  * - String values get scrubbed for inline secrets (e.g. `Bearer <token>`).
  * - Nested objects/arrays recurse.
  *
- * `Error` instances are treated as plain objects — their `message` is scrubbed
- * inline by the top-level `redactSensitiveData` format; here we preserve them
- * so winston's own error formatter can serialize them normally.
+ * `Error` instances are cloned (preserving subclass so `instanceof TypeError`
+ * still holds downstream) with `message`, `stack`, and every enumerable own
+ * property scrubbed. This closes the nested-leak path where
+ * `{ cause: new Error('Bearer sk-…') }` would otherwise land in log output
+ * unredacted — the top-level format only scrubs `info.message` / `info.stack`.
  */
 function filterSensitiveData(obj) {
   if (obj === null || obj === undefined) {
@@ -151,7 +207,7 @@ function filterSensitiveData(obj) {
   }
 
   if (obj instanceof Error) {
-    return obj;
+    return cloneAndScrubError(obj);
   }
 
   if (Array.isArray(obj)) {
