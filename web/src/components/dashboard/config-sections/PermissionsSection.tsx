@@ -29,7 +29,7 @@ export function PermissionsSection({
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-base">Permissions</CardTitle>
-            <CardDescription>Configure role-based access and bot owner overrides.</CardDescription>
+            <CardDescription>Configure role-based access control.</CardDescription>
           </div>
           <ToggleSwitch
             checked={draftConfig.permissions?.enabled ?? false}

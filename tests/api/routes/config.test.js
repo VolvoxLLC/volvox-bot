@@ -402,6 +402,16 @@ describe('config routes', () => {
       expect(res.body.details).toContain('ai.customSetting: unknown config key');
     });
 
+    it('should reject permissions.botOwners as an unknown config key', async () => {
+      const res = await request(app)
+        .put('/api/v1/config')
+        .set('x-api-secret', SECRET)
+        .send({ permissions: { botOwners: ['evil'] } });
+
+      expect(res.status).toBe(400);
+      expect(res.body.details).toContain('permissions.botOwners: unknown config key');
+    });
+
     it('should reject null on non-nullable number field (Infinity serializes to null)', async () => {
       // JSON.stringify(Infinity) becomes null, so this tests the edge case
       // when sent as a raw number via test helper
