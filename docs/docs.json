@@ -7,7 +7,7 @@
     "light": "#4ade80",
     "dark": "#16a34a"
   },
-  "favicon": "/logo/icon.png",
+  "favicon": "/logo/logo.png",
   "navigation": {
     "tabs": [
       {
@@ -64,8 +64,8 @@
     ]
   },
   "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
+    "light": "/logo/logo.png",
+    "dark": "/logo/logo.png"
   },
   "footer": {
     "socials": {
