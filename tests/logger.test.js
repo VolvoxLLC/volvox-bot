@@ -193,6 +193,54 @@ describe('logger module', () => {
       expect(loggedInfo.err.code).toBe('ECONNREFUSED');
     });
 
+    // Regression coverage for coderabbit 3120731415 — the previous
+    // implementation used `new Ctor(scrubbedMessage)`, which treats
+    // `AggregateError`'s first constructor argument as an iterable of
+    // sub-errors rather than a message string. That caused the message to
+    // be silently dropped and threw on non-iterable strings.
+    it('preserves AggregateError subclass, errors, and scrubs message', async () => {
+      const logger = await import('../src/logger.js');
+      const transport = logger.default.logger.transports[0];
+      const writeSpy = vi.spyOn(transport, 'log').mockImplementation((_info, cb) => cb?.());
+
+      const sub1 = new Error('first failure: Bearer sk-aggsubonetokenabcdefghijklmn');
+      const sub2 = new Error('second failure: unrelated');
+      const agg = new AggregateError([sub1, sub2], 'all upstreams failed');
+
+      logger.info('aggregate failure', { err: agg });
+
+      const loggedInfo = writeSpy.mock.calls[0][0];
+      expect(loggedInfo.err).toBeInstanceOf(AggregateError);
+      expect(loggedInfo.err).toBeInstanceOf(Error);
+      // Message survives the clone (previously silently dropped by `new AggregateError(str)`).
+      expect(loggedInfo.err.message).toBe('all upstreams failed');
+      // Sub-errors carried through and scrubbed recursively.
+      expect(Array.isArray(loggedInfo.err.errors)).toBe(true);
+      expect(loggedInfo.err.errors).toHaveLength(2);
+      expect(loggedInfo.err.errors[0]).toBeInstanceOf(Error);
+      expect(loggedInfo.err.errors[0].message).toContain('[REDACTED]');
+      expect(loggedInfo.err.errors[0].message).not.toContain('sk-aggsubone');
+      expect(loggedInfo.err.errors[1].message).toBe('second failure: unrelated');
+    });
+
+    it('scrubs secrets inside AggregateError top-level message', async () => {
+      const logger = await import('../src/logger.js');
+      const transport = logger.default.logger.transports[0];
+      const writeSpy = vi.spyOn(transport, 'log').mockImplementation((_info, cb) => cb?.());
+
+      const agg = new AggregateError(
+        [new Error('inner')],
+        'outer ctx: Bearer sk-aggtopleveltokenabcdefghijklmn',
+      );
+
+      logger.info('aggregate top msg', { err: agg });
+
+      const loggedInfo = writeSpy.mock.calls[0][0];
+      expect(loggedInfo.err).toBeInstanceOf(AggregateError);
+      expect(loggedInfo.err.message).toContain('[REDACTED]');
+      expect(loggedInfo.err.message).not.toContain('sk-aggtoplevel');
+    });
+
     it('scrubs Error.cause set as a non-enumerable constructor option', async () => {
       const logger = await import('../src/logger.js');
       const transport = logger.default.logger.transports[0];

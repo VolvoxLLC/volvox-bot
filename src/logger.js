@@ -138,17 +138,36 @@ function isSensitiveKey(key) {
  * @returns {Error}
  */
 function cloneAndScrubError(err) {
-  const Ctor = err.constructor;
-  let cloned;
-  try {
-    cloned = new Ctor(scrubInlineSecrets(err.message));
-  } catch {
-    // Defensive: subclasses with non-standard constructors (e.g. AggregateError).
-    cloned = new Error(scrubInlineSecrets(err.message));
-  }
-  cloned.name = err.name;
+  const scrubbedMessage = scrubInlineSecrets(err.message);
+
+  // Use Object.create + defineProperty rather than `new Ctor(scrubbedMessage)`
+  // because several built-in Error subclasses (most notably AggregateError)
+  // interpret their first constructor argument as an iterable of sub-errors
+  // rather than a message string — `new AggregateError("Bearer …")` throws
+  // or silently discards the message. Direct prototype instantiation
+  // sidesteps every subclass's constructor quirks while preserving the
+  // prototype chain so `instanceof` checks downstream still hold.
+  const cloned = Object.create(Object.getPrototypeOf(err));
+
+  Object.defineProperty(cloned, 'message', {
+    value: scrubbedMessage,
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+  Object.defineProperty(cloned, 'name', {
+    value: err.name,
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
   if (typeof err.stack === 'string') {
-    cloned.stack = scrubInlineSecrets(err.stack);
+    Object.defineProperty(cloned, 'stack', {
+      value: scrubInlineSecrets(err.stack),
+      writable: true,
+      enumerable: false,
+      configurable: true,
+    });
   }
 
   const scrubValue = (value) => {
@@ -168,10 +187,24 @@ function cloneAndScrubError(err) {
     });
   }
 
-  // Copy enumerable own-properties (code, custom fields), scrubbing each the
-  // same way filterSensitiveData would for a plain object.
+  // AggregateError carries its sub-errors on the enumerable own-property
+  // `errors`. Recurse into each so a leaked Bearer token in a child error's
+  // message gets scrubbed the same way a top-level one would.
+  if (Array.isArray(err.errors)) {
+    cloned.errors = err.errors.map((sub) => scrubValue(sub));
+  }
+
+  // Copy remaining enumerable own-properties (code, custom fields), scrubbing
+  // each the same way filterSensitiveData would for a plain object.
   for (const [key, value] of Object.entries(err)) {
-    if (key === 'message' || key === 'stack' || key === 'name' || key === 'cause') continue;
+    if (
+      key === 'message' ||
+      key === 'stack' ||
+      key === 'name' ||
+      key === 'cause' ||
+      key === 'errors'
+    )
+      continue;
     if (isSensitiveKey(key)) {
       cloned[key] = '[REDACTED]';
     } else {

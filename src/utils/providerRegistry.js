@@ -193,8 +193,19 @@ function validateProvider(name, cfg) {
   }
 
   const normalisedModels = new Map();
+  const modelIdOriginals = new Map(); // lowercase → original casing, for dup detection
   for (const [modelId, modelCfg] of Object.entries(models)) {
-    normalisedModels.set(modelId.toLowerCase(), normaliseModel(modelId, modelCfg, name));
+    const key = modelId.toLowerCase();
+    if (normalisedModels.has(key)) {
+      // Silent overwrite would let two JSON keys that differ only in casing
+      // collapse into the last-one-wins entry. Fail loud instead.
+      throw new TypeError(
+        `providers.json: provider "${name}" declares duplicate model IDs ` +
+          `"${modelIdOriginals.get(key)}" and "${modelId}" (case-insensitive collision)`,
+      );
+    }
+    modelIdOriginals.set(key, modelId);
+    normalisedModels.set(key, normaliseModel(modelId, modelCfg, name));
   }
 
   return {
@@ -209,29 +220,55 @@ function validateProvider(name, cfg) {
 }
 
 /**
- * Validate and load `providers.json`. Throws on any structural error.
- * Called once at import time and exposed via `_resetRegistry()` for tests.
+ * Pure validator: consume a raw `providers.json` payload and return a
+ * normalised Map keyed by lowercased provider name. Kept separate from
+ * `buildRegistry()` so tests can exercise the top-level validation branches
+ * (array-rejection, case-insensitive duplicate providers) without having to
+ * mock the JSON module import.
+ * @param {unknown} data
+ * @returns {Map<string, object>}
  */
-function buildRegistry() {
+function validateRegistryPayload(data) {
   const next = new Map();
 
-  if (!providersData || typeof providersData !== 'object') {
+  if (!data || typeof data !== 'object') {
     throw new TypeError('providers.json: top-level must be an object');
   }
 
-  const providers = providersData.providers;
-  if (!providers || typeof providers !== 'object') {
+  const providers = data.providers;
+  // Array.isArray mirrors the models-block guard — `providers: [...]` would
+  // otherwise slip through `typeof === 'object'` and yield numeric-string
+  // provider names via Object.entries.
+  if (!providers || typeof providers !== 'object' || Array.isArray(providers)) {
     throw new TypeError('providers.json: missing required `providers` object');
   }
 
+  const providerOriginals = new Map(); // lowercase → original casing, for dup detection
   for (const [name, cfg] of Object.entries(providers)) {
-    next.set(name.toLowerCase(), validateProvider(name, cfg));
+    const key = name.toLowerCase();
+    if (next.has(key)) {
+      throw new TypeError(
+        `providers.json: duplicate provider names "${providerOriginals.get(key)}" and "${name}" ` +
+          `(case-insensitive collision)`,
+      );
+    }
+    providerOriginals.set(key, name);
+    next.set(key, validateProvider(name, cfg));
   }
 
   if (next.size === 0) {
     throw new Error('providers.json: at least one provider must be declared');
   }
 
+  return next;
+}
+
+/**
+ * Validate and load `providers.json`. Throws on any structural error.
+ * Called once at import time and exposed via `_resetRegistry()` for tests.
+ */
+function buildRegistry() {
+  const next = validateRegistryPayload(providersData);
   registry = next;
 
   // Fan out to anyone caching derived data (e.g. aiCost.js pricingMap).
@@ -415,3 +452,13 @@ export const _ALLOWED_API_SHAPES = ALLOWED_API_SHAPES;
  * @returns {object}
  */
 export const _validateProvider = validateProvider;
+
+/**
+ * Test-only: run the top-level payload validation against a raw data object
+ * without touching the live registry. Used to unit-test payload-level
+ * branches (e.g. `providers: [...]` rejection, duplicate provider names)
+ * in isolation.
+ * @param {unknown} data
+ * @returns {Map<string, object>}
+ */
+export const _validateRegistryPayload = validateRegistryPayload;

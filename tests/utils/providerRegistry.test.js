@@ -20,6 +20,7 @@ import {
   _ALLOWED_API_SHAPES,
   _resetRegistry,
   _validateProvider,
+  _validateRegistryPayload,
   getCapabilities,
   getModelConfig,
   getProviderConfig,
@@ -273,6 +274,86 @@ describe('validateProvider — models guards (regression for coderabbit 31205344
     expect(() => _validateProvider('emptymodels', cfg)).toThrow(
       /must declare a non-empty "models" object/,
     );
+  });
+});
+
+describe('validateProvider — duplicate model IDs (regression for coderabbit 3120731422)', () => {
+  it('rejects two model IDs that differ only in letter casing', () => {
+    const cfg = {
+      ...validBaseConfig(),
+      models: {
+        'Test-Model': {
+          pricing: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 },
+        },
+        'test-model': {
+          pricing: { input: 2, output: 2, cacheRead: 0, cacheWrite: 0 },
+        },
+      },
+    };
+    expect(() => _validateProvider('dupmodel', cfg)).toThrow(/duplicate model IDs/);
+    expect(() => _validateProvider('dupmodel', cfg)).toThrow(/"Test-Model"/);
+    expect(() => _validateProvider('dupmodel', cfg)).toThrow(/"test-model"/);
+    expect(() => _validateProvider('dupmodel', cfg)).toThrow(/case-insensitive collision/);
+  });
+
+  it('accepts two model IDs that differ in meaningful characters', () => {
+    const cfg = {
+      ...validBaseConfig(),
+      models: {
+        'model-a': { pricing: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 } },
+        'model-b': { pricing: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 } },
+      },
+    };
+    const result = _validateProvider('twomodels', cfg);
+    expect(result.models.size).toBe(2);
+  });
+});
+
+describe('_validateRegistryPayload — top-level guards (regression for macroscope 3120729752)', () => {
+  const buildPayload = (providers) => ({ providers });
+
+  const validProviderEntry = () => ({
+    displayName: 'Test Provider',
+    apiShape: 'anthropic',
+    envKey: 'TEST_API_KEY',
+    capabilities: { webSearch: false, thinking: false },
+    models: {
+      'test-model': { pricing: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 } },
+    },
+  });
+
+  it('rejects providers declared as an array', () => {
+    const payload = buildPayload([validProviderEntry()]);
+    expect(() => _validateRegistryPayload(payload)).toThrow(/missing required `providers` object/);
+  });
+
+  it('rejects an empty-array providers block the same way', () => {
+    const payload = buildPayload([]);
+    expect(() => _validateRegistryPayload(payload)).toThrow(/missing required `providers` object/);
+  });
+
+  it('rejects duplicate provider names that differ only in casing', () => {
+    const payload = buildPayload({
+      Foo: validProviderEntry(),
+      foo: validProviderEntry(),
+    });
+    expect(() => _validateRegistryPayload(payload)).toThrow(/duplicate provider names/);
+    expect(() => _validateRegistryPayload(payload)).toThrow(/case-insensitive collision/);
+  });
+
+  it('accepts a well-formed payload and returns a populated Map', () => {
+    const payload = buildPayload({ acme: validProviderEntry() });
+    const result = _validateRegistryPayload(payload);
+    expect(result.size).toBe(1);
+    expect(result.get('acme').name).toBe('acme');
+  });
+
+  it('rejects a missing top-level providers key', () => {
+    expect(() => _validateRegistryPayload({})).toThrow(/missing required `providers` object/);
+  });
+
+  it('rejects a null payload', () => {
+    expect(() => _validateRegistryPayload(null)).toThrow(/top-level must be an object/);
   });
 });
 

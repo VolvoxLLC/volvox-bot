@@ -83,7 +83,7 @@
       "models": {
         "minimax/minimax-m2.5": {
           "displayName": "MiniMax M2.5 (via OpenRouter)",
-          "pricing": { "input": 0.15, "output": 1.20, "cacheRead": 0.03, "cacheWrite": 0.375 },
+          "pricing": { "input": 0.15, "output": 1.20, "cacheRead": 0.03, "cacheWrite": 0 },
           "availability": { "visible": true, "tier": "free" }
         },
         "moonshotai/kimi-k2.6": {
