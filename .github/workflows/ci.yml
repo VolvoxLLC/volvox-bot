@@ -61,8 +61,8 @@ jobs:
       - name: Test with coverage (bot)
         run: pnpm test:coverage
 
-      - name: Test (web)
-        run: pnpm --prefix web test
+      - name: Test with coverage (web)
+        run: pnpm --prefix web test:coverage
 
       - name: Upload coverage to Coveralls
         uses: coverallsapp/github-action@v2.3.6
@@ -70,12 +70,21 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path-to-lcov: coverage/lcov.info
 
-      - name: Upload coverage artifacts
+      - name: Upload coverage artifacts (bot)
         if: success()
         uses: actions/upload-artifact@v7.0.1
         with:
           name: coverage-${{ github.run_id }}
           path: coverage/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload coverage artifacts (web)
+        if: success()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: web-coverage-${{ github.run_id }}
+          path: web/coverage/
           if-no-files-found: error
           retention-days: 7
 
@@ -202,6 +211,7 @@ jobs:
     name: SonarQube Cloud
     runs-on: ubuntu-latest
     needs: [test]
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false)
 
     steps:
       - name: Checkout
@@ -209,11 +219,17 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Download coverage artifacts
+      - name: Download coverage artifacts (bot)
         uses: actions/download-artifact@v7
         with:
           name: coverage-${{ github.run_id }}
           path: coverage/
+
+      - name: Download coverage artifacts (web)
+        uses: actions/download-artifact@v7
+        with:
+          name: web-coverage-${{ github.run_id }}
+          path: web/coverage/
 
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v6
