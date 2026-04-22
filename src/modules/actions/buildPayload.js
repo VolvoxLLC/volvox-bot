@@ -8,11 +8,37 @@ import { warn } from '../../logger.js';
 import { renderTemplate } from '../../utils/templateEngine.js';
 
 const MAX_EMBED_FIELDS = 25;
+const MAX_EMBED_TEXT_LENGTH = 6000;
 const MAX_EMBED_TITLE_LENGTH = 256;
 const MAX_EMBED_DESCRIPTION_LENGTH = 4096;
 const MAX_FOOTER_TEXT_LENGTH = 2048;
+const MAX_FIELD_NAME_LENGTH = 256;
+const MAX_FIELD_VALUE_LENGTH = 1024;
 
-function renderFooter(footer, templateContext) {
+function createTextBudget(limit = MAX_EMBED_TEXT_LENGTH) {
+  let remaining = limit;
+
+  return {
+    get remaining() {
+      return remaining;
+    },
+    take(text, maxLength) {
+      if (remaining <= 0) {
+        return '';
+      }
+
+      const truncated = text.slice(0, Math.min(maxLength, remaining));
+      remaining -= truncated.length;
+      return truncated;
+    },
+  };
+}
+
+function renderBudgetedText(template, templateContext, budget, maxLength) {
+  return budget.take(renderTemplate(template, templateContext), maxLength);
+}
+
+function renderFooter(footer, templateContext, budget) {
   if (!footer) {
     return undefined;
   }
@@ -20,23 +46,29 @@ function renderFooter(footer, templateContext) {
   const footerConfig =
     typeof footer === 'string'
       ? {
-          text: renderTemplate(footer, templateContext).slice(0, MAX_FOOTER_TEXT_LENGTH),
+          text: renderBudgetedText(footer, templateContext, budget, MAX_FOOTER_TEXT_LENGTH),
         }
       : {
-          text: renderTemplate(footer.text ?? '', templateContext).slice(0, MAX_FOOTER_TEXT_LENGTH),
-          iconURL: footer.iconURL ? renderTemplate(footer.iconURL, templateContext) : undefined,
+          text: renderBudgetedText(
+            footer.text ?? '',
+            templateContext,
+            budget,
+            MAX_FOOTER_TEXT_LENGTH,
+          ),
+          iconURL: footer.iconURL ? renderOptionalUrl(footer.iconURL, templateContext) : undefined,
         };
 
   const hasText = footerConfig.text.trim().length > 0;
-  const hasIconUrl = typeof footerConfig.iconURL === 'string' && footerConfig.iconURL.length > 0;
+  const hasIconUrl =
+    typeof footerConfig.iconURL === 'string' && footerConfig.iconURL.trim().length > 0;
 
   if (!hasText && !hasIconUrl) {
     return undefined;
   }
 
   return {
-    ...footerConfig,
     text: hasText ? footerConfig.text : '\u200b',
+    ...(hasIconUrl ? { iconURL: footerConfig.iconURL } : {}),
   };
 }
 
@@ -64,17 +96,32 @@ export function buildPayload(action, templateContext) {
   if (format === 'embed' || format === 'both') {
     const embedConfig = action.embed ?? {};
     const embed = new EmbedBuilder();
-    if (embedConfig.title)
-      embed.setTitle(
-        renderTemplate(embedConfig.title, templateContext).slice(0, MAX_EMBED_TITLE_LENGTH),
+    const textBudget = createTextBudget();
+
+    if (embedConfig.title) {
+      const title = renderBudgetedText(
+        embedConfig.title,
+        templateContext,
+        textBudget,
+        MAX_EMBED_TITLE_LENGTH,
       );
-    if (embedConfig.description)
-      embed.setDescription(
-        renderTemplate(embedConfig.description, templateContext).slice(
-          0,
-          MAX_EMBED_DESCRIPTION_LENGTH,
-        ),
+
+      if (title) {
+        embed.setTitle(title);
+      }
+    }
+    if (embedConfig.description) {
+      const description = renderBudgetedText(
+        embedConfig.description,
+        templateContext,
+        textBudget,
+        MAX_EMBED_DESCRIPTION_LENGTH,
       );
+
+      if (description) {
+        embed.setDescription(description);
+      }
+    }
     if (embedConfig.color) embed.setColor(embedConfig.color);
     if (embedConfig.thumbnail) {
       const thumbnailUrl = renderOptionalUrl(embedConfig.thumbnail, templateContext);
@@ -90,17 +137,28 @@ export function buildPayload(action, templateContext) {
         });
       }
 
-      embed.addFields(
-        embedConfig.fields.slice(0, MAX_EMBED_FIELDS).map((field) => ({
-          name: renderTemplate(field.name || '\u200b', templateContext).slice(0, 256) || '\u200b',
-          value:
-            renderTemplate(field.value || '\u200b', templateContext).slice(0, 1024) || '\u200b',
-          inline: Boolean(field.inline),
-        })),
-      );
+      const fields = embedConfig.fields.slice(0, MAX_EMBED_FIELDS).map((field) => ({
+        name:
+          renderBudgetedText(
+            field.name || '\u200b',
+            templateContext,
+            textBudget,
+            MAX_FIELD_NAME_LENGTH,
+          ) || '\u200b',
+        value:
+          renderBudgetedText(
+            field.value || '\u200b',
+            templateContext,
+            textBudget,
+            MAX_FIELD_VALUE_LENGTH,
+          ) || '\u200b',
+        inline: Boolean(field.inline),
+      }));
+
+      embed.addFields(fields);
     }
     if (embedConfig.footer) {
-      const footerConfig = renderFooter(embedConfig.footer, templateContext);
+      const footerConfig = renderFooter(embedConfig.footer, templateContext, textBudget);
       if (footerConfig) {
         embed.setFooter(footerConfig);
       }

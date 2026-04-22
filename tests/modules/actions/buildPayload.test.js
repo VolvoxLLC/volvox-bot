@@ -56,7 +56,7 @@ describe('buildPayload', () => {
     expect(embed.timestamp).toBeDefined();
   });
 
-  it("truncates embeds to Discord's 25 field limit and warns", () => {
+  it('truncates embeds to the Discord 25 field limit and warns', () => {
     const payload = buildPayload(
       {
         type: 'announce',
@@ -102,7 +102,7 @@ describe('buildPayload', () => {
     });
   });
 
-  it("truncates footer text to Discord's 2048 character limit", () => {
+  it('truncates footer text to the Discord 2048 character limit', () => {
     const payload = buildPayload(
       {
         type: 'announce',
@@ -117,7 +117,7 @@ describe('buildPayload', () => {
     expect(payload.embeds[0].toJSON().footer?.text).toHaveLength(2048);
   });
 
-  it("truncates embed title and description to Discord's limits", () => {
+  it('truncates embed title and description to Discord limits', () => {
     const payload = buildPayload(
       {
         type: 'announce',
@@ -172,5 +172,62 @@ describe('buildPayload', () => {
     const embed = payload.embeds[0].toJSON();
     expect(embed.thumbnail).toBeUndefined();
     expect(embed.image).toBeUndefined();
+  });
+
+  it('skips footer icon URLs that render empty', () => {
+    const payload = buildPayload(
+      {
+        type: 'announce',
+        format: 'embed',
+        embed: {
+          footer: {
+            text: 'Footer text',
+            iconURL: ' {{serverIcon}} ',
+          },
+        },
+      },
+      {
+        serverIcon: '',
+      },
+    );
+
+    expect(payload.embeds[0].toJSON().footer).toEqual({
+      text: 'Footer text',
+    });
+  });
+
+  it('keeps total embed text within the Discord aggregate limit', () => {
+    const payload = buildPayload(
+      {
+        type: 'announce',
+        format: 'embed',
+        embed: {
+          title: 't'.repeat(256),
+          description: 'd'.repeat(4096),
+          fields: [
+            {
+              name: 'n'.repeat(256),
+              value: 'v'.repeat(1024),
+            },
+            {
+              name: 'extra-name',
+              value: 'extra-value',
+            },
+          ],
+          footer: 'f'.repeat(2048),
+        },
+      },
+      {},
+    );
+
+    const embed = payload.embeds[0].toJSON();
+    const totalTextLength =
+      (embed.title?.length ?? 0) +
+      (embed.description?.length ?? 0) +
+      (embed.footer?.text.length ?? 0) +
+      (embed.fields ?? []).reduce((sum, field) => sum + field.name.length + field.value.length, 0);
+
+    expect(totalTextLength).toBeLessThanOrEqual(6000);
+    expect(totalTextLength).toBe(6000);
   });
 });
