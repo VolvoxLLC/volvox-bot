@@ -167,7 +167,7 @@ jobs:
   ci:
     name: CI
     runs-on: ubuntu-latest
-    needs: [lint, test, build, e2e, docker-build-validation]
+    needs: [lint, test, build, e2e, sonarqube, docker-build-validation]
     if: ${{ always() }}
 
     steps:
@@ -177,6 +177,7 @@ jobs:
           echo "test result: ${{ needs.test.result }}"
           echo "build result: ${{ needs.build.result }}"
           echo "e2e result: ${{ needs.e2e.result }}"
+          echo "sonarqube result: ${{ needs.sonarqube.result }}"
           echo "docker result: ${{ needs.docker-build-validation.result }}"
 
           if [ "${{ needs.lint.result }}" != "success" ] || \
@@ -187,10 +188,37 @@ jobs:
             exit 1
           fi
 
+          if [ "${{ needs.sonarqube.result }}" != "success" ]; then
+            echo "SonarQube scan failed."
+            exit 1
+          fi
+
           if [ "${{ needs.docker-build-validation.result }}" != "success" ]; then
             echo "Docker build validation failed."
             exit 1
           fi
+
+  sonarqube:
+    name: SonarQube Cloud
+    runs-on: ubuntu-latest
+    needs: [test]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Download coverage artifacts
+        uses: actions/download-artifact@v7
+        with:
+          name: coverage-${{ github.run_id }}
+          path: coverage/
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v6
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   docker-build-validation:
     name: Docker Build Validation
