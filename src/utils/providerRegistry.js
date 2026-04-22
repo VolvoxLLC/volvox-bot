@@ -424,10 +424,20 @@ export function _resetRegistry() {
 }
 
 /**
- * Register a callback invoked every time `buildRegistry()` completes (including
- * the initial load and every test-triggered `_resetRegistry`). Used by modules
- * that cache derived data from the registry (e.g. `aiCost.js` pricingMap) to
- * keep in sync across test reloads.
+ * Register a callback invoked on every rebuild AFTER registration.
+ *
+ * `buildRegistry()` runs eagerly at module-load, before any consumer has had a
+ * chance to import this module and subscribe — so the initial load fires with
+ * zero subscribers and is NOT delivered to late registrants. Subsequent
+ * rebuilds (e.g. test-triggered `_resetRegistry`) are delivered normally.
+ *
+ * Callers that need the initial state must pull it themselves and then
+ * subscribe for future rebuilds — see the `aiCost.js` pattern:
+ *
+ * ```js
+ * rebuildPricingMap();              // pull initial state
+ * onRegistryRebuild(rebuildPricingMap); // keep in sync across reloads
+ * ```
  *
  * @param {() => void} fn
  * @returns {() => void} Unsubscribe function.

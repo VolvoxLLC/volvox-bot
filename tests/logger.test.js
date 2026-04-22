@@ -258,6 +258,100 @@ describe('logger module', () => {
       expect(loggedInfo.err.cause.message).toContain('[REDACTED]');
       expect(loggedInfo.err.cause.message).not.toContain('sk-nonenumerable');
     });
+
+    // Regression coverage for coderabbit 3120956111 / macroscope 3120949012 —
+    // a cyclic Error graph (e.g. `err.cause = err`) previously stack-overflowed
+    // the scrubber because every recursion minted a fresh clone and re-entered
+    // the same node. The WeakMap short-circuits the back-reference.
+    it('does not stack-overflow on a self-referencing Error.cause', async () => {
+      const logger = await import('../src/logger.js');
+      const transport = logger.default.logger.transports[0];
+      const writeSpy = vi.spyOn(transport, 'log').mockImplementation((_info, cb) => cb?.());
+
+      const err = new Error('cyclic: Bearer sk-selfcausetokenabcdefghijklmnop');
+      // Direct self-cycle — cause points back at the error itself.
+      Object.defineProperty(err, 'cause', {
+        value: err,
+        writable: true,
+        enumerable: false,
+        configurable: true,
+      });
+
+      const start = Date.now();
+      logger.info('cyclic cause', { err });
+      const elapsed = Date.now() - start;
+
+      // Bounded time — if recursion escaped the guard this would either throw
+      // "Maximum call stack size exceeded" or run until the test timeout.
+      expect(elapsed).toBeLessThan(1000);
+
+      const loggedInfo = writeSpy.mock.calls[0][0];
+      expect(loggedInfo.err).toBeInstanceOf(Error);
+      expect(loggedInfo.err.message).toContain('[REDACTED]');
+      expect(loggedInfo.err.message).not.toContain('sk-selfcause');
+      // cause resolves to the clone itself (back-reference preserved, not
+      // re-cloned into infinity).
+      expect(loggedInfo.err.cause).toBe(loggedInfo.err);
+    });
+
+    it('does not recurse on an AggregateError whose errors array contains itself', async () => {
+      const logger = await import('../src/logger.js');
+      const transport = logger.default.logger.transports[0];
+      const writeSpy = vi.spyOn(transport, 'log').mockImplementation((_info, cb) => cb?.());
+
+      const agg = new AggregateError([], 'self-ref: Bearer sk-aggselfreftokenabcdefghij');
+      // Cyclic: agg.errors contains agg itself.
+      agg.errors = [agg];
+
+      const start = Date.now();
+      logger.info('cyclic aggregate', { err: agg });
+      const elapsed = Date.now() - start;
+
+      expect(elapsed).toBeLessThan(1000);
+
+      const loggedInfo = writeSpy.mock.calls[0][0];
+      expect(loggedInfo.err).toBeInstanceOf(AggregateError);
+      expect(loggedInfo.err.message).toContain('[REDACTED]');
+      expect(loggedInfo.err.message).not.toContain('sk-aggselfref');
+      expect(Array.isArray(loggedInfo.err.errors)).toBe(true);
+      expect(loggedInfo.err.errors).toHaveLength(1);
+      // Sub-error is the clone itself — back-reference preserved.
+      expect(loggedInfo.err.errors[0]).toBe(loggedInfo.err);
+    });
+
+    // Regression coverage for macroscope 3120949010 — previous implementation
+    // only handled `Array.isArray(err.errors)`, and the enumerable-copy loop
+    // unconditionally skipped the `errors` key, so a non-array `errors` field
+    // on a custom error (e.g. a ValidationError with `{ field: 'invalid' }`)
+    // was silently dropped.
+    it('preserves and scrubs a non-array errors property on a custom Error', async () => {
+      const logger = await import('../src/logger.js');
+      const transport = logger.default.logger.transports[0];
+      const writeSpy = vi.spyOn(transport, 'log').mockImplementation((_info, cb) => cb?.());
+
+      const err = new Error('validation failed');
+      err.errors = {
+        field: 'invalid',
+        apiKey: 'should-be-redacted',
+        detail: 'Bearer sk-nonarrayerrorstokenabcdefghij',
+      };
+
+      logger.info('validation error', { err });
+
+      const loggedInfo = writeSpy.mock.calls[0][0];
+      expect(loggedInfo.err).toBeInstanceOf(Error);
+      // Shape preserved (object, not array, not undefined).
+      expect(loggedInfo.err.errors).toBeDefined();
+      expect(Array.isArray(loggedInfo.err.errors)).toBe(false);
+      expect(typeof loggedInfo.err.errors).toBe('object');
+      // Non-sensitive passthrough.
+      expect(loggedInfo.err.errors.field).toBe('invalid');
+      // Sensitive key redacted.
+      expect(loggedInfo.err.errors.apiKey).toBe('[REDACTED]');
+      // Inline secret scrubbed from the string value.
+      expect(loggedInfo.err.errors.detail).toContain('[REDACTED]');
+      expect(loggedInfo.err.errors.detail).not.toContain('sk-nonarrayerrors');
+    });
   });
 
   it('should load with file output enabled config', async () => {

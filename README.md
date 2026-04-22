@@ -54,7 +54,7 @@ AI-powered Discord bot and dashboard — built by the [Volvox](https://volvox.de
 
 - **Bot:** Node.js 22+, discord.js v14, PostgreSQL, Redis
 - **Dashboard:** Next.js 16, React 19, TypeScript
-- **AI:** Claude (Anthropic), mem0 for user memory
+- **AI:** Configured provider from src/data/providers.json, mem0 for user memory
 - **Code Style:** [Biome](https://biomejs.dev/)
 
 ---

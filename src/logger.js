@@ -134,10 +134,18 @@ function isSensitiveKey(key) {
  * `stack`, and every enumerable own-property (including `cause`). Called from
  * `filterSensitiveData` whenever an Error surfaces inside log metadata.
  *
+ * The `seen` WeakMap short-circuits cyclic error graphs — e.g. `err.cause = err`
+ * or an `AggregateError` whose `errors` array contains itself. The clone is
+ * registered in `seen` BEFORE recursing, so any back-reference at any depth
+ * resolves to the already-being-built clone instead of stack-overflowing.
+ *
  * @param {Error} err
+ * @param {WeakMap<object, unknown>} [seen]
  * @returns {Error}
  */
-function cloneAndScrubError(err) {
+function cloneAndScrubError(err, seen = new WeakMap()) {
+  if (seen.has(err)) return seen.get(err);
+
   const scrubbedMessage = scrubInlineSecrets(err.message);
 
   // Use Object.create + defineProperty rather than `new Ctor(scrubbedMessage)`
@@ -148,6 +156,9 @@ function cloneAndScrubError(err) {
   // sidesteps every subclass's constructor quirks while preserving the
   // prototype chain so `instanceof` checks downstream still hold.
   const cloned = Object.create(Object.getPrototypeOf(err));
+
+  // Register BEFORE recursing so cyclic references resolve to this clone.
+  seen.set(err, cloned);
 
   Object.defineProperty(cloned, 'message', {
     value: scrubbedMessage,
@@ -171,7 +182,7 @@ function cloneAndScrubError(err) {
   }
 
   const scrubValue = (value) => {
-    if (typeof value === 'object' && value !== null) return filterSensitiveData(value);
+    if (typeof value === 'object' && value !== null) return filterSensitiveData(value, seen);
     if (typeof value === 'string') return scrubInlineSecrets(value);
     return value;
   };
@@ -190,8 +201,15 @@ function cloneAndScrubError(err) {
   // AggregateError carries its sub-errors on the enumerable own-property
   // `errors`. Recurse into each so a leaked Bearer token in a child error's
   // message gets scrubbed the same way a top-level one would.
+  //
+  // A non-array `errors` (e.g. `{ field: 'invalid' }` on a custom ValidationError)
+  // would otherwise be dropped entirely — the enumerable-copy loop below
+  // unconditionally skips the `errors` key. Preserve whatever shape the caller
+  // set by scrubbing it through `scrubValue`.
   if (Array.isArray(err.errors)) {
     cloned.errors = err.errors.map((sub) => scrubValue(sub));
+  } else if ('errors' in err) {
+    cloned.errors = scrubValue(err.errors);
   }
 
   // Copy remaining enumerable own-properties (code, custom fields), scrubbing
@@ -225,8 +243,16 @@ function cloneAndScrubError(err) {
  * property scrubbed. This closes the nested-leak path where
  * `{ cause: new Error('Bearer sk-…') }` would otherwise land in log output
  * unredacted — the top-level format only scrubs `info.message` / `info.stack`.
+ *
+ * The `seen` WeakMap threads through every recursive call (arrays, plain
+ * objects, and Error clones) so cyclic graphs — e.g. an object that refers
+ * back to an ancestor — short-circuit to the previously-built clone instead
+ * of stack-overflowing.
+ *
+ * @param {unknown} obj
+ * @param {WeakMap<object, unknown>} [seen]
  */
-function filterSensitiveData(obj) {
+function filterSensitiveData(obj, seen = new WeakMap()) {
   if (obj === null || obj === undefined) {
     return obj;
   }
@@ -240,19 +266,27 @@ function filterSensitiveData(obj) {
   }
 
   if (obj instanceof Error) {
-    return cloneAndScrubError(obj);
+    return cloneAndScrubError(obj, seen);
   }
 
+  if (seen.has(obj)) return seen.get(obj);
+
   if (Array.isArray(obj)) {
-    return obj.map((item) => filterSensitiveData(item));
+    const out = [];
+    seen.set(obj, out);
+    for (const item of obj) {
+      out.push(filterSensitiveData(item, seen));
+    }
+    return out;
   }
 
   const filtered = {};
+  seen.set(obj, filtered);
   for (const [key, value] of Object.entries(obj)) {
     if (isSensitiveKey(key)) {
       filtered[key] = '[REDACTED]';
     } else if (typeof value === 'object' && value !== null) {
-      filtered[key] = filterSensitiveData(value);
+      filtered[key] = filterSensitiveData(value, seen);
     } else if (typeof value === 'string') {
       filtered[key] = scrubInlineSecrets(value);
     } else {
@@ -318,13 +352,34 @@ const preserveOriginalLevel = winston.format((info) => {
 })();
 
 /**
+ * Circular-reference-safe JSON.stringify replacer. Logged errors may carry
+ * cyclic graphs (e.g. `err.cause = err`, or `AggregateError.errors` containing
+ * the aggregate itself) — `cloneAndScrubError` intentionally preserves those
+ * back-references rather than re-cloning into infinity, so the formatter must
+ * also tolerate them instead of throwing "Converting circular structure to JSON".
+ *
+ * @returns {(key: string, value: unknown) => unknown}
+ */
+function circularSafeReplacer() {
+  const seen = new WeakSet();
+  return (_key, value) => {
+    if (typeof value === 'object' && value !== null) {
+      if (seen.has(value)) return '[Circular]';
+      seen.add(value);
+    }
+    return value;
+  };
+}
+
+/**
  * Custom format for console output with emoji prefixes
  */
 const consoleFormat = winston.format.printf(
   ({ level, message, timestamp, originalLevel, ...meta }) => {
     // Use originalLevel for emoji lookup since 'level' may contain ANSI color codes
     const prefix = EMOJI_MAP[originalLevel] || '📝';
-    const metaStr = Object.keys(meta).length > 0 ? ` ${JSON.stringify(meta)}` : '';
+    const metaStr =
+      Object.keys(meta).length > 0 ? ` ${JSON.stringify(meta, circularSafeReplacer())}` : '';
 
     const lvl = typeof originalLevel === 'string' ? originalLevel : (level ?? 'info');
     return `${prefix} [${timestamp}] ${lvl.toUpperCase()}: ${message}${metaStr}`;
