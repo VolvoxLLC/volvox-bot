@@ -114,7 +114,41 @@ describe('OnboardingGrowthCategory', () => {
 
     render(<OnboardingGrowthCategory />);
 
-    expect(screen.getAllByTestId('discord-markdown-editor')[0]).toHaveAttribute(
+    const editors = screen.getAllByTestId('discord-markdown-editor');
+    expect(editors[0]).toHaveAttribute(
+      'data-placeholder',
+      'Welcome {{user}} to {{server}}!',
+    );
+    expect(editors[1]).toHaveAttribute(
+      'data-placeholder',
+      'Welcome back, {{user}}! Glad to see you again.',
+    );
+  });
+
+  it('hides returning member editor when disabled', () => {
+    mockUseConfigContext.mockReturnValue({
+      draftConfig: {
+        welcome: {
+          enabled: true,
+          message: '',
+          returningMessageEnabled: false,
+          dynamic: { enabled: false },
+          roleMenu: { options: [] },
+          dmSequence: { steps: [] },
+        },
+      },
+      saving: false,
+      guildId: 'guild-1',
+      visibleFeatureIds: new Set(['welcome']),
+      activeTabId: 'welcome',
+      updateDraftConfig: vi.fn(),
+    });
+
+    render(<OnboardingGrowthCategory />);
+
+    const editors = screen.getAllByTestId('discord-markdown-editor');
+    expect(editors).toHaveLength(1);
+    expect(editors[0]).toHaveAttribute(
       'data-placeholder',
       'Welcome {{user}} to {{server}}!',
     );
