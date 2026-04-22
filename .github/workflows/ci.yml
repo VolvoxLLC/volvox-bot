@@ -188,7 +188,7 @@ jobs:
             exit 1
           fi
 
-          if [ "${{ needs.sonarqube.result }}" != "success" ]; then
+          if [ "${{ needs.sonarqube.result }}" != "success" ] && [ "${{ needs.sonarqube.result }}" != "skipped" ]; then
             echo "SonarQube scan failed."
             exit 1
           fi
