@@ -254,11 +254,8 @@ export function OnboardingGrowthCategory() {
                   disabled={saving}
                   label="Returning member message"
                 />
-                <span className="text-sm font-bold tracking-tight text-foreground/80">
-                  Returning member message
-                  <span className="text-[10px] font-normal text-muted-foreground/60 ml-2">
-                    Sent when someone rejoins your server
-                  </span>
+                <span className="text-[10px] font-normal text-muted-foreground/60">
+                  Sent when someone rejoins your server
                 </span>
               </div>
               {draftConfig.welcome?.returningMessageEnabled !== false && (
