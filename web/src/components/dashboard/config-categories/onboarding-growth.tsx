@@ -10,6 +10,7 @@ import {
   parseNumberInput,
 } from '@/components/dashboard/config-editor-utils';
 import type { ConfigFeatureId } from '@/components/dashboard/config-workspace/types';
+import { XpLevelActionsEditor } from '@/components/dashboard/xp-level-actions-editor';
 import { Button } from '@/components/ui/button';
 import { ChannelSelector } from '@/components/ui/channel-selector';
 import { DiscordMarkdownEditor } from '@/components/ui/discord-markdown-editor';
@@ -194,6 +195,15 @@ export function OnboardingGrowthCategory() {
   } else if (activeTab === 'reputation') {
     isCurrentFeatureEnabled =
       (draftConfig.reputation?.enabled ?? false) || (draftConfig.xp?.enabled ?? false);
+    handleToggleCurrentFeature = (v) =>
+      updateDraftConfig((prev) => ({
+        ...prev,
+        reputation: { ...prev.reputation, enabled: v },
+        xp: { ...prev.xp, enabled: v },
+      }));
+  } else if (activeTab === 'xp-level-actions') {
+    isCurrentFeatureEnabled =
+      (draftConfig.xp?.enabled ?? false) || (draftConfig.reputation?.enabled ?? false);
     handleToggleCurrentFeature = (v) =>
       updateDraftConfig((prev) => ({
         ...prev,
@@ -742,6 +752,20 @@ export function OnboardingGrowthCategory() {
                 Define total XP required for each sequential level (L1, L2, L3...).
               </p>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Level-Up Actions Layout */}
+      {activeTab === 'xp-level-actions' && (
+        <div className="space-y-6">
+          <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-6">
+            <XpLevelActionsEditor
+              draftConfig={draftConfig}
+              guildId={guildId}
+              saving={saving}
+              updateDraftConfig={updateDraftConfig}
+            />
           </div>
         </div>
       )}

@@ -57,7 +57,10 @@ describe('ConfigProvider', () => {
     );
     const { result } = renderHook(() => useConfigContext(), { wrapper });
 
-    await waitFor(() => expect(result.current.draftConfig).not.toBeNull());
+    await waitFor(() => {
+      expect(result.current.guildId).toBe('guild-123');
+      expect(result.current.draftConfig).not.toBeNull();
+    });
     expect(result.current.guildId).toBe('guild-123');
     expect(result.current.hasChanges).toBe(false);
     expect(result.current.saving).toBe(false);
