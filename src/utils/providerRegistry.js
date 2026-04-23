@@ -351,6 +351,27 @@ export function getProviderConfig(providerName) {
 }
 
 /**
+ * Lightweight provider lookup that returns metadata without cloning the
+ * models Map. Use on hot paths (e.g. `resolveModel`) that only need
+ * `envKey`, `baseUrl`, `apiShape`, and `capabilities`.
+ * @param {string} providerName
+ * @returns {{ name: string, displayName: string, envKey: string, baseUrl: string | null, apiShape: string[], capabilities: { webSearch: boolean, thinking: boolean } } | null}
+ */
+export function getProviderMeta(providerName) {
+  if (typeof providerName !== 'string' || !providerName) return null;
+  const provider = registry.get(providerName.toLowerCase());
+  if (!provider) return null;
+  return {
+    name: provider.name,
+    displayName: provider.displayName,
+    envKey: provider.envKey,
+    baseUrl: provider.baseUrl,
+    apiShape: [...provider.apiShape],
+    capabilities: { ...provider.capabilities },
+  };
+}
+
+/**
  * Look up a model config by (provider, modelId). Case-insensitive. Falls back to
  * date-stripped lookup so callers can pass dated Anthropic-style IDs. Returns a
  * defensive copy.

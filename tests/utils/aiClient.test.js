@@ -86,7 +86,7 @@ function seedRegistry() {
 seedRegistry();
 
 vi.mock('../../src/utils/providerRegistry.js', () => ({
-  getProviderConfig: (name) =>
+  getProviderMeta: (name) =>
     typeof name === 'string' ? (REGISTRY_STATE.providers.get(name.toLowerCase()) ?? null) : null,
   getModelConfig: (providerName, modelId) => {
     const cfg =

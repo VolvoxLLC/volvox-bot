@@ -117,10 +117,10 @@ export function calculateCost(provider, modelId, usage = {}) {
 export { rebuildPricingMap as _rebuildPricingMap };
 
 /**
- * Test-only accessor for the current pricing map. Returns the live Map, so
- * snapshot tests should clone first if they need a stable view.
+ * Test-only accessor for the current pricing map. Returns a shallow copy so
+ * test mutations cannot corrupt shared module state.
  * @returns {Map<string, object>}
  */
 export function _getPricingMap() {
-  return pricingMap;
+  return new Map(pricingMap);
 }

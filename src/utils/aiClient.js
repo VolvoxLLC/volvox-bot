@@ -24,7 +24,7 @@ import { parseProviderModel } from './modelString.js';
 import {
   getCapabilities,
   getModelConfig,
-  getProviderConfig,
+  getProviderMeta,
   supportsShape,
 } from './providerRegistry.js';
 
@@ -168,7 +168,7 @@ async function resolveModel(modelString, overrides = {}) {
   const { providerName, modelId } = parseProviderModel(modelString);
 
   // Fail loudly on unknown providers — the registry is the source of truth.
-  const providerConfig = getProviderConfig(providerName);
+  const providerConfig = getProviderMeta(providerName);
   if (!providerConfig) {
     throw new AIClientError(
       `Unknown provider '${providerName}'. Declare it in src/data/providers.json.`,
@@ -219,9 +219,12 @@ async function resolveModel(modelString, overrides = {}) {
   }
 
   // baseUrl resolution: explicit override > <PROVIDER>_BASE_URL env > registry default.
-  // registry may declare `null` for SDK-default providers (see issue #553/#530).
+  // `null` is an intentional "use SDK default" signal — only `undefined` (not provided)
+  // falls through to env/registry. See issue #553/#530.
   const baseUrl =
-    overrides.baseUrl || process.env[`${envPrefix}_BASE_URL`] || providerConfig.baseUrl;
+    overrides.baseUrl !== undefined
+      ? overrides.baseUrl
+      : process.env[`${envPrefix}_BASE_URL`] || providerConfig.baseUrl;
 
   if (baseUrl === undefined || baseUrl === '' || baseUrl === false) {
     throw new AIClientError(
@@ -245,7 +248,8 @@ async function resolveModel(modelString, overrides = {}) {
     // Every catalog provider authenticates via bearer token (Anthropic's
     // `x-api-key` path is not used — our catalog contains no direct
     // api.anthropic.com entries). Always pass as `authToken`.
-    // `baseURL: null` lets the SDK use its own default (reserved for #530).
+    // When baseUrl is null (SDK-default signal), pass undefined so the
+    // Anthropic SDK uses its built-in endpoint (reserved for #530).
     providerCache.set(
       cacheKey,
       createAnthropic({
