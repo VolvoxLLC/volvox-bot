@@ -40,7 +40,5 @@ export async function GET(
   );
   if (upstreamUrl instanceof NextResponse) return upstreamUrl;
 
-  return proxyToBotApi(upstreamUrl, apiConfig.secret, LOG_PREFIX, 'Failed to fetch channels', {
-    revalidate: 300,
-  });
+  return proxyToBotApi(upstreamUrl, apiConfig.secret, LOG_PREFIX, 'Failed to fetch channels');
 }
