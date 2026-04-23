@@ -233,19 +233,19 @@ function LoginForm() {
                     repeat: Infinity,
                   }}
                 >
-                  {features.map((f, i) => (
+                  {features.map((f) => (
                     <FeatureItem
-                      key={`marquee-${f.label}-${i}`}
+                      key={`marquee-${f.label}`}
                       icon={f.icon}
                       label={f.label}
                       sub={f.sub}
                       className="min-w-[240px]"
-                      ariaHidden={i >= features.length}
+                      ariaHidden={false}
                     />
                   ))}
                   {[...features, ...features].map((f, i) => (
                     <FeatureItem
-                      key={`marquee-clone-${f.label}-${i}`}
+                      key={`marquee-clone-${f.label}-${i < features.length ? 'a' : 'b'}`}
                       icon={f.icon}
                       label={f.label}
                       sub={f.sub}
