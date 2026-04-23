@@ -37,6 +37,10 @@ const EMPTY_ENTRY: ChannelDirectoryEntry = {
   attempted: false,
 };
 
+const DISCORD_CHANNEL_TYPES = {
+  GUILD_CATEGORY: 4,
+} as const;
+
 function isDiscordChannel(channel: unknown): channel is DiscordChannel {
   return (
     typeof channel === 'object' &&
@@ -49,8 +53,18 @@ function isDiscordChannel(channel: unknown): channel is DiscordChannel {
 
 function sortChannels(channels: DiscordChannel[]): DiscordChannel[] {
   return [...channels].sort((a, b) => {
-    if (a.type === 4 && b.type !== 4) return 1;
-    if (b.type === 4 && a.type !== 4) return -1;
+    if (
+      a.type === DISCORD_CHANNEL_TYPES.GUILD_CATEGORY &&
+      b.type !== DISCORD_CHANNEL_TYPES.GUILD_CATEGORY
+    ) {
+      return 1;
+    }
+    if (
+      b.type === DISCORD_CHANNEL_TYPES.GUILD_CATEGORY &&
+      a.type !== DISCORD_CHANNEL_TYPES.GUILD_CATEGORY
+    ) {
+      return -1;
+    }
     return a.name.localeCompare(b.name);
   });
 }
@@ -227,17 +241,20 @@ export function useGuildChannels(guildId: string | null) {
     throw new Error('useGuildChannels must be used within ChannelDirectoryProvider');
   }
 
-  const { cacheVersion, entries, loadChannels, refreshChannels } = context;
+  const { entries, loadChannels, refreshChannels } = context;
   const entry = guildId ? (entries[guildId] ?? EMPTY_ENTRY) : EMPTY_ENTRY;
-  const fetchCycleKey = `${guildId ?? ''}:${cacheVersion}`;
-
   useEffect(() => {
-    if (!fetchCycleKey || !guildId || entry.attempted || entry.loading) {
+    if (!guildId || entry.attempted || entry.loading) {
       return;
     }
 
     void loadChannels(guildId);
-  }, [entry.attempted, entry.loading, fetchCycleKey, guildId, loadChannels]);
+  }, [entry.attempted, entry.loading, guildId, loadChannels]);
+
+  const ensureGuildChannels = useCallback(async () => {
+    if (!guildId) return;
+    await loadChannels(guildId);
+  }, [guildId, loadChannels]);
 
   const refreshGuildChannels = useCallback(async () => {
     if (!guildId) return;
@@ -248,6 +265,7 @@ export function useGuildChannels(guildId: string | null) {
     channels: entry.channels,
     error: entry.error,
     loading: entry.loading,
+    ensureChannelsLoaded: ensureGuildChannels,
     refreshChannels: refreshGuildChannels,
   };
 }

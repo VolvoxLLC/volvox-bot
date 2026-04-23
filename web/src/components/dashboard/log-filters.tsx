@@ -30,7 +30,6 @@ interface LogFiltersProps {
   guildId: string | null;
   onFilterChange: (filter: LogFilter) => void;
   disabled?: boolean;
-  /** Pre-fetched channel list — avoids ChannelSelector fetching its own copy */
 }
 
 /**

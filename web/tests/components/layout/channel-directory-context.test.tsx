@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ChannelDirectoryProvider,
@@ -114,6 +115,7 @@ describe('ChannelDirectoryProvider', () => {
   });
 
   it('refreshes already-loaded channel data on demand', async () => {
+    const user = userEvent.setup();
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce({
@@ -148,13 +150,14 @@ describe('ChannelDirectoryProvider', () => {
 
     await screen.findByText('alpha');
     const refreshButton = await screen.findByRole('button', { name: 'Refresh' });
-    refreshButton.click();
+    await user.click(refreshButton);
 
     await screen.findByText('omega');
     expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
 
   it('allows retrying after a failed fetch', async () => {
+    const user = userEvent.setup();
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce({
@@ -192,13 +195,14 @@ describe('ChannelDirectoryProvider', () => {
       expect(fetchSpy).toHaveBeenCalledTimes(1);
     });
     const retryButton = await screen.findByRole('button', { name: 'Retry' });
-    retryButton.click();
+    await user.click(retryButton);
 
     await screen.findByText('alpha');
     expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
 
   it('forces a new fetch during an in-flight request', async () => {
+    const user = userEvent.setup();
     const firstRequest = createDeferred<Response>();
     const secondRequest = createDeferred<Response>();
     const fetchSpy = vi
@@ -241,7 +245,7 @@ describe('ChannelDirectoryProvider', () => {
 
     await screen.findByText('Loading channels');
     const refreshButton = await screen.findByRole('button', { name: 'Refresh primary' });
-    refreshButton.click();
+    await user.click(refreshButton);
 
     await waitFor(() => {
       expect(fetchSpy).toHaveBeenCalledTimes(2);
@@ -258,6 +262,7 @@ describe('ChannelDirectoryProvider', () => {
   });
 
   it('keeps the replacement in-flight request deduplicated after aborting the previous one', async () => {
+    const user = userEvent.setup();
     const firstRequest = createDeferred<Response>();
     const secondRequest = createDeferred<Response>();
     const fetchSpy = vi
@@ -305,7 +310,7 @@ describe('ChannelDirectoryProvider', () => {
 
     await screen.findByText('Loading channels');
     const refreshButton = await screen.findByRole('button', { name: 'Refresh primary' });
-    refreshButton.click();
+    await user.click(refreshButton);
 
     await waitFor(() => {
       expect(fetchSpy).toHaveBeenCalledTimes(2);

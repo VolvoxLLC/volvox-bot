@@ -197,7 +197,7 @@ export function ChannelSelector({
     channels: cachedChannels,
     error: cachedError,
     loading: cachedLoading,
-    refreshChannels,
+    ensureChannelsLoaded,
   } = useGuildChannels(guildId);
   const channels = externalChannels ?? cachedChannels;
   const loading = externalChannels ? false : cachedLoading;
@@ -207,8 +207,8 @@ export function ChannelSelector({
     if (externalChannels || !guildId) return;
     if (!open && selected.length === 0) return;
 
-    void refreshChannels();
-  }, [externalChannels, guildId, open, refreshChannels, selected.length]);
+    void ensureChannelsLoaded();
+  }, [ensureChannelsLoaded, externalChannels, guildId, open, selected.length]);
 
   const filteredChannels = React.useMemo(
     () => filterChannelsByType(channels, filter),
