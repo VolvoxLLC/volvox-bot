@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { useRef } from 'react';
 import { siDiscord, siX } from 'simple-icons';
 import { SimpleIcon } from '@/components/ui/simple-icon';
+import { WEB_APP_VERSION } from '@/lib/app-version';
 import { getBotInviteUrl } from '@/lib/discord';
 
 if (typeof window !== 'undefined') {
@@ -172,7 +173,7 @@ export function Footer() {
                   className="text-[10px] font-bold uppercase tracking-[0.3em] text-foreground font-mono"
                   suppressHydrationWarning
                 >
-                  System Ready v4.1
+                  System Ready v{WEB_APP_VERSION}
                 </span>
                 <div className="h-[1px] w-6 bg-foreground" />
               </div>
@@ -221,7 +222,7 @@ export function Footer() {
                   className="text-[9px] font-mono text-foreground tracking-[0.15em]"
                   suppressHydrationWarning
                 >
-                  VOLVOX_2.4.0
+                  VOLVOX_{WEB_APP_VERSION}
                 </span>
               </div>
             </div>
@@ -329,7 +330,9 @@ export function Footer() {
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2 opacity-30 hover:opacity-100 transition-opacity">
               <Cpu className="w-3.5 h-3.5 text-foreground" />
-              <span className="text-[10px] uppercase tracking-widest font-bold">Node_v2.4</span>
+              <span className="text-[10px] uppercase tracking-widest font-bold">
+                Node_v{WEB_APP_VERSION}
+              </span>
             </div>
             <div className="flex items-center gap-2 opacity-30 hover:opacity-100 transition-opacity">
               <Activity className="w-3.5 h-3.5 text-foreground" />
