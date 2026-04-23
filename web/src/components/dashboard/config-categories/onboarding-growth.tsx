@@ -285,7 +285,25 @@ export function OnboardingGrowthCategory() {
               </div>
             </details>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-4 border-t border-border/40">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 pt-4 border-t border-border/40">
+              <div className="space-y-2">
+                <label
+                  htmlFor="welcome-channel-id"
+                  className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1"
+                >
+                  Message Channel
+                </label>
+                <ChannelSelector
+                  id="welcome-channel-id"
+                  guildId={guildId}
+                  selected={draftConfig.welcome?.channelId ? [draftConfig.welcome.channelId] : []}
+                  onChange={(selected) => updateWelcomeField('channelId', selected[0] ?? null)}
+                  disabled={saving}
+                  placeholder="Select welcome message channel"
+                  maxSelections={1}
+                  filter="text"
+                />
+              </div>
               <div className="space-y-2">
                 <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1">
                   Rules Channel
