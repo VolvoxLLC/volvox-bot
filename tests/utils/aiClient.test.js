@@ -88,6 +88,14 @@ seedRegistry();
 vi.mock('../../src/utils/providerRegistry.js', () => ({
   getProviderConfig: (name) =>
     typeof name === 'string' ? (REGISTRY_STATE.providers.get(name.toLowerCase()) ?? null) : null,
+  getModelConfig: (providerName, modelId) => {
+    const cfg =
+      typeof providerName === 'string'
+        ? REGISTRY_STATE.providers.get(providerName.toLowerCase())
+        : null;
+    if (!cfg || typeof modelId !== 'string') return null;
+    return { id: modelId, pricing: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 } };
+  },
   getCapabilities: (name) => {
     const cfg = typeof name === 'string' ? REGISTRY_STATE.providers.get(name.toLowerCase()) : null;
     return cfg ? { ...cfg.capabilities } : { webSearch: false, thinking: false };

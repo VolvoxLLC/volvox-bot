@@ -21,7 +21,12 @@ import { debug, error as logError, warn } from '../logger.js';
 import { calculateCost } from './aiCost.js';
 import { AIClientError, isRetryable } from './errors.js';
 import { parseProviderModel } from './modelString.js';
-import { getCapabilities, getProviderConfig, supportsShape } from './providerRegistry.js';
+import {
+  getCapabilities,
+  getModelConfig,
+  getProviderConfig,
+  supportsShape,
+} from './providerRegistry.js';
 
 // ── Lazy SDK loading ────────────────────────────────────────────────────────
 
@@ -167,6 +172,16 @@ async function resolveModel(modelString, overrides = {}) {
   if (!providerConfig) {
     throw new AIClientError(
       `Unknown provider '${providerName}'. Declare it in src/data/providers.json.`,
+      'api',
+    );
+  }
+
+  // Fail loudly on unknown models — catches typos before they hit the wire.
+  const modelConfig = getModelConfig(providerName, modelId);
+  if (!modelConfig) {
+    throw new AIClientError(
+      `Unknown model '${modelId}' for provider '${providerName}'. ` +
+        'Declare it in src/data/providers.json.',
       'api',
     );
   }

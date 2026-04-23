@@ -65,6 +65,7 @@ const SENSITIVE_FIELDS = [
   'DISCORD_TOKEN',
   'CLAUDE_CODE_OAUTH_TOKEN',
   'token',
+  'authToken',
   'password',
   'apiKey',
   'authorization',
@@ -75,13 +76,19 @@ const SENSITIVE_FIELDS = [
 ];
 
 /**
- * Case-insensitive suffix patterns that mark a key as sensitive. Any env var
- * following the `<PROVIDER>_API_KEY` / `<PROVIDER>_AUTH_TOKEN` /
- * `<NAME>_SECRET` convention is redacted without requiring per-provider
- * maintenance. `_SECRET` catches SESSION_SECRET, NEXTAUTH_SECRET,
- * BOT_API_SECRET, WEBHOOK_SECRET, DISCORD_CLIENT_SECRET, etc.
+ * Case-insensitive suffix patterns that mark a key as sensitive. Covers both
+ * snake_case (`MINIMAX_API_KEY`, `PROVIDER_AUTH_TOKEN`) and camelCase
+ * (`classifyApiKey`, `respondApiKey`, `authToken`) conventions so new providers
+ * and config keys are redacted without per-field maintenance. The generic
+ * `secret` suffix catches SESSION_SECRET, NEXTAUTH_SECRET, clientSecret, etc.
  */
-const SENSITIVE_PATTERNS = [/_api_key$/i, /_auth_token$/i, /_secret$/i];
+const SENSITIVE_PATTERNS = [
+  /(?:^|[_-])api[_-]?key$/i,
+  /apiKey$/i,
+  /(?:^|[_-])auth[_-]?token$/i,
+  /authToken$/i,
+  /secret$/i,
+];
 
 /**
  * Inline-value patterns that redact substrings inside log messages. Used as a
@@ -93,7 +100,7 @@ const SENSITIVE_PATTERNS = [/_api_key$/i, /_auth_token$/i, /_secret$/i];
  * tight — an over-broad pattern corrupts legitimate messages.
  */
 const INLINE_SECRET_PATTERNS = [
-  /Bearer\s+[A-Za-z0-9._~+/-]+=*/g,
+  /Bearer\s+[A-Za-z0-9._~+/-]+=*/gi,
   // Covers both generic `sk-…` secrets and Anthropic `sk-ant-…` tokens — the
   // broader pattern already matches `ant-` within the character class, so a
   // dedicated `sk-ant-…` entry would never fire.
@@ -442,7 +449,11 @@ if (sentryEnabled) {
 
 const logger = winston.createLogger({
   level: logLevel,
-  format: winston.format.combine(winston.format.errors({ stack: true }), winston.format.splat()),
+  format: winston.format.combine(
+    winston.format.errors({ stack: true }),
+    winston.format.splat(),
+    redactSensitiveData,
+  ),
   transports,
 });
 
