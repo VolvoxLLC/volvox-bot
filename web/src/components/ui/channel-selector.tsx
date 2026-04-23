@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import * as React from 'react';
 import { inputClasses } from '@/components/dashboard/config-editor-utils';
+import { useGuildChannels } from '@/components/layout/channel-directory-context';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -31,6 +32,8 @@ export interface DiscordChannel {
   id: string;
   name: string;
   type: number;
+  parentId?: string | null;
+  position?: number;
 }
 
 // Discord channel types
@@ -197,100 +200,22 @@ export function ChannelSelector({
   channels: externalChannels,
 }: ChannelSelectorProps) {
   const [open, setOpen] = React.useState(false);
-  const [channels, setChannels] = React.useState<DiscordChannel[]>(externalChannels ?? []);
-  const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-  const abortControllerRef = React.useRef<AbortController | null>(null);
-  const hasFetchedRef = React.useRef(false);
+  const {
+    channels: cachedChannels,
+    error: cachedError,
+    loading: cachedLoading,
+    refreshChannels,
+  } = useGuildChannels(guildId);
+  const channels = externalChannels ?? cachedChannels;
+  const loading = externalChannels ? false : cachedLoading;
+  const error = externalChannels ? null : cachedError;
 
-  // Reset fetch state when guild changes
-  // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally re-run on guild change
   React.useEffect(() => {
-    hasFetchedRef.current = false;
-  }, [guildId]);
+    if (externalChannels || !guildId) return;
+    if (!open && selected.length === 0) return;
 
-  // Fetch channels when the popover opens, or eagerly on mount when there
-  // are pre-selected IDs (so they display names instead of "unknown channel").
-  React.useEffect(() => {
-    if (!guildId) return;
-    // Skip internal fetch when channels are provided externally
-    if (externalChannels) {
-      setChannels(externalChannels);
-      hasFetchedRef.current = true;
-      return;
-    }
-    const needsEagerFetch = selected.length > 0 && !hasFetchedRef.current;
-    if (!open && !needsEagerFetch) return;
-
-    async function fetchChannels() {
-      abortControllerRef.current?.abort();
-      const controller = new AbortController();
-      abortControllerRef.current = controller;
-
-      setLoading(true);
-      setError(null);
-      setChannels([]);
-
-      try {
-        const response = await fetch(`/api/guilds/${encodeURIComponent(guildId)}/channels`, {
-          signal: controller.signal,
-        });
-
-        if (response.status === 401) {
-          window.location.href = '/login';
-          return;
-        }
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch channels: ${response.statusText}`);
-        }
-
-        const data: unknown = await response.json();
-
-        if (!Array.isArray(data)) {
-          throw new Error('Invalid response: expected array');
-        }
-
-        const fetchedChannels = data.filter(
-          (c): c is DiscordChannel =>
-            typeof c === 'object' &&
-            c !== null &&
-            typeof (c as Record<string, unknown>).id === 'string' &&
-            typeof (c as Record<string, unknown>).name === 'string' &&
-            typeof (c as Record<string, unknown>).type === 'number',
-        );
-
-        const sortedChannels = fetchedChannels.sort((a, b) => {
-          if (a.type === CHANNEL_TYPES.GUILD_CATEGORY && b.type !== CHANNEL_TYPES.GUILD_CATEGORY)
-            return 1;
-          if (b.type === CHANNEL_TYPES.GUILD_CATEGORY && a.type !== CHANNEL_TYPES.GUILD_CATEGORY)
-            return -1;
-          return a.name.localeCompare(b.name);
-        });
-
-        if (abortControllerRef.current === controller) {
-          setChannels(sortedChannels);
-          hasFetchedRef.current = true;
-        }
-      } catch (err) {
-        if (err instanceof DOMException && err.name === 'AbortError') return;
-        if (abortControllerRef.current === controller) {
-          setError(err instanceof Error ? err.message : 'Failed to load channels');
-        }
-      } finally {
-        if (abortControllerRef.current === controller) {
-          setLoading(false);
-        }
-      }
-    }
-
-    void fetchChannels();
-
-    return () => {
-      abortControllerRef.current?.abort();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- selected.length triggers eager fetch once via hasFetchedRef
-  }, [guildId, open, selected.length, externalChannels]);
+    void refreshChannels();
+  }, [externalChannels, guildId, open, refreshChannels, selected.length]);
 
   const filteredChannels = React.useMemo(
     () => filterChannelsByType(channels, filter),

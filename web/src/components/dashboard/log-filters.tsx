@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ChannelSelector, type DiscordChannel } from '@/components/ui/channel-selector';
+import { ChannelSelector } from '@/components/ui/channel-selector';
 import type { LogFilter, LogLevel } from '@/lib/log-ws';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -31,7 +31,6 @@ interface LogFiltersProps {
   onFilterChange: (filter: LogFilter) => void;
   disabled?: boolean;
   /** Pre-fetched channel list — avoids ChannelSelector fetching its own copy */
-  channels?: DiscordChannel[];
 }
 
 /**
@@ -48,12 +47,7 @@ interface LogFiltersProps {
  * @param disabled - When true, disables all controls in the filter bar
  * @returns The rendered filter bar JSX element
  */
-export function LogFilters({
-  guildId,
-  onFilterChange,
-  disabled = false,
-  channels,
-}: LogFiltersProps) {
+export function LogFilters({ guildId, onFilterChange, disabled = false }: LogFiltersProps) {
   const [level, setLevel] = useState<LogFilter['level']>('all');
   const [module, setModule] = useState('');
   const [search, setSearch] = useState('');
@@ -193,7 +187,6 @@ export function LogFilters({
             onChange={handleChannelChange}
             disabled={disabled}
             placeholder="All channels"
-            channels={channels}
           />
         </div>
       )}

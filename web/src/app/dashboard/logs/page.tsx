@@ -1,15 +1,15 @@
 'use client';
 
 import { ScrollText } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { HealthSection } from '@/components/dashboard/health-section';
 import { LogFilters } from '@/components/dashboard/log-filters';
 import { LogViewer } from '@/components/dashboard/log-viewer';
+import { useGuildChannels } from '@/components/layout/channel-directory-context';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
 import { useLogStream } from '@/lib/log-ws';
 import { cn } from '@/lib/utils';
-import type { DiscordChannel } from '@/types/discord';
 
 /**
  * Dashboard page that streams real-time bot logs and displays health and restart history.
@@ -23,59 +23,7 @@ export default function LogsPage() {
     enabled: Boolean(guildId),
     guildId,
   });
-  const [channels, setChannels] = useState<DiscordChannel[]>([]);
-
-  useEffect(() => {
-    setChannels([]);
-    if (!guildId) {
-      return;
-    }
-
-    const controller = new AbortController();
-    const activeGuildId = guildId;
-
-    /**
-     * Fetches the channel list for the currently active guild and updates the local `channels` state with validated entries.
-     *
-     * On HTTP 401 the browser is redirected to `/login`. The state is updated only when the response is OK and the JSON body is an array of objects that match the `DiscordChannel` shape (`id: string`, `name: string`, `type: number`). An in-flight request aborted via its controller is ignored; other errors do not modify state.
-     */
-    async function fetchChannels() {
-      try {
-        const response = await fetch(`/api/guilds/${encodeURIComponent(activeGuildId)}/channels`, {
-          signal: controller.signal,
-        });
-
-        if (!response.ok) {
-          if (response.status === 401) {
-            window.location.href = '/login';
-          }
-          return;
-        }
-
-        const data: unknown = await response.json();
-        if (!Array.isArray(data)) return;
-
-        setChannels(
-          data.filter(
-            (channel): channel is DiscordChannel =>
-              typeof channel === 'object' &&
-              channel !== null &&
-              typeof (channel as Record<string, unknown>).id === 'string' &&
-              typeof (channel as Record<string, unknown>).name === 'string' &&
-              typeof (channel as Record<string, unknown>).type === 'number',
-          ),
-        );
-      } catch (error) {
-        if (error instanceof DOMException && error.name === 'AbortError') return;
-      }
-    }
-
-    void fetchChannels();
-
-    return () => {
-      controller.abort();
-    };
-  }, [guildId]);
+  const { channels } = useGuildChannels(guildId);
 
   const channelNameById = useMemo(
     () => new Map(channels.map((channel) => [channel.id, channel.name])),
@@ -154,7 +102,6 @@ export default function LogsPage() {
                 guildId={guildId}
                 onFilterChange={sendFilter}
                 disabled={status !== 'connected'}
-                channels={channels}
               />
             </div>
 
