@@ -370,7 +370,7 @@ describe('rebuildSubscribers — error logging (regression for coderabbit 312053
       expect(() => _resetRegistry()).not.toThrow();
       expect(warn).toHaveBeenCalledWith(
         'providerRegistry: rebuild subscriber threw',
-        expect.objectContaining({ error: 'subscriber blew up' }),
+        expect.objectContaining({ error: expect.objectContaining({ message: 'subscriber blew up' }) }),
       );
     } finally {
       unsubscribe();
@@ -407,7 +407,7 @@ describe('rebuildSubscribers — error logging (regression for coderabbit 312053
         'providerRegistry: rebuild subscriber threw',
         expect.objectContaining({
           subscriber: 'mySubscriberFn',
-          error: 'named throw',
+          error: expect.objectContaining({ message: 'named throw' }),
         }),
       );
     } finally {
