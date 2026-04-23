@@ -18,7 +18,27 @@ vi.mock('@/components/dashboard/config-context', () => ({
 }));
 
 vi.mock('@/components/ui/channel-selector', () => ({
-  ChannelSelector: () => <div data-testid="channel-selector" />,
+  ChannelSelector: ({
+    id,
+    onChange,
+    placeholder,
+    selected,
+  }: {
+    id?: string;
+    onChange: (selected: string[]) => void;
+    placeholder?: string;
+    selected: string[];
+  }) => (
+    <button
+      type="button"
+      data-placeholder={placeholder}
+      data-selected={selected.join(',')}
+      data-testid={id ? `channel-selector-${id}` : 'channel-selector'}
+      onClick={() => onChange(['new-channel'])}
+    >
+      {placeholder ?? id ?? 'channel-selector'}
+    </button>
+  ),
 }));
 
 vi.mock('@/components/ui/role-selector', () => ({
@@ -225,6 +245,53 @@ describe('OnboardingGrowthCategory', () => {
       'data-placeholder',
       'Welcome {{user}} to {{server}}!',
     );
+  });
+
+  it('exposes a channel selector for the welcome message destination', async () => {
+    const user = userEvent.setup();
+    const updateDraftConfig = vi.fn((updater) =>
+      updater({
+        welcome: {
+          enabled: true,
+          channelId: 'old-channel',
+          message: '',
+          dynamic: { enabled: false },
+          roleMenu: { options: [] },
+          dmSequence: { steps: [] },
+        },
+      }),
+    );
+
+    mockUseConfigContext.mockReturnValue({
+      draftConfig: {
+        welcome: {
+          enabled: true,
+          channelId: 'old-channel',
+          message: '',
+          dynamic: { enabled: false },
+          roleMenu: { options: [] },
+          dmSequence: { steps: [] },
+        },
+      },
+      saving: false,
+      guildId: 'guild-1',
+      visibleFeatureIds: new Set(['welcome']),
+      activeTabId: 'welcome',
+      updateDraftConfig,
+    });
+
+    render(<OnboardingGrowthCategory />);
+
+    expect(screen.getByText('Message Channel')).toBeInTheDocument();
+
+    const selector = screen.getByTestId('channel-selector-welcome-channel-id');
+    expect(selector).toHaveAttribute('data-selected', 'old-channel');
+    expect(selector).toHaveAttribute('data-placeholder', 'Select welcome message channel');
+
+    await user.click(selector);
+
+    expect(updateDraftConfig).toHaveBeenCalledTimes(1);
+    expect(updateDraftConfig.mock.results[0]?.value.welcome.channelId).toBe('new-channel');
   });
 
   it('mounts the level-up actions editor from the xp-level-actions tab', () => {
