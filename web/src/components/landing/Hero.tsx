@@ -6,7 +6,6 @@ import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Bot, Command } from 'lucide-react';
 import { useMemo, useRef } from 'react';
-import { WEB_APP_VERSION } from '@/lib/app-version';
 import { getBotInviteUrl } from '@/lib/discord';
 
 if (typeof window !== 'undefined') {
@@ -232,7 +231,7 @@ export function Hero() {
             className="text-[10px] font-semibold uppercase tracking-[0.3em] text-foreground font-mono"
             suppressHydrationWarning
           >
-            Architecture v{WEB_APP_VERSION}
+            Architecture v2.4.0
           </span>
           <div className="h-[1px] w-6 bg-foreground" />
         </div>
