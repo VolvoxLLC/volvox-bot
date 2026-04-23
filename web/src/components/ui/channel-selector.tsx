@@ -27,14 +27,7 @@ import {
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-
-export interface DiscordChannel {
-  id: string;
-  name: string;
-  type: number;
-  parentId?: string | null;
-  position?: number;
-}
+import type { DiscordChannel } from '@/types/discord';
 
 // Discord channel types
 const CHANNEL_LOADING_SKELETONS = [

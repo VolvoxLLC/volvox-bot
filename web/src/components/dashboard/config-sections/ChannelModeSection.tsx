@@ -141,20 +141,13 @@ export function ChannelModeSection({
 
   const rawChannels = useMemo<RawChannel[]>(
     () =>
-      channels.map((channel) => {
-        const rawChannel = channel as DiscordChannel & {
-          parentId?: string | null;
-          position?: number;
-        };
-
-        return {
-          id: rawChannel.id,
-          name: rawChannel.name,
-          type: rawChannel.type,
-          parentId: rawChannel.parentId ?? null,
-          position: rawChannel.position ?? 0,
-        };
-      }),
+      channels.map((channel: DiscordChannel) => ({
+        id: channel.id,
+        name: channel.name,
+        type: channel.type,
+        parentId: channel.parentId ?? null,
+        position: channel.position ?? 0,
+      })),
     [channels],
   );
 
