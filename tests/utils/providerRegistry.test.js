@@ -370,7 +370,9 @@ describe('rebuildSubscribers — error logging (regression for coderabbit 312053
       expect(() => _resetRegistry()).not.toThrow();
       expect(warn).toHaveBeenCalledWith(
         'providerRegistry: rebuild subscriber threw',
-        expect.objectContaining({ error: expect.objectContaining({ message: 'subscriber blew up' }) }),
+        expect.objectContaining({
+          error: expect.objectContaining({ message: 'subscriber blew up' }),
+        }),
       );
     } finally {
       unsubscribe();
