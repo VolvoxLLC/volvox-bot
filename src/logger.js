@@ -198,15 +198,15 @@ function cloneAndScrubError(err, seen = new WeakMap()) {
     });
   }
 
-  // AggregateError carries its sub-errors on the enumerable own-property
+  // AggregateError carries its sub-errors on the non-enumerable own-property
   // `errors`. Recurse into each so a leaked Bearer token in a child error's
   // message gets scrubbed the same way a top-level one would.
   //
   // A non-array `errors` (e.g. `{ field: 'invalid' }` on a custom ValidationError)
   // would otherwise be dropped entirely — the enumerable-copy loop below
-  // unconditionally skips the `errors` key. Preserve whatever shape the caller
-  // set by scrubbing it through `scrubValue`.
-  if (Array.isArray(err.errors)) {
+  // skips it because `errors` is non-enumerable. Preserve whatever shape the
+  // caller set by scrubbing it through `scrubValue`.
+  if (Object.hasOwn(err, 'errors') && Array.isArray(err.errors)) {
     cloned.errors = err.errors.map((sub) => scrubValue(sub));
   } else if (Object.hasOwn(err, 'errors')) {
     cloned.errors = scrubValue(err.errors);
