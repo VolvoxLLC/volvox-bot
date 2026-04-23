@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ChannelDirectoryProvider,
   useGuildChannels,
@@ -35,6 +35,10 @@ describe('ChannelDirectoryProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUsePathname.mockReturnValue('/dashboard/logs');
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('shares a single client-side channel fetch across duplicate consumers', async () => {
@@ -96,6 +100,91 @@ describe('ChannelDirectoryProvider', () => {
     );
 
     await screen.findByText('gamma');
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('refreshes already-loaded channel data on demand', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => [{ id: '1', name: 'alpha', type: 0 }],
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => [{ id: '1', name: 'omega', type: 0 }],
+      } as Response);
+
+    function RefreshConsumer() {
+      const { channels, refreshChannels } = useGuildChannels('guild-1');
+
+      return (
+        <div>
+          <button type="button" onClick={() => void refreshChannels()}>
+            Refresh
+          </button>
+          <span>{channels.map((channel) => channel.name).join(', ')}</span>
+        </div>
+      );
+    }
+
+    render(
+      <ChannelDirectoryProvider>
+        <RefreshConsumer />
+      </ChannelDirectoryProvider>,
+    );
+
+    await screen.findByText('alpha');
+    const refreshButton = await screen.findByRole('button', { name: 'Refresh' });
+    refreshButton.click();
+
+    await screen.findByText('omega');
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('allows retrying after a failed fetch', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        statusText: 'Service Unavailable',
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => [{ id: '1', name: 'alpha', type: 0 }],
+      } as Response);
+
+    function RefreshConsumer() {
+      const { channels, error, refreshChannels } = useGuildChannels('guild-1');
+
+      return (
+        <div>
+          <button type="button" onClick={() => void refreshChannels()}>
+            Retry
+          </button>
+          <span>{error ?? channels.map((channel) => channel.name).join(', ')}</span>
+        </div>
+      );
+    }
+
+    render(
+      <ChannelDirectoryProvider>
+        <RefreshConsumer />
+      </ChannelDirectoryProvider>,
+    );
+
+    await screen.findByText('Failed to fetch channels: Service Unavailable');
+    await waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+    });
+    const retryButton = await screen.findByRole('button', { name: 'Retry' });
+    retryButton.click();
+
+    await screen.findByText('alpha');
     expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
 });

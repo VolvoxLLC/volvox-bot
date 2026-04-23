@@ -17,6 +17,7 @@ interface ChannelDirectoryEntry {
   error: string | null;
   loading: boolean;
   loaded: boolean;
+  attempted: boolean;
 }
 
 interface ChannelDirectoryContextValue {
@@ -32,6 +33,7 @@ const EMPTY_ENTRY: ChannelDirectoryEntry = {
   error: null,
   loading: false,
   loaded: false,
+  attempted: false,
 };
 
 function isDiscordChannel(channel: unknown): channel is DiscordChannel {
@@ -65,11 +67,11 @@ export function ChannelDirectoryProvider({ children }: Readonly<{ children: Reac
     entriesRef.current = entries;
   }, [entries]);
 
-  const fetchChannels = useCallback(async (guildId: string) => {
+  const fetchChannels = useCallback(async (guildId: string, forceRefresh = false) => {
     if (!guildId) return;
 
     const existingEntry = entriesRef.current[guildId];
-    if (existingEntry?.loaded || existingEntry?.loading) {
+    if (!forceRefresh && (existingEntry?.loaded || existingEntry?.loading)) {
       return inflightRef.current.get(guildId);
     }
     const inflightRequest = inflightRef.current.get(guildId);
@@ -88,6 +90,7 @@ export function ChannelDirectoryProvider({ children }: Readonly<{ children: Reac
         error: null,
         loading: true,
         loaded: false,
+        attempted: true,
       },
     }));
 
@@ -123,6 +126,7 @@ export function ChannelDirectoryProvider({ children }: Readonly<{ children: Reac
             error: null,
             loading: false,
             loaded: true,
+            attempted: true,
           },
         }));
       } catch (error) {
@@ -140,7 +144,8 @@ export function ChannelDirectoryProvider({ children }: Readonly<{ children: Reac
             channels: current[guildId]?.channels ?? [],
             error: error instanceof Error ? error.message : 'Failed to load channels',
             loading: false,
-            loaded: true,
+            loaded: false,
+            attempted: true,
           },
         }));
       } finally {
@@ -156,7 +161,7 @@ export function ChannelDirectoryProvider({ children }: Readonly<{ children: Reac
   }, []);
 
   const refreshChannels = useCallback(
-    async (guildId: string) => fetchChannels(guildId),
+    async (guildId: string) => fetchChannels(guildId, true),
     [fetchChannels],
   );
 
@@ -215,17 +220,22 @@ export function useGuildChannels(guildId: string | null) {
   const fetchCycleKey = `${guildId ?? ''}:${cacheVersion}`;
 
   useEffect(() => {
-    if (!fetchCycleKey || !guildId || entry.loaded || entry.loading) {
+    if (!fetchCycleKey || !guildId || entry.attempted || entry.loading) {
       return;
     }
 
     void refreshChannels(guildId);
-  }, [entry.loaded, entry.loading, fetchCycleKey, guildId, refreshChannels]);
+  }, [entry.attempted, entry.loading, fetchCycleKey, guildId, refreshChannels]);
+
+  const refreshGuildChannels = useCallback(async () => {
+    if (!guildId) return;
+    await refreshChannels(guildId);
+  }, [guildId, refreshChannels]);
 
   return {
     channels: entry.channels,
     error: entry.error,
     loading: entry.loading,
-    refreshChannels: guildId ? () => refreshChannels(guildId) : async () => {},
+    refreshChannels: refreshGuildChannels,
   };
 }
