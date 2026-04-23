@@ -26,6 +26,7 @@
             "pages": [
               "features/moderation",
               "features/ai-conversations",
+              "features/tldr",
               "features/tickets",
               "features/analytics",
               "features/community",
