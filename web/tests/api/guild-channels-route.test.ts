@@ -67,6 +67,41 @@ describe('GET /api/guilds/[guildId]/channels', () => {
       '[api/guilds/:guildId/channels]',
       'Failed to fetch channels',
     );
+    expect(mockProxyToBotApi).toHaveBeenCalledTimes(1);
+    expect(mockProxyToBotApi.mock.calls[0]).toHaveLength(4);
     expect(response.status).toBe(200);
+  });
+
+  it('returns the authorization response without querying the bot API config', async () => {
+    const authResponse = NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    mockAuthorizeGuildAdmin.mockResolvedValueOnce(authResponse);
+
+    const response = await GET(createRequest(), { params: Promise.resolve({ guildId: 'guild-1' }) });
+
+    expect(response).toBe(authResponse);
+    expect(mockGetBotApiConfig).not.toHaveBeenCalled();
+    expect(mockBuildUpstreamUrl).not.toHaveBeenCalled();
+    expect(mockProxyToBotApi).not.toHaveBeenCalled();
+  });
+
+  it('returns the bot API config error before building the upstream URL', async () => {
+    const configResponse = NextResponse.json({ error: 'Missing bot API config' }, { status: 500 });
+    mockGetBotApiConfig.mockReturnValueOnce(configResponse);
+
+    const response = await GET(createRequest(), { params: Promise.resolve({ guildId: 'guild-1' }) });
+
+    expect(response).toBe(configResponse);
+    expect(mockBuildUpstreamUrl).not.toHaveBeenCalled();
+    expect(mockProxyToBotApi).not.toHaveBeenCalled();
+  });
+
+  it('returns the upstream URL error before proxying the request', async () => {
+    const upstreamUrlResponse = NextResponse.json({ error: 'Invalid upstream URL' }, { status: 500 });
+    mockBuildUpstreamUrl.mockReturnValueOnce(upstreamUrlResponse);
+
+    const response = await GET(createRequest(), { params: Promise.resolve({ guildId: 'guild-1' }) });
+
+    expect(response).toBe(upstreamUrlResponse);
+    expect(mockProxyToBotApi).not.toHaveBeenCalled();
   });
 });

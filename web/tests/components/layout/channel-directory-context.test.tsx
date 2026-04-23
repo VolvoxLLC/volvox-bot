@@ -201,6 +201,29 @@ describe('ChannelDirectoryProvider', () => {
     expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
 
+  it('clears loading and redirects with a callback URL after an unauthorized response', async () => {
+    const locationSpy = vi.spyOn(globalThis, 'location', 'get').mockReturnValue({
+      href: 'http://localhost:3000/dashboard/logs',
+    } as Location);
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: false,
+      status: 401,
+      statusText: 'Unauthorized',
+    } as Response);
+
+    render(
+      <ChannelDirectoryProvider>
+        <ChannelConsumer guildId="guild-1" />
+      </ChannelDirectoryProvider>,
+    );
+
+    await screen.findByText('Unauthorized');
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(locationSpy.mock.results[0]?.value.href).toBe(
+      '/login?callbackUrl=%2Fdashboard%2Flogs',
+    );
+  });
+
   it('forces a new fetch during an in-flight request', async () => {
     const user = userEvent.setup();
     const firstRequest = createDeferred<Response>();

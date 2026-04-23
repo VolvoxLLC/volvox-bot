@@ -74,6 +74,7 @@ export function ChannelDirectoryProvider({ children }: Readonly<{ children: Reac
   const [cacheVersion, setCacheVersion] = useState(0);
   const [entries, setEntries] = useState<Record<string, ChannelDirectoryEntry>>({});
   const previousPathnameRef = useRef<string | null>(null);
+  const pathnameRef = useRef(pathname);
   const entriesRef = useRef(entries);
   const abortControllersRef = useRef(new Map<string, AbortController>());
   const inflightRef = useRef(new Map<string, Promise<void>>());
@@ -81,6 +82,10 @@ export function ChannelDirectoryProvider({ children }: Readonly<{ children: Reac
   useEffect(() => {
     entriesRef.current = entries;
   }, [entries]);
+
+  useEffect(() => {
+    pathnameRef.current = pathname;
+  }, [pathname]);
 
   const fetchChannels = useCallback(async (guildId: string, forceRefresh = false) => {
     if (!guildId) return;
@@ -120,7 +125,21 @@ export function ChannelDirectoryProvider({ children }: Readonly<{ children: Reac
         });
 
         if (response.status === 401) {
-          globalThis.location.href = '/login';
+          if (abortControllersRef.current.get(guildId) !== controller) {
+            return;
+          }
+
+          setEntries((current) => ({
+            ...current,
+            [guildId]: {
+              channels: current[guildId]?.channels ?? [],
+              error: 'Unauthorized',
+              loading: false,
+              loaded: false,
+              attempted: true,
+            },
+          }));
+          globalThis.location.href = `/login?callbackUrl=${encodeURIComponent(pathnameRef.current)}`;
           return;
         }
 
