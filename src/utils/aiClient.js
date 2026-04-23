@@ -155,7 +155,7 @@ export { parseProviderModel };
  *
  * @param {string} modelString - `provider:model` identifier (bare model names throw; see D1).
  * @param {{ apiKey?: string, baseUrl?: string }} [overrides]
- * @returns {Promise<{ model: object, providerName: string, modelId: string, factory: object }>}
+ * @returns {Promise<{ model: object, providerName: string, modelId: string, factory: object, resolvedBaseUrl: string }>}
  */
 async function resolveModel(modelString, overrides = {}) {
   const { createAnthropic } = await getSDK();

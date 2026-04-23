@@ -58,7 +58,8 @@ if (fileOutputEnabled) {
 /**
  * Sensitive field names that should be redacted from logs.
  * Pattern-based matches (any env var ending in `_API_KEY` or `_AUTH_TOKEN`) are
- * handled by `matchesSensitivePattern` so new providers are covered automatically.
+ * handled by `isSensitiveKey()` using `SENSITIVE_PATTERNS` so new providers are
+ * covered automatically.
  */
 const SENSITIVE_FIELDS = [
   'DISCORD_TOKEN',
