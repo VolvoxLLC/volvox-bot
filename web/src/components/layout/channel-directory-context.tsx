@@ -97,7 +97,8 @@ export function ChannelDirectoryProvider({ children }: Readonly<{ children: Reac
       },
     }));
 
-    const request = (async () => {
+    let request: Promise<void> | undefined;
+    request = (async () => {
       try {
         const response = await fetch(`/api/guilds/${encodeURIComponent(guildId)}/channels`, {
           signal: controller.signal,
@@ -155,7 +156,9 @@ export function ChannelDirectoryProvider({ children }: Readonly<{ children: Reac
         if (abortControllersRef.current.get(guildId) === controller) {
           abortControllersRef.current.delete(guildId);
         }
-        inflightRef.current.delete(guildId);
+        if (request && inflightRef.current.get(guildId) === request) {
+          inflightRef.current.delete(guildId);
+        }
       }
     })();
 

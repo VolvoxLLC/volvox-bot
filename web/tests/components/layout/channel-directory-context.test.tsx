@@ -257,4 +257,85 @@ describe('ChannelDirectoryProvider', () => {
     expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
 
+  it('keeps the replacement in-flight request deduplicated after aborting the previous one', async () => {
+    const firstRequest = createDeferred<Response>();
+    const secondRequest = createDeferred<Response>();
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementationOnce((_input, init) => {
+        const signal = init?.signal;
+        if (!(signal instanceof AbortSignal)) {
+          throw new Error('Expected abort signal');
+        }
+
+        return new Promise<Response>((resolve, reject) => {
+          signal.addEventListener(
+            'abort',
+            () => reject(new DOMException('Aborted', 'AbortError')),
+            { once: true },
+          );
+          void firstRequest.promise.then(resolve, reject);
+        });
+      })
+      .mockImplementationOnce(() => secondRequest.promise)
+      .mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => [{ id: '2', name: 'beta', type: 0 }],
+      } as Response);
+
+    function RefreshConsumer({ label }: { label: string }) {
+      const { channels, loading, refreshChannels } = useGuildChannels('guild-1');
+
+      return (
+        <div>
+          <button type="button" onClick={() => void refreshChannels()}>
+            {label}
+          </button>
+          <span>{loading ? 'Loading channels' : channels.map((channel) => channel.name).join(', ')}</span>
+        </div>
+      );
+    }
+
+    const view = render(
+      <ChannelDirectoryProvider>
+        <RefreshConsumer label="Refresh primary" />
+      </ChannelDirectoryProvider>,
+    );
+
+    await screen.findByText('Loading channels');
+    const refreshButton = await screen.findByRole('button', { name: 'Refresh primary' });
+    refreshButton.click();
+
+    await waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+    });
+
+    secondRequest.resolve({
+      ok: true,
+      status: 200,
+      json: async () => [{ id: '1', name: 'alpha', type: 0 }],
+    } as Response);
+
+    await screen.findByText('alpha');
+
+    view.rerender(
+      <ChannelDirectoryProvider>
+        <RefreshConsumer label="Refresh primary" />
+        <RefreshConsumer label="Refresh duplicate" />
+      </ChannelDirectoryProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByText('alpha')).toHaveLength(2);
+    });
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+
+    firstRequest.resolve({
+      ok: true,
+      status: 200,
+      json: async () => [{ id: '3', name: 'stale', type: 0 }],
+    } as Response);
+  });
+
 });
