@@ -1,0 +1,44 @@
+---
+title: TL;DR
+description: 'AI-powered conversation summaries — never miss what happened'
+---
+
+# TL;DR
+
+The `/tldr` command uses AI to summarize recent channel messages into a structured summary with key topics, decisions, action items, and notable links.
+
+## What it does
+
+- **Instant summaries** — Use `/tldr` to summarize the last 50 messages (configurable)
+- **Time-based** — Use `/tldr hours:24` to summarize the last 24 hours
+- **AI-powered** — Claude extracts key topics, decisions, action items, and links
+- **Rich embeds** — Beautiful formatted summaries right in Discord
+- **Configurable** — Custom system prompts, cooldowns, and message limits
+
+## How to use
+
+1. Enable TLDR in **Config → TLDR** (enabled by default)
+2. Use `/tldr` in any channel to summarize recent messages
+3. Optionally specify `count` (1-200 messages) or `hours` (1-168 hours)
+4. The AI returns a structured summary with topics, decisions, actions, and links
+
+## Example
+
+Using `/tldr hours:2` in a busy channel:
+
+> **📋 TL;DR Summary** — Summarized **87** messages in #general
+>
+> 🗝️ **Key Topics**: Feature roadmap discussion, community event planning, bug triage
+> ✅ **Decisions Made**: Moving to weekly releases, adopting new CI pipeline
+> 📌 **Action Items**: @dev team: update docs by Friday, @mods: set up event channel
+> 🔗 **Notable Links**: design mockup, CI migration guide
+
+## Configuration
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| Enabled | Toggle the /tldr command | On |
+| Default messages | Messages to summarize | 50 |
+| Max messages | Hard cap on message count | 200 |
+| Cooldown (seconds) | Per-channel cooldown | 300 |
+| System prompt | Custom AI instructions | Built-in summary prompt |
