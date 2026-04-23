@@ -1,5 +1,6 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import packageJson from "./package.json" with { type: "json" };
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -41,6 +42,9 @@ const securityHeaders = [
 const nextConfig = {
   output: "standalone",
   allowedDevOrigins: ["127.0.0.1"],
+  env: {
+    NEXT_PUBLIC_WEB_APP_VERSION: packageJson.version,
+  },
   ...(process.env.NODE_ENV !== "production" && {
     turbopack: {
       root: path.join(__dirname, ".."),
