@@ -68,7 +68,7 @@ jobs:
         uses: coverallsapp/github-action@v2.3.6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          path-to-lcov: coverage/lcov.info
+          path-to-lcov: coverage/lcov.info,web/coverage/lcov.info
 
       - name: Upload coverage artifacts (bot)
         if: success()
@@ -211,7 +211,7 @@ jobs:
     name: SonarQube Cloud
     runs-on: ubuntu-latest
     needs: [test]
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false)
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo != null && github.event.pull_request.head.repo.fork == false)
 
     steps:
       - name: Checkout
@@ -220,21 +220,22 @@ jobs:
           fetch-depth: 0
 
       - name: Download coverage artifacts (bot)
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v7.0.1
         with:
           name: coverage-${{ github.run_id }}
           path: coverage/
 
       - name: Download coverage artifacts (web)
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v7.0.1
         with:
           name: web-coverage-${{ github.run_id }}
           path: web/coverage/
 
       - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v6
+        uses: SonarSource/sonarqube-scan-action@v6.1.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
 
   docker-build-validation:
     name: Docker Build Validation
