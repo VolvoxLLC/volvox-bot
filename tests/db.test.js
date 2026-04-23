@@ -114,6 +114,7 @@ describe('db module', () => {
       expect(runnerOpts.databaseUrl).toBe('postgresql://test:test@localhost:5432/testdb');
       expect(runnerOpts.direction).toBe('up');
       expect(runnerOpts.migrationsTable).toBe('pgmigrations');
+      expect(runnerOpts.checkOrder).toBe(false);
       expect(runnerOpts.dir).toContain('migrations');
       expect(typeof runnerOpts.log).toBe('function');
     });

@@ -10,6 +10,7 @@ import {
   parseNumberInput,
 } from '@/components/dashboard/config-editor-utils';
 import type { ConfigFeatureId } from '@/components/dashboard/config-workspace/types';
+import { XpLevelActionsEditor } from '@/components/dashboard/xp-level-actions-editor';
 import { Button } from '@/components/ui/button';
 import { ChannelSelector } from '@/components/ui/channel-selector';
 import { DiscordMarkdownEditor } from '@/components/ui/discord-markdown-editor';
@@ -200,6 +201,15 @@ export function OnboardingGrowthCategory() {
         reputation: { ...prev.reputation, enabled: v },
         xp: { ...prev.xp, enabled: v },
       }));
+  } else if (activeTab === 'xp-level-actions') {
+    isCurrentFeatureEnabled =
+      (draftConfig.xp?.enabled ?? false) || (draftConfig.reputation?.enabled ?? false);
+    handleToggleCurrentFeature = (v) =>
+      updateDraftConfig((prev) => ({
+        ...prev,
+        reputation: { ...prev.reputation, enabled: v },
+        xp: { ...prev.xp, enabled: v },
+      }));
   } else if (activeTab === 'tldr-afk') {
     isCurrentFeatureEnabled =
       (draftConfig.tldr?.enabled ?? false) || (draftConfig.afk?.enabled ?? false);
@@ -275,7 +285,25 @@ export function OnboardingGrowthCategory() {
               </div>
             </details>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-4 border-t border-border/40">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 pt-4 border-t border-border/40">
+              <div className="space-y-2">
+                <label
+                  htmlFor="welcome-channel-id"
+                  className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1"
+                >
+                  Message Channel
+                </label>
+                <ChannelSelector
+                  id="welcome-channel-id"
+                  guildId={guildId}
+                  selected={draftConfig.welcome?.channelId ? [draftConfig.welcome.channelId] : []}
+                  onChange={(selected) => updateWelcomeField('channelId', selected[0] ?? null)}
+                  disabled={saving}
+                  placeholder="Select welcome message channel"
+                  maxSelections={1}
+                  filter="text"
+                />
+              </div>
               <div className="space-y-2">
                 <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1">
                   Rules Channel
@@ -742,6 +770,20 @@ export function OnboardingGrowthCategory() {
                 Define total XP required for each sequential level (L1, L2, L3...).
               </p>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Level-Up Actions Layout */}
+      {activeTab === 'xp-level-actions' && (
+        <div className="space-y-6">
+          <div className="p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-6">
+            <XpLevelActionsEditor
+              draftConfig={draftConfig}
+              guildId={guildId}
+              saving={saving}
+              updateDraftConfig={updateDraftConfig}
+            />
           </div>
         </div>
       )}

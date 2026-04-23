@@ -396,6 +396,21 @@ describe('configValidation', () => {
       expect(errors.some((e) => e.includes('<= 1000'))).toBe(true);
     });
 
+    it('should reject fractional level action milestones', () => {
+      const errors = validateSingleValue('xp.levelActions', [
+        { level: 5.5, actions: [{ type: 'grantRole' }] },
+      ]);
+      expect(errors.some((e) => e.includes('must be an integer'))).toBe(true);
+    });
+
+    it('should reject duplicate level action milestones', () => {
+      const errors = validateSingleValue('xp.levelActions', [
+        { level: 5, actions: [{ type: 'grantRole' }] },
+        { level: 5, actions: [{ type: 'sendDm', message: 'Duplicate level' }] },
+      ]);
+      expect(errors.some((e) => e.includes('duplicate value "5"'))).toBe(true);
+    });
+
     it('should reject actions missing type', () => {
       const errors = validateSingleValue('xp.levelActions', [
         { level: 5, actions: [{ roleId: '123' }] },
@@ -414,6 +429,128 @@ describe('configValidation', () => {
       expect(
         validateSingleValue('xp.defaultActions', [{ type: 'grantRole', roleId: '123' }]),
       ).toEqual([]);
+    });
+
+    it('should reject webhook action URLs targeting private networks', () => {
+      const defaultActionErrors = validateSingleValue('xp.defaultActions', [
+        { type: 'webhook', url: 'https://localhost/hook' },
+      ]);
+      const levelActionErrors = validateSingleValue('xp.levelActions', [
+        { level: 5, actions: [{ type: 'webhook', url: 'https://169.254.169.254/hook' }] },
+      ]);
+
+      expect(defaultActionErrors.some((error) => error.includes('private/internal'))).toBe(true);
+      expect(levelActionErrors.some((error) => error.includes('private/internal'))).toBe(true);
+    });
+
+    it('should accept public HTTP and HTTPS webhook action URLs', () => {
+      expect(
+        validateSingleValue('xp.defaultActions', [
+          { type: 'webhook', url: 'http://example.com/hook' },
+          { type: 'webhook', url: 'https://example.com/hook' },
+        ]),
+      ).toEqual([]);
+    });
+
+    it('should require executor fields for typed xp actions', () => {
+      const defaultActionErrors = validateSingleValue('xp.defaultActions', [
+        { type: 'webhook' },
+        { type: 'grantRole' },
+        { type: 'xpBonus' },
+        { type: 'addReaction' },
+        { type: 'nickPrefix' },
+        { type: 'nickSuffix' },
+      ]);
+      const levelActionErrors = validateSingleValue('xp.levelActions', [
+        {
+          level: 5,
+          actions: [{ type: 'removeRole' }],
+        },
+      ]);
+
+      expect(defaultActionErrors).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining('xp.defaultActions[0].url: required'),
+          expect.stringContaining('xp.defaultActions[1].roleId: required'),
+          expect.stringContaining('xp.defaultActions[2].amount: required'),
+          expect.stringContaining('xp.defaultActions[3].emoji: required'),
+          expect.stringContaining('xp.defaultActions[4].prefix: required'),
+          expect.stringContaining('xp.defaultActions[5].suffix: required'),
+        ]),
+      );
+      expect(levelActionErrors).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining('xp.levelActions[0].actions[0].roleId: required'),
+        ]),
+      );
+    });
+
+    it('should reject non-positive xpBonus amounts', () => {
+      const defaultActionErrors = validateSingleValue('xp.defaultActions', [
+        { type: 'xpBonus', amount: 0 },
+      ]);
+      const levelActionErrors = validateSingleValue('xp.levelActions', [
+        { level: 5, actions: [{ type: 'xpBonus', amount: -1 }] },
+      ]);
+
+      expect(defaultActionErrors.some((error) => error.includes('>= 1'))).toBe(true);
+      expect(levelActionErrors.some((error) => error.includes('>= 1'))).toBe(true);
+    });
+
+    it('should reject fractional and oversized xpBonus amounts', () => {
+      const fractionalErrors = validateSingleValue('xp.defaultActions', [
+        { type: 'xpBonus', amount: 1.5 },
+      ]);
+      const oversizedErrors = validateSingleValue('xp.levelActions', [
+        { level: 5, actions: [{ type: 'xpBonus', amount: 1000001 }] },
+      ]);
+
+      expect(fractionalErrors.some((error) => error.includes('must be an integer'))).toBe(true);
+      expect(oversizedErrors.some((error) => error.includes('<= 1000000'))).toBe(true);
+    });
+
+    it('should accept explicit embed schemas for xp actions', () => {
+      expect(
+        validateSingleValue('xp.defaultActions', [
+          {
+            id: 'action-1',
+            type: 'announce',
+            embed: {
+              title: 'Level {{level}}',
+              thumbnailType: 'user_avatar',
+              fields: [{ id: 'field-1', name: 'XP', value: '{{xp}}', inline: true }],
+              footer: { text: 'Footer', iconURL: 'https://example.com/footer.png' },
+              imageUrl: 'https://example.com/image.png',
+              showTimestamp: true,
+            },
+          },
+        ]),
+      ).toEqual([]);
+    });
+
+    it('should accept level action entry ids in xp.levelActions', () => {
+      expect(
+        validateSingleValue('xp.levelActions', [
+          {
+            id: 'level-1',
+            level: 5,
+            actions: [{ id: 'action-1', type: 'grantRole', roleId: '123' }],
+          },
+        ]),
+      ).toEqual([]);
+    });
+
+    it('should reject unknown xp embed keys now that embed schema is explicit', () => {
+      const errors = validateSingleValue('xp.defaultActions', [
+        {
+          type: 'announce',
+          embed: {
+            unexpected: true,
+          },
+        },
+      ]);
+
+      expect(errors.some((error) => error.includes('unknown config key'))).toBe(true);
     });
 
     it('should reject defaultActions missing type', () => {
@@ -444,6 +581,13 @@ describe('configValidation', () => {
         { level: 5, message: 'Second' },
       ]);
       expect(errors.some((e) => e.includes('duplicate value "5"'))).toBe(true);
+    });
+
+    it('should reject fractional xp.levelUpDm message levels', () => {
+      const errors = validateSingleValue('xp.levelUpDm.messages', [
+        { level: 5.5, message: 'Milestone' },
+      ]);
+      expect(errors.some((e) => e.includes('must be an integer'))).toBe(true);
     });
 
     it('should reject blank xp.levelUpDm override messages', () => {

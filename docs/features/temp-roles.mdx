@@ -1,0 +1,34 @@
+---
+title: Temp Roles
+description: 'Time-limited role assignments with automatic expiration'
+---
+
+# Temp Roles
+
+Assign Discord roles that automatically expire after a set duration. Perfect for giveaways, event access, trial periods, and more.
+
+## What it does
+
+- **Time-limited roles** — Assign a role that removes itself after a duration
+- **Flexible durations** — Minutes, hours, days, or custom
+- **Automatic cleanup** — Roles are removed on schedule, no manual tracking
+- **History** — Full log of all temp role assignments
+
+## How to use
+
+1. Use the temp role command in Discord: `/temprole assign @user @role duration`
+2. The role is assigned immediately and will be removed automatically
+3. View active and expired temp roles in the dashboard under **Temp Roles**
+
+<Callout type="tip">
+Use temp roles for event access — grant a role for the event duration and it cleans itself up.
+</Callout>
+
+## Configuration
+
+| Setting | Description |
+|---------|-------------|
+| Max duration | Longest allowed temp role duration |
+| Allowed roles | Which roles can be temporarily assigned |
+| Log channel | Where temp role events are posted |
+| Who can assign | Required permission level |
