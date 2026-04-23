@@ -282,7 +282,7 @@ function buildRegistry() {
       // startup.
       warn('providerRegistry: rebuild subscriber threw', {
         subscriber: fn?.name || 'anonymous',
-        error: err?.message,
+        error: err,
       });
     }
   }

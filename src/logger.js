@@ -208,7 +208,7 @@ function cloneAndScrubError(err, seen = new WeakMap()) {
   // set by scrubbing it through `scrubValue`.
   if (Array.isArray(err.errors)) {
     cloned.errors = err.errors.map((sub) => scrubValue(sub));
-  } else if ('errors' in err) {
+  } else if (Object.hasOwn(err, 'errors')) {
     cloned.errors = scrubValue(err.errors);
   }
 
