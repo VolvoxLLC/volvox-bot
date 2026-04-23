@@ -13,6 +13,16 @@ vi.mock('next/navigation', () => ({
   usePathname: () => mockUsePathname(),
 }));
 
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
 function ChannelConsumer({ guildId }: { guildId: string | null }) {
   const { channels, loading, error } = useGuildChannels(guildId);
 
@@ -187,4 +197,64 @@ describe('ChannelDirectoryProvider', () => {
     await screen.findByText('alpha');
     expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
+
+  it('forces a new fetch during an in-flight request', async () => {
+    const firstRequest = createDeferred<Response>();
+    const secondRequest = createDeferred<Response>();
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementationOnce((_input, init) => {
+        const signal = init?.signal;
+        if (!(signal instanceof AbortSignal)) {
+          throw new Error('Expected abort signal');
+        }
+
+        return new Promise<Response>((resolve, reject) => {
+          signal.addEventListener(
+            'abort',
+            () => reject(new DOMException('Aborted', 'AbortError')),
+            { once: true },
+          );
+          void firstRequest.promise.then(resolve, reject);
+        });
+      })
+      .mockImplementationOnce(() => secondRequest.promise);
+
+    function RefreshConsumer({ label }: { label: string }) {
+      const { channels, loading, refreshChannels } = useGuildChannels('guild-1');
+
+      return (
+        <div>
+          <button type="button" onClick={() => void refreshChannels()}>
+            {label}
+          </button>
+          <span>{loading ? 'Loading channels' : channels.map((channel) => channel.name).join(', ')}</span>
+        </div>
+      );
+    }
+
+    render(
+      <ChannelDirectoryProvider>
+        <RefreshConsumer label="Refresh primary" />
+      </ChannelDirectoryProvider>,
+    );
+
+    await screen.findByText('Loading channels');
+    const refreshButton = await screen.findByRole('button', { name: 'Refresh primary' });
+    refreshButton.click();
+
+    await waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+    });
+
+    secondRequest.resolve({
+      ok: true,
+      status: 200,
+      json: async () => [{ id: '1', name: 'alpha', type: 0 }],
+    } as Response);
+
+    await screen.findByText('alpha');
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
 });

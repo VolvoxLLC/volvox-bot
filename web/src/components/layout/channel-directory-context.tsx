@@ -23,6 +23,7 @@ interface ChannelDirectoryEntry {
 interface ChannelDirectoryContextValue {
   cacheVersion: number;
   entries: Record<string, ChannelDirectoryEntry>;
+  loadChannels: (guildId: string) => Promise<void>;
   refreshChannels: (guildId: string) => Promise<void>;
 }
 
@@ -74,9 +75,11 @@ export function ChannelDirectoryProvider({ children }: Readonly<{ children: Reac
     if (!forceRefresh && (existingEntry?.loaded || existingEntry?.loading)) {
       return inflightRef.current.get(guildId);
     }
-    const inflightRequest = inflightRef.current.get(guildId);
-    if (inflightRequest) {
-      return inflightRequest;
+    if (!forceRefresh) {
+      const inflightRequest = inflightRef.current.get(guildId);
+      if (inflightRequest) {
+        return inflightRequest;
+      }
     }
 
     abortControllersRef.current.get(guildId)?.abort();
@@ -160,6 +163,11 @@ export function ChannelDirectoryProvider({ children }: Readonly<{ children: Reac
     return request;
   }, []);
 
+  const loadChannels = useCallback(
+    async (guildId: string) => fetchChannels(guildId),
+    [fetchChannels],
+  );
+
   const refreshChannels = useCallback(
     async (guildId: string) => fetchChannels(guildId, true),
     [fetchChannels],
@@ -199,9 +207,10 @@ export function ChannelDirectoryProvider({ children }: Readonly<{ children: Reac
     () => ({
       cacheVersion,
       entries,
+      loadChannels,
       refreshChannels,
     }),
-    [cacheVersion, entries, refreshChannels],
+    [cacheVersion, entries, loadChannels, refreshChannels],
   );
 
   return (
@@ -215,7 +224,7 @@ export function useGuildChannels(guildId: string | null) {
     throw new Error('useGuildChannels must be used within ChannelDirectoryProvider');
   }
 
-  const { cacheVersion, entries, refreshChannels } = context;
+  const { cacheVersion, entries, loadChannels, refreshChannels } = context;
   const entry = guildId ? (entries[guildId] ?? EMPTY_ENTRY) : EMPTY_ENTRY;
   const fetchCycleKey = `${guildId ?? ''}:${cacheVersion}`;
 
@@ -224,8 +233,8 @@ export function useGuildChannels(guildId: string | null) {
       return;
     }
 
-    void refreshChannels(guildId);
-  }, [entry.attempted, entry.loading, fetchCycleKey, guildId, refreshChannels]);
+    void loadChannels(guildId);
+  }, [entry.attempted, entry.loading, fetchCycleKey, guildId, loadChannels]);
 
   const refreshGuildChannels = useCallback(async () => {
     if (!guildId) return;
