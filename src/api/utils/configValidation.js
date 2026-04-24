@@ -226,7 +226,7 @@ export const CONFIG_SCHEMA = {
           enabled: { type: 'boolean' },
           timezone: { type: 'string' },
           activityWindowMinutes: { type: 'number', min: 1, max: 10080 },
-          milestoneInterval: { type: 'number', min: 1, max: 10000 },
+          milestoneInterval: { type: 'number', min: 0, max: 10000 },
           highlightChannels: { type: 'array' },
           excludeChannels: { type: 'array' },
         },
