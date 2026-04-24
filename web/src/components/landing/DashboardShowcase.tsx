@@ -157,7 +157,7 @@ export function DashboardShowcase() {
             Your server, at a glance
           </h2>
           <p className="text-lg text-foreground/50 max-w-xl font-medium leading-relaxed">
-            Absolute control over your community, engineered for scale and speed without the
+            Absolute control over your community, engineered for scale and simplicity without the
             clutter.
           </p>
         </div>
@@ -177,7 +177,7 @@ export function DashboardShowcase() {
               <div className="flex items-center gap-2 px-5 py-1.5 rounded-full bg-card border border-border/80 shadow-sm">
                 <Monitor className="w-[14px] h-[14px] text-muted-foreground/60" />
                 <span className="text-[11px] text-muted-foreground font-mono font-medium tracking-tight">
-                  dashboard.volvox.bot
+                  volvox.bot/dashboard
                 </span>
               </div>
               <div className="w-16 hidden sm:block" />

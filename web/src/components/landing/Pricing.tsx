@@ -181,16 +181,16 @@ export function Pricing() {
             className="flex items-center justify-center gap-3 mb-6 opacity-80"
           >
             <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-foreground/40">
-              QUOTA ARRANGEMENT
+              SYSTEM ACCESS TIERS
             </span>
           </motion.div>
 
           <h2 className="text-4xl md:text-5xl font-black text-foreground mb-6 leading-tight tracking-tight">
-            System Access Tiers
+            Pricing
           </h2>
           <p className="text-lg text-foreground/50 max-w-xl mx-auto font-medium leading-relaxed mb-10">
-            Scale without limits. Establish perfect governance and save compounding hours in
-            community management.
+            Start with the core bot for free, then upgrade when your server needs deeper
+            automation, analytics, and support.
           </p>
 
           <div className="flex items-center justify-center gap-6 mb-4">
@@ -250,9 +250,6 @@ export function Pricing() {
                   <Terminal className="w-5 h-5 text-foreground/40" />
                   Standard
                 </PlanName>
-                <span className="text-[10px] font-mono font-bold tracking-[0.2em] text-foreground/20 uppercase">
-                  MOD-01
-                </span>
               </Plan>
               <Description>For side projects that might actually ship.</Description>
 
@@ -274,12 +271,6 @@ export function Pricing() {
                     <Check className="h-3 w-3 stroke-[3px]" />
                   </div>
                   Core command modules
-                </ListItem>
-                <ListItem>
-                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                    <Check className="h-3 w-3 stroke-[3px]" />
-                  </div>
-                  1 Discord server
                 </ListItem>
                 <ListItem>
                   <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -346,7 +337,7 @@ export function Pricing() {
                 </PlanName>
                 <Badge>Recommended</Badge>
               </Plan>
-              <Description>Deploy the absolute synthesis of AI intelligence.</Description>
+              <Description>Unlock advanced automation, analytics, and priority support.</Description>
 
               <div className="mt-8">
                 <Price>
@@ -377,12 +368,6 @@ export function Pricing() {
                     <Check className="h-3 w-3 stroke-[3px]" />
                   </div>
                   All Standard bot features
-                </ListItem>
-                <ListItem>
-                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary shadow-[0_0_10px_hsl(var(--primary)/0.2)]">
-                    <Check className="h-3 w-3 stroke-[3px]" />
-                  </div>
-                  Up to 3 Discord servers
                 </ListItem>
                 <ListItem>
                   <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary shadow-[0_0_10px_hsl(var(--primary)/0.2)]">

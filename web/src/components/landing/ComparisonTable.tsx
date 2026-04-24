@@ -1,7 +1,7 @@
 'use client';
 
 import { animate, motion, useMotionValue, useReducedMotion, useTransform } from 'framer-motion';
-import { Check, Info, Shield, X, Zap } from 'lucide-react';
+import { Check, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 
@@ -29,11 +29,11 @@ const comparisonData: readonly ComparisonRowData[] = [
   },
   {
     feature: 'AI Moderation',
-    description: 'Autonomous Claude-powered logic',
+    description: 'Autonomous AI-powered logic',
     volvox: true,
-    mee6: 'Basic',
-    dyno: 'Basic',
-    carlbot: 'Basic',
+    mee6: false,
+    dyno: false,
+    carlbot: false,
   },
   {
     feature: 'Next-Gen Dashboard',
@@ -187,7 +187,6 @@ function ComparisonRow({
 export function ComparisonTable() {
   const [mounted, setMounted] = useState(false);
   const reducedMotion = useReducedMotion();
-  const [localDate] = useState(() => new Date().toLocaleDateString());
 
   useEffect(() => {
     setMounted(true);
@@ -199,15 +198,6 @@ export function ComparisonTable() {
     <section className="relative bg-background px-4 py-32 sm:px-6 lg:px-8">
       <div className="relative z-10 mx-auto max-w-4xl">
         <div className="mb-20 flex flex-col items-center text-center">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            className="mb-8 inline-flex items-center gap-3 rounded-full border border-border/60 bg-card px-4 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-foreground/60 shadow-sm"
-          >
-            [BENCHMARK_ANALYSIS]
-          </motion.div>
-
           <h2 className="mb-6 text-4xl font-bold leading-tight tracking-tight text-foreground md:text-5xl">
             Engineered for superiority
           </h2>
@@ -264,27 +254,6 @@ export function ComparisonTable() {
                 ))}
               </tbody>
             </table>
-
-            <div className="flex min-w-[700px] items-center justify-between border-t border-border/60 bg-background px-6 py-4">
-              <div className="flex items-center gap-2 font-mono text-[10px] font-medium tracking-wide text-foreground/40">
-                <Info className="h-3.5 w-3.5 opacity-60" />
-                Validated: {localDate}
-              </div>
-              <div className="flex items-center gap-6">
-                <div className="flex items-center gap-2">
-                  <Zap className="h-3.5 w-3.5 text-primary opacity-80" />
-                  <span className="font-mono text-[10px] font-bold uppercase text-foreground/50">
-                    High_Speed
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Shield className="h-3.5 w-3.5 text-foreground/40" />
-                  <span className="font-mono text-[10px] font-bold uppercase text-foreground/50">
-                    Zero_Trust
-                  </span>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>

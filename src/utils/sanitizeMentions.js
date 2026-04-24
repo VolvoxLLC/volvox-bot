@@ -101,13 +101,13 @@ function sanitizeEmbed(embed) {
 }
 
 /**
- * Sanitize a single component object (button, select menu, etc.).
+ * Sanitize a plain component data object (button, select menu, etc.).
  * Handles ActionRow containers recursively.
  *
- * @param {object} component - A Discord message component
+ * @param {object} component - Serialized Discord message component data
  * @returns {object} A new component with sanitized string fields
  */
-function sanitizeComponent(component) {
+function sanitizeComponentData(component) {
   if (!component || typeof component !== 'object') {
     return component;
   }
@@ -131,6 +131,26 @@ function sanitizeComponent(component) {
   }
 
   return result;
+}
+
+/**
+ * Sanitize a single component object (button, select menu, etc.).
+ * Builder instances store required API fields behind toJSON(); spreading them
+ * drops fields like `type`, so serialize first and then sanitize the plain data.
+ *
+ * @param {object} component - A Discord message component or builder
+ * @returns {object} A new component with sanitized string fields
+ */
+function sanitizeComponent(component) {
+  if (!component || typeof component !== 'object') {
+    return component;
+  }
+
+  if (typeof component.toJSON === 'function') {
+    return sanitizeComponentData(component.toJSON());
+  }
+
+  return sanitizeComponentData(component);
 }
 
 /**

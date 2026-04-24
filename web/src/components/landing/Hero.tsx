@@ -232,7 +232,7 @@ export function Hero() {
             className="text-[10px] font-semibold uppercase tracking-[0.3em] text-foreground font-mono"
             suppressHydrationWarning
           >
-            Architecture v{WEB_APP_VERSION}
+            v{WEB_APP_VERSION}
           </span>
           <div className="h-[1px] w-6 bg-foreground" />
         </div>
@@ -259,7 +259,7 @@ export function Hero() {
 
         {/* Subtitle */}
         <p className="hero-sub text-foreground/50 text-base md:text-lg max-w-md text-center font-medium leading-relaxed mb-16 tracking-tight">
-          The absolute synthesis of community intelligence, robust moderation, and seamless scale.
+          Where community insight, resilient moderation, and sustainable growth come together.
         </p>
 
         {/* Console CTA */}

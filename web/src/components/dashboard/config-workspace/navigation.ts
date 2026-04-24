@@ -119,19 +119,13 @@ export const CONFIG_NAVIGATION: ConfigCategoryNav[] = [
     id: 'moderation-safety',
     label: 'Moderation & Safety',
     icon: ShieldAlert,
-    description: 'Moderation actions, starboard policy, role permissions, and audit logging.',
+    description: 'Moderation actions, role permissions, and audit logging.',
     tabs: [
       {
         id: 'moderation',
         label: 'Moderation',
         icon: ShieldAlert,
         desc: 'Configure moderation alerts, notification behavior, and enforcement rules.',
-      },
-      {
-        id: 'starboard',
-        label: 'Starboard',
-        icon: Star,
-        desc: 'Pin popular messages to a starboard channel.',
       },
       {
         id: 'permissions',
@@ -151,13 +145,19 @@ export const CONFIG_NAVIGATION: ConfigCategoryNav[] = [
     id: 'community-tools',
     label: 'Community Tools',
     icon: Bot,
-    description: 'Member-facing utility commands and review workflows.',
+    description: 'Member-facing utility commands, starboard, and bot presence.',
     tabs: [
       {
         id: 'community-tools',
         label: 'Community Tools',
         icon: Wrench,
         desc: 'Enable or disable member-facing commands for this guild.',
+      },
+      {
+        id: 'starboard',
+        label: 'Starboard',
+        icon: Star,
+        desc: 'Pin popular messages to a starboard channel.',
       },
       {
         id: 'bot-status',

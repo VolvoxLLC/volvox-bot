@@ -12,7 +12,7 @@ import { ToggleSwitch } from '../toggle-switch';
 import { ConfigCategoryLayout } from './config-category-layout';
 
 /**
- * Render the configuration UI for moderation, starboard, permissions, and audit-log feature categories.
+ * Render the configuration UI for moderation, permissions, and audit-log feature categories.
  *
  * Displays the controls for the currently active category obtained from the configuration context,
  * wiring feature enable toggles and handlers that update the draft configuration. Returns `null`
@@ -127,17 +127,6 @@ export function ModerationSafetyCategory() {
     [updateDraftConfig],
   );
 
-  // Starboard state updates
-  const updateStarboardField = useCallback(
-    (field: string, value: unknown) => {
-      updateDraftConfig((prev) => ({
-        ...prev,
-        starboard: { ...prev.starboard, [field]: value },
-      }));
-    },
-    [updateDraftConfig],
-  );
-
   // Permissions state updates
   const updatePermissionsField = useCallback(
     (field: string, value: unknown) => {
@@ -172,10 +161,6 @@ export function ModerationSafetyCategory() {
     case 'moderation':
       isCurrentFeatureEnabled = draftConfig.moderation?.enabled ?? false;
       handleToggleCurrentFeature = updateModerationEnabled;
-      break;
-    case 'starboard':
-      isCurrentFeatureEnabled = draftConfig.starboard?.enabled ?? false;
-      handleToggleCurrentFeature = (v) => updateStarboardField('enabled', v);
       break;
     case 'permissions':
       isCurrentFeatureEnabled = draftConfig.permissions?.enabled ?? false;
@@ -525,117 +510,6 @@ export function ModerationSafetyCategory() {
                 onChange={(selected) => updateProtectRolesField('roleIds', selected)}
                 disabled={saving}
                 placeholder="Select protected roles"
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Starboard Layout */}
-      {activeTab === 'starboard' && (
-        <div className="space-y-6">
-          <div className="p-4 sm:p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-6">
-            <div className="space-y-3">
-              <label
-                htmlFor="starboard-channel-id"
-                className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1 block"
-              >
-                Target Channel
-              </label>
-              <ChannelSelector
-                id="starboard-channel-id"
-                guildId={guildId}
-                selected={draftConfig.starboard?.channelId ? [draftConfig.starboard.channelId] : []}
-                onChange={(selected) => updateStarboardField('channelId', selected[0] ?? '')}
-                disabled={saving}
-                placeholder="Select starboard channel"
-                maxSelections={1}
-                filter="text"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-3">
-                <label
-                  htmlFor="threshold"
-                  className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1 block"
-                >
-                  Star Threshold
-                </label>
-                <input
-                  id="threshold"
-                  type="number"
-                  min={1}
-                  value={draftConfig.starboard?.threshold ?? 3}
-                  onChange={(e) => {
-                    const num = parseNumberInput(e.target.value, 1);
-                    if (num !== undefined) updateStarboardField('threshold', num);
-                  }}
-                  onFocus={selectNumericValueOnFocus}
-                  disabled={saving}
-                  className={inputClasses}
-                />
-              </div>
-
-              <div className="space-y-3">
-                <label
-                  htmlFor="emoji"
-                  className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1 block"
-                >
-                  Watch Emoji
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    id="emoji"
-                    type="text"
-                    value={draftConfig.starboard?.emoji ?? '*'}
-                    onChange={(e) => updateStarboardField('emoji', e.target.value.trim() || '*')}
-                    onFocus={(e) => e.target.select()}
-                    disabled={saving}
-                    className={inputClasses}
-                    placeholder="*"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => updateStarboardField('emoji', '*')}
-                    disabled={saving}
-                    className={`shrink-0 rounded-[12px] px-3 py-2 text-xs font-medium transition-colors border ${
-                      draftConfig.starboard?.emoji === '*'
-                        ? 'bg-primary/20 text-primary border-primary/20 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]'
-                        : 'bg-muted/30 text-muted-foreground border-transparent hover:text-foreground hover:bg-muted/50'
-                    }`}
-                  >
-                    Any ✱
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between p-4 rounded-2xl bg-muted/10 border border-border/40 hover:bg-muted/20 transition-colors">
-              <span className="text-sm font-bold text-foreground">Allow Self-Star</span>
-              <ToggleSwitch
-                checked={draftConfig.starboard?.selfStarAllowed ?? false}
-                onChange={(v) => updateStarboardField('selfStarAllowed', v)}
-                disabled={saving}
-                label="Self-Star Allowed"
-              />
-            </div>
-
-            <div className="space-y-3 pt-4 border-t border-border/40">
-              <label
-                htmlFor="ignored-channels"
-                className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1 block"
-              >
-                Ignored Channels
-              </label>
-              <ChannelSelector
-                id="ignored-channels"
-                guildId={guildId}
-                selected={(draftConfig.starboard?.ignoredChannels ?? []) as string[]}
-                onChange={(selected) => updateStarboardField('ignoredChannels', selected)}
-                disabled={saving}
-                placeholder="Select ignored channels"
-                filter="text"
               />
             </div>
           </div>

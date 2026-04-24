@@ -184,7 +184,7 @@ export function Footer() {
                   Your community, <span className="text-foreground/25">re-engineered.</span>
                 </h2>
                 <p className="text-sm text-foreground/40 max-w-md mx-auto font-medium leading-relaxed">
-                  Deploy the absolute synthesis of AI intelligence and community governance.
+                  Bring AI chat, moderation, analytics, and community tools into one bot.
                 </p>
               </div>
 

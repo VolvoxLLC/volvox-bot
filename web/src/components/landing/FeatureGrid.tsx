@@ -2,7 +2,7 @@
 
 import { motion, useReducedMotion } from 'framer-motion';
 import type { LucideIcon } from 'lucide-react';
-import { Activity, Cpu, Globe, Lock, MessageSquare, Shield, Sparkles, Zap } from 'lucide-react';
+import { Brain, FileText, Lock, MessageSquare, Shield, Trophy } from 'lucide-react';
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 
@@ -16,34 +16,11 @@ interface Feature {
   readonly animationOrder: number;
 }
 
-const liveInsightBars = [
-  { id: 'activity-40', height: 40, delayOrder: 0 },
-  { id: 'activity-75', height: 75, delayOrder: 1 },
-  { id: 'activity-55', height: 55, delayOrder: 2 },
-  { id: 'activity-90', height: 90, delayOrder: 3 },
-  { id: 'activity-65', height: 65, delayOrder: 4 },
-  { id: 'activity-85', height: 85, delayOrder: 5 },
-  { id: 'activity-45', height: 45, delayOrder: 6 },
-  { id: 'activity-70', height: 70, delayOrder: 7 },
-] as const;
-
-const coreEngineCells = [
-  'core-alpha',
-  'core-beta',
-  'core-gamma',
-  'core-delta',
-  'core-epsilon',
-  'core-zeta',
-  'core-eta',
-  'core-theta',
-] as const;
-
 const features: readonly Feature[] = [
   {
     icon: MessageSquare,
-    title: 'Neural Chat',
-    description:
-      'Multi-turn, context-aware conversations powered by Claude. Synthesis of intelligence directly in your channels.',
+    title: 'AI Chat',
+    description: 'Mention the bot for casual, context-aware conversations in your server.',
     size: 'large',
     className: 'md:col-span-2 lg:col-span-2',
     animationOrder: 0,
@@ -51,13 +28,13 @@ const features: readonly Feature[] = [
       <div className="space-y-4 text-[13px] font-medium leading-relaxed">
         <div className="flex gap-3 text-foreground/40">
           <span className="font-mono opacity-50 shrink-0">usr</span>
-          <span className="font-mono opacity-30 truncate">~ [mod-core] scan initialized...</span>
+          <span className="font-mono opacity-50 truncate">@Volvox hey, how's your day going?</span>
         </div>
-        <div className="flex gap-3 text-primary bg-primary/[0.03] p-4 rounded-xl border border-primary/10">
-          <Sparkles className="w-4 h-4 shrink-0 mt-0.5 opacity-70" />
+        <div className="flex gap-3 bg-primary/[0.03] p-4 rounded-xl border border-primary/10">
+          <MessageSquare className="w-4 h-4 shrink-0 mt-0.5 text-primary/70" />
           <span className="text-foreground/80">
-            I've condensed 42 commits into 3 key themes: Stability, UI, and Speed. Engagement is up
-            12% this week.
+            Pretty good. I'm keeping an eye on the server and ready to help if anyone needs
+            answers, summaries, or a second opinion.
           </span>
         </div>
       </div>
@@ -65,9 +42,9 @@ const features: readonly Feature[] = [
   },
   {
     icon: Shield,
-    title: 'Active Sentry',
+    title: 'AI Auto-Moderation',
     description:
-      'Autonomous moderation that identifies and neutralizes raids with surgical precision.',
+      'Automated toxicity, spam, and harassment detection with configurable thresholds.',
     size: 'medium',
     className: 'md:col-span-1 lg:col-span-1',
     animationOrder: 1,
@@ -90,63 +67,75 @@ const features: readonly Feature[] = [
     ),
   },
   {
-    icon: Activity,
-    title: 'Live Insight',
-    description: 'Real-time analytics and server health metrics visualized instantly.',
+    icon: Trophy,
+    title: 'Reputation / XP System',
+    description: 'Engagement tracking with configurable levels and role rewards.',
     size: 'medium',
     className: 'md:col-span-1 lg:col-span-1',
     animationOrder: 2,
     preview: (
-      <div className="flex items-end gap-2 h-20 px-1">
-        {liveInsightBars.map((bar) => (
+      <div className="space-y-3 py-1">
+        <div className="flex items-center justify-between text-[11px] font-mono uppercase tracking-widest text-foreground/50">
+          <span>Level 12</span>
+          <span>8,420 XP</span>
+        </div>
+        <div className="h-2 overflow-hidden rounded-full bg-foreground/10">
           <motion.div
-            key={bar.id}
-            initial={{ height: 0 }}
-            whileInView={{ height: `${bar.height}%` }}
-            transition={{ delay: bar.delayOrder * 0.05, duration: 0.8, ease: 'circOut' }}
-            className="flex-1 rounded-[3px] bg-primary/20"
+            initial={{ width: 0 }}
+            whileInView={{ width: '72%' }}
+            transition={{ duration: 0.8, ease: 'circOut' }}
+            className="h-full rounded-full bg-primary/70"
           />
-        ))}
-      </div>
-    ),
-  },
-  {
-    icon: Zap,
-    title: 'Edge Performance',
-    description: 'Built for scale. Minimal latency across all global regions.',
-    size: 'small',
-    className: 'md:col-span-1 lg:col-span-1',
-    animationOrder: 3,
-    preview: (
-      <div className="flex items-center justify-center py-2 h-full">
-        <div className="w-full h-12 bg-card rounded-xl border border-border/50 flex flex-col justify-center px-5">
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-2">
-              <Globe className="w-4 h-4 text-foreground/40" />
-              <span className="text-[11px] font-semibold text-foreground/60 uppercase font-sans tracking-widest">
-                Global
-              </span>
-            </div>
-            <span className="text-[11px] font-black tracking-wider text-foreground/40 uppercase font-mono">
-              12ms
-            </span>
-          </div>
+        </div>
+        <div className="rounded-lg border border-border/50 bg-background/40 px-3 py-2 text-[11px] font-medium text-foreground/60">
+          Next reward: <span className="text-primary">Community Regular</span>
         </div>
       </div>
     ),
   },
   {
-    icon: Cpu,
-    title: 'Core Engine',
-    description: 'Highly optimized architecture designed for 99.99% uptime.',
+    icon: Brain,
+    title: 'User Memory',
+    description: 'Long-term memory per user for personalized interactions.',
+    size: 'small',
+    className: 'md:col-span-1 lg:col-span-1',
+    animationOrder: 3,
+    preview: (
+      <div className="space-y-2 py-1 text-[11px]">
+        <div className="rounded-xl border border-primary/15 bg-primary/[0.04] px-3 py-2">
+          <div className="mb-1 font-mono text-[9px] font-bold uppercase tracking-widest text-primary/70">
+            Memory Recall
+          </div>
+          <p className="font-medium leading-snug text-foreground/70">
+            Prefers concise answers and Next.js examples.
+          </p>
+        </div>
+        <div className="flex items-center justify-between rounded-lg border border-border/50 bg-background/40 px-3 py-2 font-mono text-[9px] uppercase tracking-widest text-foreground/40">
+          <span>3 facts attached</span>
+          <span>user scoped</span>
+        </div>
+      </div>
+    ),
+  },
+  {
+    icon: FileText,
+    title: 'TLDR',
+    description: 'AI-powered conversation summaries. Never miss what you missed.',
     size: 'small',
     className: 'md:col-span-1 lg:col-span-1',
     animationOrder: 4,
     preview: (
-      <div className="grid grid-cols-4 gap-2 opacity-50 h-full content-center">
-        {coreEngineCells.map((cellId) => (
-          <div key={cellId} className="h-6 rounded-full bg-foreground/5 border border-border/60" />
-        ))}
+      <div className="space-y-2 py-1 text-[11px]">
+        <div className="font-mono text-[9px] font-bold uppercase tracking-widest text-foreground/40">
+          84 messages summarized
+        </div>
+        <div className="rounded-xl border border-border/50 bg-background/40 px-3 py-2">
+          <ul className="space-y-1.5 font-medium leading-snug text-foreground/65">
+            <li>• Launch moved to Friday</li>
+            <li>• Two blockers assigned</li>
+            <li>• Poll closes tonight</li>
+          </ul>
+        </div>
       </div>
     ),
   },
@@ -221,8 +210,7 @@ export function FeatureGrid() {
             <span className="text-foreground/40">re-engineered.</span>
           </h2>
           <p className="text-lg text-foreground/50 max-w-xl font-medium leading-relaxed">
-            Volvox consolidates your entire community stack into a single, high-performance
-            architecture.
+            Volvox brings your community tools into one clean, powerful command center.
           </p>
         </div>
 
