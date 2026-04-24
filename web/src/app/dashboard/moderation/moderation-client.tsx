@@ -161,28 +161,36 @@ export default function ModerationClient() {
 
               <form
                 onSubmit={handleUserHistorySearch}
-                className="flex flex-wrap items-center gap-2"
+                className="flex flex-wrap items-center gap-3"
               >
-                <div className="relative min-w-[15rem] flex-1">
-                  <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <div className="relative min-w-[20rem] flex-1">
+                  <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/30" />
                   <Input
-                    className="h-10 rounded-xl border border-white/10 bg-black/20 pl-9 transition-colors focus:bg-black/30 w-[300px]"
+                    className="pl-10 pr-10"
                     placeholder="Discord ID (e.g. 123456...)"
                     value={userHistoryInput}
                     onChange={(e) => setUserHistoryInput(e.target.value)}
                     aria-label="User ID for history lookup"
                   />
+                  {userHistoryInput && (
+                    <button
+                      type="button"
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-foreground transition-colors"
+                      onClick={() => setUserHistoryInput('')}
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
                 <Button
                   type="submit"
-                  size="sm"
-                  className="h-10 rounded-xl px-4 text-xs font-bold uppercase tracking-wider"
+                  className="px-6 text-[10px] font-black uppercase tracking-[0.2em]"
                   disabled={!userHistoryInput.trim() || userHistoryLoading}
                 >
                   {userHistoryLoading ? (
-                    <RefreshCw className="mr-1.5 h-4 w-4 animate-spin" />
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
-                    <Search className="mr-1.5 h-4 w-4" />
+                    <Search className="mr-2 h-4 w-4" />
                   )}
                   Look up
                 </Button>
@@ -190,12 +198,12 @@ export default function ModerationClient() {
                   <Button
                     type="button"
                     variant="ghost"
-                    size="sm"
+                    size="icon"
                     onClick={handleClearUserHistory}
                     title="Clear user history"
                     aria-label="Clear user history"
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-4.5 w-4.5" />
                   </Button>
                 )}
               </form>

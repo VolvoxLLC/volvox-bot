@@ -1,11 +1,21 @@
 'use client';
 
-import { Check, ChevronDown, ChevronRight, ClipboardList, Copy, Search, X } from 'lucide-react';
+import {
+  Calendar,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  ClipboardList,
+  Copy,
+  Search,
+  X,
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import type { MouseEvent } from 'react';
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { EmptyState } from '@/components/dashboard/empty-state';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { Input } from '@/components/ui/input';
 import {
@@ -91,14 +101,15 @@ function CopyButton({ value }: { value: string }) {
   };
 
   return (
-    <button
-      type="button"
+    <Button
+      variant="secondary"
+      size="icon"
       onClick={handleCopy}
-      className="ml-2 inline-flex items-center justify-center rounded p-1 text-muted-foreground/30 transition-colors hover:bg-muted/50 hover:text-foreground active:scale-95"
+      className="ml-2 h-7 w-7 rounded-lg text-muted-foreground/30 hover:text-foreground active:scale-90"
       aria-label="Copy ID"
     >
-      {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
-    </button>
+      {copied ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
+    </Button>
   );
 }
 
@@ -287,20 +298,20 @@ export default function AuditLogPage() {
         {guildId && (
           <>
             {/* Compact filter strip */}
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative flex-1 min-w-[200px] max-w-sm">
-                <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/50" />
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="relative flex-1 min-w-[240px] max-w-sm">
                 <Input
-                  className="h-9 rounded-xl border-border/40 bg-card/40 pl-8 pr-8 text-sm backdrop-blur-sm"
+                  className="pl-10 pr-10"
                   placeholder="Filter by user ID..."
                   value={userSearch}
                   onChange={(e) => setUserSearch(e.target.value)}
                   aria-label="Filter audit log by user ID"
                 />
+                <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/50 pointer-events-none z-10" />
                 {userSearch && (
                   <button
                     type="button"
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-foreground"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-foreground transition-colors z-10"
                     onClick={() => {
                       setUserSearch('');
                       setDebouncedUserSearch('');
@@ -308,7 +319,7 @@ export default function AuditLogPage() {
                     }}
                     aria-label="Clear search"
                   >
-                    <X className="h-3.5 w-3.5" />
+                    <X className="h-4 w-4" />
                   </button>
                 )}
               </div>
@@ -317,38 +328,45 @@ export default function AuditLogPage() {
                 value={filters.action}
                 onValueChange={(val) => setFilters({ action: val === 'all' ? '' : val, offset: 0 })}
               >
-                <SelectTrigger className="h-9 w-[180px] rounded-xl border-border/40 bg-card/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/70 backdrop-blur-sm">
+                <SelectTrigger className="w-[200px] text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">
                   <SelectValue placeholder="All actions" />
                 </SelectTrigger>
-                <SelectContent className="rounded-xl border-white/10 bg-popover/95 backdrop-blur-xl shadow-xl">
-                  <SelectItem value="all" className="text-xs font-semibold">
-                    All actions
-                  </SelectItem>
+                <SelectContent>
+                  <SelectItem value="all">All actions</SelectItem>
                   {ACTION_OPTIONS.map((a) => (
-                    <SelectItem key={a} value={a} className="text-xs font-semibold">
+                    <SelectItem key={a} value={a}>
                       {a}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
 
-              <Input
-                type="date"
-                className="h-9 w-[155px] rounded-xl border-border/40 bg-card/40 text-sm backdrop-blur-sm"
-                value={filters.startDate}
-                onChange={(e) => setFilters({ startDate: e.target.value, offset: 0 })}
-                aria-label="Start date filter"
-              />
-              <Input
-                type="date"
-                className="h-9 w-[155px] rounded-xl border-border/40 bg-card/40 text-sm backdrop-blur-sm"
-                value={filters.endDate}
-                onChange={(e) => setFilters({ endDate: e.target.value, offset: 0 })}
-                aria-label="End date filter"
-              />
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <Input
+                    type="date"
+                    className="w-[180px] pl-10 text-xs font-bold uppercase tracking-tighter"
+                    value={filters.startDate}
+                    onChange={(e) => setFilters({ startDate: e.target.value, offset: 0 })}
+                    aria-label="Start date filter"
+                  />
+                  <Calendar className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/50 pointer-events-none z-10" />
+                </div>
+                <div className="h-px w-2 bg-border/40" />
+                <div className="relative">
+                  <Input
+                    type="date"
+                    className="w-[180px] pl-10 text-xs font-bold uppercase tracking-tighter"
+                    value={filters.endDate}
+                    onChange={(e) => setFilters({ endDate: e.target.value, offset: 0 })}
+                    aria-label="End date filter"
+                  />
+                  <Calendar className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/50 pointer-events-none z-10" />
+                </div>
+              </div>
 
               {total > 0 && (
-                <span className="text-[11px] font-medium text-muted-foreground/50 tabular-nums">
+                <span className="ml-auto text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/30 tabular-nums">
                   {total.toLocaleString()} {total === 1 ? 'entry' : 'entries'}
                 </span>
               )}
@@ -493,22 +511,28 @@ export default function AuditLogPage() {
                   Page {currentPage} of {totalPages}
                 </span>
                 <div className="flex gap-2">
-                  <button
-                    type="button"
+                  <Button
+                    variant="outline"
+                    size="sm"
                     disabled={filters.offset <= 0 || loading}
-                    onClick={() => setFilters({ offset: Math.max(0, filters.offset - PAGE_SIZE) })}
-                    className="inline-flex items-center gap-1.5 rounded-2xl border border-white/10 bg-card/40 px-4 py-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/70 backdrop-blur-sm shadow-sm transition-all hover:bg-card/60 hover:text-foreground active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:active:scale-100"
+                    onClick={() =>
+                      setFilters({
+                        offset: Math.max(0, filters.offset - PAGE_SIZE),
+                      })
+                    }
+                    className="text-[10px] font-black uppercase tracking-[0.2em]"
                   >
                     Previous
-                  </button>
-                  <button
-                    type="button"
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
                     disabled={filters.offset + PAGE_SIZE >= total || loading}
                     onClick={() => setFilters({ offset: filters.offset + PAGE_SIZE })}
-                    className="inline-flex items-center gap-1.5 rounded-2xl border border-white/10 bg-card/40 px-4 py-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/70 backdrop-blur-sm shadow-sm transition-all hover:bg-card/60 hover:text-foreground active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:active:scale-100"
+                    className="text-[10px] font-black uppercase tracking-[0.2em]"
                   >
                     Next
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}

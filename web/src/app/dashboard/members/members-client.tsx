@@ -202,11 +202,11 @@ export default function MembersClient() {
           </div>
 
           {/* Search + stats bar — compact inline strip */}
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative flex-1 min-w-[200px] max-w-sm">
-              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/50" />
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative flex-1 min-w-[240px] max-w-sm">
+              <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/30" />
               <Input
-                className="h-9 rounded-xl border-border/40 bg-card/40 pl-8 pr-8 text-sm backdrop-blur-sm"
+                className="pl-10 pr-10"
                 placeholder="Search members..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -215,16 +215,16 @@ export default function MembersClient() {
               {search && (
                 <button
                   type="button"
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-foreground"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-foreground transition-colors"
                   onClick={handleClearSearch}
                   aria-label="Clear search"
                 >
-                  <X className="h-3.5 w-3.5" />
+                  <X className="h-4 w-4" />
                 </button>
               )}
             </div>
             {total > 0 && (
-              <span className="text-[11px] font-medium text-muted-foreground/50 tabular-nums">
+              <span className="ml-auto text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/30 tabular-nums">
                 {filteredTotal !== null && filteredTotal !== total
                   ? `${filteredTotal.toLocaleString()} of ${total.toLocaleString()} members`
                   : `${total.toLocaleString()} ${total === 1 ? 'member' : 'members'}`}
