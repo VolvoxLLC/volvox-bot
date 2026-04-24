@@ -99,6 +99,13 @@ describe('configValidation', () => {
       expect(validateSingleValue('welcome.dmSequence.steps', ['hi', 'there'])).toEqual([]);
     });
 
+    it('should allow zero welcome milestone interval to disable interval milestones', () => {
+      expect(validateSingleValue('welcome.dynamic.milestoneInterval', 0)).toEqual([]);
+      expect(
+        validateSingleValue('welcome.dynamic', { enabled: true, milestoneInterval: 0 }),
+      ).toEqual([]);
+    });
+
     it('should accept valid welcome.introChannel string', () => {
       expect(validateSingleValue('welcome.introChannel', '123456')).toEqual([]);
     });
