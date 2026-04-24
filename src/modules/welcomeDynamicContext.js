@@ -6,6 +6,8 @@
  * channel suggestions, and member milestones.
  */
 
+import { randomInt } from 'node:crypto';
+
 /** Default activity window in minutes for community activity tracking */
 export const DEFAULT_ACTIVITY_WINDOW_MINUTES = 45;
 
@@ -330,6 +332,6 @@ export function getActivityWindowMs(settings) {
  */
 export function pickFrom(templates, context) {
   if (!templates.length) return `Welcome, <@${context.id}>!`;
-  const index = Math.floor(Math.random() * templates.length);
+  const index = randomInt(templates.length);
   return templates[index](context);
 }

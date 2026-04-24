@@ -299,6 +299,35 @@ describe('recordCommunityActivity', () => {
   });
 });
 
+const createDynamicWelcomeSendContext = ({ memberCount = 75, milestoneInterval = 25 } = {}) => {
+  const mockSend = vi.fn();
+  const member = {
+    id: '123',
+    user: { tag: 'user#1234', username: 'testuser' },
+    guild: {
+      name: 'Test',
+      memberCount,
+      channels: {
+        cache: {
+          filter: vi.fn().mockReturnValue({ size: 0, values: () => [] }),
+          has: vi.fn().mockReturnValue(false),
+        },
+      },
+    },
+  };
+  const client = { channels: { fetch: vi.fn().mockResolvedValue({ send: mockSend }) } };
+  const config = {
+    welcome: {
+      enabled: true,
+      channelId: 'ch1',
+      message: '{{milestoneLine}}',
+      dynamic: { enabled: true, timezone: 'UTC', milestoneInterval },
+    },
+  };
+
+  return { client, config, member, mockSend };
+};
+
 describe('sendWelcomeMessage', () => {
   it('should not send if welcome is disabled', async () => {
     const member = { user: { tag: 'user#1234' }, guild: { name: 'Test' } };
@@ -656,60 +685,18 @@ describe('sendWelcomeMessage', () => {
   });
 
   it('should handle dynamic message with milestone interval', async () => {
-    const mockSend = vi.fn();
-    const member = {
-      id: '123',
-      user: { tag: 'user#1234', username: 'testuser' },
-      guild: {
-        name: 'Test',
-        memberCount: 75, // 75 % 25 === 0 → milestone
-        channels: {
-          cache: {
-            filter: vi.fn().mockReturnValue({ size: 0, values: () => [] }),
-            has: vi.fn().mockReturnValue(false),
-          },
-        },
-      },
-    };
-    const client = { channels: { fetch: vi.fn().mockResolvedValue({ send: mockSend }) } };
-    const config = {
-      welcome: {
-        enabled: true,
-        channelId: 'ch1',
-        message: '{{milestoneLine}}',
-        dynamic: { enabled: true, timezone: 'UTC', milestoneInterval: 25 },
-      },
-    };
+    const { client, config, member, mockSend } = createDynamicWelcomeSendContext();
+
     await sendWelcomeMessage(member, client, config);
+
     const msg = mockSend.mock.calls[0][0].content;
     expect(msg).toContain('milestone');
   });
 
   it('should let milestone interval zero disable interval milestones', async () => {
-    const mockSend = vi.fn();
-    const member = {
-      id: '123',
-      user: { tag: 'user#1234', username: 'testuser' },
-      guild: {
-        name: 'Test',
-        memberCount: 75, // interval milestone only, not a notable milestone
-        channels: {
-          cache: {
-            filter: vi.fn().mockReturnValue({ size: 0, values: () => [] }),
-            has: vi.fn().mockReturnValue(false),
-          },
-        },
-      },
-    };
-    const client = { channels: { fetch: vi.fn().mockResolvedValue({ send: mockSend }) } };
-    const config = {
-      welcome: {
-        enabled: true,
-        channelId: 'ch1',
-        message: '{{milestoneLine}}',
-        dynamic: { enabled: true, timezone: 'UTC', milestoneInterval: 0 },
-      },
-    };
+    const { client, config, member, mockSend } = createDynamicWelcomeSendContext({
+      milestoneInterval: 0,
+    });
 
     await sendWelcomeMessage(member, client, config);
 
