@@ -61,6 +61,11 @@ export function computeDynamicContext(member, config, guildActivity) {
 
 /**
  * Get activity snapshot for the guild.
+ *
+ * **Side-effect:** mutates `guildActivity` — prunes stale per-channel timestamp
+ * arrays, deletes empty channel entries, and removes the guild key entirely when
+ * no channels remain.
+ *
  * @param {Object} guild - Discord guild
  * @param {Object} settings - welcome.dynamic settings
  * @param {Map} guildActivity - Guild activity map (guildId → Map<channelId, timestamps>)
@@ -310,8 +315,7 @@ export function getSuggestedChannels(member, config, snapshot) {
  * @returns {string[]} Channel IDs
  */
 export function extractChannelIdsFromTemplate(template) {
-  const matches = template.match(/<#(\d+)>/g) || [];
-  return matches.map((match) => match.replace(/[^\d]/g, ''));
+  return Array.from(template.matchAll(/<#(\d+)>/g), (m) => m[1]);
 }
 
 /**
