@@ -192,7 +192,7 @@ export function buildCtaLine(channels) {
     return `Head over to ${first} to get started.`;
   }
 
-  return "Say hey and introduce yourself — we're glad you're here.";
+  return 'Say hey and introduce yourself — we\u0027re glad you\u0027re here.';
 }
 
 /**
@@ -204,7 +204,8 @@ export function buildCtaLine(channels) {
 export function getMilestoneLine(memberCount, settings) {
   if (!memberCount) return null;
 
-  const interval = Number(settings.milestoneInterval) || 25;
+  const parsedInterval = Number(settings.milestoneInterval);
+  const interval = Number.isFinite(parsedInterval) ? parsedInterval : 25;
 
   if (NOTABLE_MILESTONES.has(memberCount) || (interval > 0 && memberCount % interval === 0)) {
     return `🎉 Perfect timing - you're our **#${memberCount}** member milestone!`;
