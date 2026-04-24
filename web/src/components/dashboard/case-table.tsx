@@ -61,15 +61,15 @@ function FilterBar({
   const hasFilters = actionFilter !== 'all' || userSearch.trim().length > 0;
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-3">
       {/* Action filter */}
       <Select value={actionFilter} onValueChange={onActionChange}>
-        <SelectTrigger className="h-8 w-[160px] text-xs">
+        <SelectTrigger className="w-[180px] text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">
           <SelectValue placeholder="All actions" />
         </SelectTrigger>
         <SelectContent>
           {ACTION_OPTIONS.map((opt) => (
-            <SelectItem key={opt.value} value={opt.value} className="text-xs">
+            <SelectItem key={opt.value} value={opt.value}>
               {opt.label}
             </SelectItem>
           ))}
@@ -77,20 +77,34 @@ function FilterBar({
       </Select>
 
       {/* User search */}
-      <div className="relative">
-        <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+      <div className="relative flex-1 min-w-[200px] max-w-[280px]">
+        <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/30" />
         <Input
-          className="h-8 w-[180px] pl-7 text-xs"
+          className="pl-10 pr-10"
           placeholder="User ID..."
           value={userSearch}
           onChange={(e) => onUserSearchChange(e.target.value)}
         />
+        {userSearch && (
+          <button
+            type="button"
+            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-foreground transition-colors"
+            onClick={() => onUserSearchChange('')}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
       {/* Clear filters */}
       {hasFilters && (
-        <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={onClear}>
-          <X className="mr-1 h-3.5 w-3.5" />
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-11 px-4 text-[10px] font-black uppercase tracking-[0.2em]"
+          onClick={onClear}
+        >
+          <X className="mr-1.5 h-3.5 w-3.5" />
           Clear
         </Button>
       )}
@@ -299,27 +313,29 @@ export function CaseTable({
       </div>
 
       {/* Pagination */}
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span>{total} total cases</span>
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/30">
+          {total} total cases
+        </span>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
-            className="h-7 px-2"
             disabled={page <= 1 || loading}
             onClick={() => onPageChange(page - 1)}
+            className="text-[10px] font-black uppercase tracking-[0.2em]"
           >
             <ChevronLeft className="h-3.5 w-3.5" />
           </Button>
-          <span className="tabular-nums">
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/30 tabular-nums">
             Page {page} of {totalPages || 1}
           </span>
           <Button
             variant="outline"
             size="sm"
-            className="h-7 px-2"
             disabled={page >= totalPages || loading}
             onClick={() => onPageChange(page + 1)}
+            className="text-[10px] font-black uppercase tracking-[0.2em]"
           >
             <ChevronRight className="h-3.5 w-3.5" />
           </Button>
