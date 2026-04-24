@@ -97,7 +97,8 @@ export function registerMessageCreateHandler(client, _config, healthMonitor) {
       return;
     }
 
-    // AI Auto-Moderation — analyze message with Claude for toxicity/spam/harassment
+    // AI Auto-Moderation — analyze message with the configured AI provider
+    // for toxicity/spam/harassment.
     // Runs after basic spam check; gated on aiAutoMod.enabled in config
     try {
       const { flagged } = await checkAiAutoMod(message, client, guildConfig);

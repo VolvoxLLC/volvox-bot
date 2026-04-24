@@ -123,9 +123,9 @@ function makeConfig(overrides = {}) {
       maxBufferSize: 30,
       triggerWords: [],
       moderationKeywords: [],
-      classifyModel: 'claude-haiku-4-5',
+      classifyModel: 'minimax:MiniMax-M2.7',
       classifyBudget: 0.05,
-      respondModel: 'claude-sonnet-4-5',
+      respondModel: 'minimax:MiniMax-M2.7',
       respondBudget: 0.2,
       timeout: 30000,
       moderationResponse: true,
@@ -1300,8 +1300,8 @@ describe('triage module', () => {
       expect(info).toHaveBeenCalledWith(
         'Triage configured',
         expect.objectContaining({
-          classifyModel: 'claude-haiku-4-5',
-          respondModel: 'claude-sonnet-4-5',
+          classifyModel: 'minimax:MiniMax-M2.7',
+          respondModel: 'minimax:MiniMax-M2.7',
         }),
       );
     });
@@ -1673,7 +1673,17 @@ describe('triage module', () => {
           moderationKeywords: [],
           moderationResponse: true,
           defaultInterval: 5000,
-          models: { triage: 'claude-haiku-3', default: 'claude-sonnet-4-5' },
+          // Legacy nested format — `models.triage` maps into classifyModel and
+          // `models.default` maps into respondModel, preserving guild customisation
+          // through the unified-catalog migration. Legacy values MUST already be in
+          // `provider:model` form because the strict D1 parser rejects bare strings.
+          // Clear the makeConfig helper defaults so the legacy fallback path runs.
+          classifyModel: undefined,
+          respondModel: undefined,
+          models: {
+            triage: 'moonshot:kimi-k2.6',
+            default: 'openrouter:minimax/minimax-m2.5',
+          },
           budget: { triage: 0.01, response: 0.25 },
           timeouts: { triage: 15000, response: 20000 },
         },
@@ -1687,8 +1697,8 @@ describe('triage module', () => {
       expect(info).toHaveBeenCalledWith(
         'Triage configured',
         expect.objectContaining({
-          classifyModel: 'claude-haiku-4-5',
-          respondModel: 'claude-sonnet-4-5',
+          classifyModel: 'moonshot:kimi-k2.6',
+          respondModel: 'openrouter:minimax/minimax-m2.5',
         }),
       );
     });
@@ -1696,11 +1706,11 @@ describe('triage module', () => {
     it('should prefer new split config keys', async () => {
       const splitConfig = makeConfig({
         triage: {
-          classifyModel: 'claude-haiku-4-5',
-          respondModel: 'claude-sonnet-4-5',
+          classifyModel: 'minimax:MiniMax-M2.7',
+          respondModel: 'moonshot:kimi-k2.6',
           classifyBudget: 0.1,
           respondBudget: 0.75,
-          model: 'claude-haiku-3-5',
+          model: 'legacy-model',
           budget: 0.5,
         },
       });
@@ -1711,8 +1721,8 @@ describe('triage module', () => {
       expect(info).toHaveBeenCalledWith(
         'Triage configured',
         expect.objectContaining({
-          classifyModel: 'claude-haiku-4-5',
-          respondModel: 'claude-sonnet-4-5',
+          classifyModel: 'minimax:MiniMax-M2.7',
+          respondModel: 'moonshot:kimi-k2.6',
         }),
       );
     });

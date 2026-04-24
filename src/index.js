@@ -3,7 +3,7 @@
  * Main entry point - orchestrates modules
  *
  * Features:
- * - AI chat powered by Claude
+ * - AI chat powered by the configured provider (see src/data/providers.json)
  * - Welcome messages for new members
  * - Spam/scam detection and moderation
  * - Health monitoring and status command

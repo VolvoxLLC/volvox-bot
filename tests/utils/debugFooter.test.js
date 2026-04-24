@@ -74,12 +74,22 @@ describe('formatCost', () => {
 // ── shortModel ──────────────────────────────────────────────────────────────
 
 describe('shortModel', () => {
-  it('should strip claude- prefix', () => {
+  it('should strip the provider: prefix', () => {
+    expect(shortModel('minimax:MiniMax-M2.7')).toBe('MiniMax-M2.7');
+    expect(shortModel('moonshot:kimi-k2.6')).toBe('kimi-k2.6');
+    expect(shortModel('openrouter:moonshotai/kimi-k2.6')).toBe('moonshotai/kimi-k2.6');
+  });
+
+  it('should strip legacy claude- prefix', () => {
     expect(shortModel('claude-haiku-4-5')).toBe('haiku-4-5');
     expect(shortModel('claude-sonnet-4-6')).toBe('sonnet-4-6');
   });
 
-  it('should return as-is when no claude- prefix', () => {
+  it('should strip both provider: and legacy claude- prefixes together', () => {
+    expect(shortModel('anthropic:claude-sonnet-4-6')).toBe('sonnet-4-6');
+  });
+
+  it('should return as-is when neither prefix is present', () => {
     expect(shortModel('gpt-4')).toBe('gpt-4');
   });
 
@@ -107,7 +117,7 @@ describe('extractStats', () => {
         },
       },
     };
-    const stats = extractStats(result, 'claude-sonnet-4-6');
+    const stats = extractStats(result, 'claude-sonnet-4-6', 'anthropic');
     expect(stats).toEqual({
       model: 'claude-sonnet-4-6',
       cost: 0.005,
@@ -126,7 +136,7 @@ describe('extractStats', () => {
       usage: {},
       providerMetadata: { anthropic: {} },
     };
-    const stats = extractStats(result, 'claude-haiku-4-5');
+    const stats = extractStats(result, 'claude-haiku-4-5', 'anthropic');
     expect(stats.inputTokens).toBe(0);
     expect(stats.outputTokens).toBe(0);
     expect(stats.cacheCreation).toBe(0);
@@ -134,7 +144,7 @@ describe('extractStats', () => {
   });
 
   it('should handle null result gracefully', () => {
-    const stats = extractStats(null, 'model');
+    const stats = extractStats(null, 'model', 'anthropic');
     expect(stats.cost).toBe(0);
     expect(stats.durationMs).toBe(0);
     expect(stats.inputTokens).toBe(0);
@@ -150,12 +160,19 @@ describe('extractStats', () => {
       },
       providerMetadata: { anthropic: {} },
     };
-    const stats = extractStats(result, 'test-model');
+    const stats = extractStats(result, 'test-model', 'anthropic');
     expect(stats.inputTokens).toBe(500);
     expect(stats.outputTokens).toBe(100);
   });
 
-  it('should extract cache tokens from providerMetadata using default anthropic key', () => {
+  it('should throw TypeError when providerName is missing', () => {
+    const result = { costUsd: 0, durationMs: 0, usage: {} };
+    expect(() => extractStats(result, 'model')).toThrow(TypeError);
+    expect(() => extractStats(result, 'model', '')).toThrow(TypeError);
+    expect(() => extractStats(result, 'model', null)).toThrow(TypeError);
+  });
+
+  it('should extract cache tokens from the providerMetadata bucket matching the supplied providerName', () => {
     const result = {
       costUsd: 0.003,
       durationMs: 150,
@@ -170,7 +187,7 @@ describe('extractStats', () => {
         },
       },
     };
-    const stats = extractStats(result, 'multi-model');
+    const stats = extractStats(result, 'multi-model', 'anthropic');
     expect(stats.inputTokens).toBe(400);
     expect(stats.outputTokens).toBe(200);
     expect(stats.cacheCreation).toBe(60);
@@ -197,7 +214,7 @@ describe('extractStats', () => {
     expect(stats.cacheRead).toBe(100);
   });
 
-  it('should fall back to anthropic cache metadata for Anthropic-compatible providers', () => {
+  it('should fall back to the anthropic bucket when the provider-keyed bucket is missing', () => {
     const result = {
       costUsd: 0.001,
       durationMs: 50,
@@ -209,9 +226,33 @@ describe('extractStats', () => {
         },
       },
     };
+    // Every current catalog provider routes through the Anthropic SDK, which populates
+    // providerMetadata.anthropic regardless of the logical provider name. Cache stats
+    // must fall through so MiniMax/Moonshot/OpenRouter don't silently report 0.
     const stats = extractStats(result, 'model', 'minimax');
     expect(stats.cacheCreation).toBe(30);
     expect(stats.cacheRead).toBe(70);
+  });
+
+  it('should prefer the provider-keyed bucket over the anthropic bucket when both exist', () => {
+    const result = {
+      costUsd: 0.002,
+      durationMs: 80,
+      usage: { inputTokens: 200, outputTokens: 80 },
+      providerMetadata: {
+        anthropic: {
+          cacheCreationInputTokens: 999,
+          cacheReadInputTokens: 999,
+        },
+        minimax: {
+          cacheCreationInputTokens: 15,
+          cacheReadInputTokens: 25,
+        },
+      },
+    };
+    const stats = extractStats(result, 'model', 'minimax');
+    expect(stats.cacheCreation).toBe(15);
+    expect(stats.cacheRead).toBe(25);
   });
 
   it('should handle missing providerMetadata gracefully', () => {
@@ -220,7 +261,7 @@ describe('extractStats', () => {
       durationMs: 100,
       usage: { inputTokens: 50, outputTokens: 10 },
     };
-    const stats = extractStats(result, 'test-model');
+    const stats = extractStats(result, 'test-model', 'anthropic');
     expect(stats.inputTokens).toBe(50);
     expect(stats.outputTokens).toBe(10);
     expect(stats.cacheCreation).toBe(0);
@@ -234,7 +275,7 @@ describe('extractStats', () => {
       usage: { inputTokens: 200, outputTokens: 100 },
       providerMetadata: { anthropic: {} },
     };
-    const stats = extractStats(result, 'model');
+    const stats = extractStats(result, 'model', 'anthropic');
     expect(stats.inputTokens).toBe(200);
     expect(stats.outputTokens).toBe(100);
     expect(stats.cacheCreation).toBe(0);
@@ -247,7 +288,7 @@ describe('extractStats', () => {
       durationMs: 0,
       usage: {},
     };
-    const stats = extractStats(result, 'model');
+    const stats = extractStats(result, 'model', 'anthropic');
     expect(stats.inputTokens).toBe(0);
     expect(stats.outputTokens).toBe(0);
     expect(stats.cacheCreation).toBe(0);

@@ -2,19 +2,31 @@
  * AI Client — Vercel AI SDK wrapper for the bot's AI inference needs.
  *
  * Supports multi-provider model selection via `provider:model` strings
- * (e.g. 'anthropic:claude-sonnet-4-6', 'minimax:MiniMax-M2.7').
- * Bare model names default to Anthropic.
+ * (e.g. 'minimax:MiniMax-M2.7', 'moonshot:kimi-k2.6'). Bare model names are
+ * **not** supported — every caller must declare the provider (see issue #553 D1).
  *
- * Providers using Anthropic-compatible API endpoints (like MiniMax) are
- * routed through the Anthropic SDK with custom base URLs. The SDK runs
- * in-process — only credentials we explicitly pass via apiKey/authToken
- * are sent to the provider.
+ * Provider metadata (base URL, env key, capabilities, apiShape) lives in
+ * `src/data/providers.json` and is loaded via `providerRegistry.js`. All
+ * currently-listed providers speak the Anthropic Messages wire protocol, so
+ * requests are dispatched through the Anthropic SDK (`createAnthropic`) — the
+ * SDK key `anthropic` is a wire-protocol identifier, not a vendor identity.
+ * Other API shapes will be supported when issue #530 lands; the registry
+ * rejects any shape not in its allow-list at load time.
+ *
+ * The SDK runs in-process — only credentials we explicitly pass are sent to
+ * the provider endpoint.
  */
 
 import { debug, error as logError, warn } from '../logger.js';
 import { calculateCost } from './aiCost.js';
 import { AIClientError, isRetryable } from './errors.js';
 import { parseProviderModel } from './modelString.js';
+import {
+  getCapabilities,
+  getModelConfig,
+  getProviderMeta,
+  supportsShape,
+} from './providerRegistry.js';
 
 // ── Lazy SDK loading ────────────────────────────────────────────────────────
 
@@ -127,17 +139,6 @@ async function withRetry(fn, opts = {}) {
   throw lastError;
 }
 
-// ── Provider defaults ───────────────────────────────────────────────────────
-
-/**
- * Default base URLs for known providers.
- * Providers not listed here require a `<PROVIDER>_BASE_URL` env var or
- * a per-model `baseUrl` override in config.
- */
-const KNOWN_BASE_URLS = {
-  minimax: 'https://api.minimax.io/anthropic/v1',
-};
-
 // ── Provider cache ──────────────────────────────────────────────────────────
 
 /**
@@ -146,21 +147,6 @@ const KNOWN_BASE_URLS = {
  * @type {Map<string, import('@ai-sdk/anthropic').AnthropicProvider>}
  */
 const providerCache = new Map();
-
-/**
- * Detect whether an Anthropic credential should be sent as authToken.
- * Standard API keys typically use the `sk-ant-` prefix; OAuth-style tokens
- * may use known OAuth prefixes or be significantly longer.
- *
- * @param {string|undefined} credential
- * @returns {boolean}
- */
-function isAnthropicAuthToken(credential) {
-  if (!credential) return false;
-  if (credential.startsWith('oauth2_')) return true;
-  if (!credential.startsWith('sk-ant-') && credential.length > 128) return true;
-  return false;
-}
 
 // Re-export the pure string parser so existing callers that reach for it via
 // aiClient (alongside generate/stream) still work. The implementation lives
@@ -172,76 +158,115 @@ export { parseProviderModel };
 /**
  * Parse a model string and resolve the provider instance + model object.
  *
- * @param {string} modelString - Model identifier, optionally prefixed with provider
- *   (e.g. 'anthropic:claude-sonnet-4-6' or bare 'claude-haiku-4-5').
+ * @param {string} modelString - `provider:model` identifier (bare model names throw; see D1).
  * @param {{ apiKey?: string, baseUrl?: string }} [overrides]
- * @returns {Promise<{ model: object, providerName: string, modelId: string, factory: object }>}
+ * @returns {Promise<{ model: object, providerName: string, modelId: string, factory: object, resolvedBaseUrl: string }>}
  */
 async function resolveModel(modelString, overrides = {}) {
   const { createAnthropic } = await getSDK();
 
   const { providerName, modelId } = parseProviderModel(modelString);
 
-  // Cache key uses the raw apiKey as a discriminator. Safe because the Map
-  // lives in-process and is never serialized, logged, or exported. Using the
-  // raw key avoids node:crypto for a non-security discriminator (CodeQL
-  // flagged the prior SHA-256 as "insecure password hash").
-  const cacheKey = `${providerName}\x00${overrides.apiKey ?? ''}\x00${overrides.baseUrl ?? ''}`;
+  // Fail loudly on unknown providers — the registry is the source of truth.
+  const providerConfig = getProviderMeta(providerName);
+  if (!providerConfig) {
+    throw new AIClientError(
+      `Unknown provider '${providerName}'. Declare it in src/data/providers.json.`,
+      'api',
+    );
+  }
+
+  // Fail loudly on unknown models — catches typos before they hit the wire.
+  const modelConfig = getModelConfig(providerName, modelId);
+  if (!modelConfig) {
+    throw new AIClientError(
+      `Unknown model '${modelId}' for provider '${providerName}'. ` +
+        'Declare it in src/data/providers.json.',
+      'api',
+    );
+  }
+
+  // aiClient currently dispatches only to Anthropic-shape endpoints. When
+  // OpenAI-shape support lands (issue #530), swap this for a per-shape SDK
+  // selector keyed off the provider's declared apiShape preference.
+  if (!supportsShape(providerName, 'anthropic')) {
+    throw new AIClientError(
+      `Provider '${providerName}' declares apiShape [${providerConfig.apiShape.join(', ')}]; ` +
+        `aiClient currently only supports 'anthropic' shape (see issue #530).`,
+      'api',
+    );
+  }
+
+  // Resolve credential + base URL BEFORE building the cache key so env rotation,
+  // <PROVIDER>_BASE_URL changes, and fallback-key pickups each invalidate the
+  // cached factory. Keying on just overrides would collapse all env-backed
+  // calls onto one entry and skip the env/missing-key check on second call.
+  const envKey = providerConfig.envKey;
+  // Sanitize provider names: uppercase + replace `-` with `_` so hyphenated
+  // provider keys (e.g. `open-router`) still produce legal shell env var names.
+  const envPrefix = providerName.toUpperCase().replaceAll('-', '_');
+
+  // Env lookup order: the declared envKey first, then <PROVIDER>_API_KEY as
+  // a permissive fallback so ad-hoc deployments don't need to edit the
+  // catalog to ship a new provider name.
+  const apiKey = overrides.apiKey || process.env[envKey] || process.env[`${envPrefix}_API_KEY`];
+
+  if (!apiKey) {
+    throw new AIClientError(
+      `Missing API key for provider '${providerName}'. Set ${envKey} or pass an apiKey override.`,
+      'api',
+    );
+  }
+
+  // baseUrl resolution: explicit override > <PROVIDER>_BASE_URL env > registry default.
+  // `null` is an intentional "use SDK default" signal — only `undefined` (not provided)
+  // falls through to env/registry. See issue #553/#530.
+  const baseUrl =
+    overrides.baseUrl !== undefined
+      ? overrides.baseUrl
+      : process.env[`${envPrefix}_BASE_URL`] || providerConfig.baseUrl;
+
+  if (baseUrl === undefined || baseUrl === '' || baseUrl === false) {
+    throw new AIClientError(
+      `Missing base URL for provider '${providerName}'. Set ${envPrefix}_BASE_URL, ` +
+        `pass a baseUrl override, or populate baseUrl in src/data/providers.json.`,
+      'api',
+    );
+  }
+
+  // Cache key: include resolved apiKey + baseUrl so any change (env rotation,
+  // override swap, registry reload) produces a distinct cache entry and picks
+  // up a fresh factory instead of returning a stale TLS pool.
+  // Canonicalise provider name to lowercase so `minimax:…` and `MiniMax:…` share
+  // one pool instead of forking TCP/TLS resources.
+  // Safe to embed the raw apiKey — the Map is module-private, never serialized,
+  // logged, or exported.
+  const canonicalName = providerName.toLowerCase();
+  const cacheKey = `${canonicalName}\x00${apiKey}\x00${baseUrl ?? ''}`;
 
   if (!providerCache.has(cacheKey)) {
-    // Resolve credentials by convention. Anthropic uses ANTHROPIC_API_KEY
-    // directly; other providers follow the <PROVIDER>_API_KEY /
-    // <PROVIDER>_BASE_URL convention. We deliberately do NOT fall back to
-    // ANTHROPIC_API_KEY for non-Anthropic providers — that would leak our
-    // Anthropic credentials to a third-party endpoint.
-    const isAnthropic = providerName === 'anthropic';
-    const envPrefix = providerName.toUpperCase();
-
-    const apiKey =
-      overrides.apiKey ||
-      (isAnthropic ? process.env.ANTHROPIC_API_KEY : process.env[`${envPrefix}_API_KEY`]);
-
-    if (!apiKey) {
-      const envVar = isAnthropic ? 'ANTHROPIC_API_KEY' : `${envPrefix}_API_KEY`;
-      throw new AIClientError(
-        `Missing API key for provider '${providerName}'. Set ${envVar} or pass an apiKey override.`,
-        'api',
-      );
-    }
-
-    const baseUrl =
-      overrides.baseUrl ||
-      (isAnthropic ? undefined : process.env[`${envPrefix}_BASE_URL`]) ||
-      KNOWN_BASE_URLS[providerName];
-
-    // Non-Anthropic providers MUST have a baseUrl (from overrides, env, or
-    // KNOWN_BASE_URLS). Without one, createAnthropic() would target
-    // api.anthropic.com and forward the provider's authToken — a credential
-    // leak and a 401 storm. Fail hard with a clear config error.
-    if (!isAnthropic && !baseUrl) {
-      throw new AIClientError(
-        `Missing base URL for provider '${providerName}'. Set ${envPrefix}_BASE_URL, ` +
-          `pass a baseUrl override, or add '${providerName}' to KNOWN_BASE_URLS. ` +
-          `Without a base URL the SDK would route requests to Anthropic and leak the provider's credential.`,
-        'api',
-      );
-    }
-
+    // Every catalog provider authenticates via bearer token (Anthropic's
+    // `x-api-key` path is not used — our catalog contains no direct
+    // api.anthropic.com entries). Always pass as `authToken`.
+    // When baseUrl is null (SDK-default signal), pass undefined so the
+    // Anthropic SDK uses its built-in endpoint (reserved for #530).
     providerCache.set(
       cacheKey,
       createAnthropic({
-        ...(isAnthropic
-          ? isAnthropicAuthToken(apiKey)
-            ? { authToken: apiKey }
-            : { apiKey }
-          : { authToken: apiKey }),
-        ...(baseUrl && { baseURL: baseUrl }),
+        authToken: apiKey,
+        baseURL: baseUrl ?? undefined,
       }),
     );
   }
 
   const factory = providerCache.get(cacheKey);
-  return { model: factory(modelId), providerName, modelId, factory };
+  return {
+    model: factory(modelId),
+    providerName,
+    modelId,
+    factory,
+    resolvedBaseUrl: baseUrl ?? null,
+  };
 }
 
 // ── Option builders ─────────────────────────────────────────────────────────
@@ -249,22 +274,26 @@ async function resolveModel(modelString, overrides = {}) {
 /**
  * Build provider-specific options (e.g. thinking tokens).
  *
- * All providers currently route through the Anthropic SDK (`createAnthropic`),
- * so options MUST be keyed as `anthropic` — this is the SDK key, not the
- * logical provider name. If a non-Anthropic SDK is added in the future,
- * this function should map provider names to their SDK option keys.
+ * The SDK option key is `anthropic` because all currently-supported providers
+ * route through the Anthropic Messages wire protocol — this is the SDK's
+ * wire-level key, not a vendor identity. When a non-Anthropic SDK path is
+ * added (issue #530) this function should map the resolved `apiShape` to the
+ * matching SDK option key.
  *
- * @param {string} providerName - Logical provider name; thinking is only sent for 'anthropic' provider
+ * @param {string} providerName - Logical provider name; thinking only emitted when the provider declares the capability.
  * @param {number} [thinking] - Thinking token budget (0 = disabled)
  * @returns {Object}
  */
 function buildProviderOptions(providerName, thinking) {
   if (!thinking || thinking <= 0) return {};
-  if (providerName !== 'anthropic') return {};
+  if (!getCapabilities(providerName).thinking) return {};
   return { anthropic: { thinking: { type: 'enabled', budgetTokens: thinking } } };
 }
 
 function getProviderMetadata(providerMetadata, providerName) {
+  // Prefer the provider-keyed bucket; fall back to the Anthropic-shape bucket
+  // (which is what the Vercel AI SDK actually populates today for every
+  // provider routed through createAnthropic). Callers normalise against this.
   return providerMetadata?.[providerName] ?? providerMetadata?.anthropic ?? {};
 }
 
@@ -287,7 +316,11 @@ function buildTools(toolNames, providerName, factory) {
     warn('Unknown tool names ignored', { unknown });
   }
 
-  if (toolNames.includes('WebSearch') && providerName === 'anthropic' && factory?.tools) {
+  if (
+    toolNames.includes('WebSearch') &&
+    getCapabilities(providerName).webSearch &&
+    factory?.tools
+  ) {
     tools.web_search = factory.tools.webSearch_20250305();
   }
 
@@ -333,7 +366,7 @@ function createAbortController(timeoutMs, externalSignal) {
  * Generate a complete text response (non-streaming).
  *
  * @param {Object} opts
- * @param {string} opts.model - Model string (e.g. 'anthropic:claude-haiku-4-5' or 'claude-haiku-4-5')
+ * @param {string} opts.model - `provider:model` string (e.g. 'minimax:MiniMax-M2.7'). Bare names throw (D1).
  * @param {string} [opts.system] - System prompt string
  * @param {string} opts.prompt - User prompt
  * @param {string[]} [opts.tools] - Tool names (e.g. ['WebSearch'])
@@ -598,12 +631,16 @@ export function _resetSDK() {
  * @param {{ apiKey?: string, baseUrl?: string }} [overrides]
  */
 export async function warmConnection(modelString, overrides = {}) {
-  const { model } = await resolveModel(modelString, overrides);
-  // Establish TCP+TLS by making a lightweight request to the provider's base URL
-  const baseUrl = model.config?.baseURL;
-  if (baseUrl) {
+  // Use the resolved baseUrl from the registry (not SDK internals like
+  // `model.config?.baseURL`, which are undocumented and can drift between
+  // SDK versions).
+  const { resolvedBaseUrl } = await resolveModel(modelString, overrides);
+  if (resolvedBaseUrl) {
     try {
-      await fetch(baseUrl, { method: 'HEAD', signal: AbortSignal.timeout(5000) }).catch(() => {});
+      await fetch(resolvedBaseUrl, {
+        method: 'HEAD',
+        signal: AbortSignal.timeout(5000),
+      }).catch(() => {});
     } catch {
       // Swallow — warming is best-effort
     }
