@@ -23,6 +23,7 @@ import type { ComponentType } from 'react';
 import { useConfigContext } from '@/components/dashboard/config-context';
 import { CONFIG_NAVIGATION } from '@/components/dashboard/config-workspace/navigation';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
+import { WEB_APP_VERSION } from '@/lib/app-version';
 import { cn } from '@/lib/utils';
 import { ServerSelector } from './server-selector';
 
@@ -311,7 +312,7 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary-foreground/30 to-transparent -translate-x-[150%] transition-transform duration-[1200ms] ease-in-out group-hover:translate-x-[150%] pointer-events-none" />
         </Link>
         <p className="mt-3 text-center text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/35">
-          Volvox Dashboard · v1.0.0
+          Volvox Dashboard · v{WEB_APP_VERSION}
         </p>
       </div>
     </div>

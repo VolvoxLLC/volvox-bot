@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { EmptyState } from '@/components/dashboard/empty-state';
+import { useGuildChannels } from '@/components/layout/channel-directory-context';
 import { Badge } from '@/components/ui/badge';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { Input } from '@/components/ui/input';
@@ -78,7 +79,6 @@ export default function ConversationsClient() {
   const [search, setSearch] = useState(currentOpts.search);
   const [channelFilter, setChannelFilter] = useState(currentOpts.channel);
   const [page, setPage] = useState(currentOpts.page);
-  const [channels, setChannels] = useState<Channel[]>([]);
   const [brokenAvatars, setBrokenAvatars] = useState<Set<string>>(() => new Set());
   const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [debouncedSearch, setDebouncedSearch] = useState(currentOpts.search);
@@ -91,6 +91,8 @@ export default function ConversationsClient() {
     setBrokenAvatars(new Set());
   }, []);
   const guildId = useGuildSelection({ onGuildChange });
+  const { channels: guildChannels } = useGuildChannels(guildId);
+  const channels = guildChannels.filter((channel): channel is Channel => channel.type === 0);
 
   useEffect(() => {
     clearTimeout(searchTimerRef.current);
@@ -100,18 +102,6 @@ export default function ConversationsClient() {
     }, 300);
     return () => clearTimeout(searchTimerRef.current);
   }, [search]);
-
-  useEffect(() => {
-    if (!guildId) return;
-    void (async () => {
-      try {
-        const res = await window.fetch(`/api/guilds/${encodeURIComponent(guildId)}/channels`);
-        if (res.ok) setChannels(((await res.json()) as Channel[]).filter((c) => c.type === 0));
-      } catch {
-        /* non-critical */
-      }
-    })();
-  }, [guildId]);
 
   useEffect(() => {
     if (!guildId) return;

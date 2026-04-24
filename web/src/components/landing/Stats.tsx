@@ -203,7 +203,7 @@ export function Stats() {
         <div className="stats-label-primary flex items-center gap-4 mb-8 opacity-50 justify-center">
           <div className="h-[1px] w-4 bg-foreground" />
           <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-foreground font-mono">
-            Network Status v4.1
+            Network Status
           </span>
           <div className="h-[1px] w-4 bg-foreground" />
         </div>
