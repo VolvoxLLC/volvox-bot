@@ -171,7 +171,10 @@ function InfrastructureSection({
   );
 }
 
-function AddBotSection({ addBot }: Readonly<{ addBot: MutualGuild[] }>) {
+function AddBotSection({
+  addBot,
+  onSelect,
+}: Readonly<{ addBot: MutualGuild[]; onSelect?: () => void }>) {
   return (
     <div className="space-y-1.5">
       {addBot.length > 0 ? (
@@ -184,6 +187,7 @@ function AddBotSection({ addBot }: Readonly<{ addBot: MutualGuild[] }>) {
               delayDuration={0}
               onSelect={() => {
                 window.open(inviteUrl, '_blank', 'noopener,noreferrer');
+                onSelect?.();
               }}
               className="rounded-[20px] border border-orange-500/20 bg-orange-500/5 px-4 py-3 shadow-[inset_0_1px_1px_hsl(var(--foreground)/0.05)] hover:border-orange-500/30 hover:bg-orange-500/10"
             >
@@ -486,7 +490,7 @@ export function ServerSelector({ className, onSelect }: ServerSelectorProps) {
             title="Add Bot"
             badge={<SectionBadge tone="warning">Invite</SectionBadge>}
           />
-          <AddBotSection addBot={addBot} />
+          <AddBotSection addBot={addBot} onSelect={onSelect} />
 
           <DropdownMenuSeparator className="mx-2 my-3 bg-border/20" />
           <CategoryHeader

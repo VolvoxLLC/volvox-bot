@@ -387,7 +387,12 @@ describe('ServerSelector', () => {
         json: () => Promise.resolve(guilds),
       } as Response);
 
-      renderServerSelector();
+      const onSelect = vi.fn();
+      render(
+        <GuildDirectoryProvider>
+          <ServerSelector onSelect={onSelect} />
+        </GuildDirectoryProvider>,
+      );
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /Invite Volvox\.Bot/i })).toBeInTheDocument();
@@ -414,6 +419,7 @@ describe('ServerSelector', () => {
         '_blank',
         'noopener,noreferrer',
       );
+      expect(onSelect).toHaveBeenCalledTimes(1);
       expect(mockBroadcastSelectedGuild).not.toHaveBeenCalled();
     } finally {
       openSpy.mockRestore();
