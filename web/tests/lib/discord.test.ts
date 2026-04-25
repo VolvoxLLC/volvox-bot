@@ -596,7 +596,7 @@ function mockGuildApis(
     userGuilds,
     botGuilds,
     botResponse,
-  }: { userGuilds: unknown[]; botGuilds?: unknown[]; botResponse?: Response | Error },
+  }: { userGuilds: unknown[]; botGuilds?: unknown[]; botResponse?: Response | Error | DOMException },
 ) {
   fetchSpy.mockImplementation((url: string | URL | Request) => {
     const urlStr = url.toString();
@@ -604,7 +604,7 @@ function mockGuildApis(
       return Promise.resolve(jsonResponse(userGuilds));
     }
     if (urlStr.includes('/api/v1/guilds')) {
-      if (botResponse instanceof Error) {
+      if (botResponse instanceof Error || botResponse instanceof DOMException) {
         return Promise.reject(botResponse);
       }
       return Promise.resolve(botResponse ?? jsonResponse(botGuilds ?? []));
@@ -649,16 +649,14 @@ describe('getUserGuildDirectory', () => {
     expect(guildDirectory[1]).not.toHaveProperty('botPresent');
   });
 
-  it('treats bot api aborts as unavailable in the guild directory', async () => {
+  it('propagates bot api aborts in the guild directory', async () => {
     const userGuilds = [userGuild('1')];
     const timeoutError = new DOMException('Timed out', 'TimeoutError');
 
     enableBotApiEnv();
     mockGuildApis(guildFetchSpy, { userGuilds, botResponse: timeoutError });
 
-    await expect(getUserGuildDirectory('test-token')).resolves.toEqual([
-      expect.not.objectContaining({ botPresent: expect.anything() }),
-    ]);
+    await expect(getUserGuildDirectory('test-token')).rejects.toThrow(timeoutError);
   });
 });
 

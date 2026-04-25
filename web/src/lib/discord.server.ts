@@ -315,6 +315,10 @@ async function getUserGuildsWithBotPresence(
   const [userGuilds, botResult] = await Promise.all([
     fetchUserGuilds(accessToken, signal),
     fetchBotGuilds(signal).catch((err) => {
+      if (isAbortLikeError(err)) {
+        throw err;
+      }
+
       logger.warn('[discord] Unexpected error fetching bot guilds — degrading gracefully.', err);
       return { available: false, guilds: [] } as BotGuildResult;
     }),
