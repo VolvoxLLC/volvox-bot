@@ -177,6 +177,7 @@ export default function ModerationClient() {
                       type="button"
                       className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-foreground transition-colors"
                       onClick={() => setUserHistoryInput('')}
+                      aria-label="Clear user ID input"
                     >
                       <X className="h-4 w-4" />
                     </button>
