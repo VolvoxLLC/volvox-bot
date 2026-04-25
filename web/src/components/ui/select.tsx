@@ -31,7 +31,7 @@ function SelectTrigger({
       data-slot="select-trigger"
       data-size={size}
       className={cn(
-        'border-border/40 data-[placeholder]:text-muted-foreground/40 [&_svg:not([class*="text-"])]:text-muted-foreground/40 focus-visible:border-primary/50 focus-visible:ring-primary/20 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive bg-card/40 hover:bg-card/60 flex w-fit items-center justify-between gap-3 rounded-[14px] border px-4 py-2 text-sm font-bold tracking-tight whitespace-nowrap backdrop-blur-md transition-all active:scale-[0.98] outline-none focus-visible:ring-[4px] disabled:cursor-not-allowed disabled:opacity-50 data-[size=default]:h-11 data-[size=sm]:h-9 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*="size-"])]:size-4',
+        'border-border/40 data-[placeholder]:text-muted-foreground/40 [&_svg:not([class*="text-"])]:text-muted-foreground/60 focus-visible:border-primary/50 focus-visible:ring-primary/20 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive bg-card/40 hover:bg-card/60 flex w-fit items-center justify-between gap-3 rounded-[14px] border px-4 py-2 text-sm font-bold tracking-tight whitespace-nowrap backdrop-blur-md transition-all active:scale-[0.98] outline-none focus-visible:ring-[4px] disabled:cursor-not-allowed disabled:opacity-50 data-[size=default]:h-11 data-[size=sm]:h-9 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*="size-"])]:size-4',
         className,
       )}
       {...props}
@@ -47,8 +47,8 @@ function SelectTrigger({
 function SelectContent({
   className,
   children,
-  position = 'popper',
-  align = 'start',
+  position,
+  align,
   sideOffset = 8,
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Content>) {
@@ -58,7 +58,7 @@ function SelectContent({
         data-slot="select-content"
         className={cn(
           'z-50 min-w-[12rem] overflow-hidden rounded-[28px] p-1 backdrop-blur-3xl transition-all',
-          'border-t border-border/40 bg-gradient-to-b from-popover/95 to-popover/60',
+          'border border-border/40 bg-gradient-to-b from-popover/95 to-popover/60',
           'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
           'max-h-[var(--radix-select-content-available-height)]',
           className,
@@ -73,7 +73,7 @@ function SelectContent({
           className={cn(
             'p-1.5',
             position === 'popper' &&
-              'h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)] scroll-my-1',
+              'h-[var(--radix-select-content-available-height)] w-full min-w-[var(--radix-select-trigger-width)] scroll-my-1',
           )}
         >
           {children}

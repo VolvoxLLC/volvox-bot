@@ -211,7 +211,7 @@ export default function MembersClient() {
                 onChange={(e) => setSearch(e.target.value)}
                 aria-label="Search members"
               />
-              <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/30 z-10 pointer-events-none" />
+              <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/50 z-10 pointer-events-none" />
               {search && (
                 <button
                   type="button"

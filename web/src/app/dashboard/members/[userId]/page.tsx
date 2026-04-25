@@ -655,7 +655,7 @@ export default function MemberDetailPage() {
                   ) : (
                     <Zap className="mr-2 h-3.5 w-3.5" />
                   )}
-                  Apply
+                  {xpSubmitting ? 'Applying...' : 'Apply'}
                 </Button>
               </form>
               {xpSuccess && (

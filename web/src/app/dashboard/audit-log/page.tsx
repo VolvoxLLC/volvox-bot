@@ -103,9 +103,9 @@ function CopyButton({ value }: { value: string }) {
   return (
     <Button
       variant="secondary"
-      size="icon"
+      size="icon-sm"
       onClick={handleCopy}
-      className="ml-2 h-7 w-7 rounded-lg text-muted-foreground/30 hover:text-foreground active:scale-90"
+      className="ml-2 text-muted-foreground/30 hover:text-foreground active:scale-90"
       aria-label="Copy ID"
     >
       {copied ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
@@ -204,6 +204,8 @@ export default function AuditLogPage() {
   const onGuildChange = useCallback(() => {
     useAuditLogStore.getState().reset();
     setExpandedRows(new Set());
+    setUserSearch('');
+    setDebouncedUserSearch('');
   }, []);
   const guildId = useGuildSelection({ onGuildChange });
 
@@ -226,14 +228,13 @@ export default function AuditLogPage() {
     };
   }, [
     guildId,
-    filters.action,
     debouncedUserSearch,
+    filters.action,
     filters.startDate,
     filters.endDate,
     filters.offset,
     fetch,
     router,
-    filters,
   ]);
 
   const toggleRow = useCallback((id: number) => {
@@ -345,7 +346,7 @@ export default function AuditLogPage() {
                 <div className="relative">
                   <Input
                     type="date"
-                    className="w-[180px] pl-10 text-[10px] font-black uppercase tracking-[0.2em]"
+                    className="hide-native-picker w-[180px] pl-10 text-[10px] font-black uppercase tracking-[0.2em]"
                     value={filters.startDate}
                     onChange={(e) => setFilters({ startDate: e.target.value, offset: 0 })}
                     aria-label="Start date filter"
@@ -356,7 +357,7 @@ export default function AuditLogPage() {
                 <div className="relative">
                   <Input
                     type="date"
-                    className="w-[180px] pl-10 text-[10px] font-black uppercase tracking-[0.2em]"
+                    className="hide-native-picker w-[180px] pl-10 text-[10px] font-black uppercase tracking-[0.2em]"
                     value={filters.endDate}
                     onChange={(e) => setFilters({ endDate: e.target.value, offset: 0 })}
                     aria-label="End date filter"
