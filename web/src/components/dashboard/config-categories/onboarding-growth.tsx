@@ -381,11 +381,11 @@ export function OnboardingGrowthCategory() {
                   <input
                     id="welcome-milestone-interval"
                     type="number"
-                    min={1}
+                    min={0}
                     max={10_000}
                     value={draftConfig.welcome?.dynamic?.milestoneInterval ?? 25}
                     onChange={(event) => {
-                      const value = parseNumberInput(event.target.value, 1, 10_000) ?? 25;
+                      const value = parseNumberInput(event.target.value, 0, 10_000) ?? 25;
                       updateWelcomeDynamic('milestoneInterval', value);
                     }}
                     onFocus={(event) => event.target.select()}
@@ -397,7 +397,8 @@ export function OnboardingGrowthCategory() {
                     id="welcome-milestone-interval-help"
                     className="text-[11px] text-muted-foreground/60 font-medium ml-1"
                   >
-                    Controls member-count milestone cadence, e.g. every 25 members.
+                    Controls member-count milestone cadence, e.g. every 25 members. Use 0 to disable
+                    interval-based milestones.
                   </p>
                 </div>
                 <div className="space-y-2">
