@@ -220,7 +220,13 @@ export default function AuditLogPage() {
 
   useEffect(() => {
     if (!guildId) return;
-    void fetch(guildId, { ...filters, userId: debouncedUserSearch }).then((res) => {
+    void fetch(guildId, {
+      action: filters.action,
+      userId: debouncedUserSearch,
+      startDate: filters.startDate,
+      endDate: filters.endDate,
+      offset: filters.offset,
+    }).then((res) => {
       if (res === 'unauthorized') router.replace('/login');
     });
     return () => {
