@@ -381,41 +381,43 @@ describe('ServerSelector', () => {
 
     const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
 
-    fetchSpy.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(guilds),
-    } as Response);
+    try {
+      fetchSpy.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(guilds),
+      } as Response);
 
-    renderServerSelector();
+      renderServerSelector();
 
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Invite Volvox\.Bot/i })).toBeInTheDocument();
-    });
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Invite Volvox\.Bot/i })).toBeInTheDocument();
+      });
 
-    const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: /Invite Volvox\.Bot/i }));
+      const user = userEvent.setup();
+      await user.click(screen.getByRole('button', { name: /Invite Volvox\.Bot/i }));
 
-    const inviteMenuItem = await screen.findByRole('menuitem', { name: /Invite Me/i });
-    expect(inviteMenuItem).toBeInTheDocument();
-    expect(screen.getByText('Invite Bot')).toBeInTheDocument();
+      const inviteMenuItem = await screen.findByRole('menuitem', { name: /Invite Me/i });
+      expect(inviteMenuItem).toBeInTheDocument();
+      expect(screen.getByText('Invite Bot')).toBeInTheDocument();
 
-    await user.click(inviteMenuItem);
-    await waitFor(() => {
-      expect(openSpy).toHaveBeenCalledTimes(1);
-    });
-    expect(openSpy).toHaveBeenCalledWith(
-      expect.stringContaining('guild_id=add-bot-1'),
-      '_blank',
-      'noopener,noreferrer',
-    );
-    expect(openSpy).toHaveBeenCalledWith(
-      expect.stringContaining('disable_guild_select=true'),
-      '_blank',
-      'noopener,noreferrer',
-    );
-    expect(mockBroadcastSelectedGuild).not.toHaveBeenCalled();
-
-    openSpy.mockRestore();
+      await user.click(inviteMenuItem);
+      await waitFor(() => {
+        expect(openSpy).toHaveBeenCalledTimes(1);
+      });
+      expect(openSpy).toHaveBeenCalledWith(
+        expect.stringContaining('guild_id=add-bot-1'),
+        '_blank',
+        'noopener,noreferrer',
+      );
+      expect(openSpy).toHaveBeenCalledWith(
+        expect.stringContaining('disable_guild_select=true'),
+        '_blank',
+        'noopener,noreferrer',
+      );
+      expect(mockBroadcastSelectedGuild).not.toHaveBeenCalled();
+    } finally {
+      openSpy.mockRestore();
+    }
   });
 
   it('shows unknown bot status guilds in the infrastructure bucket when the user can manage them', async () => {

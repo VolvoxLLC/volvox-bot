@@ -330,7 +330,7 @@ async function getUserGuildsWithBotPresence(
  * auth fallback", not "the bot is definitely installed in this guild".
  */
 function markGuildsAsMutualGuildsForAuthFallback(userGuilds: DiscordGuild[]): MutualGuild[] {
-  return userGuilds.map((guild: DiscordGuild) => ({
+  return userGuilds.map((guild) => ({
     ...guild,
     botPresent: true,
   }));
