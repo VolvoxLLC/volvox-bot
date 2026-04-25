@@ -164,7 +164,7 @@ export default function ModerationClient() {
                 className="flex flex-wrap items-center gap-3"
               >
                 <div className="relative min-w-[20rem] flex-1">
-                  <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/30" />
+                  <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/50" />
                   <Input
                     className="pl-10 pr-10"
                     placeholder="Discord ID (e.g. 123456...)"
