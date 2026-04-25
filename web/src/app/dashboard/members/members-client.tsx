@@ -204,7 +204,6 @@ export default function MembersClient() {
           {/* Search + stats bar — compact inline strip */}
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative flex-1 min-w-[240px] max-w-sm">
-              <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/30" />
               <Input
                 className="pl-10 pr-10"
                 placeholder="Search members..."
@@ -212,10 +211,11 @@ export default function MembersClient() {
                 onChange={(e) => setSearch(e.target.value)}
                 aria-label="Search members"
               />
+              <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/30 z-10 pointer-events-none" />
               {search && (
                 <button
                   type="button"
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-foreground transition-colors"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-foreground transition-colors z-10"
                   onClick={handleClearSearch}
                   aria-label="Clear search"
                 >

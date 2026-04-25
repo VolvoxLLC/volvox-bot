@@ -26,7 +26,7 @@ function Input({ className, type, onFocus, ...props }: React.ComponentProps<'inp
       className={cn(
         'file:text-foreground placeholder:text-muted-foreground/40 selection:bg-primary selection:text-primary-foreground dark:bg-card/40 border-border/40 h-11 w-full min-w-0 rounded-[14px] border bg-transparent px-4 py-2 text-sm shadow-sm backdrop-blur-md transition-all outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm',
         'focus-visible:border-primary/50 focus-visible:shadow-[0_0_0_4px_hsl(var(--primary)/0.1),inset_0_1px_2px_hsl(var(--foreground)/0.05)]',
-        'aria-invalid:border-destructive',
+        'aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive',
         className,
       )}
       {...props}

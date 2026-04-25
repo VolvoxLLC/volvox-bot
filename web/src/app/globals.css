@@ -70,6 +70,18 @@
       opacity: 0;
     }
   }
+
+  --animate-shimmer: shimmer 2s infinite;
+
+  @keyframes shimmer {
+    from {
+      transform: translateX(-100%);
+    }
+
+    to {
+      transform: translateX(100%);
+    }
+  }
 }
 
 @layer base {

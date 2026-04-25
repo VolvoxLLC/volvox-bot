@@ -46,7 +46,25 @@ const footerLinks = [
 // ─── Background Elements ───
 function FooterBackground() {
   return (
-    <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden" />
+    <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
+      {/* Prismatic Shard */}
+      <div className="absolute -bottom-32 -left-32 w-[160%] h-[500px] -rotate-6 bg-gradient-to-r from-primary/12 via-secondary/8 to-transparent blur-[120px] opacity-50 dark:opacity-40" />
+
+      {/* Grid Overlay */}
+      <div
+        className="absolute inset-0 opacity-[0.02] dark:opacity-[0.01]"
+        style={{
+          backgroundImage: `
+            linear-gradient(to right, hsl(var(--foreground)) 1px, transparent 1px),
+            linear-gradient(to bottom, hsl(var(--foreground)) 1px, transparent 1px)
+          `,
+          backgroundSize: '60px 60px',
+        }}
+      />
+
+      {/* Radial Mask */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_center,transparent_0%,hsl(var(--background))_100%)] opacity-60" />
+    </div>
   );
 }
 

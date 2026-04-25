@@ -246,7 +246,7 @@ export default function TicketsClient() {
                 setStatusFilter(val === 'all' ? '' : val);
               }}
             >
-              <SelectTrigger className="w-[180px] text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">
+              <SelectTrigger className="w-[180px] text-[10px] font-black uppercase tracking-[0.2em] data-[placeholder]:text-muted-foreground/40">
                 <SelectValue placeholder="All statuses" />
               </SelectTrigger>
               <SelectContent>

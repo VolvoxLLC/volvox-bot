@@ -106,7 +106,7 @@ function SelectItem({
     <SelectPrimitive.Item
       data-slot="select-item"
       className={cn(
-        'relative flex w-full cursor-pointer select-none items-center gap-2.5 rounded-[20px] px-4 py-2.5 text-sm font-bold tracking-tight outline-none transition-all active:scale-[0.98] data-[disabled]:pointer-events-none data-[disabled]:opacity-40 group',
+        'relative flex w-full cursor-pointer select-none items-center gap-2.5 rounded-[20px] pl-4 pr-10 py-2.5 text-sm font-bold tracking-tight outline-none transition-all active:scale-[0.98] data-[disabled]:pointer-events-none data-[disabled]:opacity-40 group',
         'border border-transparent hover:bg-muted/40 hover:border-border/40 hover:shadow-[inset_0_1px_1px_hsl(var(--foreground)/0.05)]',
         'focus:bg-primary/10 focus:border-primary/20 focus:text-primary focus:shadow-[inset_0_1px_1px_hsl(var(--foreground)/0.05)]',
         className,
