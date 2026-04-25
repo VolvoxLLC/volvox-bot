@@ -89,14 +89,15 @@
     }
   }
 
-  --animate-shimmer: shimmer 2s infinite;
+  --animate-shimmer: shimmer 2.8s infinite;
 
   @keyframes shimmer {
-    from {
+    0% {
       transform: translateX(-100%);
     }
 
-    to {
+    60%,
+    100% {
       transform: translateX(100%);
     }
   }

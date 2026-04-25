@@ -203,7 +203,7 @@ export default function ModerationClient() {
                     title="Clear user history"
                     aria-label="Clear user history"
                   >
-                    <X className="h-4.5 w-4.5" />
+                    <X className="h-4 w-4" />
                   </Button>
                 )}
               </form>
