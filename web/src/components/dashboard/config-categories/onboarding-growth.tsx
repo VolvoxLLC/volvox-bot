@@ -372,6 +372,35 @@ export function OnboardingGrowthCategory() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
+                  <label
+                    htmlFor="welcome-milestone-interval"
+                    className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1"
+                  >
+                    Milestone Interval
+                  </label>
+                  <input
+                    id="welcome-milestone-interval"
+                    type="number"
+                    min={1}
+                    max={10_000}
+                    value={draftConfig.welcome?.dynamic?.milestoneInterval ?? 25}
+                    onChange={(event) => {
+                      const value = parseNumberInput(event.target.value, 1, 10_000) ?? 25;
+                      updateWelcomeDynamic('milestoneInterval', value);
+                    }}
+                    onFocus={(event) => event.target.select()}
+                    disabled={saving}
+                    className={inputClasses}
+                    aria-describedby="welcome-milestone-interval-help"
+                  />
+                  <p
+                    id="welcome-milestone-interval-help"
+                    className="text-[11px] text-muted-foreground/60 font-medium ml-1"
+                  >
+                    Controls member-count milestone cadence, e.g. every 25 members.
+                  </p>
+                </div>
+                <div className="space-y-2">
                   <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1">
                     Highlight Channels
                   </div>

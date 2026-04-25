@@ -247,6 +247,139 @@ describe('OnboardingGrowthCategory', () => {
     );
   });
 
+  it('renders the welcome milestone interval from config', () => {
+    mockUseConfigContext.mockReturnValue({
+      draftConfig: {
+        welcome: {
+          enabled: true,
+          message: '',
+          dynamic: { enabled: true, milestoneInterval: 42 },
+          roleMenu: { options: [] },
+          dmSequence: { steps: [] },
+        },
+      },
+      saving: false,
+      guildId: 'guild-1',
+      visibleFeatureIds: new Set(['welcome']),
+      activeTabId: 'welcome',
+      updateDraftConfig: vi.fn(),
+    });
+
+    render(<OnboardingGrowthCategory />);
+
+    const input = screen.getByLabelText('Milestone Interval');
+    expect(input).toHaveValue(42);
+    expect(
+      screen.getByText('Controls member-count milestone cadence, e.g. every 25 members.'),
+    ).toBeInTheDocument();
+  });
+
+  it('defaults the welcome milestone interval to 25 when unset', () => {
+    mockUseConfigContext.mockReturnValue({
+      draftConfig: {
+        welcome: {
+          enabled: true,
+          message: '',
+          dynamic: { enabled: true },
+          roleMenu: { options: [] },
+          dmSequence: { steps: [] },
+        },
+      },
+      saving: false,
+      guildId: 'guild-1',
+      visibleFeatureIds: new Set(['welcome']),
+      activeTabId: 'welcome',
+      updateDraftConfig: vi.fn(),
+    });
+
+    render(<OnboardingGrowthCategory />);
+
+    expect(screen.getByLabelText('Milestone Interval')).toHaveValue(25);
+  });
+
+  it('updates the welcome milestone interval in draft config', () => {
+    const updateDraftConfig = vi.fn((updater) =>
+      updater({
+        welcome: {
+          enabled: true,
+          message: '',
+          dynamic: { enabled: true, milestoneInterval: 25 },
+          roleMenu: { options: [] },
+          dmSequence: { steps: [] },
+        },
+      }),
+    );
+
+    mockUseConfigContext.mockReturnValue({
+      draftConfig: {
+        welcome: {
+          enabled: true,
+          message: '',
+          dynamic: { enabled: true, milestoneInterval: 25 },
+          roleMenu: { options: [] },
+          dmSequence: { steps: [] },
+        },
+      },
+      saving: false,
+      guildId: 'guild-1',
+      visibleFeatureIds: new Set(['welcome']),
+      activeTabId: 'welcome',
+      updateDraftConfig,
+    });
+
+    render(<OnboardingGrowthCategory />);
+
+    const input = screen.getByLabelText('Milestone Interval');
+    expect(input).toHaveAttribute('min', '1');
+    expect(input).toHaveAttribute('max', '10000');
+
+    fireEvent.change(input, { target: { value: '50' } });
+
+    expect(updateDraftConfig).toHaveBeenCalledTimes(1);
+    expect(updateDraftConfig.mock.results[0]?.value.welcome.dynamic.milestoneInterval).toBe(50);
+  });
+
+  it('clamps the welcome milestone interval to the backend maximum', () => {
+    const updateDraftConfig = vi.fn((updater) =>
+      updater({
+        welcome: {
+          enabled: true,
+          message: '',
+          dynamic: { enabled: true, milestoneInterval: 25 },
+          roleMenu: { options: [] },
+          dmSequence: { steps: [] },
+        },
+      }),
+    );
+
+    mockUseConfigContext.mockReturnValue({
+      draftConfig: {
+        welcome: {
+          enabled: true,
+          message: '',
+          dynamic: { enabled: true, milestoneInterval: 25 },
+          roleMenu: { options: [] },
+          dmSequence: { steps: [] },
+        },
+      },
+      saving: false,
+      guildId: 'guild-1',
+      visibleFeatureIds: new Set(['welcome']),
+      activeTabId: 'welcome',
+      updateDraftConfig,
+    });
+
+    render(<OnboardingGrowthCategory />);
+
+    fireEvent.change(screen.getByLabelText('Milestone Interval'), {
+      target: { value: '10001' },
+    });
+
+    expect(updateDraftConfig.mock.results[0]?.value.welcome.dynamic.milestoneInterval).toBe(
+      10_000,
+    );
+  });
+
   it('exposes a channel selector for the welcome message destination', async () => {
     const user = userEvent.setup();
     const updateDraftConfig = vi.fn((updater) =>
