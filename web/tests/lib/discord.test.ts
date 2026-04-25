@@ -69,6 +69,26 @@ describe('getGuildIconUrl', () => {
   });
 });
 
+const rateLimitResponse = (headers: Map<string, string>) =>
+  ({
+    status: 429,
+    headers: { get: (key: string) => headers.get(key) ?? null },
+  }) as unknown as Response;
+
+function mockRateLimitThenSuccess(
+  fetchSpy: ReturnType<typeof vi.spyOn>,
+  headers: Map<string, string>,
+  retryResponses = 1,
+) {
+  let callCount = 0;
+  fetchSpy.mockImplementation(() => {
+    callCount++;
+    return Promise.resolve(
+      callCount <= retryResponses ? rateLimitResponse(headers) : ({ ok: true, status: 200 } as Response),
+    );
+  });
+}
+
 describe("fetchWithRateLimit", () => {
   let fetchSpy: ReturnType<typeof vi.spyOn>;
 
@@ -96,17 +116,7 @@ describe("fetchWithRateLimit", () => {
 
   it("retries on 429 with retry-after header", async () => {
     const headers = new Map([["retry-after", "0.01"]]);
-    let callCount = 0;
-    fetchSpy.mockImplementation(() => {
-      callCount++;
-      if (callCount === 1) {
-        return Promise.resolve({
-          status: 429,
-          headers: { get: (key: string) => headers.get(key) ?? null },
-        } as unknown as Response);
-      }
-      return Promise.resolve({ ok: true, status: 200 } as Response);
-    });
+    mockRateLimitThenSuccess(fetchSpy, headers);
 
     const promise = fetchWithRateLimit("https://example.com/api");
     // Advance timers to allow retries
@@ -118,17 +128,7 @@ describe("fetchWithRateLimit", () => {
 
   it("parses retry-after header as seconds and waits", async () => {
     const headers = new Map([["retry-after", "0.001"]]); // 1ms
-    let callCount = 0;
-    fetchSpy.mockImplementation(() => {
-      callCount++;
-      if (callCount <= 2) {
-        return Promise.resolve({
-          status: 429,
-          headers: { get: (key: string) => headers.get(key) ?? null },
-        } as unknown as Response);
-      }
-      return Promise.resolve({ ok: true, status: 200 } as Response);
-    });
+    mockRateLimitThenSuccess(fetchSpy, headers, 2);
 
     const promise = fetchWithRateLimit("https://example.com/api");
     await vi.advanceTimersByTimeAsync(100);
@@ -139,10 +139,7 @@ describe("fetchWithRateLimit", () => {
 
   it("returns 429 after exhausting max retries", async () => {
     const headers = new Map([["retry-after", "0.001"]]);
-    fetchSpy.mockResolvedValue({
-      status: 429,
-      headers: { get: (key: string) => headers.get(key) ?? null },
-    } as unknown as Response);
+    fetchSpy.mockResolvedValue(rateLimitResponse(headers));
 
     const promise = fetchWithRateLimit("https://example.com/api");
     await vi.advanceTimersByTimeAsync(100);
@@ -154,10 +151,7 @@ describe("fetchWithRateLimit", () => {
 
   it("does not retry when retry-after exceeds the allowed delay cap", async () => {
     const headers = new Map([["retry-after", "728"]]);
-    fetchSpy.mockResolvedValue({
-      status: 429,
-      headers: { get: (key: string) => headers.get(key) ?? null },
-    } as unknown as Response);
+    fetchSpy.mockResolvedValue(rateLimitResponse(headers));
 
     const response = await fetchWithRateLimit("https://example.com/api");
     expect(response.status).toBe(429);
@@ -166,17 +160,7 @@ describe("fetchWithRateLimit", () => {
 
   it("does not retry when the next wait would exceed the remaining retry budget", async () => {
     const headers = new Map([["retry-after", "1.5"]]);
-    let callCount = 0;
-    fetchSpy.mockImplementation(() => {
-      callCount++;
-      if (callCount <= 2) {
-        return Promise.resolve({
-          status: 429,
-          headers: { get: (key: string) => headers.get(key) ?? null },
-        } as unknown as Response);
-      }
-      return Promise.resolve({ ok: true, status: 200 } as Response);
-    });
+    mockRateLimitThenSuccess(fetchSpy, headers, 2);
 
     const promise = fetchWithRateLimit("https://example.com/api", {
       rateLimit: {
@@ -195,17 +179,7 @@ describe("fetchWithRateLimit", () => {
   it("aborts sleep when signal fires during rate-limit wait", async () => {
     const controller = new AbortController();
     const headers = new Map([["retry-after", "30"]]); // 30 seconds
-    let callCount = 0;
-    fetchSpy.mockImplementation(() => {
-      callCount++;
-      if (callCount === 1) {
-        return Promise.resolve({
-          status: 429,
-          headers: { get: (key: string) => headers.get(key) ?? null },
-        } as unknown as Response);
-      }
-      return Promise.resolve({ ok: true, status: 200 } as Response);
-    });
+    mockRateLimitThenSuccess(fetchSpy, headers);
 
     const promise = fetchWithRateLimit("https://example.com/api", {
       signal: controller.signal,
@@ -229,10 +203,7 @@ describe("fetchWithRateLimit", () => {
     controller.abort(new DOMException("Already aborted", "AbortError"));
 
     const headers = new Map([["retry-after", "1"]]);
-    fetchSpy.mockResolvedValue({
-      status: 429,
-      headers: { get: (key: string) => headers.get(key) ?? null },
-    } as unknown as Response);
+    fetchSpy.mockResolvedValue(rateLimitResponse(headers));
 
     // Attach rejection handler immediately — no timer advance needed since
     // the signal is already aborted and the throw is synchronous.
@@ -249,17 +220,7 @@ describe("fetchWithRateLimit", () => {
     const removeListenerSpy = vi.spyOn(controller.signal, "removeEventListener");
 
     const headers = new Map([["retry-after", "0.001"]]);
-    let callCount = 0;
-    fetchSpy.mockImplementation(() => {
-      callCount++;
-      if (callCount === 1) {
-        return Promise.resolve({
-          status: 429,
-          headers: { get: (key: string) => headers.get(key) ?? null },
-        } as unknown as Response);
-      }
-      return Promise.resolve({ ok: true, status: 200 } as Response);
-    });
+    mockRateLimitThenSuccess(fetchSpy, headers);
 
     const promise = fetchWithRateLimit("https://example.com/api", {
       signal: controller.signal,
@@ -297,17 +258,7 @@ describe("fetchWithRateLimit", () => {
       ["retry-after", "nope"],
       ["x-ratelimit-reset-after", "0.001"],
     ]);
-    let callCount = 0;
-    fetchSpy.mockImplementation(() => {
-      callCount++;
-      if (callCount === 1) {
-        return Promise.resolve({
-          status: 429,
-          headers: { get: (key: string) => headers.get(key) ?? null },
-        } as unknown as Response);
-      }
-      return Promise.resolve({ ok: true, status: 200 } as Response);
-    });
+    mockRateLimitThenSuccess(fetchSpy, headers);
 
     const promise = fetchWithRateLimit("https://example.com/api");
     await vi.advanceTimersByTimeAsync(100);
