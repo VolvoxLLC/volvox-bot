@@ -59,6 +59,7 @@ function SelectContent({
         className={cn(
           'z-50 min-w-[12rem] overflow-hidden rounded-[28px] p-1 backdrop-blur-3xl transition-all',
           'border border-border/40 bg-gradient-to-b from-popover/95 to-popover/60',
+          'shadow-[inset_0_1px_1px_hsl(var(--foreground)/0.1),0_32px_64px_-16px_hsl(var(--foreground)/0.6)]',
           'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
           'max-h-[var(--radix-select-content-available-height)]',
           className,
@@ -81,7 +82,7 @@ function SelectLabel({ className, ...props }: React.ComponentProps<typeof Select
     <SelectPrimitive.Label
       data-slot="select-label"
       className={cn(
-        'px-4 pt-3 pb-2 text-[10px] font-black uppercase tracking-[0.3em] text-primary/60',
+        'px-4 pt-3 pb-2 text-[10px] font-black uppercase tracking-[0.3em] text-primary/80',
         className,
       )}
       {...props}

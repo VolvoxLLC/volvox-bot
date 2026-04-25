@@ -335,7 +335,7 @@ export default function AuditLogPage() {
                 value={filters.action}
                 onValueChange={(val) => setFilters({ action: val === 'all' ? '' : val, offset: 0 })}
               >
-                <SelectTrigger className="w-[200px] text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">
+                <SelectTrigger className="w-[200px] text-[10px] font-black uppercase tracking-[0.2em] data-[placeholder]:text-muted-foreground/40">
                   <SelectValue placeholder="All actions" />
                 </SelectTrigger>
                 <SelectContent>

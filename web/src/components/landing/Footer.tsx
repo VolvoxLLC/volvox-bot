@@ -201,7 +201,7 @@ export function Footer() {
                     href={botInviteUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group relative flex items-center gap-3 px-8 py-4 rounded-2xl bg-foreground text-background font-black tracking-tight text-sm overflow-hidden transition-all hover:scale-[1.02] active:scale-95 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.3)] dark:shadow-[0_20px_40px_-12px_rgba(0,0,0,0.6)]"
+                    className="group relative flex items-center gap-3 px-8 py-4 rounded-2xl bg-foreground text-background font-black tracking-tight text-sm overflow-hidden transition-all hover:scale-[1.02] active:scale-95 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.3)] dark:shadow-[0_20px_40px_-12px_rgba(0,0,0,0.6)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   >
                     <Zap className="w-4 h-4 fill-current" />
                     <span>Initialize Bot</span>
@@ -215,7 +215,7 @@ export function Footer() {
 
                 <Link
                   href="/login"
-                  className="cta-dashboard flex items-center gap-3 px-8 py-4 rounded-2xl border border-border/40 bg-card text-foreground font-black tracking-tight text-sm transition-all hover:bg-muted/40 hover:scale-[1.02] active:scale-95 shadow-[inset_0_1px_1px_hsl(var(--background)/0.08),0_12px_24px_-8px_rgba(0,0,0,0.1)]"
+                  className="cta-dashboard flex items-center gap-3 px-8 py-4 rounded-2xl border border-border/40 bg-card text-foreground font-black tracking-tight text-sm transition-all hover:bg-muted/40 hover:scale-[1.02] active:scale-95 shadow-[inset_0_1px_1px_hsl(var(--background)/0.08),0_12px_24px_-8px_rgba(0,0,0,0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 >
                   <Terminal className="w-4 h-4 opacity-40" />
                   <span>Dashboard</span>
