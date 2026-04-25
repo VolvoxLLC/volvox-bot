@@ -345,7 +345,7 @@ export default function AuditLogPage() {
                 <div className="relative">
                   <Input
                     type="date"
-                    className="w-[180px] pl-10 text-xs font-bold uppercase tracking-tighter"
+                    className="w-[180px] pl-10 text-[10px] font-black uppercase tracking-[0.2em]"
                     value={filters.startDate}
                     onChange={(e) => setFilters({ startDate: e.target.value, offset: 0 })}
                     aria-label="Start date filter"
@@ -356,7 +356,7 @@ export default function AuditLogPage() {
                 <div className="relative">
                   <Input
                     type="date"
-                    className="w-[180px] pl-10 text-xs font-bold uppercase tracking-tighter"
+                    className="w-[180px] pl-10 text-[10px] font-black uppercase tracking-[0.2em]"
                     value={filters.endDate}
                     onChange={(e) => setFilters({ endDate: e.target.value, offset: 0 })}
                     aria-label="End date filter"
@@ -507,7 +507,7 @@ export default function AuditLogPage() {
             {/* Pagination */}
             {totalPages > 1 && (
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/50">
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/30">
                   Page {currentPage} of {totalPages}
                 </span>
                 <div className="flex gap-2">

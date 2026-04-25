@@ -384,7 +384,7 @@ export default function MemberDetailPage() {
           variant="outline"
           size="sm"
           onClick={() => router.push('/dashboard/members')}
-          className="text-[10px] font-black uppercase tracking-[0.2em]"
+          className="group text-[10px] font-black uppercase tracking-[0.2em]"
         >
           <ArrowLeft className="mr-2 h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
           Back to Members
@@ -624,7 +624,7 @@ export default function MemberDetailPage() {
                     <Input
                       id="xp-amount"
                       type="number"
-                      placeholder="e.g. 100"
+                      placeholder="e.g. 100 or -50"
                       value={xpAmount}
                       onChange={(e) => setXpAmount(e.target.value)}
                       className="pl-10"
@@ -659,12 +659,19 @@ export default function MemberDetailPage() {
                 </Button>
               </form>
               {xpSuccess && (
-                <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-500/80 ml-1">
+                <p
+                  role="status"
+                  aria-live="polite"
+                  className="text-[10px] font-bold uppercase tracking-wider text-emerald-500/80 ml-1"
+                >
                   {xpSuccess}
                 </p>
               )}
               {xpError && (
-                <p className="text-[10px] font-bold uppercase tracking-wider text-destructive/80 ml-1">
+                <p
+                  role="alert"
+                  className="text-[10px] font-bold uppercase tracking-wider text-destructive/80 ml-1"
+                >
                   {xpError}
                 </p>
               )}
