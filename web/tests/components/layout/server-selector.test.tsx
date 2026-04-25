@@ -86,10 +86,10 @@ describe('ServerSelector', () => {
   it('shows loading state initially', () => {
     fetchSpy.mockReturnValue(new Promise(() => {})); // never resolves
     renderServerSelector();
-    expect(screen.getByText('Loading hub categories...')).toBeInTheDocument();
-    expect(screen.getByText('Infrastructure Hubs')).toBeInTheDocument();
-    expect(screen.getByText('Add Bot')).toBeInTheDocument();
-    expect(screen.getByText('Community Hubs')).toBeInTheDocument();
+    expect(screen.getByLabelText('Loading server selector')).toBeInTheDocument();
+    expect(screen.queryByText('Infrastructure Hubs')).not.toBeInTheDocument();
+    expect(screen.queryByText('Add Bot')).not.toBeInTheDocument();
+    expect(screen.queryByText('Community Hubs')).not.toBeInTheDocument();
   });
 
   it('shows no mutual servers message when empty', async () => {
@@ -352,10 +352,10 @@ describe('ServerSelector', () => {
     await user.click(screen.getByRole('button', { name: /Community Hubs/i }));
 
     expect(
-      await screen.findByText(/Read-only spaces and servers without install access/i),
-    ).toBeInTheDocument();
+      screen.queryByText(/Read-only spaces and servers without install access/i),
+    ).not.toBeInTheDocument();
 
-    const communityItem = screen.getByRole('menuitem', { name: /Viewer Server/i });
+    const communityItem = await screen.findByRole('menuitem', { name: /Viewer Server/i });
     expect(communityItem).toBeInTheDocument();
     await user.click(communityItem);
     await waitFor(() => {

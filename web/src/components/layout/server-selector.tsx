@@ -83,21 +83,16 @@ function SectionBadge({
 
 function CategoryHeader({
   title,
-  description,
   badge,
 }: Readonly<{
   title: string;
-  description: string;
   badge: ReactNode;
 }>) {
   return (
-    <div className="flex items-start justify-between gap-3 px-4 py-3">
-      <div className="flex min-w-0 flex-col gap-1">
-        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/50">
-          {title}
-        </span>
-        <span className="text-[11px] font-bold text-muted-foreground/50">{description}</span>
-      </div>
+    <div className="flex items-center justify-between gap-3 px-4 py-3">
+      <span className="min-w-0 truncate text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/50">
+        {title}
+      </span>
       <div className="shrink-0">{badge}</div>
     </div>
   );
@@ -114,23 +109,6 @@ function CategoryEmptyState({
     <div className="mx-2 rounded-[20px] border border-dashed border-border/40 bg-muted/20 px-4 py-3 text-left">
       <p className="text-xs font-semibold text-foreground/80">{title}</p>
       <p className="mt-1 text-[11px] text-muted-foreground">{description}</p>
-    </div>
-  );
-}
-
-function LoadingCategory({ title }: Readonly<{ title: string }>) {
-  return (
-    <div className="rounded-[18px] border border-border/40 bg-card/80 p-3">
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/50">
-          {title}
-        </span>
-        <div className="h-5 w-16 animate-pulse rounded-full bg-muted/50" />
-      </div>
-      <div className="space-y-2">
-        <div className="h-11 animate-pulse rounded-[16px] bg-muted/40" />
-        <div className="h-11 animate-pulse rounded-[16px] bg-muted/25" />
-      </div>
     </div>
   );
 }
@@ -212,8 +190,8 @@ function AddBotSection({ addBot }: Readonly<{ addBot: MutualGuild[] }>) {
               <div className="flex min-w-0 flex-1 items-center gap-3">
                 <GuildRow guild={guild} />
               </div>
-              <span className="pointer-events-none inline-flex h-8 items-center gap-1 rounded-full bg-orange-500 px-3 text-sm font-medium text-white shadow-xs transition-colors">
-                <Bot className="h-3 w-3" />
+              <span className="pointer-events-none ml-auto inline-flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-orange-500 px-3 text-sm font-medium text-white shadow-xs transition-colors">
+                <Bot className="h-3 w-3 shrink-0" />
                 Invite Bot
               </span>
             </DropdownMenuItem>
@@ -369,14 +347,20 @@ export function ServerSelector({ className, onSelect }: ServerSelectorProps) {
 
   if (loading) {
     return (
-      <div className="dashboard-chip flex min-w-0 flex-col gap-3 rounded-[22px] border border-border/40 bg-card p-3 text-sm shadow-2xl">
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <RefreshCw className="h-4 w-4 animate-spin" />
-          <span>Loading hub categories...</span>
+      <div
+        className={cn(
+          'dashboard-chip flex h-16 w-full min-w-0 items-center gap-2.5 rounded-[22px] border border-border/40 bg-card px-2.5 text-sm shadow-2xl',
+          className,
+        )}
+        role="status"
+        aria-label="Loading server selector"
+      >
+        <div className="h-9 w-9 shrink-0 animate-pulse rounded-[14px] bg-muted/40" />
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+          <div className="h-2 w-20 animate-pulse rounded-full bg-muted/40" />
+          <div className="h-3 w-36 animate-pulse rounded-full bg-muted/50" />
+          <span className="sr-only">Loading server selector...</span>
         </div>
-        <LoadingCategory title="Infrastructure Hubs" />
-        <LoadingCategory title="Add Bot" />
-        <LoadingCategory title="Community Hubs" />
       </div>
     );
   }
@@ -468,7 +452,7 @@ export function ServerSelector({ className, onSelect }: ServerSelectorProps) {
 
         <DropdownMenuContent
           className={cn(
-            'w-80 rounded-[28px] p-2.5 backdrop-blur-3xl transition-all',
+            'max-h-[min(34rem,calc(100vh_-_8rem))] w-80 overflow-y-auto rounded-[28px] p-2.5 backdrop-blur-3xl transition-all',
             'border-t border-border/40 bg-gradient-to-b from-popover/95 to-popover/60',
             'shadow-[inset_0_1px_1px_hsl(var(--foreground)/0.1),0_32px_64px_-16px_hsl(var(--foreground)/0.6)]',
           )}
@@ -488,7 +472,6 @@ export function ServerSelector({ className, onSelect }: ServerSelectorProps) {
 
           <CategoryHeader
             title="Infrastructure Hubs"
-            description="Manageable servers with Volvox.Bot live or a temporarily unavailable status check."
             badge={<SectionBadge tone="success">Dashboard</SectionBadge>}
           />
           <InfrastructureSection
@@ -501,7 +484,6 @@ export function ServerSelector({ className, onSelect }: ServerSelectorProps) {
           <DropdownMenuSeparator className="mx-2 my-3 bg-border/20" />
           <CategoryHeader
             title="Add Bot"
-            description="Servers you can invite Volvox.Bot into right now."
             badge={<SectionBadge tone="warning">Invite</SectionBadge>}
           />
           <AddBotSection addBot={addBot} />
@@ -509,7 +491,6 @@ export function ServerSelector({ className, onSelect }: ServerSelectorProps) {
           <DropdownMenuSeparator className="mx-2 my-3 bg-border/20" />
           <CategoryHeader
             title="Community Hubs"
-            description="Read-only spaces and servers without install access."
             badge={<SectionBadge tone="muted">Community</SectionBadge>}
           />
           <CommunitySection community={community} onSelect={onSelect} onNavigate={router.push} />
