@@ -393,7 +393,7 @@ export function MemberTable({
             className="px-8 text-[10px] font-black uppercase tracking-[0.2em]"
           >
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Load More
+            {loading ? 'Loading...' : 'Load More'}
           </Button>
         </div>
       )}
