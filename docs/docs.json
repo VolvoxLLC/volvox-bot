@@ -3,9 +3,9 @@
   "theme": "mint",
   "name": "Volvox.Bot",
   "colors": {
-    "primary": "#22c55e",
-    "light": "#4ade80",
-    "dark": "#16a34a"
+    "primary": "#A6B895",
+    "light": "#A6B895",
+    "dark": "#A6B895"
   },
   "favicon": "/logo/logo.png",
   "navigation": {
@@ -66,12 +66,22 @@
   },
   "logo": {
     "light": "/logo/logo.png",
-    "dark": "/logo/logo.png"
+    "dark": "/logo/logo.png",
+    "href": "https://volvox.bot"
   },
   "footer": {
     "socials": {
       "github": "https://github.com/VolvoxLLC/volvox-bot",
       "discord": "https://discord.gg/8ahXACdamN"
     }
+  },
+  "background": {
+    "color": {
+      "light": "#fafaf9",
+      "dark": "#10110e"
+    }
+  },
+  "appearance": {
+    "default": "system"
   }
 }
