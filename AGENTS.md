@@ -1,45 +1,84 @@
 # AGENTS.md
 
-Keep this file for repo-specific rules, gotchas, and conventions. If something belongs in `README.md`, it does not belong here.
+Repo-specific operating rules for agents working on Volvox.Bot. Keep this file sharp: if a new repo gotcha or required workflow appears, update it in the same PR that proves it.
 
-## Hard Rules
+## Start Here
 
-- Use Node 22+ and LATEST version of `pnpm`.
-- Use the latest version of ALL package.json dependencies. These should always be upgraded to the latest version before committing.
+- Use Node 22+ and the latest `pnpm`.
+- Read the relevant code before changing it. Prefer existing patterns over new abstractions.
+- For UI/UX work, read `DESIGN.md` before touching code. This includes dashboard, landing page, shared UI primitives, theme/token, layout, and visual copy changes.
+- Run the narrowest meaningful verification while iterating, then run broader repo gates when the blast radius justifies it.
+- Ask questions only when the missing decision changes architecture, UX direction, data model, security posture, or external behavior. Otherwise make a reasonable choice, document it, and keep moving.
+
+## Non-Negotiable Code Rules
+
 - ESM only.
+- Keep package dependencies current: use the latest version of all `package.json` dependencies before committing.
 - Use `src/logger.js`; do not use `console.*`.
-- Use the safe Discord messaging helpers in `src/utils/safeSend.js` instead of raw reply/send/edit calls.
+- Use safe Discord messaging helpers from `src/utils/safeSend.js`; do not use raw `reply`, `send`, or `edit` Discord message calls. If no helper fits, add or extend one.
 - Use parameterized SQL only.
-- Do not lower lint, typecheck, test, or coverage gates to make CI shut up. Bot and web both enforce 85% coverage thresholds.
-- When in doubt, ask questions. When unsure, ask questions. When you're not sure what to do, ask questions. Ask questions.
+- Do not lower lint, typecheck, test, or coverage gates to make CI pass. Bot and web both enforce 85% coverage thresholds.
 
-## Easy-To-Miss Wiring
+## Configurable Feature Contract
 
-- Config-backed features must be added to `config.json` and `src/api/utils/configAllowlist.js`. If a key is missing from `SAFE_CONFIG_KEYS`, the dashboard cannot save it.
-- Community features should be gated behind `config.<feature>.enabled`. Moderation commands are the exception.
+If a feature is configurable, ship the whole path or do not call it done:
+
+- Runtime logic.
+- API/dashboard wiring.
+- Tests for the behavior and wiring.
+- `config.json` updates for config-backed defaults.
+- `src/api/utils/configAllowlist.js` updates, including `SAFE_CONFIG_KEYS`; if the key is missing there, the dashboard cannot save it.
+
+Community-facing features must be gated behind `config.<feature>.enabled`. Moderation commands are the exception.
+
+## Dashboard and Web Gotchas
+
+- Next.js dev with Chrome DevTools uses `127.0.0.1`; keep `web/next.config.mjs` `allowedDevOrigins` including `127.0.0.1` or HMR can reload-loop and Turbopack can fail with `Map maximum size exceeded`.
 - New dashboard routes need title wiring in `web/src/lib/page-titles.ts`: use `createPageMetadata()` for SSR and keep `DashboardTitleSync` aligned for client navigation.
-- If a feature is configurable, ship the whole path: runtime logic, API/dashboard wiring, and tests.
-- Next.js 16 dev + Chrome DevTools MCP uses `127.0.0.1`; keep `web/next.config.mjs` `allowedDevOrigins` including `127.0.0.1` or HMR will fail, pages will reload-loop, and Turbopack can fall over with `Map maximum size exceeded`.
-- Dashboard clients that need the guild list should consume `GuildDirectoryProvider`; do not stack extra `/api/guilds` fetch loops in leaf components.
-- Recharts dashboard views should use `web/src/components/ui/stable-responsive-container.tsx`; raw `ResponsiveContainer` mounts can spam `width(-1)/height(-1)` warnings when panels render before layout settles.
-- Welcome-message variables use double braces only, like `{{user}}`; single braces are plain text and should not be documented, inserted, or parsed as variables.
+- Dashboard clients that need the guild list must consume `GuildDirectoryProvider`; do not add extra `/api/guilds` fetch loops in leaf components.
+- Recharts dashboard views must use `web/src/components/ui/stable-responsive-container.tsx`; raw `ResponsiveContainer` mounts can spam `width(-1)/height(-1)` warnings when panels render before layout settles.
+- Welcome-message variables use double braces only, like `{{user}}`. Single braces are plain text and should not be documented, inserted, or parsed as variables.
 
-## Visual Verification - IMPORTANT
+## DESIGN.md Is the Visual Source of Truth
 
-- Any visual dashboard or landing page change must be verified with Chrome DevTools MCP before you call it done.
+`DESIGN.md` defines the current product direction: calm, technical, muted sage/olive, restrained glass, operational panels, and compact data-heavy layouts.
+
+- Read `DESIGN.md` before any UI/UX, dashboard, landing page, shared UI primitive, theme/token, layout, or visual copy change.
+- If code and `DESIGN.md` disagree, either align code to `DESIGN.md` or update `DESIGN.md` with the new accepted direction in the same PR.
+- Update `DESIGN.md` whenever you add or change reusable visual patterns, design tokens, shared components, layout rules, dashboard/landing visual direction, or design-system exceptions.
+- Do not reintroduce the old neon green/purple marketing style unless `DESIGN.md` is intentionally updated with the rationale.
+- Prefer existing components and tokens over one-off styling. If you need a new pattern, document it.
+
+## Visual Verification
+
+Any visual dashboard or landing page change requires browser verification before it is done.
+
+- Use Chrome DevTools MCP when available.
 - Take a screenshot after the change.
-- Check both themes, light and dark, if colors or theming changed. Always check both themes this is important.
-- Check responsive behavior if layout changed. Verify on mobile, tablet, and desktop.
-- If the dashboard is not running or MCP is unavailable, say so plainly. Do not pretend it was verified.
+- Check both light and dark themes when colors or theming changed.
+- Check mobile, tablet, and desktop when layout changed.
+- If dashboard auth, shell, navigation, or settings flows changed, verify the affected dashboard flow directly.
+- If the dashboard is not running or browser tooling is unavailable, say so plainly. Do not pretend it was verified.
 
 ## Verification
 
-- Run the narrowest checks that actually prove the change.
-- Use repo-level commands when the blast radius is real: `pnpm mono:lint`, `pnpm mono:test`, `pnpm mono:typecheck`, `pnpm mono:build`, `pnpm mono:test:coverage`.
-- Workspace-only checks are fine for tight loops, but they do not replace the real gate on risky changes.
+Run checks that prove the change without wasting time:
 
-## Design
+- Narrow checks are best for tight loops.
+- Use repo-level gates when the change is broad or risky: `pnpm mono:lint`, `pnpm mono:test`, `pnpm mono:typecheck`, `pnpm mono:build`, `pnpm mono:test:coverage`.
+- Workspace-only checks do not replace repo-level gates for cross-cutting changes.
+- Never weaken tests, snapshots, coverage, lint, or typecheck to get green.
 
-See [DESIGN.md](DESIGN.md) for the design system and color palette. Follow the design system when making changes to the UI/UX.
-This is extremely important. If you don't follow the design system, your changes will be rejected.
-Always update the design system when making changes to the UI/UX.
+## Keep Docs Current
+
+Docs updates are part of done criteria, not optional cleanup.
+
+- Update all affected docs in the same PR when behavior, setup, config, commands, public docs navigation, or architecture changes.
+- Update `AGENTS.md` when repo-specific operating rules, workflows, or gotchas change.
+- Update `DESIGN.md` when visual/design-system direction changes.
+- Update `DEVELOPMENT.md` when local setup, dev commands, environment variables, project structure, or contributor/developer workflow changes.
+- Update `README.md` when the public/product overview, user-facing setup, or feature summaries change.
+- Update `CONTRIBUTING.md` when contribution workflow or review expectations change.
+- Update Mintlify docs (`docs/**/*.mdx`) and `docs/docs.json` when user-facing feature/config/security/help docs, dashboard docs, public behavior, or docs navigation changes.
+- Update `.github/workflows/maintain-docs.md` when the automated doc-maintenance scope or rules change.
+- Do not bury agent-only rules in `README.md`; keep them here.
