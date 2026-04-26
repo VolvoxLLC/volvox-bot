@@ -78,7 +78,8 @@ export const AI_CHAT_POOL: readonly AIChatItem[] = [
   },
   {
     question: 'How do I enable starboard?',
-    answer: 'Dashboard → Settings → Community Tools → Starboard. Set the emoji, threshold, and target channel.',
+    answer:
+      'Dashboard → Settings → Community Tools → Starboard. Set the emoji, threshold, and target channel.',
   },
 ];
 
