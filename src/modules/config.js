@@ -79,6 +79,29 @@ function deepMerge(target, source) {
 }
 
 /**
+ * Merge a database config section over the matching config.json defaults.
+ *
+ * Database rows may be partial when a deployment adds new config.json defaults
+ * after the row was first seeded. Preserve those new defaults while still
+ * letting explicit database values (including null) override the file value.
+ *
+ * @param {*} defaultValue - Matching value from config.json, if available
+ * @param {*} dbValue - Value loaded from the database
+ * @returns {*} Merged config value
+ */
+function mergeDbValueWithDefaults(defaultValue, dbValue) {
+  if (isPlainObject(defaultValue) && isPlainObject(dbValue)) {
+    return deepMerge(structuredClone(defaultValue), dbValue);
+  }
+
+  if (isPlainObject(dbValue)) {
+    return deepMerge({}, dbValue);
+  }
+
+  return structuredClone(dbValue);
+}
+
+/**
  * Load config.json from disk (used as seed/fallback).
  *
  * Security note: config.json integrity is a deployment concern — the file is
@@ -208,8 +231,8 @@ export async function loadConfig() {
       // Build config map from database rows
       configCache = new Map();
 
-      // Build global config
-      const globalConfig = {};
+      // Build global config, using config.json as defaults for partial DB sections.
+      const globalConfig = fileConfig ? structuredClone(fileConfig) : {};
       for (const row of globalRows) {
         if (DANGEROUS_KEYS.has(row.key)) {
           logWarn('Skipping dangerous config key from database', {
@@ -219,7 +242,7 @@ export async function loadConfig() {
           continue;
         }
 
-        globalConfig[row.key] = row.value;
+        globalConfig[row.key] = mergeDbValueWithDefaults(globalConfig[row.key], row.value);
       }
       configCache.set('global', globalConfig);
 
