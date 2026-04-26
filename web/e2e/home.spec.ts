@@ -93,7 +93,7 @@ test.describe('Hero Section', () => {
     await expect(page.getByText('BOT', { exact: true })).toBeVisible();
     await expect(
       page.getByText(
-        'The absolute synthesis of community intelligence, robust moderation, and seamless scale.',
+        'Where community insight, resilient moderation, and sustainable growth come together.',
       ),
     ).toBeVisible();
   });
@@ -125,7 +125,13 @@ test.describe('Features Section', () => {
   test('renders the features section', async ({ page }) => {
     await expect(page.getByText('System Protocol', { exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: /Everything you need/i })).toBeVisible();
-    for (const title of ['Neural Chat', 'Active Sentry', 'Live Insight', 'TL;DR', 'Core Engine']) {
+    for (const title of [
+      'AI Chat',
+      'AI Auto-Moderation',
+      'Reputation / XP System',
+      'User Memory',
+      'TL;DR',
+    ]) {
       await expect(page.getByRole('heading', { name: title })).toBeVisible();
     }
   });
