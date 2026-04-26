@@ -16,6 +16,7 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { scrollToLandingSection } from '@/lib/scroll-to-section';
 import { cn } from '@/lib/utils';
 
 export function LandingNavbar() {
@@ -35,12 +36,7 @@ export function LandingNavbar() {
   });
 
   const scrollToSection = useCallback((id: string) => {
-    const element = document.getElementById(id);
-    if (!element) return;
-    const navbarHeight = window.innerWidth >= 768 ? 192 : 96;
-    const top = element.getBoundingClientRect().top + window.scrollY - navbarHeight;
-    const isReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    window.scrollTo({ top, behavior: isReduced ? 'auto' : 'smooth' });
+    scrollToLandingSection(id);
   }, []);
 
   return (
@@ -125,20 +121,6 @@ export function LandingNavbar() {
           <div className="hidden flex-1 justify-center items-center gap-1 md:flex px-4 overflow-hidden">
             <button
               type="button"
-              onClick={() => scrollToSection('features')}
-              className="inline-block px-3 py-2 text-sm font-medium text-foreground/70 transition-colors hover:bg-muted/50 hover:text-foreground active:scale-95 rounded-full shrink-0"
-            >
-              Features
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollToSection('pricing')}
-              className="inline-block px-3 py-2 text-sm font-medium text-foreground/70 transition-colors hover:bg-muted/50 hover:text-foreground active:scale-95 rounded-full shrink-0"
-            >
-              Pricing
-            </button>
-            <button
-              type="button"
               onClick={() => scrollToSection('dashboard')}
               className="inline-block px-3 py-2 text-sm font-medium text-foreground/70 transition-colors hover:bg-muted/50 hover:text-foreground active:scale-95 rounded-full shrink-0"
             >
@@ -150,6 +132,20 @@ export function LandingNavbar() {
               className="inline-block px-3 py-2 text-sm font-medium text-foreground/70 transition-colors hover:bg-muted/50 hover:text-foreground active:scale-95 rounded-full shrink-0"
             >
               Compare
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToSection('features')}
+              className="inline-block px-3 py-2 text-sm font-medium text-foreground/70 transition-colors hover:bg-muted/50 hover:text-foreground active:scale-95 rounded-full shrink-0"
+            >
+              Features
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToSection('stats')}
+              className="inline-block px-3 py-2 text-sm font-medium text-foreground/70 transition-colors hover:bg-muted/50 hover:text-foreground active:scale-95 rounded-full shrink-0"
+            >
+              Status
             </button>
           </div>
 
@@ -191,24 +187,6 @@ export function LandingNavbar() {
                   <SheetClose asChild>
                     <button
                       type="button"
-                      onClick={() => scrollToSection('features')}
-                      className="flex w-full items-center justify-between rounded-xl p-4 text-left font-medium text-foreground transition-colors hover:bg-muted/50"
-                    >
-                      Features
-                    </button>
-                  </SheetClose>
-                  <SheetClose asChild>
-                    <button
-                      type="button"
-                      onClick={() => scrollToSection('pricing')}
-                      className="flex w-full items-center justify-between rounded-xl p-4 text-left font-medium text-foreground transition-colors hover:bg-muted/50"
-                    >
-                      Pricing
-                    </button>
-                  </SheetClose>
-                  <SheetClose asChild>
-                    <button
-                      type="button"
                       onClick={() => scrollToSection('dashboard')}
                       className="flex w-full items-center justify-between rounded-xl p-4 text-left font-medium text-foreground transition-colors hover:bg-muted/50"
                     >
@@ -222,6 +200,24 @@ export function LandingNavbar() {
                       className="flex w-full items-center justify-between rounded-xl p-4 text-left font-medium text-foreground transition-colors hover:bg-muted/50"
                     >
                       Compare
+                    </button>
+                  </SheetClose>
+                  <SheetClose asChild>
+                    <button
+                      type="button"
+                      onClick={() => scrollToSection('features')}
+                      className="flex w-full items-center justify-between rounded-xl p-4 text-left font-medium text-foreground transition-colors hover:bg-muted/50"
+                    >
+                      Features
+                    </button>
+                  </SheetClose>
+                  <SheetClose asChild>
+                    <button
+                      type="button"
+                      onClick={() => scrollToSection('stats')}
+                      className="flex w-full items-center justify-between rounded-xl p-4 text-left font-medium text-foreground transition-colors hover:bg-muted/50"
+                    >
+                      Status
                     </button>
                   </SheetClose>
                 </div>

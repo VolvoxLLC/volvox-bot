@@ -1,3 +1,4 @@
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { describe, expect, it } from 'vitest';
 import { sanitizeMentions, sanitizeMessageOptions } from '../../src/utils/sanitizeMentions.js';
 
@@ -292,6 +293,25 @@ describe('sanitizeMessageOptions', () => {
       };
       sanitizeMessageOptions(original);
       expect(original.components[0].components[0].label).toBe('@everyone');
+    });
+
+    it('should preserve required API fields from component builders', () => {
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId('safe-button')
+          .setLabel('@everyone click')
+          .setStyle(ButtonStyle.Primary),
+      );
+
+      const result = sanitizeMessageOptions({ components: [row] });
+
+      expect(result.components[0]).toMatchObject({ type: 1 });
+      expect(result.components[0].components[0]).toMatchObject({
+        type: 2,
+        custom_id: 'safe-button',
+        label: `@${ZWS}everyone click`,
+        style: ButtonStyle.Primary,
+      });
     });
   });
 });

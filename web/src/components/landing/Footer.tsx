@@ -6,11 +6,13 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Activity, ArrowRight, ChevronRight, Cpu, Terminal, Zap } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRef } from 'react';
+import { type MouseEvent, useRef } from 'react';
 import { siDiscord, siX } from 'simple-icons';
 import { SimpleIcon } from '@/components/ui/simple-icon';
 import { WEB_APP_VERSION } from '@/lib/app-version';
 import { getBotInviteUrl } from '@/lib/discord';
+import { scrollToLandingSection } from '@/lib/scroll-to-section';
+import { SUPPORT_DISCORD_URL } from '@/lib/support';
 
 if (typeof window !== 'undefined') {
   gsap.registerPlugin(ScrollTrigger);
@@ -21,16 +23,17 @@ const footerLinks = [
   {
     title: 'SYSTEM_CORE',
     links: [
+      { label: 'Dashboard', href: '#dashboard' },
+      { label: 'Compare', href: '#compare' },
       { label: 'Features', href: '#features' },
-      { label: 'Pricing', href: '#pricing' },
-      { label: 'Dashboard', href: '/login' },
+      { label: 'Status', href: '#stats' },
     ],
   },
   {
     title: 'RESOURCES',
     links: [
       { label: 'Documentation', href: 'https://docs.volvox.bot' },
-      { label: 'Support Node', href: 'https://discord.gg/8ahXACdamN' },
+      { label: 'Support Node', href: SUPPORT_DISCORD_URL },
     ],
   },
   {
@@ -60,6 +63,14 @@ export function Footer() {
   const containerRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const botInviteUrl = getBotInviteUrl();
+
+  const handleSectionLinkClick = (event: MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (!href.startsWith('#')) return;
+
+    if (scrollToLandingSection(href)) {
+      event.preventDefault();
+    }
+  };
 
   useGSAP(
     () => {
@@ -178,7 +189,7 @@ export function Footer() {
                   Your community, <span className="text-foreground/25">re-engineered.</span>
                 </h2>
                 <p className="text-sm text-foreground/40 max-w-md mx-auto font-medium leading-relaxed">
-                  Deploy the absolute synthesis of AI intelligence and community governance.
+                  Bring AI chat, moderation, analytics, and community tools into one bot.
                 </p>
               </div>
 
@@ -257,7 +268,7 @@ export function Footer() {
                   icon: (props: { className?: string }) => (
                     <SimpleIcon path={siDiscord.path} {...props} />
                   ),
-                  href: 'https://discord.gg/8ahXACdamN',
+                  href: SUPPORT_DISCORD_URL,
                 },
                 {
                   label: 'X',
@@ -293,6 +304,7 @@ export function Footer() {
                     <li key={link.label}>
                       <Link
                         href={link.href}
+                        onClick={(event) => handleSectionLinkClick(event, link.href)}
                         className="text-[14px] font-medium text-foreground/60 hover:text-foreground transition-colors flex items-center gap-1.5 group"
                       >
                         <ChevronRight className="w-3.5 h-3.5 opacity-0 -ml-5 group-hover:opacity-40 group-hover:ml-0 transition-all" />

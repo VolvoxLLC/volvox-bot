@@ -3,8 +3,10 @@
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { Activity, Clock, Quote, Terminal, Users } from 'lucide-react';
+import { Activity, Clock, MessageSquare, Terminal, Users } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { WEB_APP_VERSION } from '@/lib/app-version';
+import { SUPPORT_DISCORD_URL } from '@/lib/support';
 import { cn } from '@/lib/utils';
 import { AnimatedCounter, formatNumber } from './AnimatedCounter';
 import { PrismaticBackground } from './Hero';
@@ -35,32 +37,6 @@ function formatUptime(seconds: number): string {
   if (hours > 0) return `${hours}h ${minutes}m`;
   return `${minutes}m`;
 }
-
-// ─── Testimonials ────────────────────────────────────────────────────────────
-
-const testimonials = [
-  {
-    id: 't1',
-    quote:
-      "The neural chat synthesis is actually scary good. It's like having a senior dev in every channel.",
-    author: 'Alex Rivers',
-    role: 'Lead Admin @ TechNode',
-  },
-  {
-    id: 't2',
-    quote:
-      "Sentry mode caught a 500-user raid in under a second. I didn't even have to lift a finger.",
-    author: 'Sarah Chen',
-    role: 'Community Mgr @ Nexus',
-  },
-  {
-    id: 't3',
-    quote:
-      'Performance is unmatched. 12ms response times globally is a game changer for our scale.',
-    author: 'Marcus Wright',
-    role: 'CTO @ MetaStream',
-  },
-];
 
 // ─── Data Threads (Variant) ──────────────────────────────────────────────────
 
@@ -202,13 +178,19 @@ export function Stats() {
         {/* Top Label */}
         <div className="stats-label-primary flex items-center gap-4 mb-10 opacity-40 justify-center">
           <div className="h-[1px] w-6 bg-foreground/20" />
-          <span className="text-[10px] font-black uppercase tracking-[0.4em] text-foreground font-mono">
-            Network Status v4.1
+          <span
+            className="text-[10px] font-black uppercase tracking-[0.4em] text-foreground font-mono"
+            suppressHydrationWarning
+          >
+            Network Status v{WEB_APP_VERSION}
           </span>
           <div className="h-[1px] w-6 bg-foreground/20" />
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-20 items-center lg:items-start">
+        <div
+          className="flex flex-col lg:flex-row gap-20 items-center lg:items-start"
+          data-scroll-content
+        >
           {/* Left: Stats Grid - Now Primary */}
           <div className="w-full lg:w-[55%]">
             <h2 className="stats-title text-4xl md:text-5xl font-black tracking-tight text-foreground mb-14 text-center lg:text-left leading-[1.1]">
@@ -235,10 +217,7 @@ export function Stats() {
                           {card.label}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <div className="text-[9px] font-mono font-black text-primary/40 tracking-widest uppercase">
-                          Live
-                        </div>
+                      <div className="flex items-center">
                         <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shadow-[0_0_8px_hsl(var(--primary))]" />
                       </div>
                     </div>
@@ -267,38 +246,42 @@ export function Stats() {
             </div>
           </div>
 
-          {/* Right: Testimonials - More compact & sleek */}
+          {/* Right: Feedback CTA */}
           <div className="w-full lg:w-[45%] flex flex-col">
             <div className="stats-label-secondary flex items-center gap-4 mb-12 opacity-30">
               <span className="text-[10px] font-black uppercase tracking-[0.3em] text-foreground font-mono">
-                Consensus
+                Early Operators
               </span>
               <div className="h-px flex-1 bg-foreground/10" />
             </div>
 
-            <div className="space-y-8">
-              {testimonials.map((t) => (
-                <div
-                  key={t.id}
-                  className="testimonial-item group relative pl-8 border-l-2 border-border/20 hover:border-primary/30 transition-all duration-500"
-                >
-                  <Quote className="absolute -left-3 top-0 w-5 h-5 text-primary/10 group-hover:text-primary/30 transition-all duration-500" />
-                  <p className="text-[15px] md:text-[16px] text-foreground/50 leading-relaxed mb-4 font-medium tracking-tight italic group-hover:text-foreground/70 transition-colors">
-                    "{t.quote}"
-                  </p>
-                  <div className="flex items-center justify-between">
-                    <div className="flex flex-col">
-                      <span className="text-sm font-black text-foreground tracking-tight">
-                        {t.author}
-                      </span>
-                      <span className="text-[10px] text-foreground/25 font-bold uppercase tracking-[0.1em]">
-                        {t.role}
-                      </span>
-                    </div>
-                    <div className="h-[1px] w-12 bg-border/20 group-hover:w-20 group-hover:bg-primary/20 transition-all duration-700" />
-                  </div>
+            <div className="testimonial-item group relative overflow-hidden rounded-[2rem] border border-border/30 bg-card/30 p-8 backdrop-blur-2xl transition-all duration-500 hover:border-primary/20 hover:bg-card/40">
+              <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-primary/5 blur-3xl transition-opacity group-hover:opacity-80" />
+              <div className="relative z-10">
+                <div className="mb-8 flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/10 bg-primary/5 text-primary/60">
+                  <MessageSquare className="h-5 w-5" />
                 </div>
-              ))}
+                <h3 className="mb-4 text-2xl font-black tracking-tight text-foreground">
+                  Feedback wanted.
+                </h3>
+                <p className="mb-8 text-[15px] font-medium leading-relaxed text-foreground/50">
+                  Using Volvox in production? Tell us what changed for your community. Verified
+                  public feedback may appear here once we have enough real operator history.
+                </p>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <a
+                    href={SUPPORT_DISCORD_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex h-11 items-center justify-center rounded-2xl bg-foreground px-5 text-xs font-black uppercase tracking-[0.18em] text-background transition-all hover:scale-[1.02] active:scale-95"
+                  >
+                    Share Feedback
+                  </a>
+                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-foreground/25">
+                    No placeholder reviews
+                  </span>
+                </div>
+              </div>
             </div>
 
             <div className="mt-16 p-5 rounded-2xl border border-dashed border-border/30 flex items-center justify-center gap-4 bg-foreground/[0.01] opacity-30 hover:opacity-50 transition-opacity">

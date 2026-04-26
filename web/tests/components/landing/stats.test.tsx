@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { SUPPORT_DISCORD_URL } from '@/lib/support';
 
 const { mockUseInView, mockUseReducedMotion } = vi.hoisted(() => ({
   mockUseInView: vi.fn(),
@@ -70,7 +71,7 @@ describe('Stats', () => {
     });
   });
 
-  it('should render testimonial quotes', () => {
+  it('should render the feedback CTA instead of placeholder reviews', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -81,9 +82,13 @@ describe('Stats', () => {
 
     render(<Stats />);
     expect(screen.getByRole('heading', { level: 2 })).toBeInTheDocument();
-    expect(screen.getByText(/Alex Rivers/i)).toBeInTheDocument();
-    expect(screen.getByText(/Sarah Chen/i)).toBeInTheDocument();
-    expect(screen.getByText(/Marcus Wright/i)).toBeInTheDocument();
+    expect(screen.getByText('Early Operators')).toBeInTheDocument();
+    expect(screen.getByText('Feedback wanted.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Share Feedback' })).toHaveAttribute(
+      'href',
+      SUPPORT_DISCORD_URL,
+    );
+    expect(screen.queryByText(/Alex Rivers/i)).not.toBeInTheDocument();
   });
 
   it('should render fallback values when fetch fails', async () => {

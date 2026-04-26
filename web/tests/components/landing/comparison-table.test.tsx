@@ -61,7 +61,9 @@ describe('ComparisonTable', () => {
 
   it('should render the section header', () => {
     render(<ComparisonTable />);
-    expect(screen.getByText('[BENCHMARK_ANALYSIS]')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 2 })).toBeInTheDocument();
+    expect(screen.queryByText('[BENCHMARK_ANALYSIS]')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 2, name: /Engineered for Superiority/i }),
+    ).toBeInTheDocument();
   });
 });

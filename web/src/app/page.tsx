@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { FeatureGrid, Footer, Hero, Pricing } from '@/components/landing';
+import { FeatureGrid, Footer, Hero } from '@/components/landing';
 import { LandingNavbar } from '@/components/layout/LandingNavbar';
 
 // Lower-fold sections lazy-loaded with fixed skeletons to prevent scroll-jump
@@ -57,11 +57,6 @@ export default function LandingPage() {
       {/* Features Section */}
       <div id="features">
         <FeatureGrid />
-      </div>
-
-      {/* Pricing Section */}
-      <div id="pricing">
-        <Pricing />
       </div>
 
       {/* Stats / Testimonials Section */}

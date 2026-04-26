@@ -64,10 +64,9 @@ describe('Pricing', () => {
     expect(screen.getByText('$115')).toBeInTheDocument();
   });
 
-  it('should use SectionHeader with QUOTA ARRANGEMENT label', () => {
+  it('should render the system access tiers label', () => {
     render(<Pricing />);
-    expect(screen.getByText('QUOTA ARRANGEMENT')).toBeInTheDocument();
-    expect(screen.getByText('System Access Tiers')).toBeInTheDocument();
+    expect(screen.getByText('SYSTEM ACCESS TIERS')).toBeInTheDocument();
   });
 
   it('should link tiers to bot invite URL', () => {

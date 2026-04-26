@@ -74,11 +74,12 @@ export const AI_CHAT_POOL: readonly AIChatItem[] = [
   {
     question: 'How does the XP system work?',
     answer:
-      'Members earn XP per message with a cooldown. Configure rates in Dashboard → Features → XP.',
+      'Members earn XP per message with a cooldown. Configure rates in Dashboard → Settings → Onboarding & Growth → Reputation.',
   },
   {
     question: 'How do I enable starboard?',
-    answer: 'Dashboard → Features → Starboard. Set the emoji, threshold, and target channel.',
+    answer:
+      'Dashboard → Settings → Community Tools → Starboard. Set the emoji, threshold, and target channel.',
   },
 ];
 
