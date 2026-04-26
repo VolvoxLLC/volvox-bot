@@ -5,6 +5,7 @@
 
 import { Events } from 'discord.js';
 import { info } from '../../logger.js';
+import { resolveTriageConfig } from '../triage-config.js';
 
 /**
  * Register a one-time handler that runs when the Discord client becomes ready.
@@ -30,14 +31,13 @@ export function registerReadyHandler(client, config, healthMonitor) {
       info('Welcome messages enabled', { channelId: config.welcome.channelId });
     }
     if (config.ai?.enabled) {
-      const triageCfg = config.triage || {};
-      const classifyModel = triageCfg.classifyModel ?? 'claude-haiku-4-5';
-      const respondModel =
-        triageCfg.respondModel ??
-        (typeof triageCfg.model === 'string'
-          ? triageCfg.model
-          : (triageCfg.models?.default ?? 'claude-sonnet-4-5'));
-      info('AI chat enabled', { classifyModel, respondModel });
+      // Reuse the canonical resolver so fallback precedence stays in sync with
+      // the triage runtime (see src/modules/triage-config.js).
+      const resolved = resolveTriageConfig(config.triage || {});
+      info('AI chat enabled', {
+        classifyModel: resolved.classifyModel,
+        respondModel: resolved.respondModel,
+      });
     }
     if (config.moderation?.enabled) {
       info('Moderation enabled');

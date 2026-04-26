@@ -13,7 +13,7 @@ import {
 describe('StatCardSkeleton', () => {
   it('renders a card with skeleton placeholders', () => {
     const { container } = render(<StatCardSkeleton />);
-    const skeletons = container.querySelectorAll('.animate-pulse');
+    const skeletons = container.querySelectorAll('[data-slot="skeleton"]');
     expect(skeletons.length).toBeGreaterThanOrEqual(2);
   });
 });
@@ -36,7 +36,7 @@ describe('StatCardGridSkeleton', () => {
 describe('SectionSkeleton', () => {
   it('renders heading and content skeletons', () => {
     const { container } = render(<SectionSkeleton />);
-    const skeletons = container.querySelectorAll('.animate-pulse');
+    const skeletons = container.querySelectorAll('[data-slot="skeleton"]');
     expect(skeletons.length).toBeGreaterThanOrEqual(2);
   });
 });
@@ -44,7 +44,7 @@ describe('SectionSkeleton', () => {
 describe('FilterBarSkeleton', () => {
   it('renders filter bar placeholders', () => {
     const { container } = render(<FilterBarSkeleton />);
-    const skeletons = container.querySelectorAll('.animate-pulse');
+    const skeletons = container.querySelectorAll('[data-slot="skeleton"]');
     expect(skeletons.length).toBe(3);
   });
 });
@@ -55,7 +55,7 @@ describe('TableSkeleton', () => {
     const rows = container.querySelectorAll('.divide-y > div');
     expect(rows.length).toBe(6);
     // Each row should have 5 skeleton cells
-    const firstRowSkeletons = rows[0]?.querySelectorAll('.animate-pulse');
+    const firstRowSkeletons = rows[0]?.querySelectorAll('[data-slot="skeleton"]');
     expect(firstRowSkeletons?.length).toBe(5);
   });
 
@@ -63,7 +63,7 @@ describe('TableSkeleton', () => {
     const { container } = render(<TableSkeleton rows={3} columns={2} />);
     const rows = container.querySelectorAll('.divide-y > div');
     expect(rows.length).toBe(3);
-    const firstRowSkeletons = rows[0]?.querySelectorAll('.animate-pulse');
+    const firstRowSkeletons = rows[0]?.querySelectorAll('[data-slot="skeleton"]');
     expect(firstRowSkeletons?.length).toBe(2);
   });
 });
@@ -72,7 +72,7 @@ describe('PageSkeleton', () => {
   it('renders header, filter bar, and table skeletons', () => {
     const { container } = render(<PageSkeleton />);
     // Should have many skeleton elements across header + filter + table
-    const skeletons = container.querySelectorAll('.animate-pulse');
+    const skeletons = container.querySelectorAll('[data-slot="skeleton"]');
     expect(skeletons.length).toBeGreaterThanOrEqual(10);
   });
 });
@@ -80,7 +80,7 @@ describe('PageSkeleton', () => {
 describe('ChartSkeleton', () => {
   it('renders a card with chart placeholder', () => {
     const { container } = render(<ChartSkeleton />);
-    const skeletons = container.querySelectorAll('.animate-pulse');
+    const skeletons = container.querySelectorAll('[data-slot="skeleton"]');
     // Title skeleton + description skeleton + chart area skeleton
     expect(skeletons.length).toBeGreaterThanOrEqual(3);
   });

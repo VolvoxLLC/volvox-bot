@@ -193,60 +193,60 @@ export function Stats() {
   return (
     <section
       ref={sectionRef}
-      className="relative py-24 px-4 sm:px-6 lg:px-8 bg-background overflow-hidden"
+      className="relative py-32 px-4 sm:px-6 lg:px-8 bg-background overflow-hidden"
     >
       <PrismaticBackground />
       <MiniThreads />
 
       <div className="max-w-6xl mx-auto relative z-10" ref={containerRef}>
         {/* Top Label */}
-        <div className="stats-label-primary flex items-center gap-4 mb-8 opacity-50 justify-center">
-          <div className="h-[1px] w-4 bg-foreground" />
-          <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-foreground font-mono">
+        <div className="stats-label-primary flex items-center gap-4 mb-10 opacity-40 justify-center">
+          <div className="h-[1px] w-6 bg-foreground/20" />
+          <span className="text-[10px] font-black uppercase tracking-[0.4em] text-foreground font-mono">
             Network Status v4.1
           </span>
-          <div className="h-[1px] w-4 bg-foreground" />
+          <div className="h-[1px] w-6 bg-foreground/20" />
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-16 items-center lg:items-start">
+        <div className="flex flex-col lg:flex-row gap-20 items-center lg:items-start">
           {/* Left: Stats Grid - Now Primary */}
           <div className="w-full lg:w-[55%]">
-            <h2 className="stats-title text-3xl md:text-4xl font-black tracking-tight text-foreground mb-12 text-center lg:text-left leading-tight">
+            <h2 className="stats-title text-4xl md:text-5xl font-black tracking-tight text-foreground mb-14 text-center lg:text-left leading-[1.1]">
               Unrivaled performance <br className="hidden md:block" />
-              <span className="text-foreground/30">at any scale.</span>
+              <span className="text-foreground/25">at any scale.</span>
             </h2>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {statCards.map((card, i) => (
                 <div
                   key={card.label}
                   className={cn(
-                    'stat-card relative group p-[1px] rounded-2xl overflow-hidden bg-border/20 hover:bg-border/60 transition-colors duration-500 shadow-sm',
+                    'stat-card relative group p-[1px] rounded-[2rem] overflow-hidden bg-border/30 hover:bg-border/60 transition-all duration-500 shadow-sm hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1',
                     i === 0 ? 'sm:col-span-2' : '',
                   )}
                 >
-                  <div className="relative bg-card/50 backdrop-blur-xl rounded-[15px] p-5 h-full flex flex-col justify-between">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-background border border-border/50 text-foreground/40 group-hover:text-primary transition-colors">
+                  <div className="relative bg-card/40 backdrop-blur-2xl rounded-[calc(2rem-1px)] p-6 md:p-8 h-full flex flex-col justify-between border border-white/[0.05]">
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-4">
+                        <div className="p-2.5 rounded-xl bg-background/50 border border-border/40 text-foreground/30 group-hover:text-primary group-hover:border-primary/20 transition-all duration-500">
                           {card.icon}
                         </div>
-                        <div className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 font-mono">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-foreground/30 font-mono group-hover:text-foreground/50 transition-colors">
                           {card.label}
                         </div>
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        <div className="text-[9px] font-mono font-bold text-primary/60 tracking-tighter">
-                          LIVE
+                      <div className="flex items-center gap-2">
+                        <div className="text-[9px] font-mono font-black text-primary/40 tracking-widest uppercase">
+                          Live
                         </div>
-                        <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                        <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shadow-[0_0_8px_hsl(var(--primary))]" />
                       </div>
                     </div>
 
                     <div>
-                      <div className="text-3xl font-black text-foreground tracking-tighter tabular-nums mb-1">
+                      <div className="text-4xl md:text-5xl font-black text-foreground tracking-tighter tabular-nums mb-2 leading-none">
                         {loading ? (
-                          <span className="opacity-20">---</span>
+                          <span className="opacity-10">---</span>
                         ) : (
                           <AnimatedCounter
                             target={card.value}
@@ -255,10 +255,10 @@ export function Stats() {
                           />
                         )}
                       </div>
-                      <div className="text-[10px] text-foreground/40 font-bold uppercase tracking-widest flex items-center gap-2">
+                      <div className="text-[10px] text-foreground/25 font-black uppercase tracking-[0.15em] flex items-center gap-3">
                         {card.sublabel}
-                        <div className="h-px flex-1 bg-border/20" />
-                        <Activity className="w-3 h-3 opacity-20" />
+                        <div className="h-px flex-1 bg-foreground/[0.05]" />
+                        <Activity className="w-3.5 h-3.5 opacity-10 group-hover:opacity-30 transition-opacity" />
                       </div>
                     </div>
                   </div>
@@ -269,40 +269,40 @@ export function Stats() {
 
           {/* Right: Testimonials - More compact & sleek */}
           <div className="w-full lg:w-[45%] flex flex-col">
-            <div className="stats-label-secondary flex items-center gap-3 mb-10 opacity-30">
-              <span className="text-[9px] font-black uppercase tracking-widest text-foreground font-mono">
-                User Consensus
+            <div className="stats-label-secondary flex items-center gap-4 mb-12 opacity-30">
+              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-foreground font-mono">
+                Consensus
               </span>
-              <div className="h-px flex-1 bg-foreground" />
+              <div className="h-px flex-1 bg-foreground/10" />
             </div>
 
-            <div className="space-y-6">
+            <div className="space-y-8">
               {testimonials.map((t) => (
                 <div
                   key={t.id}
-                  className="testimonial-item group relative pl-6 border-l border-border/40 hover:border-primary/40 transition-colors"
+                  className="testimonial-item group relative pl-8 border-l-2 border-border/20 hover:border-primary/30 transition-all duration-500"
                 >
-                  <Quote className="absolute -left-2 top-0 w-4 h-4 text-primary/20 group-hover:text-primary/40 transition-colors" />
-                  <p className="text-[14px] text-foreground/60 leading-relaxed mb-3 font-medium tracking-tight">
+                  <Quote className="absolute -left-3 top-0 w-5 h-5 text-primary/10 group-hover:text-primary/30 transition-all duration-500" />
+                  <p className="text-[15px] md:text-[16px] text-foreground/50 leading-relaxed mb-4 font-medium tracking-tight italic group-hover:text-foreground/70 transition-colors">
                     "{t.quote}"
                   </p>
                   <div className="flex items-center justify-between">
                     <div className="flex flex-col">
-                      <span className="text-xs font-bold text-foreground tracking-tight">
+                      <span className="text-sm font-black text-foreground tracking-tight">
                         {t.author}
                       </span>
-                      <span className="text-[10px] text-foreground/30 font-semibold uppercase tracking-wider">
+                      <span className="text-[10px] text-foreground/25 font-bold uppercase tracking-[0.1em]">
                         {t.role}
                       </span>
                     </div>
-                    <div className="h-px w-8 bg-border/40 group-hover:w-12 transition-all duration-500" />
+                    <div className="h-[1px] w-12 bg-border/20 group-hover:w-20 group-hover:bg-primary/20 transition-all duration-700" />
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="mt-12 p-4 rounded-xl border border-dashed border-border/40 flex items-center justify-center gap-4 bg-background/20 opacity-50">
-              <div className="text-[9px] font-mono font-bold uppercase tracking-[0.2em] text-center">
+            <div className="mt-16 p-5 rounded-2xl border border-dashed border-border/30 flex items-center justify-center gap-4 bg-foreground/[0.01] opacity-30 hover:opacity-50 transition-opacity">
+              <div className="text-[9px] font-mono font-bold uppercase tracking-[0.3em] text-center">
                 Validated Node Operator Data
               </div>
             </div>

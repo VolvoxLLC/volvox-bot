@@ -1,33 +1,42 @@
 ---
-title: Introduction
-description: 'Volvox.Bot API documentation'
+title: Welcome to Volvox.Bot
+description: 'The fully hosted Discord bot platform — add to your server in 30 seconds'
 ---
 
-# Volvox.Bot API
+# Welcome to Volvox.Bot
 
-The Volvox.Bot REST API powers the web dashboard and provides programmatic access to guild management, moderation, analytics, AI conversations, and community features.
+Volvox.Bot is a fully hosted Discord bot platform. No installation, no configuration files, no servers to manage. Add it to your Discord server and everything just works.
 
-## Base URL
+<Callout type="info">
+We handle hosting, updates, and infrastructure. You focus on your community.
+</Callout>
 
-```
-https://volvox.bot/api/v1
-```
+## What Volvox.Bot does
 
-## Features
+| Feature | What it gives you |
+|---------|-------------------|
+| **Neural Chat** | AI-powered conversations in your server |
+| **Active Sentry** | Auto-moderation, warnings, bans, timeouts |
+| **Live Insight** | Real-time analytics and server health metrics |
+| **Tickets** | Support ticket system with transcripts |
+| **Community** | Leaderboards, showcases, public profiles |
+| **Audit Log** | Full audit trail of all bot actions |
+| **Temp Roles** | Time-limited role assignments |
 
-- **Guild Management** — Server settings, analytics, member management
-- **Moderation** — Cases, warnings, bans, timeouts
-- **AI Conversations** — Chat history, flagging, search
-- **Community** — Leaderboards, showcases, public profiles
-- **Tickets** — Support ticket system
-- **Config** — Bot configuration CRUD
+## How it works
 
-## Rate Limiting
+1. **Add the bot** to your server with one click
+2. **Open the dashboard** at [volvox.bot](https://volvox.bot) and log in with Discord
+3. **Configure** your server's settings through the web UI
+4. **Done** — updates and maintenance happen automatically
 
-All endpoints return rate limit headers:
+Everything runs on our managed infrastructure. Your bot stays online even when your computer is off.
 
-| Header | Description |
-|--------|-------------|
-| `X-RateLimit-Limit` | Max requests per window |
-| `X-RateLimit-Remaining` | Requests remaining |
-| `X-RateLimit-Reset` | Unix timestamp when window resets |
+<CardGroup cols={2}>
+  <Card title="Get Started" href="/getting-started">
+    Add Volvox.Bot to your server in under a minute
+  </Card>
+  <Card title="Dashboard Overview" href="/dashboard">
+    Explore the dashboard and all available features
+  </Card>
+</CardGroup>

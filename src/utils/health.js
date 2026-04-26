@@ -5,7 +5,7 @@
  * - Uptime (time since bot started)
  * - Memory usage
  * - Last AI request timestamp
- * - Anthropic API connectivity status
+ * - AI provider connectivity status
  */
 
 /**

@@ -1,13 +1,15 @@
 'use client';
 
 import { Hash, Loader2, Megaphone, RotateCcw, Search, StickyNote } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { inputClasses } from '@/components/dashboard/config-editor-utils';
+import { useGuildChannels } from '@/components/layout/channel-directory-context';
 import { Button } from '@/components/ui/button';
 import { CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type { GuildConfig } from '@/lib/config-utils';
 import { cn } from '@/lib/utils';
 import type { ChannelMode } from '@/types/config';
+import type { DiscordChannel } from '@/types/discord';
 
 // ── Discord channel types ──────────────────────────────────────────────────
 
@@ -128,11 +130,8 @@ export function ChannelModeSection({
   onDefaultModeChange,
   onResetAll,
 }: ChannelModeSectionProps) {
-  const [rawChannels, setRawChannels] = useState<RawChannel[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const abortRef = useRef<AbortController | null>(null);
+  const { channels, loading, error } = useGuildChannels(guildId);
 
   const channelModes = useMemo(
     () => (draftConfig.ai?.channelModes ?? {}) as Record<string, ChannelMode>,
@@ -140,65 +139,17 @@ export function ChannelModeSection({
   );
   const defaultMode: ChannelMode = (draftConfig.ai?.defaultChannelMode as ChannelMode) ?? 'mention';
 
-  // Fetch channels on mount
-  useEffect(() => {
-    if (!guildId) return;
-
-    async function fetchChannels() {
-      abortRef.current?.abort();
-      const controller = new AbortController();
-      abortRef.current = controller;
-
-      setLoading(true);
-      setError(null);
-
-      try {
-        const res = await fetch(`/api/guilds/${encodeURIComponent(guildId)}/channels`, {
-          signal: controller.signal,
-        });
-
-        if (res.status === 401) {
-          window.location.href = '/login';
-          return;
-        }
-
-        if (!res.ok) throw new Error(`Failed to fetch channels: ${res.statusText}`);
-
-        const data: unknown = await res.json();
-        if (!Array.isArray(data)) throw new Error('Invalid response');
-
-        const channels: RawChannel[] = data
-          .filter((c): c is Record<string, unknown> => typeof c === 'object' && c !== null)
-          .filter(
-            (c) =>
-              typeof c.id === 'string' && typeof c.name === 'string' && typeof c.type === 'number',
-          )
-          .map((c) => ({
-            id: c.id as string,
-            name: c.name as string,
-            type: c.type as number,
-            parentId: typeof c.parentId === 'string' ? c.parentId : null,
-            position: typeof c.position === 'number' ? c.position : 0,
-          }));
-
-        if (abortRef.current === controller) {
-          setRawChannels(channels);
-        }
-      } catch (err) {
-        if (err instanceof DOMException && err.name === 'AbortError') return;
-        if (abortRef.current === controller) {
-          setError(err instanceof Error ? err.message : 'Failed to load channels');
-        }
-      } finally {
-        if (abortRef.current === controller) {
-          setLoading(false);
-        }
-      }
-    }
-
-    void fetchChannels();
-    return () => abortRef.current?.abort();
-  }, [guildId]);
+  const rawChannels = useMemo<RawChannel[]>(
+    () =>
+      channels.map((channel: DiscordChannel) => ({
+        id: channel.id,
+        name: channel.name,
+        type: channel.type,
+        parentId: channel.parentId ?? null,
+        position: channel.position ?? 0,
+      })),
+    [channels],
+  );
 
   // Build grouped structure
   const categories = useMemo<Category[]>(() => {

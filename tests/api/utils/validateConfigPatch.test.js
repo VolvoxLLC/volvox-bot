@@ -148,14 +148,14 @@ describe('validateConfigPatch', () => {
     it('should handle nested paths correctly', () => {
       const body = {
         path: 'triage.classifyModel',
-        value: 'claude-3-haiku',
+        value: 'minimax:MiniMax-M2.7',
       };
 
       const result = validateConfigPatchBody(body, SAFE_CONFIG_KEYS);
 
       expect(result.error).toBeUndefined();
       expect(result.path).toBe('triage.classifyModel');
-      expect(result.value).toBe('claude-3-haiku');
+      expect(result.value).toBe('minimax:MiniMax-M2.7');
       expect(result.topLevelKey).toBe('triage');
     });
 

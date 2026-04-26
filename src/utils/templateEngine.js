@@ -83,6 +83,9 @@ export async function buildTemplateContext({
 }) {
   const nextThreshold = levelThresholds[level] ?? null;
   const xpToNext = nextThreshold !== null ? nextThreshold - xp : 0;
+  const userId = member.user?.id ?? member.id ?? '';
+  const guildId = guild.id ?? member.guild?.id ?? '';
+  const serverName = guild.name ?? '';
 
   // DB queries for rank, messages, voiceHours, daysActive — all best-effort
   let rank = '?';
@@ -92,8 +95,6 @@ export async function buildTemplateContext({
 
   try {
     const pool = getPool();
-    const guildId = guild.id ?? member.guild?.id;
-    const userId = member.user.id;
 
     const [rankResult, statsResult] = await Promise.all([
       pool.query('SELECT COUNT(*) + 1 AS rank FROM reputation WHERE guild_id = $1 AND xp > $2', [
@@ -131,15 +132,18 @@ export async function buildTemplateContext({
   return {
     // Use member.displayName (guild nickname) not member.user.displayName
     username: member.displayName ?? member.user?.displayName ?? '',
-    mention: `<@${member.user.id}>`,
-    avatar: member.user.displayAvatarURL?.() ?? '',
+    mention: userId ? `<@${userId}>` : '',
+    userId,
+    avatar: member.user?.displayAvatarURL?.() ?? '',
     level: String(level),
     previousLevel: String(previousLevel),
     xp: formatNumber(xp),
     xpToNext: formatNumber(Math.max(0, xpToNext)),
     // nextLevel should be level + 1, not the XP threshold
     nextLevel: nextThreshold !== null ? String(level + 1) : '0',
-    server: guild.name ?? '',
+    serverName,
+    serverId: guildId,
+    server: serverName,
     serverIcon: guild.iconURL?.() ?? '',
     memberCount: formatNumber(guild.memberCount ?? 0),
     // Guard message before reading channel

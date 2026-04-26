@@ -1,6 +1,6 @@
 {
   "name": "volvox-bot",
-  "packageManager": "pnpm@10.33.0",
+  "packageManager": "pnpm@10.33.2",
   "version": "0.1.0",
   "description": "Volvox Discord bot - AI chat, welcome messages, and moderation",
   "main": "src/index.js",
@@ -34,14 +34,14 @@
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.68",
-    "@sentry/node": "^10.49.0",
+    "@sentry/node": "^10.50.0",
     "ai": "^6.0.158",
     "discord.js": "^14.26.3",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "ioredis": "^5.10.1",
     "jsonwebtoken": "^9.0.3",
-    "mem0ai": "^2.4.6",
+    "mem0ai": "^3.0.1",
     "node-pg-migrate": "^8.0.4",
     "pg": "^8.20.0",
     "swagger-jsdoc": "^6.2.8",
@@ -63,11 +63,11 @@
     "node": ">=22.0.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.12",
+    "@biomejs/biome": "^2.4.13",
     "@changesets/cli": "^2.31.0",
-    "@vitest/coverage-v8": "^4.1.1",
+    "@vitest/coverage-v8": "^4.1.5",
     "supertest": "^7.2.2",
     "turbo": "^2.9.6",
-    "vitest": "^4.1.1"
+    "vitest": "^4.1.5"
   }
 }

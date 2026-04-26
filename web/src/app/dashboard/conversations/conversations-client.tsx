@@ -5,7 +5,9 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { EmptyState } from '@/components/dashboard/empty-state';
+import { useGuildChannels } from '@/components/layout/channel-directory-context';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { Input } from '@/components/ui/input';
 import {
@@ -78,7 +80,6 @@ export default function ConversationsClient() {
   const [search, setSearch] = useState(currentOpts.search);
   const [channelFilter, setChannelFilter] = useState(currentOpts.channel);
   const [page, setPage] = useState(currentOpts.page);
-  const [channels, setChannels] = useState<Channel[]>([]);
   const [brokenAvatars, setBrokenAvatars] = useState<Set<string>>(() => new Set());
   const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [debouncedSearch, setDebouncedSearch] = useState(currentOpts.search);
@@ -91,6 +92,8 @@ export default function ConversationsClient() {
     setBrokenAvatars(new Set());
   }, []);
   const guildId = useGuildSelection({ onGuildChange });
+  const { channels: guildChannels } = useGuildChannels(guildId);
+  const channels = guildChannels.filter((channel): channel is Channel => channel.type === 0);
 
   useEffect(() => {
     clearTimeout(searchTimerRef.current);
@@ -100,18 +103,6 @@ export default function ConversationsClient() {
     }, 300);
     return () => clearTimeout(searchTimerRef.current);
   }, [search]);
-
-  useEffect(() => {
-    if (!guildId) return;
-    void (async () => {
-      try {
-        const res = await window.fetch(`/api/guilds/${encodeURIComponent(guildId)}/channels`);
-        if (res.ok) setChannels(((await res.json()) as Channel[]).filter((c) => c.type === 0));
-      } catch {
-        /* non-critical */
-      }
-    })();
-  }, [guildId]);
 
   useEffect(() => {
     if (!guildId) return;
@@ -168,28 +159,28 @@ export default function ConversationsClient() {
             </div>
 
             {/* Compact filters */}
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative flex-1 min-w-[200px] max-w-sm">
-                <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/50" />
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="relative flex-1 min-w-[240px] max-w-sm">
                 <Input
-                  className="h-9 rounded-xl border-border/40 bg-card/40 pl-8 pr-8 text-sm backdrop-blur-sm"
+                  className="pl-10 pr-10"
                   placeholder="Search conversations..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   aria-label="Search conversations"
                 />
+                <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/50 pointer-events-none z-10" />
                 {search && (
                   <button
                     type="button"
                     aria-label="Clear search"
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-foreground"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-foreground transition-colors z-10"
                     onClick={() => {
                       setSearch('');
                       setDebouncedSearch('');
                       setPage(1);
                     }}
                   >
-                    <X className="h-3.5 w-3.5" />
+                    <X className="h-4 w-4" />
                   </button>
                 )}
               </div>
@@ -200,22 +191,20 @@ export default function ConversationsClient() {
                   setPage(1);
                 }}
               >
-                <SelectTrigger className="h-9 w-[180px] rounded-xl border-border/40 bg-card/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/70 backdrop-blur-sm">
+                <SelectTrigger className="w-[200px] text-[10px] font-black uppercase tracking-[0.2em] data-[placeholder]:text-muted-foreground/40">
                   <SelectValue placeholder="All channels" />
                 </SelectTrigger>
-                <SelectContent className="rounded-xl border-white/10 bg-popover/95 backdrop-blur-xl shadow-xl">
-                  <SelectItem value="all" className="text-xs font-semibold">
-                    All channels
-                  </SelectItem>
+                <SelectContent>
+                  <SelectItem value="all">All channels</SelectItem>
                   {channels.map((ch) => (
-                    <SelectItem key={ch.id} value={ch.id} className="text-xs font-semibold">
+                    <SelectItem key={ch.id} value={ch.id}>
                       #{ch.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               {total > 0 && (
-                <span className="text-[11px] font-medium text-muted-foreground/50 tabular-nums">
+                <span className="ml-auto text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/30 tabular-nums">
                   {total.toLocaleString()} {total === 1 ? 'conversation' : 'conversations'}
                 </span>
               )}
@@ -381,26 +370,28 @@ export default function ConversationsClient() {
 
             {totalPages > 1 && (
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/50">
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/30">
                   Page {page} of {totalPages}
                 </span>
                 <div className="flex gap-2">
-                  <button
-                    type="button"
+                  <Button
+                    variant="outline"
+                    size="sm"
                     disabled={page <= 1 || loading}
                     onClick={() => setPage(Math.max(1, page - 1))}
-                    className="inline-flex items-center gap-1.5 rounded-2xl border border-white/10 bg-card/40 px-4 py-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/70 backdrop-blur-sm shadow-sm transition-all hover:bg-card/60 hover:text-foreground active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="text-[10px] font-black uppercase tracking-[0.2em]"
                   >
                     Previous
-                  </button>
-                  <button
-                    type="button"
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
                     disabled={page >= totalPages || loading}
                     onClick={() => setPage(page + 1)}
-                    className="inline-flex items-center gap-1.5 rounded-2xl border border-white/10 bg-card/40 px-4 py-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/70 backdrop-blur-sm shadow-sm transition-all hover:bg-card/60 hover:text-foreground active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="text-[10px] font-black uppercase tracking-[0.2em]"
                   >
                     Next
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}

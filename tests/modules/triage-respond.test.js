@@ -723,8 +723,8 @@ describe('triage-respond', () => {
       };
 
       const resolved = {
-        classifyModel: 'claude-3-haiku',
-        respondModel: 'claude-3-sonnet',
+        classifyModel: 'minimax:MiniMax-M2.7',
+        respondModel: 'minimax:MiniMax-M2.7',
       };
 
       const snapshot = [
@@ -777,7 +777,12 @@ describe('triage-respond', () => {
         },
       };
 
-      const result = await buildStatsAndLog({}, {}, {}, [], {}, 0, mockClient, 'channel1');
+      const resolved = {
+        classifyModel: 'minimax:MiniMax-M2.7',
+        respondModel: 'minimax:MiniMax-M2.7',
+      };
+
+      const result = await buildStatsAndLog({}, {}, resolved, [], {}, 0, mockClient, 'channel1');
 
       expect(result.channel).toBe(null);
     });
@@ -800,10 +805,15 @@ describe('triage-respond', () => {
         },
       };
 
+      const resolved = {
+        classifyModel: 'minimax:MiniMax-M2.7',
+        respondModel: 'minimax:MiniMax-M2.7',
+      };
+
       const result = await buildStatsAndLog(
         {},
         {},
-        {},
+        resolved,
         snapshot,
         classification,
         0,

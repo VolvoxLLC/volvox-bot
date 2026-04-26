@@ -201,7 +201,7 @@ export function DashboardShowcase() {
                     value={kpiValue('commandsServed')}
                     label="Commands Served"
                     loading={loading}
-                    color="secondary"
+                    color="primary"
                     icon={Terminal}
                   />
                 </div>
@@ -210,7 +210,7 @@ export function DashboardShowcase() {
                     value={kpiValue('servers')}
                     label="Servers"
                     loading={loading}
-                    color="accent"
+                    color="primary"
                     icon={Globe}
                   />
                 </div>

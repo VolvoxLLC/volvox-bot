@@ -99,20 +99,7 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  docs:
-    build:
-      context: ./docs
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    ports:
-      - "3100:3100"
-    environment:
-      PORT: "3100"
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
+
 
 volumes:
   pgdata:

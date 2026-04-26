@@ -3,6 +3,7 @@
 import { Check, ChevronsUpDown, Loader2, Users, X } from 'lucide-react';
 import * as React from 'react';
 import { inputClasses } from '@/components/dashboard/config-editor-utils';
+import { useGuildRoles } from '@/components/layout/role-directory-context';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,11 +17,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 
-export interface DiscordRole {
-  id: string;
-  name: string;
-  color: number;
-}
+export type { DiscordRole } from '@/types/discord';
 
 const ROLE_LOADING_SKELETONS = [
   'role-skeleton-1',
@@ -68,80 +65,7 @@ export function RoleSelector({
   id,
 }: RoleSelectorProps) {
   const [open, setOpen] = React.useState(false);
-  const [roles, setRoles] = React.useState<DiscordRole[]>([]);
-  const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-  const abortControllerRef = React.useRef<AbortController | null>(null);
-  const hasFetchedRef = React.useRef(false);
-
-  // Fetch roles when the popover opens, or eagerly on mount when there
-  // are pre-selected IDs (so they display names instead of "Unknown role").
-  React.useEffect(() => {
-    if (!guildId) return;
-    const needsEagerFetch = selected.length > 0 && !hasFetchedRef.current;
-    if (!open && !needsEagerFetch) return;
-
-    async function fetchRoles() {
-      abortControllerRef.current?.abort();
-      const controller = new AbortController();
-      abortControllerRef.current = controller;
-
-      setLoading(true);
-      setRoles([]);
-      setError(null);
-
-      try {
-        const response = await fetch(`/api/guilds/${encodeURIComponent(guildId)}/roles`, {
-          signal: controller.signal,
-        });
-
-        if (response.status === 401) {
-          window.location.href = '/login';
-          return;
-        }
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch roles: ${response.statusText}`);
-        }
-
-        const data: unknown = await response.json();
-
-        if (!Array.isArray(data)) {
-          throw new Error('Invalid response: expected array');
-        }
-
-        const fetchedRoles = data.filter(
-          (r): r is DiscordRole =>
-            typeof r === 'object' &&
-            r !== null &&
-            typeof (r as Record<string, unknown>).id === 'string' &&
-            typeof (r as Record<string, unknown>).name === 'string' &&
-            typeof (r as Record<string, unknown>).color === 'number',
-        );
-
-        if (abortControllerRef.current === controller) {
-          setRoles(fetchedRoles);
-          hasFetchedRef.current = true;
-        }
-      } catch (err) {
-        if (err instanceof DOMException && err.name === 'AbortError') return;
-        if (abortControllerRef.current === controller) {
-          setError(err instanceof Error ? err.message : 'Failed to load roles');
-        }
-      } finally {
-        if (abortControllerRef.current === controller) {
-          setLoading(false);
-        }
-      }
-    }
-
-    void fetchRoles();
-
-    return () => {
-      abortControllerRef.current?.abort();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- selected.length triggers eager fetch once via hasFetchedRef
-  }, [guildId, open, selected.length]);
+  const { roles, loading, error } = useGuildRoles(guildId);
 
   const toggleRole = React.useCallback(
     (roleId: string) => {

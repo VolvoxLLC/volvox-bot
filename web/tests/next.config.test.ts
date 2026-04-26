@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import nextConfig from "../next.config.mjs";
+import packageJson from "../package.json" with { type: "json" };
 
 type SecurityHeader = {
   key: string;
@@ -20,6 +21,10 @@ describe("next.config security headers", () => {
 
   it("should allow 127.0.0.1 as a dev origin for HMR and MCP verification", () => {
     expect(nextConfig.allowedDevOrigins).toEqual(["127.0.0.1"]);
+  });
+
+  it("should expose the public web app version at build time", () => {
+    expect(nextConfig.env?.NEXT_PUBLIC_WEB_APP_VERSION).toBe(packageJson.version);
   });
 
   it("should include X-Frame-Options: DENY", async () => {

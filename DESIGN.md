@@ -34,3 +34,8 @@ Hero → Dashboard Preview → Competitor Comparison → Features → Pricing �
 ### Performance
 - Below-fold sections (DashboardPreview, ComparisonTable, Stats) use `next/dynamic` with `ssr: false`
 - Hero, FeatureGrid, Pricing, Footer remain in main bundle
+
+## Dashboard Forms
+
+- Selector controls should use the searchable command-popover pattern used by role/channel pickers when the option set is not purely binary.
+- Template variables should be shown as compact bordered chips using the primary tint and monospace token text.

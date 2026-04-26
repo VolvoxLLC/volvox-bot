@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { useRef } from 'react';
 import { siDiscord, siX } from 'simple-icons';
 import { SimpleIcon } from '@/components/ui/simple-icon';
+import { WEB_APP_VERSION } from '@/lib/app-version';
 import { getBotInviteUrl } from '@/lib/discord';
 
 if (typeof window !== 'undefined') {
@@ -46,17 +47,11 @@ const footerLinks = [
 function FooterBackground() {
   return (
     <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
-      {/* Tactical Background Grid */}
-      <div
-        className="absolute inset-0 opacity-[0.03] dark:opacity-[0.02] pointer-events-none"
-        style={{
-          backgroundImage: `
-            linear-gradient(to right, hsl(var(--foreground)) 1px, transparent 1px),
-            linear-gradient(to bottom, hsl(var(--foreground)) 1px, transparent 1px)
-          `,
-          backgroundSize: '32px 32px',
-        }}
-      />
+      {/* Prismatic Shard */}
+      <div className="absolute -bottom-32 -left-32 w-[160%] h-[500px] -rotate-6 bg-gradient-to-r from-primary/12 via-secondary/8 to-transparent blur-[120px] opacity-50 dark:opacity-40" />
+
+      {/* Radial Mask */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_center,transparent_0%,hsl(var(--background))_100%)] opacity-60" />
     </div>
   );
 }
@@ -172,7 +167,7 @@ export function Footer() {
                   className="text-[10px] font-bold uppercase tracking-[0.3em] text-foreground font-mono"
                   suppressHydrationWarning
                 >
-                  System Ready v4.1
+                  System Ready v{WEB_APP_VERSION}
                 </span>
                 <div className="h-[1px] w-6 bg-foreground" />
               </div>
@@ -188,29 +183,29 @@ export function Footer() {
               </div>
 
               {/* Action Buttons */}
-              <div className="cta-buttons flex flex-col sm:flex-row items-center justify-center gap-3">
+              <div className="cta-buttons flex flex-col sm:flex-row items-center justify-center gap-4">
                 {botInviteUrl ? (
                   <Link
                     href={botInviteUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group relative flex items-center gap-2.5 px-6 py-3 rounded-xl bg-foreground text-background font-bold tracking-wide text-xs overflow-hidden transition-all hover:scale-[1.02] active:scale-95"
+                    className="group relative flex items-center gap-3 px-8 py-4 rounded-2xl bg-foreground text-background font-black tracking-tight text-sm overflow-hidden transition-all hover:scale-[1.02] active:scale-95 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.3)] dark:shadow-[0_20px_40px_-12px_rgba(0,0,0,0.6)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   >
-                    <Zap className="w-3.5 h-3.5 fill-current opacity-80" />
+                    <Zap className="w-4 h-4 fill-current" />
                     <span>Initialize Bot</span>
-                    <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1 opacity-70" />
+                    <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1 opacity-50" />
                   </Link>
                 ) : (
-                  <div className="px-6 py-3 rounded-xl bg-muted border border-border text-foreground/40 font-mono text-[11px] tracking-widest uppercase">
+                  <div className="px-8 py-4 rounded-2xl bg-muted border border-border text-foreground/40 font-mono text-[11px] tracking-widest uppercase">
                     [Locked]
                   </div>
                 )}
 
                 <Link
                   href="/login"
-                  className="cta-dashboard flex items-center gap-2.5 px-6 py-3 rounded-xl border border-border/50 bg-background/40 text-foreground font-bold tracking-wide text-xs transition-all hover:bg-background/80 hover:border-border"
+                  className="cta-dashboard flex items-center gap-3 px-8 py-4 rounded-2xl border border-border/40 bg-card text-foreground font-black tracking-tight text-sm transition-all hover:bg-muted/40 hover:scale-[1.02] active:scale-95 shadow-[inset_0_1px_1px_hsl(var(--background)/0.08),0_12px_24px_-8px_rgba(0,0,0,0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 >
-                  <Terminal className="w-3.5 h-3.5 opacity-60" />
+                  <Terminal className="w-4 h-4 opacity-40" />
                   <span>Dashboard</span>
                 </Link>
               </div>
@@ -221,7 +216,7 @@ export function Footer() {
                   className="text-[9px] font-mono text-foreground tracking-[0.15em]"
                   suppressHydrationWarning
                 >
-                  VOLVOX_2.4.0
+                  VOLVOX_{WEB_APP_VERSION}
                 </span>
               </div>
             </div>
@@ -329,7 +324,9 @@ export function Footer() {
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2 opacity-30 hover:opacity-100 transition-opacity">
               <Cpu className="w-3.5 h-3.5 text-foreground" />
-              <span className="text-[10px] uppercase tracking-widest font-bold">Node_v2.4</span>
+              <span className="text-[10px] uppercase tracking-widest font-bold">
+                Node_v{WEB_APP_VERSION}
+              </span>
             </div>
             <div className="flex items-center gap-2 opacity-30 hover:opacity-100 transition-opacity">
               <Activity className="w-3.5 h-3.5 text-foreground" />

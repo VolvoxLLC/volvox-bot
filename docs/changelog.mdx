@@ -3,6 +3,40 @@ title: Changelog
 description: Latest updates and improvements to Volvox.Bot.
 ---
 
+<Update label="2026-04-25" description="April 2026" tags={["Fixes"]}>
+## Fixes
+
+**Disable milestone interval messages** — Setting the welcome milestone interval to `0` in the [dashboard](/dashboard) now correctly disables interval-based milestone callouts in welcome messages. Notable milestones (like 100, 500, 1000 members) still appear, so you can opt out of the regular cadence without losing the big moments.
+</Update>
+
+<Update label="2026-04-24" description="April 2026" tags={["Features", "Improvements"]}>
+## New features
+
+**More AI providers** — Moonshot and OpenRouter are now first-class providers for [AI automation](/features/ai-conversations) and [TL;DR](/features/tldr). Pick models from these providers in your AI settings using the `provider:model` format (for example, `moonshot:kimi-k2.6`).
+
+**TL;DR is now front and center** — The `/tldr` command is highlighted on the landing page and has a [dedicated docs page](/features/tldr) covering setup, configuration, and examples.
+
+## Improvements
+
+**Faster dashboard selectors** — Role and channel pickers across the dashboard load faster and refresh without a full page reload when Discord updates. New roles and channels appear sooner, and switching between pages reuses cached data.
+
+**Starboard moved to Community Tools** — Starboard settings now live under **Community Tools** in the [dashboard](/dashboard) instead of **Moderation & Safety**, grouping it with other member-facing utilities.
+
+**Version label in the dashboard** — The dashboard sidebar and landing footer now display the current Volvox.Bot version, making it easier to confirm which build you are on.
+</Update>
+
+<Update label="2026-04-23" description="April 2026" tags={["Fixes"]}>
+## Fixes
+
+**Welcome message channel selector** — You can now choose the channel where welcome messages are posted directly from the [dashboard](/dashboard). The Onboarding & Growth settings page exposes a dedicated **Message Channel** picker alongside the Rules, Roles, and Support channel selectors.
+</Update>
+
+<Update label="2026-04-22" description="April 2026" tags={["Features"]}>
+## New features
+
+**Level-up action builder** — You can now configure automated actions that trigger when members reach specific XP levels. From the dashboard, set up actions like granting or removing roles, sending DMs, posting announcements in a channel, awarding bonus XP, adding reactions, setting nickname prefixes or suffixes, and firing webhooks. Each action supports Discord markdown messages, rich embeds, and template variables like `{username}` and `{level}`. Assign multiple actions per level to create rich, customized level-up experiences for your server.
+</Update>
+
 <Update label="2026-04-21" description="April 2026" tags={["Features", "Improvements", "Fixes"]}>
 ## New features
 

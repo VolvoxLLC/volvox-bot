@@ -4,6 +4,7 @@ import { ChevronDown, ChevronRight, ChevronUp, Loader2, Users } from 'lucide-rea
 import Image from 'next/image';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
@@ -384,16 +385,16 @@ export function MemberTable({
       </div>
 
       {hasMore && (
-        <div className="flex justify-center pt-1">
-          <button
-            type="button"
+        <div className="flex justify-center pt-2">
+          <Button
+            variant="outline"
             onClick={onLoadMore}
             disabled={loading}
-            className="group inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-card/40 px-5 py-2.5 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/70 backdrop-blur-sm shadow-sm transition-all hover:bg-card/60 hover:text-foreground active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="px-8 text-[10px] font-black uppercase tracking-[0.2em]"
           >
-            {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            Load More
-          </button>
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {loading ? 'Loading...' : 'Load More'}
+          </Button>
         </div>
       )}
     </div>

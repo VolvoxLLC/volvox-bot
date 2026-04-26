@@ -2,7 +2,7 @@
 
 import { motion, useReducedMotion } from 'framer-motion';
 import type { LucideIcon } from 'lucide-react';
-import { Activity, Cpu, Globe, Lock, MessageSquare, Shield, Sparkles, Zap } from 'lucide-react';
+import { Activity, BookOpen, Cpu, Lock, MessageSquare, Shield, Sparkles } from 'lucide-react';
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 
@@ -111,25 +111,30 @@ const features: readonly Feature[] = [
     ),
   },
   {
-    icon: Zap,
-    title: 'Edge Performance',
-    description: 'Built for scale. Minimal latency across all global regions.',
+    icon: BookOpen,
+    title: 'TL;DR',
+    description: 'AI-powered conversation summaries. Never miss what happened while you were away.',
     size: 'small',
     className: 'md:col-span-1 lg:col-span-1',
     animationOrder: 3,
     preview: (
-      <div className="flex items-center justify-center py-2 h-full">
-        <div className="w-full h-12 bg-card rounded-xl border border-border/50 flex flex-col justify-center px-5">
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-2">
-              <Globe className="w-4 h-4 text-foreground/40" />
-              <span className="text-[11px] font-semibold text-foreground/60 uppercase font-sans tracking-widest">
-                Global
-              </span>
-            </div>
-            <span className="text-[11px] font-black tracking-wider text-foreground/40 uppercase font-mono">
-              12ms
-            </span>
+      <div className="space-y-3 text-[12px]">
+        <div className="flex items-center gap-2 text-primary font-semibold">
+          <span>📋</span>
+          <span>TL;DR Summary</span>
+        </div>
+        <div className="text-foreground/50 space-y-1.5">
+          <div className="flex items-center gap-1.5">
+            <span className="text-primary">🗝️</span>
+            <span className="truncate">3 key topics identified</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-primary">✅</span>
+            <span className="truncate">2 decisions made</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-primary">📌</span>
+            <span className="truncate">4 action items</span>
           </div>
         </div>
       </div>

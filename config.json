@@ -319,7 +319,7 @@
   },
   "aiAutoMod": {
     "enabled": false,
-    "model": "claude-haiku-4-5",
+    "model": "minimax:MiniMax-M2.7",
     "thresholds": {
       "toxicity": 0.7,
       "spam": 0.8,

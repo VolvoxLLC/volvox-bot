@@ -290,7 +290,36 @@ export interface ReputationConfig extends ToggleSectionConfig {
 }
 
 /** XP level-up action definition. */
+export interface XpActionEmbedField {
+  id?: string;
+  name: string | null;
+  value: string | null;
+  inline: boolean | null;
+}
+
+export type XpActionEmbedThumbnailType = 'none' | 'user_avatar' | 'server_icon' | 'custom';
+
+export interface XpActionEmbedConfig {
+  // The dashboard writes thumbnailType/thumbnailUrl, footerText/footerIconUrl, imageUrl, and
+  // showTimestamp. Runtime normalization still accepts legacy thumbnail/footer/image/timestamp aliases.
+  color?: string | null;
+  title?: string | null;
+  description?: string | null;
+  thumbnail?: string | null;
+  thumbnailType?: XpActionEmbedThumbnailType | null;
+  thumbnailUrl?: string | null;
+  fields?: XpActionEmbedField[] | null;
+  footer?: string | { text?: string | null; iconURL?: string | null } | null;
+  footerText?: string | null;
+  footerIconUrl?: string | null;
+  image?: string | null;
+  imageUrl?: string | null;
+  timestamp?: boolean | null;
+  showTimestamp?: boolean | null;
+}
+
 export interface XpLevelAction {
+  id?: string;
   type:
     | 'grantRole'
     | 'removeRole'
@@ -299,9 +328,11 @@ export interface XpLevelAction {
     | 'xpBonus'
     | 'addReaction'
     | 'nickPrefix'
+    | 'nickSuffix'
     | 'webhook';
   roleId?: string;
   message?: string;
+  template?: string;
   format?: 'text' | 'embed' | 'both';
   channelMode?: 'current' | 'specific' | 'none';
   channelId?: string;
@@ -311,11 +342,12 @@ export interface XpLevelAction {
   suffix?: string;
   url?: string;
   payload?: string;
-  embed?: Record<string, unknown>;
+  embed?: XpActionEmbedConfig;
 }
 
 /** Per-level action configuration. */
 export interface XpLevelActionEntry {
+  id?: string;
   level: number;
   actions: XpLevelAction[];
 }

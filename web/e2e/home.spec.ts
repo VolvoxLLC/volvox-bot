@@ -131,7 +131,7 @@ test.describe('Features Section', () => {
   test('renders the features section', async ({ page }) => {
     await expect(page.getByText('System Protocol', { exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: /Everything you need/i })).toBeVisible();
-    for (const title of ['Neural Chat', 'Active Sentry', 'Live Insight', 'Edge Performance']) {
+    for (const title of ['Neural Chat', 'Active Sentry', 'Live Insight', 'TL;DR', 'Core Engine']) {
       await expect(page.getByRole('heading', { name: title })).toBeVisible();
     }
   });
