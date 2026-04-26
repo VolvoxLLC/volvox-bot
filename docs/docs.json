@@ -3,9 +3,9 @@
   "theme": "mint",
   "name": "Volvox.Bot",
   "colors": {
-    "primary": "#22c55e",
-    "light": "#4ade80",
-    "dark": "#16a34a"
+    "primary": "#131410",
+    "light": "#fafaf9",
+    "dark": "#10110e"
   },
   "favicon": "/logo/logo.png",
   "navigation": {
@@ -72,6 +72,12 @@
     "socials": {
       "github": "https://github.com/VolvoxLLC/volvox-bot",
       "discord": "https://discord.gg/8ahXACdamN"
+    }
+  },
+  "background": {
+    "color": {
+      "light": "#fafaf9",
+      "dark": "#10110e"
     }
   }
 }
