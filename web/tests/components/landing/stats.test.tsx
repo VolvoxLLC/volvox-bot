@@ -70,7 +70,7 @@ describe('Stats', () => {
     });
   });
 
-  it('should render testimonial quotes', () => {
+  it('should render the feedback CTA instead of placeholder reviews', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -81,9 +81,13 @@ describe('Stats', () => {
 
     render(<Stats />);
     expect(screen.getByRole('heading', { level: 2 })).toBeInTheDocument();
-    expect(screen.getByText(/Alex Rivers/i)).toBeInTheDocument();
-    expect(screen.getByText(/Sarah Chen/i)).toBeInTheDocument();
-    expect(screen.getByText(/Marcus Wright/i)).toBeInTheDocument();
+    expect(screen.getByText('Early Operators')).toBeInTheDocument();
+    expect(screen.getByText('Feedback wanted.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Share Feedback' })).toHaveAttribute(
+      'href',
+      'https://discord.gg/8ahXACdamN',
+    );
+    expect(screen.queryByText(/Alex Rivers/i)).not.toBeInTheDocument();
   });
 
   it('should render fallback values when fetch fails', async () => {

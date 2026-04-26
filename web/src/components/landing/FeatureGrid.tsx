@@ -33,8 +33,8 @@ const features: readonly Feature[] = [
         <div className="flex gap-3 bg-primary/[0.03] p-4 rounded-xl border border-primary/10">
           <MessageSquare className="w-4 h-4 shrink-0 mt-0.5 text-primary/70" />
           <span className="text-foreground/80">
-            Pretty good. I'm keeping an eye on the server and ready to help if anyone needs
-            answers, summaries, or a second opinion.
+            Pretty good. I'm keeping an eye on the server and ready to help if anyone needs answers,
+            summaries, or a second opinion.
           </span>
         </div>
       </div>
@@ -43,8 +43,7 @@ const features: readonly Feature[] = [
   {
     icon: Shield,
     title: 'AI Auto-Moderation',
-    description:
-      'Automated toxicity, spam, and harassment detection with configurable thresholds.',
+    description: 'Automated toxicity, spam, and harassment detection with configurable thresholds.',
     size: 'medium',
     className: 'md:col-span-1 lg:col-span-1',
     animationOrder: 1,
@@ -214,7 +213,10 @@ export function FeatureGrid() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6">
+        <div
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6"
+          data-scroll-content
+        >
           {features.map((feature) => (
             <FeatureCard
               key={feature.title}

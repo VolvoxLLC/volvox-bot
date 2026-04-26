@@ -207,7 +207,10 @@ export function ComparisonTable() {
           </p>
         </div>
 
-        <div className="overflow-hidden rounded-[2rem] border border-border/80 bg-card shadow-sm">
+        <div
+          className="overflow-hidden rounded-[2rem] border border-border/80 bg-card shadow-sm"
+          data-scroll-content
+        >
           <div className="overflow-x-auto scrollbar-none">
             <table
               aria-label="Feature comparison"

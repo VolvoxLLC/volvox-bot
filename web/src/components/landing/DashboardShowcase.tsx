@@ -163,7 +163,7 @@ export function DashboardShowcase() {
         </div>
 
         {/* ─── Minimal Dashboard Window ─── */}
-        <div className="ds-window mx-auto max-w-6xl">
+        <div className="ds-window mx-auto max-w-6xl" data-scroll-content>
           <div className="bg-card/40 border border-border/80 rounded-[2rem] overflow-hidden shadow-sm backdrop-blur-3xl">
             {/* Title Bar */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-border/40 bg-background/50">
