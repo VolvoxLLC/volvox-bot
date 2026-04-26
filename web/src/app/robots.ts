@@ -12,8 +12,9 @@ const PRODUCTION_URL = 'https://volvox.bot';
  * @see https://docs.anthropic.com/en/docs/build-with-claude/crawler
  */
 export default function robots(): MetadataRoute.Robots {
-  const rawUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL ?? PRODUCTION_URL;
-  const siteUrl = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
+  const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  const rawUrl = configuredSiteUrl || PRODUCTION_URL;
+  const siteUrl = (rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`).replace(/\/$/, '');
   const disallowPaths = ['/dashboard', '/login', '/api', '/community'];
 
   const aiAgents = [
