@@ -36,7 +36,7 @@ Copy [`.env.example`](.env.example) to `.env` — it contains full documentation
 
 **Required:** `DISCORD_TOKEN`, `ANTHROPIC_API_KEY`, `DATABASE_URL`, `DISCORD_CLIENT_ID`
 
-**Optional:** `REDIS_URL`, `SENTRY_DSN`, `BOT_API_SECRET`, `LOG_LEVEL`, and more — see the file.
+**Optional:** `REDIS_URL`, `SENTRY_DSN`, `BOT_API_SECRET`, `LOG_LEVEL`, `NEXT_PUBLIC_SITE_URL`, and more — see the file.
 
 ## Commands
 
