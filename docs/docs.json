@@ -66,7 +66,8 @@
   },
   "logo": {
     "light": "/logo/logo.png",
-    "dark": "/logo/logo.png"
+    "dark": "/logo/logo.png",
+    "href": "https://volvox.bot"
   },
   "footer": {
     "socials": {
