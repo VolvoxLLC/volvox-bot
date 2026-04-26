@@ -197,9 +197,15 @@ jobs:
             exit 1
           fi
 
-          if [ "${{ needs.sonarqube.result }}" != "success" ] && [ "${{ needs.sonarqube.result }}" != "skipped" ]; then
-            echo "SonarQube scan failed."
-            exit 1
+          sonarqube_result="${{ needs.sonarqube.result }}"
+          sonarqube_skipped_for_fork="${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo != null && github.event.pull_request.head.repo.fork }}"
+          if [ "$sonarqube_result" != "success" ]; then
+            if [ "$sonarqube_result" = "skipped" ] && [ "$sonarqube_skipped_for_fork" = "true" ]; then
+              echo "SonarQube skipped on fork PR — allowed."
+            else
+              echo "SonarQube scan failed or unexpectedly skipped."
+              exit 1
+            fi
           fi
 
           if [ "${{ needs.docker-build-validation.result }}" != "success" ]; then
