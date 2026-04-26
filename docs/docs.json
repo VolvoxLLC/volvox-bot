@@ -80,5 +80,8 @@
       "light": "#fafaf9",
       "dark": "#10110e"
     }
+  },
+  "appearance": {
+    "default": "system"
   }
 }
