@@ -6,7 +6,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Activity, ArrowRight, ChevronRight, Cpu, Terminal, Zap } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRef } from 'react';
+import { type MouseEvent, useRef } from 'react';
 import { siDiscord, siX } from 'simple-icons';
 import { SimpleIcon } from '@/components/ui/simple-icon';
 import { WEB_APP_VERSION } from '@/lib/app-version';
@@ -21,9 +21,10 @@ const footerLinks = [
   {
     title: 'SYSTEM_CORE',
     links: [
+      { label: 'Dashboard', href: '#dashboard' },
+      { label: 'Compare', href: '#compare' },
       { label: 'Features', href: '#features' },
-      { label: 'Pricing', href: '#pricing' },
-      { label: 'Dashboard', href: '/login' },
+      { label: 'Status', href: '#stats' },
     ],
   },
   {
@@ -60,6 +61,20 @@ export function Footer() {
   const containerRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const botInviteUrl = getBotInviteUrl();
+
+  const handleSectionLinkClick = (event: MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (!href.startsWith('#')) return;
+
+    const element = document.getElementById(href.slice(1));
+    if (!element) return;
+
+    event.preventDefault();
+    const target = element.querySelector<HTMLElement>('[data-scroll-content]') ?? element;
+    const navbarHeight = window.innerWidth >= 768 ? 80 : 72;
+    const top = target.getBoundingClientRect().top + window.scrollY - navbarHeight;
+    const isReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.scrollTo({ top, behavior: isReduced ? 'auto' : 'smooth' });
+  };
 
   useGSAP(
     () => {
@@ -293,6 +308,7 @@ export function Footer() {
                     <li key={link.label}>
                       <Link
                         href={link.href}
+                        onClick={(event) => handleSectionLinkClick(event, link.href)}
                         className="text-[14px] font-medium text-foreground/60 hover:text-foreground transition-colors flex items-center gap-1.5 group"
                       >
                         <ChevronRight className="w-3.5 h-3.5 opacity-0 -ml-5 group-hover:opacity-40 group-hover:ml-0 transition-all" />

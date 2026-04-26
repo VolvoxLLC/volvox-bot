@@ -42,10 +42,9 @@ test.describe('Desktop Navigation', () => {
     await page.goto('/');
   });
 
-  test('shows desktop nav buttons for Features, Pricing, Dashboard, Compare', async ({ page }) => {
+  test('shows desktop nav buttons for Features, Dashboard, Compare', async ({ page }) => {
     const desktopNav = page.locator('header nav').first();
     await expect(desktopNav.getByText('Features')).toBeVisible();
-    await expect(desktopNav.getByText('Pricing')).toBeVisible();
     await expect(desktopNav.getByText('Dashboard')).toBeVisible();
     await expect(desktopNav.getByText('Compare')).toBeVisible();
   });
@@ -61,10 +60,6 @@ test.describe('Desktop Navigation', () => {
     await expectSectionAfterClick(
       desktopNav.getByText('Features'),
       page.getByRole('heading', { name: /Everything you need/i }),
-    );
-    await expectSectionAfterClick(
-      desktopNav.getByText('Pricing'),
-      page.getByRole('heading', { name: /System Access Tiers/i }),
     );
   });
 });
@@ -83,7 +78,6 @@ test.describe('Mobile Navigation', () => {
     await expect(mobileNav).toBeVisible();
     await expect(mobileNav.getByRole('heading', { name: 'Menu' })).toBeVisible();
     await expect(mobileNav.getByText('Features')).toBeVisible();
-    await expect(mobileNav.getByText('Pricing')).toBeVisible();
     await expect(mobileNav.getByText('Dashboard')).toBeVisible();
     await expect(mobileNav.getByText('Compare')).toBeVisible();
   });
@@ -134,31 +128,6 @@ test.describe('Features Section', () => {
     for (const title of ['Neural Chat', 'Active Sentry', 'Live Insight', 'TL;DR', 'Core Engine']) {
       await expect(page.getByRole('heading', { name: title })).toBeVisible();
     }
-  });
-});
-
-test.describe('Pricing Section', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    await scrollSectionIntoView(page, '#pricing');
-  });
-
-  test('renders pricing cards and toggle', async ({ page }) => {
-    await expect(
-      page.getByText('System Access Tiers', { exact: true }),
-    ).toBeVisible();
-    await expect(page.getByText('Standard').first()).toBeVisible();
-    await expect(page.getByText('Overclocked').first()).toBeVisible();
-    await expect(page.getByText('$14.99')).toBeVisible();
-    // Toggle is a motion.div with aria-label, not a semantic switch
-    const toggle = page.getByLabel('Toggle annual billing');
-    await toggle.click();
-    await expect(page.getByText('$115')).toBeVisible();
-  });
-
-  test('shows pricing copy', async ({ page }) => {
-    await expect(page.getByText('Core command modules')).toBeVisible();
-    await expect(page.getByText('Priority Technical Support')).toBeVisible();
   });
 });
 
@@ -246,7 +215,7 @@ test.describe('Full Page', () => {
   test('all major page sections are present', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('#features')).toBeAttached();
-    await expect(page.locator('#pricing')).toBeAttached();
+    await expect(page.locator('#pricing')).not.toBeAttached();
     await expect(page.locator('#dashboard')).toBeAttached();
     await expect(page.locator('#compare')).toBeAttached();
     await expect(page.locator('footer')).toBeAttached();

@@ -145,6 +145,13 @@ export function LandingNavbar() {
             >
               Features
             </button>
+            <button
+              type="button"
+              onClick={() => scrollToSection('stats')}
+              className="inline-block px-3 py-2 text-sm font-medium text-foreground/70 transition-colors hover:bg-muted/50 hover:text-foreground active:scale-95 rounded-full shrink-0"
+            >
+              Status
+            </button>
           </div>
 
           {/* Actions & Mobile Toggle */}
@@ -207,6 +214,15 @@ export function LandingNavbar() {
                       className="flex w-full items-center justify-between rounded-xl p-4 text-left font-medium text-foreground transition-colors hover:bg-muted/50"
                     >
                       Features
+                    </button>
+                  </SheetClose>
+                  <SheetClose asChild>
+                    <button
+                      type="button"
+                      onClick={() => scrollToSection('stats')}
+                      className="flex w-full items-center justify-between rounded-xl p-4 text-left font-medium text-foreground transition-colors hover:bg-muted/50"
+                    >
+                      Status
                     </button>
                   </SheetClose>
                 </div>

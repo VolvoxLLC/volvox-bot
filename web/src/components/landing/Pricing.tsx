@@ -189,8 +189,8 @@ export function Pricing() {
             Pricing
           </h2>
           <p className="text-lg text-foreground/50 max-w-xl mx-auto font-medium leading-relaxed mb-10">
-            Start with the core bot for free, then upgrade when your server needs deeper
-            automation, analytics, and support.
+            Every tier includes the full bot. Upgrade only when your server needs access to premium
+            AI models.
           </p>
 
           <div className="flex items-center justify-center gap-6 mb-4">
@@ -238,6 +238,22 @@ export function Pricing() {
           </div>
         </div>
 
+        <div className="mb-8 grid w-full max-w-4xl grid-cols-1 gap-3 rounded-[1.5rem] border border-border/60 bg-card/70 p-4 shadow-sm sm:grid-cols-3">
+          {['Core command modules', 'Configuration dashboard', 'AI setup and moderation'].map(
+            (feature) => (
+              <div
+                key={feature}
+                className="flex items-center gap-3 rounded-2xl bg-background/60 px-4 py-3 text-sm font-medium text-foreground/70"
+              >
+                <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <Check className="h-3 w-3 stroke-[3px]" />
+                </div>
+                {feature}
+              </div>
+            ),
+          )}
+        </div>
+
         {/* Pricing Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl relative">
           {/* Back-glow for Overclocked */}
@@ -270,31 +286,19 @@ export function Pricing() {
                   <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
                     <Check className="h-3 w-3 stroke-[3px]" />
                   </div>
-                  Core command modules
-                </ListItem>
-                <ListItem>
-                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                    <Check className="h-3 w-3 stroke-[3px]" />
-                  </div>
-                  Basic configuration dashboard
-                </ListItem>
-                <ListItem>
-                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                    <Check className="h-3 w-3 stroke-[3px]" />
-                  </div>
-                  Standard execution priority
+                  Standard AI Models
                 </ListItem>
                 <ListItem className="opacity-40 grayscale">
                   <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-foreground/5 text-foreground/40">
                     <X className="h-3 w-3" />
                   </div>
-                  AI setup and moderation
+                  Premium AI Models
                 </ListItem>
-                <ListItem className="opacity-40 grayscale">
-                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-foreground/5 text-foreground/40">
-                    <X className="h-3 w-3" />
+                <ListItem>
+                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <Check className="h-3 w-3 stroke-[3px]" />
                   </div>
-                  Real-time Dashboard Analytics
+                  No feature limits outside model access
                 </ListItem>
               </List>
 
@@ -337,7 +341,7 @@ export function Pricing() {
                 </PlanName>
                 <Badge>Recommended</Badge>
               </Plan>
-              <Description>Unlock advanced automation, analytics, and priority support.</Description>
+              <Description>Same bot features, plus premium model access.</Description>
 
               <div className="mt-8">
                 <Price>
@@ -367,31 +371,19 @@ export function Pricing() {
                   <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary shadow-[0_0_10px_hsl(var(--primary)/0.2)]">
                     <Check className="h-3 w-3 stroke-[3px]" />
                   </div>
-                  All Standard bot features
+                  Everything in Standard
                 </ListItem>
                 <ListItem>
                   <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary shadow-[0_0_10px_hsl(var(--primary)/0.2)]">
                     <Check className="h-3 w-3 stroke-[3px]" />
                   </div>
-                  AI setup and moderation
+                  Premium AI Models
                 </ListItem>
                 <ListItem>
                   <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary shadow-[0_0_10px_hsl(var(--primary)/0.2)]">
                     <Check className="h-3 w-3 stroke-[3px]" />
                   </div>
-                  Real-time Dashboard Analytics
-                </ListItem>
-                <ListItem>
-                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary shadow-[0_0_10px_hsl(var(--primary)/0.2)]">
-                    <Check className="h-3 w-3 stroke-[3px]" />
-                  </div>
-                  Prioritized Command Execution
-                </ListItem>
-                <ListItem>
-                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary shadow-[0_0_10px_hsl(var(--primary)/0.2)]">
-                    <Check className="h-3 w-3 stroke-[3px]" />
-                  </div>
-                  Priority Technical Support
+                  Best model quality available in Volvox
                 </ListItem>
               </List>
 

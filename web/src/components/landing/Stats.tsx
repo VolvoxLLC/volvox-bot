@@ -185,7 +185,10 @@ export function Stats() {
           <div className="h-[1px] w-6 bg-foreground/20" />
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-20 items-center lg:items-start">
+        <div
+          className="flex flex-col lg:flex-row gap-20 items-center lg:items-start"
+          data-scroll-content
+        >
           {/* Left: Stats Grid - Now Primary */}
           <div className="w-full lg:w-[55%]">
             <h2 className="stats-title text-4xl md:text-5xl font-black tracking-tight text-foreground mb-14 text-center lg:text-left leading-[1.1]">
@@ -212,10 +215,7 @@ export function Stats() {
                           {card.label}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <div className="text-[9px] font-mono font-black text-primary/40 tracking-widest uppercase">
-                          Live
-                        </div>
+                      <div className="flex items-center">
                         <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shadow-[0_0_8px_hsl(var(--primary))]" />
                       </div>
                     </div>
