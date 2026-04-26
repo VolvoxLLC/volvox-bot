@@ -398,8 +398,31 @@ export async function buildStatsAndLog(
   const targetEntry = snapshot.find((m) => classification.targetMessageIds?.includes(m.messageId));
   const targetUserId = targetEntry?.userId || null;
 
-  const { providerName: classifyProvider } = parseProviderModel(resolved.classifyModel);
-  const { providerName: respondProvider } = parseProviderModel(resolved.respondModel);
+  // Guard against malformed legacy config values reaching the strict D1
+  // parser. `resolveTriageConfig` already validates + logs, but a config
+  // patched outside that path (direct DB write, legacy migration) could still
+  // deliver a bare string here. Falling back to `'unknown'` keeps stats
+  // logging alive; the dispatch path only uses these for the debug footer and
+  // AI usage analytics, so degraded provenance is preferable to a crash that
+  // drops the whole batch.
+  let classifyProvider = 'unknown';
+  let respondProvider = 'unknown';
+  try {
+    classifyProvider = parseProviderModel(resolved.classifyModel).providerName;
+  } catch (err) {
+    logError('buildStatsAndLog: bad classifyModel — using "unknown" for stats', {
+      classifyModel: resolved.classifyModel,
+      reason: err?.message,
+    });
+  }
+  try {
+    respondProvider = parseProviderModel(resolved.respondModel).providerName;
+  } catch (err) {
+    logError('buildStatsAndLog: bad respondModel — using "unknown" for stats', {
+      respondModel: resolved.respondModel,
+      reason: err?.message,
+    });
+  }
 
   const stats = {
     classify: extractStats(classifyMessage, resolved.classifyModel, classifyProvider),

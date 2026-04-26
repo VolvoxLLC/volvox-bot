@@ -165,6 +165,14 @@ const XP_LEVEL_ACTION_ENTRY_SCHEMA = {
 };
 
 /**
+ * Provider-qualified model string: `<provider>:<model>` with no whitespace on
+ * either side of the colon. Hoisted via `String.raw` to avoid doubled-up
+ * backslash escaping (keeps SonarCloud quiet) and to keep the two schema
+ * entries (classifyModel, respondModel) in sync.
+ */
+const PROVIDER_MODEL_PATTERN = String.raw`^[^:\s]+:[^\s]+$`;
+
+/**
  * Schema definitions for writable config sections.
  * Used to validate types before persisting changes.
  */
@@ -218,7 +226,7 @@ export const CONFIG_SCHEMA = {
           enabled: { type: 'boolean' },
           timezone: { type: 'string' },
           activityWindowMinutes: { type: 'number', min: 1, max: 10080 },
-          milestoneInterval: { type: 'number', min: 1, max: 10000 },
+          milestoneInterval: { type: 'number', min: 0, max: 10000 },
           highlightChannels: { type: 'array' },
           excludeChannels: { type: 'array' },
         },
@@ -327,9 +335,12 @@ export const CONFIG_SCHEMA = {
       botAllowlist: { type: 'array', items: { type: 'string' } },
       triggerWords: { type: 'array' },
       moderationKeywords: { type: 'array' },
-      classifyModel: { type: 'string' },
+      // Model fields must be in `provider:model` format (see issue #553 D1) —
+      // `parseProviderModel` throws on bare strings at runtime. Catching it
+      // at the API boundary turns a silent-dispatch-crash into a clear 400.
+      classifyModel: { type: 'string', pattern: PROVIDER_MODEL_PATTERN },
       classifyBudget: { type: 'number', min: 0, max: 100000 },
-      respondModel: { type: 'string' },
+      respondModel: { type: 'string', pattern: PROVIDER_MODEL_PATTERN },
       respondBudget: { type: 'number', min: 0, max: 100000 },
       thinkingTokens: { type: 'number', min: 0, max: 100000 },
       classifyBaseUrl: { type: 'string', nullable: true },

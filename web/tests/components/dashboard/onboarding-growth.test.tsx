@@ -183,26 +183,53 @@ vi.mock('@/components/ui/embed-builder', () => ({
 import { OnboardingGrowthCategory } from '@/components/dashboard/config-categories/onboarding-growth';
 import { XpLevelActionsEditor } from '@/components/dashboard/xp-level-actions-editor';
 
+type WelcomeDraftOptions = {
+  dynamic?: Record<string, unknown>;
+  welcomeOverrides?: Record<string, unknown>;
+};
+
+function createWelcomeDraftConfig({
+  dynamic = { enabled: true, milestoneInterval: 25 },
+  welcomeOverrides = {},
+}: WelcomeDraftOptions = {}) {
+  return {
+    welcome: {
+      enabled: true,
+      message: '',
+      dynamic,
+      roleMenu: { options: [] },
+      dmSequence: { steps: [] },
+      ...welcomeOverrides,
+    },
+  };
+}
+
+type WelcomeContextOptions = {
+  draftConfig?: ReturnType<typeof createWelcomeDraftConfig>;
+  updateDraftConfig?: ReturnType<typeof vi.fn>;
+};
+
+function mockWelcomeContext({
+  draftConfig = createWelcomeDraftConfig(),
+  updateDraftConfig = vi.fn(),
+}: WelcomeContextOptions = {}) {
+  mockUseConfigContext.mockReturnValue({
+    draftConfig,
+    saving: false,
+    guildId: 'guild-1',
+    visibleFeatureIds: new Set(['welcome']),
+    activeTabId: 'welcome',
+    updateDraftConfig,
+  });
+
+  return updateDraftConfig;
+}
+
 describe('OnboardingGrowthCategory', () => {
   it('shows the full dynamic variable guide for welcome messages', async () => {
     const user = userEvent.setup();
 
-    mockUseConfigContext.mockReturnValue({
-      draftConfig: {
-        welcome: {
-          enabled: true,
-          message: '',
-          dynamic: { enabled: false },
-          roleMenu: { options: [] },
-          dmSequence: { steps: [] },
-        },
-      },
-      saving: false,
-      guildId: 'guild-1',
-      visibleFeatureIds: new Set(['welcome']),
-      activeTabId: 'welcome',
-      updateDraftConfig: vi.fn(),
-    });
+    mockWelcomeContext({ draftConfig: createWelcomeDraftConfig({ dynamic: { enabled: false } }) });
 
     render(<OnboardingGrowthCategory />);
 
@@ -222,22 +249,7 @@ describe('OnboardingGrowthCategory', () => {
   });
 
   it('uses double-brace variables in the welcome editor placeholder', () => {
-    mockUseConfigContext.mockReturnValue({
-      draftConfig: {
-        welcome: {
-          enabled: true,
-          message: '',
-          dynamic: { enabled: false },
-          roleMenu: { options: [] },
-          dmSequence: { steps: [] },
-        },
-      },
-      saving: false,
-      guildId: 'guild-1',
-      visibleFeatureIds: new Set(['welcome']),
-      activeTabId: 'welcome',
-      updateDraftConfig: vi.fn(),
-    });
+    mockWelcomeContext({ draftConfig: createWelcomeDraftConfig({ dynamic: { enabled: false } }) });
 
     render(<OnboardingGrowthCategory />);
 
@@ -247,37 +259,89 @@ describe('OnboardingGrowthCategory', () => {
     );
   });
 
+  it('renders the welcome milestone interval from config', () => {
+    mockWelcomeContext({
+      draftConfig: createWelcomeDraftConfig({
+        dynamic: { enabled: true, milestoneInterval: 42 },
+      }),
+    });
+
+    render(<OnboardingGrowthCategory />);
+
+    const input = screen.getByLabelText('Milestone Interval');
+    expect(input).toHaveValue(42);
+    expect(
+      screen.getByText(
+        'Controls member-count milestone cadence, e.g. every 25 members. Use 0 to disable interval-based milestones.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('defaults the welcome milestone interval to 25 when unset', () => {
+    mockWelcomeContext({ draftConfig: createWelcomeDraftConfig({ dynamic: { enabled: true } }) });
+
+    render(<OnboardingGrowthCategory />);
+
+    expect(screen.getByLabelText('Milestone Interval')).toHaveValue(25);
+  });
+
+  it('updates the welcome milestone interval in draft config', () => {
+    const updateDraftConfig = mockWelcomeContext({
+      updateDraftConfig: vi.fn((updater) => updater(createWelcomeDraftConfig())),
+    });
+
+    render(<OnboardingGrowthCategory />);
+
+    const input = screen.getByLabelText('Milestone Interval');
+    expect(input).toHaveAttribute('min', '0');
+    expect(input).toHaveAttribute('max', '10000');
+
+    fireEvent.change(input, { target: { value: '50' } });
+
+    expect(updateDraftConfig).toHaveBeenCalledTimes(1);
+    expect(updateDraftConfig.mock.results[0]?.value.welcome.dynamic.milestoneInterval).toBe(50);
+  });
+
+  it('preserves zero to disable interval-based welcome milestones', () => {
+    const updateDraftConfig = mockWelcomeContext({
+      updateDraftConfig: vi.fn((updater) => updater(createWelcomeDraftConfig())),
+    });
+
+    render(<OnboardingGrowthCategory />);
+
+    fireEvent.change(screen.getByLabelText('Milestone Interval'), {
+      target: { value: '0' },
+    });
+
+    expect(updateDraftConfig).toHaveBeenCalledTimes(1);
+    expect(updateDraftConfig.mock.results[0]?.value.welcome.dynamic.milestoneInterval).toBe(0);
+  });
+
+  it('clamps the welcome milestone interval to the backend maximum', () => {
+    const updateDraftConfig = mockWelcomeContext({
+      updateDraftConfig: vi.fn((updater) => updater(createWelcomeDraftConfig())),
+    });
+
+    render(<OnboardingGrowthCategory />);
+
+    fireEvent.change(screen.getByLabelText('Milestone Interval'), {
+      target: { value: '10001' },
+    });
+
+    expect(updateDraftConfig.mock.results[0]?.value.welcome.dynamic.milestoneInterval).toBe(
+      10_000,
+    );
+  });
+
   it('exposes a channel selector for the welcome message destination', async () => {
     const user = userEvent.setup();
-    const updateDraftConfig = vi.fn((updater) =>
-      updater({
-        welcome: {
-          enabled: true,
-          channelId: 'old-channel',
-          message: '',
-          dynamic: { enabled: false },
-          roleMenu: { options: [] },
-          dmSequence: { steps: [] },
-        },
-      }),
-    );
-
-    mockUseConfigContext.mockReturnValue({
-      draftConfig: {
-        welcome: {
-          enabled: true,
-          channelId: 'old-channel',
-          message: '',
-          dynamic: { enabled: false },
-          roleMenu: { options: [] },
-          dmSequence: { steps: [] },
-        },
-      },
-      saving: false,
-      guildId: 'guild-1',
-      visibleFeatureIds: new Set(['welcome']),
-      activeTabId: 'welcome',
-      updateDraftConfig,
+    const draftConfig = createWelcomeDraftConfig({
+      dynamic: { enabled: false },
+      welcomeOverrides: { channelId: 'old-channel' },
+    });
+    const updateDraftConfig = mockWelcomeContext({
+      draftConfig,
+      updateDraftConfig: vi.fn((updater) => updater(draftConfig)),
     });
 
     render(<OnboardingGrowthCategory />);

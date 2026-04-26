@@ -234,13 +234,18 @@ Copy `.env.example` to `.env` and fill in values. Key variables:
 | Variable | Required | Purpose |
 |----------|----------|---------|
 | `DISCORD_TOKEN` | Yes | Discord bot token |
-| `ANTHROPIC_API_KEY` | Yes | Claude AI features |
+| `MINIMAX_API_KEY` | Yes | Default AI provider (routed via Anthropic-shape SDK) |
 | `DATABASE_URL` | Yes | PostgreSQL connection string |
 | `DISCORD_CLIENT_ID` | Yes | Slash command deployment |
+| `MOONSHOT_API_KEY` | No | Optional AI provider — enable via `triage.*Model = moonshot:…` |
+| `OPENROUTER_API_KEY` | No | Optional AI aggregator — enable via `triage.*Model = openrouter:…` |
+| `ANTHROPIC_API_KEY` | No | Reserved for future direct-Anthropic support (see [#553](https://github.com/VolvoxLLC/volvox-bot/issues/553)) |
 | `REDIS_URL` | No | Redis caching (falls back to in-memory) |
 | `BOT_API_SECRET` | No | Bot API authentication |
 | `SENTRY_DSN` | No | Error tracking |
 | `LOG_LEVEL` | No | Logging verbosity (debug/info/warn/error) |
+
+Provider metadata (base URL, env key, capabilities, model pricing) lives in `src/data/providers.json`. Add a provider by declaring it there; no `aiClient.js` change is needed unless a new API shape is introduced (see [#530](https://github.com/VolvoxLLC/volvox-bot/issues/530)).
 
 For Docker-based local development: `docker compose up` starts PostgreSQL, Redis, bot, and web dashboard.
 

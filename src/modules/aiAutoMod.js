@@ -16,7 +16,7 @@ import { createCase } from './moderation.js';
 /** Default config when none is provided */
 const DEFAULTS = {
   enabled: false,
-  model: 'claude-haiku-4-5',
+  model: 'minimax:MiniMax-M2.7',
   thresholds: {
     toxicity: 0.7,
     spam: 0.8,
@@ -49,7 +49,7 @@ export function getAiAutoModConfig(config) {
 }
 
 /**
- * Analyze a message using Claude AI.
+ * Analyze a message using the configured AI provider.
  * Returns scores and recommendations for moderation actions.
  *
  * @param {string} content - Message content to analyze
@@ -102,7 +102,10 @@ Respond ONLY with valid JSON in this exact format:
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
   } catch {
-    logError('AI auto-mod: failed to parse Claude response', { text });
+    logError('AI auto-mod: failed to parse AI response', {
+      model: mergedConfig.model ?? DEFAULTS.model,
+      text,
+    });
     return {
       flagged: false,
       scores: { toxicity: 0, spam: 0, harassment: 0 },

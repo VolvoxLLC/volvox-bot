@@ -39,6 +39,75 @@ vi.mock('../../src/utils/aiCost.js', () => ({
   calculateCost: (...args) => mockCalculateCost(...args),
 }));
 
+// ── Mock the provider registry so tests don't depend on providers.json ────
+
+const REGISTRY_STATE = vi.hoisted(() => ({
+  providers: new Map(),
+}));
+
+function seedRegistry() {
+  REGISTRY_STATE.providers = new Map([
+    [
+      'minimax',
+      {
+        name: 'minimax',
+        displayName: 'MiniMax',
+        envKey: 'MINIMAX_API_KEY',
+        baseUrl: 'https://api.minimax.io/anthropic/v1',
+        apiShape: ['anthropic'],
+        capabilities: { webSearch: false, thinking: false },
+      },
+    ],
+    [
+      'moonshot',
+      {
+        name: 'moonshot',
+        displayName: 'Moonshot',
+        envKey: 'MOONSHOT_API_KEY',
+        baseUrl: 'https://api.moonshot.ai/anthropic',
+        apiShape: ['anthropic'],
+        capabilities: { webSearch: true, thinking: true },
+      },
+    ],
+    [
+      'nonanth',
+      {
+        name: 'nonanth',
+        displayName: 'NonAnth (test fixture)',
+        envKey: 'NONANTH_API_KEY',
+        baseUrl: 'https://nonanth.example.com',
+        apiShape: ['openai'],
+        capabilities: { webSearch: false, thinking: false },
+      },
+    ],
+  ]);
+}
+
+seedRegistry();
+
+vi.mock('../../src/utils/providerRegistry.js', () => ({
+  getProviderMeta: (name) =>
+    typeof name === 'string' ? (REGISTRY_STATE.providers.get(name.toLowerCase()) ?? null) : null,
+  getModelConfig: (providerName, modelId) => {
+    const cfg =
+      typeof providerName === 'string'
+        ? REGISTRY_STATE.providers.get(providerName.toLowerCase())
+        : null;
+    if (!cfg || typeof modelId !== 'string') return null;
+    return { id: modelId, pricing: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 } };
+  },
+  getCapabilities: (name) => {
+    const cfg = typeof name === 'string' ? REGISTRY_STATE.providers.get(name.toLowerCase()) : null;
+    return cfg ? { ...cfg.capabilities } : { webSearch: false, thinking: false };
+  },
+  supportsShape: (name, shape) => {
+    const cfg = typeof name === 'string' ? REGISTRY_STATE.providers.get(name.toLowerCase()) : null;
+    return cfg ? cfg.apiShape.includes(shape) : false;
+  },
+  listProviders: () => Array.from(REGISTRY_STATE.providers.values()).map((p) => p.name),
+  normaliseModelId: (id) => (typeof id === 'string' ? id.replace(/-\d{8}$/, '') : id),
+}));
+
 // ── Import under test (after mocks) ────────────────────────────────────────
 
 const { generate, stream, _clearProviderCache } = await import('../../src/utils/aiClient.js');
@@ -53,7 +122,7 @@ function makeGenerateResult(overrides = {}) {
     usage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
     finishReason: 'stop',
     sources: [],
-    providerMetadata: { anthropic: {} },
+    providerMetadata: { minimax: {} },
     ...overrides,
   };
 }
@@ -65,36 +134,45 @@ function makeStreamResult(overrides = {}) {
     usage: Promise.resolve({ inputTokens: 200, outputTokens: 100, totalTokens: 300 }),
     finishReason: Promise.resolve('stop'),
     sources: Promise.resolve([]),
-    providerMetadata: Promise.resolve({ anthropic: {} }),
+    providerMetadata: Promise.resolve({ minimax: {} }),
     ...overrides,
   };
+}
+
+function withEnv(name, value, fn) {
+  const original = process.env[name];
+  process.env[name] = value;
+  return Promise.resolve(fn()).finally(() => {
+    if (original === undefined) delete process.env[name];
+    else process.env[name] = original;
+  });
 }
 
 // ── Tests ───────────────────────────────────────────────────────────────────
 
 describe('generate', () => {
-  let originalAnthropicKey;
+  let originalMinimaxKey;
 
   beforeEach(() => {
     _clearProviderCache();
+    seedRegistry();
     mockGenerateText.mockReset();
     mockStreamText.mockReset();
     mockCalculateCost.mockReset();
     mockCreateAnthropic.mockClear();
     // calculateCost is SYNCHRONOUS — use mockReturnValue, not mockResolvedValue.
     mockCalculateCost.mockReturnValue(0.001);
-    // The resolver now loud-fails without a provider-specific key; guarantee
-    // one exists for the default anthropic happy path.
-    originalAnthropicKey = process.env.ANTHROPIC_API_KEY;
-    process.env.ANTHROPIC_API_KEY = 'sk-ant-test-key';
+    // Default provider for the happy path.
+    originalMinimaxKey = process.env.MINIMAX_API_KEY;
+    process.env.MINIMAX_API_KEY = 'minimax-test-key';
   });
 
   afterEach(() => {
     _clearProviderCache();
-    if (originalAnthropicKey === undefined) {
-      delete process.env.ANTHROPIC_API_KEY;
+    if (originalMinimaxKey === undefined) {
+      delete process.env.MINIMAX_API_KEY;
     } else {
-      process.env.ANTHROPIC_API_KEY = originalAnthropicKey;
+      process.env.MINIMAX_API_KEY = originalMinimaxKey;
     }
   });
 
@@ -102,7 +180,7 @@ describe('generate', () => {
     mockGenerateText.mockResolvedValue(makeGenerateResult());
 
     const result = await generate({
-      model: 'claude-haiku-4-5',
+      model: 'minimax:MiniMax-M2.7',
       system: 'You are a bot',
       prompt: 'Hello',
     });
@@ -119,184 +197,188 @@ describe('generate', () => {
     expect(typeof result.durationMs).toBe('number');
   });
 
-  it('should default bare model names to anthropic provider', async () => {
+  it('should throw for bare model strings (D1)', async () => {
     mockGenerateText.mockResolvedValue(makeGenerateResult());
 
-    await generate({ model: 'claude-haiku-4-5', prompt: 'test' });
+    await expect(generate({ model: 'claude-haiku-4-5', prompt: 'test' })).rejects.toThrow(
+      /provider:model/,
+    );
 
-    expect(mockCreateAnthropic).toHaveBeenCalledOnce();
-    expect(mockGenerateText.mock.calls[0][0].model).toEqual({
-      modelId: 'claude-haiku-4-5',
-      provider: 'anthropic',
-    });
+    expect(mockCreateAnthropic).not.toHaveBeenCalled();
   });
 
   it('should parse provider-prefixed model strings', async () => {
     mockGenerateText.mockResolvedValue(makeGenerateResult());
 
-    await generate({ model: 'anthropic:claude-sonnet-4-6', prompt: 'test' });
+    await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'test' });
 
     expect(mockCreateAnthropic).toHaveBeenCalled();
+    expect(mockGenerateText.mock.calls[0][0].model).toEqual({
+      modelId: 'MiniMax-M2.7',
+      provider: 'anthropic',
+    });
   });
 
-  it('should use authToken for anthropic OAuth credentials', async () => {
+  it('should pass the API key as authToken (no more sk-ant- detection)', async () => {
     mockGenerateText.mockResolvedValue(makeGenerateResult());
 
-    await generate({ model: 'claude-haiku-4-5', prompt: 'test', apiKey: 'oauth2_test-token' });
+    await generate({
+      model: 'minimax:MiniMax-M2.7',
+      prompt: 'test',
+      apiKey: 'arbitrary-credential-value',
+    });
 
-    expect(mockCreateAnthropic).toHaveBeenCalledWith({ authToken: 'oauth2_test-token' });
+    expect(mockCreateAnthropic).toHaveBeenCalledWith({
+      authToken: 'arbitrary-credential-value',
+      baseURL: 'https://api.minimax.io/anthropic/v1',
+    });
   });
 
-  it('should use authToken for long anthropic credentials that are not standard api keys', async () => {
+  it('should resolve providers via env var + registry base URL', async () => {
     mockGenerateText.mockResolvedValue(makeGenerateResult());
-    const longToken = `token_${'x'.repeat(140)}`;
+    await withEnv('MOONSHOT_API_KEY', 'moonshot-key', async () => {
+      await generate({ model: 'moonshot:kimi-k2.6', prompt: 'test' });
 
-    await generate({ model: 'claude-haiku-4-5', prompt: 'test', apiKey: longToken });
-
-    expect(mockCreateAnthropic).toHaveBeenCalledWith({ authToken: longToken });
+      expect(mockCreateAnthropic).toHaveBeenCalledWith({
+        authToken: 'moonshot-key',
+        baseURL: 'https://api.moonshot.ai/anthropic',
+      });
+    });
   });
 
-  it('should resolve unknown providers via env var convention', async () => {
+  it('should loud-fail for an unknown provider (not in registry)', async () => {
     mockGenerateText.mockResolvedValue(makeGenerateResult());
-    process.env.MINIMAX_API_KEY = 'minimax-key';
-
-    try {
-      await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'test' });
-
-      expect(mockCreateAnthropic).toHaveBeenCalledWith(
-        expect.objectContaining({
-          baseURL: 'https://api.minimax.io/anthropic/v1',
-        }),
-      );
-    } finally {
-      delete process.env.MINIMAX_API_KEY;
-    }
-  });
-
-  it('should loud-fail for an unknown provider with no matching env var', async () => {
-    mockGenerateText.mockResolvedValue(makeGenerateResult());
-    // Ensure no XYZ_API_KEY exists — the fallback to ANTHROPIC_API_KEY has
-    // been removed deliberately so we do not leak the Anthropic credential
-    // to a foreign endpoint.
-    delete process.env.XYZ_API_KEY;
 
     await expect(generate({ model: 'xyz:some-model', prompt: 'test' })).rejects.toMatchObject({
       reason: 'api',
-      message: expect.stringContaining('XYZ_API_KEY'),
+      message: expect.stringContaining("Unknown provider 'xyz'"),
     });
 
-    // Provider factory should NOT have been invoked — we fail before
-    // constructing the client.
     expect(mockCreateAnthropic).not.toHaveBeenCalled();
   });
 
-  it('should fail hard when <PROVIDER>_API_KEY is set but no base URL is resolvable', async () => {
-    // Defense-in-depth: a non-Anthropic provider without a baseUrl
-    // (from overrides, <PROVIDER>_BASE_URL, or KNOWN_BASE_URLS) would
-    // route requests to api.anthropic.com and leak the provider's credential.
-    // The client must refuse to construct a factory in this case.
+  it('should loud-fail when the provider declares a non-anthropic apiShape', async () => {
     mockGenerateText.mockResolvedValue(makeGenerateResult());
-    process.env.CODEX_API_KEY = 'codex-key-123';
-    delete process.env.CODEX_BASE_URL;
-
-    try {
-      await expect(generate({ model: 'codex:some-model', prompt: 'test' })).rejects.toMatchObject({
-        reason: 'api',
-        message: expect.stringContaining('CODEX_BASE_URL'),
-      });
+    await withEnv('NONANTH_API_KEY', 'nonanth-key', async () => {
+      await expect(generate({ model: 'nonanth:some-model', prompt: 'test' })).rejects.toMatchObject(
+        {
+          reason: 'api',
+          message: expect.stringContaining('apiShape'),
+        },
+      );
 
       expect(mockCreateAnthropic).not.toHaveBeenCalled();
-    } finally {
-      delete process.env.CODEX_API_KEY;
-    }
+    });
   });
 
-  it('should pick up <PROVIDER>_BASE_URL env var for non-anthropic providers', async () => {
+  it('should loud-fail when the configured envKey is not set', async () => {
     mockGenerateText.mockResolvedValue(makeGenerateResult());
-    process.env.CODEX_API_KEY = 'codex-key';
-    process.env.CODEX_BASE_URL = 'https://codex.example.com/v1';
+    const original = process.env.MOONSHOT_API_KEY;
+    delete process.env.MOONSHOT_API_KEY;
 
     try {
-      await generate({ model: 'codex:some-model', prompt: 'test' });
-
-      expect(mockCreateAnthropic).toHaveBeenCalledWith({
-        authToken: 'codex-key',
-        baseURL: 'https://codex.example.com/v1',
-      });
-    } finally {
-      delete process.env.CODEX_API_KEY;
-      delete process.env.CODEX_BASE_URL;
-    }
-  });
-
-  it('should use known base URL default for minimax when only MINIMAX_API_KEY is set', async () => {
-    mockGenerateText.mockResolvedValue(makeGenerateResult());
-    process.env.MINIMAX_API_KEY = 'minimax-key';
-
-    try {
-      await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'test' });
-
-      expect(mockCreateAnthropic).toHaveBeenCalledWith(
-        expect.objectContaining({
-          baseURL: 'https://api.minimax.io/anthropic/v1',
-        }),
+      await expect(generate({ model: 'moonshot:kimi-k2.6', prompt: 'test' })).rejects.toMatchObject(
+        {
+          reason: 'api',
+          message: expect.stringContaining('MOONSHOT_API_KEY'),
+        },
       );
+      expect(mockCreateAnthropic).not.toHaveBeenCalled();
     } finally {
-      delete process.env.MINIMAX_API_KEY;
+      if (original !== undefined) process.env.MOONSHOT_API_KEY = original;
     }
   });
 
-  it('should NOT include WebSearch tools for non-anthropic providers', async () => {
+  it('should pick up <PROVIDER>_BASE_URL env var to override registry default', async () => {
     mockGenerateText.mockResolvedValue(makeGenerateResult());
-    process.env.MINIMAX_API_KEY = 'minimax-key';
+    await withEnv('MOONSHOT_API_KEY', 'moonshot-key', async () => {
+      await withEnv('MOONSHOT_BASE_URL', 'https://custom.moonshot.dev/v1', async () => {
+        await generate({ model: 'moonshot:kimi-k2.6', prompt: 'test' });
 
-    try {
+        expect(mockCreateAnthropic).toHaveBeenCalledWith({
+          authToken: 'moonshot-key',
+          baseURL: 'https://custom.moonshot.dev/v1',
+        });
+      });
+    });
+  });
+
+  it('should use the registry base URL by default', async () => {
+    mockGenerateText.mockResolvedValue(makeGenerateResult());
+
+    await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'test' });
+
+    expect(mockCreateAnthropic).toHaveBeenCalledWith(
+      expect.objectContaining({
+        baseURL: 'https://api.minimax.io/anthropic/v1',
+      }),
+    );
+  });
+
+  it('should NOT include WebSearch tool when the provider lacks the capability', async () => {
+    mockGenerateText.mockResolvedValue(makeGenerateResult());
+
+    await generate({
+      model: 'minimax:MiniMax-M2.7',
+      prompt: 'search',
+      tools: ['WebSearch'],
+    });
+
+    const call = mockGenerateText.mock.calls[0][0];
+    expect(call.tools).toBeUndefined();
+  });
+
+  it('should include WebSearch tool when the provider declares the capability', async () => {
+    mockGenerateText.mockResolvedValue(makeGenerateResult());
+    await withEnv('MOONSHOT_API_KEY', 'moonshot-key', async () => {
       await generate({
-        model: 'minimax:MiniMax-M2.7',
+        model: 'moonshot:kimi-k2.6',
         prompt: 'search',
         tools: ['WebSearch'],
       });
 
       const call = mockGenerateText.mock.calls[0][0];
-      expect(call.tools).toBeUndefined();
-    } finally {
-      delete process.env.MINIMAX_API_KEY;
-    }
+      expect(call.tools).toHaveProperty('web_search');
+      expect(call.stopWhen).toBeDefined();
+    });
   });
 
-  it('should NOT send thinking params for non-anthropic providers', async () => {
+  it('should NOT send thinking providerOptions when the provider lacks the capability', async () => {
     mockGenerateText.mockResolvedValue(makeGenerateResult());
-    process.env.MINIMAX_API_KEY = 'minimax-key';
 
-    try {
-      await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'think', thinking: 2048 });
+    await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'think', thinking: 2048 });
+
+    const call = mockGenerateText.mock.calls[0][0];
+    expect(call.providerOptions).toEqual({});
+  });
+
+  it('should include thinking providerOptions when the provider declares the capability', async () => {
+    mockGenerateText.mockResolvedValue(makeGenerateResult());
+    await withEnv('MOONSHOT_API_KEY', 'moonshot-key', async () => {
+      await generate({ model: 'moonshot:kimi-k2.6', prompt: 'think', thinking: 4096 });
+
+      const call = mockGenerateText.mock.calls[0][0];
+      expect(call.providerOptions).toEqual({
+        anthropic: { thinking: { type: 'enabled', budgetTokens: 4096 } },
+      });
+    });
+  });
+
+  it('should NOT include thinking providerOptions when thinking is 0', async () => {
+    mockGenerateText.mockResolvedValue(makeGenerateResult());
+    await withEnv('MOONSHOT_API_KEY', 'moonshot-key', async () => {
+      await generate({ model: 'moonshot:kimi-k2.6', prompt: 'no think', thinking: 0 });
 
       const call = mockGenerateText.mock.calls[0][0];
       expect(call.providerOptions).toEqual({});
-    } finally {
-      delete process.env.MINIMAX_API_KEY;
-    }
-  });
-
-  it('should cache non-anthropic providers separately from anthropic', async () => {
-    mockGenerateText.mockResolvedValue(makeGenerateResult());
-    process.env.MINIMAX_API_KEY = 'minimax-key';
-
-    try {
-      await generate({ model: 'claude-haiku-4-5', prompt: 'test1' });
-      await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'test2' });
-
-      expect(mockCreateAnthropic).toHaveBeenCalledTimes(2);
-    } finally {
-      delete process.env.MINIMAX_API_KEY;
-    }
+    });
   });
 
   it('should cache provider instances by config tuple', async () => {
     mockGenerateText.mockResolvedValue(makeGenerateResult());
 
-    await generate({ model: 'claude-haiku-4-5', prompt: 'test1' });
-    await generate({ model: 'claude-haiku-4-5', prompt: 'test2' });
+    await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'test1' });
+    await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'test2' });
 
     // createAnthropic should only be called once (cached)
     expect(mockCreateAnthropic).toHaveBeenCalledTimes(1);
@@ -305,69 +387,36 @@ describe('generate', () => {
   it('should create separate providers for different apiKeys', async () => {
     mockGenerateText.mockResolvedValue(makeGenerateResult());
 
-    await generate({ model: 'claude-haiku-4-5', prompt: 'test1', apiKey: 'key-1' });
-    await generate({ model: 'claude-haiku-4-5', prompt: 'test2', apiKey: 'key-2' });
+    await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'test1', apiKey: 'key-1' });
+    await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'test2', apiKey: 'key-2' });
 
     expect(mockCreateAnthropic).toHaveBeenCalledTimes(2);
   });
 
-  it('should pass apiKey and baseUrl overrides to provider', async () => {
+  it('should cache separate providers per provider name', async () => {
+    mockGenerateText.mockResolvedValue(makeGenerateResult());
+    await withEnv('MOONSHOT_API_KEY', 'moonshot-key', async () => {
+      await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'test1' });
+      await generate({ model: 'moonshot:kimi-k2.6', prompt: 'test2' });
+
+      expect(mockCreateAnthropic).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it('should pass apiKey and baseUrl overrides to provider (as authToken)', async () => {
     mockGenerateText.mockResolvedValue(makeGenerateResult());
 
     await generate({
-      model: 'claude-haiku-4-5',
+      model: 'minimax:MiniMax-M2.7',
       prompt: 'test',
-      apiKey: 'sk-custom',
+      apiKey: 'custom-key',
       baseUrl: 'https://proxy.example.com',
     });
 
     expect(mockCreateAnthropic).toHaveBeenCalledWith({
-      apiKey: 'sk-custom',
+      authToken: 'custom-key',
       baseURL: 'https://proxy.example.com',
     });
-  });
-
-  it('should include thinking providerOptions when thinking > 0', async () => {
-    mockGenerateText.mockResolvedValue(makeGenerateResult());
-
-    await generate({ model: 'claude-sonnet-4-6', prompt: 'think', thinking: 4096 });
-
-    const call = mockGenerateText.mock.calls[0][0];
-    expect(call.providerOptions).toEqual({
-      anthropic: { thinking: { type: 'enabled', budgetTokens: 4096 } },
-    });
-  });
-
-  it('should NOT include thinking providerOptions when thinking is 0', async () => {
-    mockGenerateText.mockResolvedValue(makeGenerateResult());
-
-    await generate({ model: 'claude-haiku-4-5', prompt: 'no think', thinking: 0 });
-
-    const call = mockGenerateText.mock.calls[0][0];
-    expect(call.providerOptions).toEqual({});
-  });
-
-  it('should include web search tool for anthropic models', async () => {
-    mockGenerateText.mockResolvedValue(makeGenerateResult());
-
-    await generate({
-      model: 'claude-sonnet-4-6',
-      prompt: 'search',
-      tools: ['WebSearch'],
-    });
-
-    const call = mockGenerateText.mock.calls[0][0];
-    expect(call.tools).toHaveProperty('web_search');
-    expect(call.stopWhen).toBeDefined();
-  });
-
-  it('should NOT include tools when toolNames is empty', async () => {
-    mockGenerateText.mockResolvedValue(makeGenerateResult());
-
-    await generate({ model: 'claude-haiku-4-5', prompt: 'no tools' });
-
-    const call = mockGenerateText.mock.calls[0][0];
-    expect(call.tools).toBeUndefined();
   });
 
   it('should throw AIClientError with reason timeout on internal timeout', async () => {
@@ -376,11 +425,11 @@ describe('generate', () => {
     );
 
     await expect(
-      generate({ model: 'claude-haiku-4-5', prompt: 'slow', timeout: 10 }),
+      generate({ model: 'minimax:MiniMax-M2.7', prompt: 'slow', timeout: 10 }),
     ).rejects.toThrow(AIClientError);
 
     try {
-      await generate({ model: 'claude-haiku-4-5', prompt: 'slow', timeout: 10 });
+      await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'slow', timeout: 10 });
     } catch (err) {
       expect(err.reason).toBe('timeout');
       expect(err.message).toBe('Request timed out');
@@ -397,7 +446,7 @@ describe('generate', () => {
 
     await expect(
       generate({
-        model: 'claude-haiku-4-5',
+        model: 'minimax:MiniMax-M2.7',
         prompt: 'cancelled',
         abortSignal: controller.signal,
       }),
@@ -415,7 +464,7 @@ describe('generate', () => {
 
     await expect(
       generate({
-        model: 'claude-haiku-4-5',
+        model: 'minimax:MiniMax-M2.7',
         prompt: 'cancelled before start',
         abortSignal: controller.signal,
       }),
@@ -428,7 +477,7 @@ describe('generate', () => {
     mockGenerateText.mockRejectedValue(apiError);
 
     try {
-      await generate({ model: 'claude-haiku-4-5', prompt: 'bad' });
+      await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'bad' });
       expect.fail('should have thrown');
     } catch (err) {
       expect(err).toBeInstanceOf(AIClientError);
@@ -437,13 +486,13 @@ describe('generate', () => {
     }
   });
 
-  it('should calculate cost via aiCost module', async () => {
+  it('should calculate cost via aiCost module with the resolved provider/model', async () => {
     mockGenerateText.mockResolvedValue(makeGenerateResult());
     mockCalculateCost.mockReturnValue(0.042);
 
-    const result = await generate({ model: 'claude-sonnet-4-6', prompt: 'expensive' });
+    const result = await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'expensive' });
 
-    expect(mockCalculateCost).toHaveBeenCalledWith('anthropic', 'claude-sonnet-4-6', {
+    expect(mockCalculateCost).toHaveBeenCalledWith('minimax', 'MiniMax-M2.7', {
       inputTokens: 100,
       outputTokens: 50,
       cachedInputTokens: 0,
@@ -454,33 +503,33 @@ describe('generate', () => {
 });
 
 describe('stream', () => {
-  let originalAnthropicKey;
+  let originalMinimaxKey;
 
   beforeEach(() => {
     _clearProviderCache();
+    seedRegistry();
     mockGenerateText.mockReset();
     mockStreamText.mockReset();
     mockCalculateCost.mockReset();
     mockCreateAnthropic.mockClear();
-    // calculateCost is SYNCHRONOUS — use mockReturnValue.
     mockCalculateCost.mockReturnValue(0.002);
-    originalAnthropicKey = process.env.ANTHROPIC_API_KEY;
-    process.env.ANTHROPIC_API_KEY = 'sk-ant-test-key';
+    originalMinimaxKey = process.env.MINIMAX_API_KEY;
+    process.env.MINIMAX_API_KEY = 'minimax-test-key';
   });
 
   afterEach(() => {
     _clearProviderCache();
-    if (originalAnthropicKey === undefined) {
-      delete process.env.ANTHROPIC_API_KEY;
+    if (originalMinimaxKey === undefined) {
+      delete process.env.MINIMAX_API_KEY;
     } else {
-      process.env.ANTHROPIC_API_KEY = originalAnthropicKey;
+      process.env.MINIMAX_API_KEY = originalMinimaxKey;
     }
   });
 
   it('should call streamText and await final results', async () => {
     mockStreamText.mockReturnValue(makeStreamResult());
 
-    const result = await stream({ model: 'claude-sonnet-4-6', prompt: 'stream me' });
+    const result = await stream({ model: 'minimax:MiniMax-M2.7', prompt: 'stream me' });
 
     expect(mockStreamText).toHaveBeenCalledOnce();
     expect(result.text).toBe('response text');
@@ -497,21 +546,23 @@ describe('stream', () => {
     });
 
     const toolCalls = [];
-    await stream({
-      model: 'claude-sonnet-4-6',
-      prompt: 'search',
-      tools: ['WebSearch'],
-      onChunk: (name, args) => toolCalls.push({ name, args }),
-    });
+    await withEnv('MOONSHOT_API_KEY', 'moonshot-key', async () => {
+      await stream({
+        model: 'moonshot:kimi-k2.6',
+        prompt: 'search',
+        tools: ['WebSearch'],
+        onChunk: (name, args) => toolCalls.push({ name, args }),
+      });
 
-    // Simulate a tool-call chunk
-    capturedOnChunk({
-      chunk: { type: 'tool-call', toolName: 'web_search', args: { query: 'test' } },
-    });
-    capturedOnChunk({ chunk: { type: 'text', textDelta: 'hello' } }); // should be ignored
+      // Simulate a tool-call chunk
+      capturedOnChunk({
+        chunk: { type: 'tool-call', toolName: 'web_search', args: { query: 'test' } },
+      });
+      capturedOnChunk({ chunk: { type: 'text', textDelta: 'hello' } }); // should be ignored
 
-    expect(toolCalls).toHaveLength(1);
-    expect(toolCalls[0].name).toBe('web_search');
+      expect(toolCalls).toHaveLength(1);
+      expect(toolCalls[0].name).toBe('web_search');
+    });
   });
 
   it('should throw AIClientError with reason timeout on stream timeout', async () => {
@@ -521,7 +572,7 @@ describe('stream', () => {
     });
 
     await expect(
-      stream({ model: 'claude-haiku-4-5', prompt: 'slow', timeout: 10 }),
+      stream({ model: 'minimax:MiniMax-M2.7', prompt: 'slow', timeout: 10 }),
     ).rejects.toMatchObject({ reason: 'timeout', message: 'Request timed out' });
   });
 
@@ -538,7 +589,7 @@ describe('stream', () => {
 
     await expect(
       stream({
-        model: 'claude-haiku-4-5',
+        model: 'minimax:MiniMax-M2.7',
         prompt: 'cancelled',
         abortSignal: controller.signal,
       }),
@@ -553,7 +604,7 @@ describe('stream', () => {
     });
 
     try {
-      await stream({ model: 'claude-haiku-4-5', prompt: 'fail' });
+      await stream({ model: 'minimax:MiniMax-M2.7', prompt: 'fail' });
       expect.fail('should have thrown');
     } catch (err) {
       expect(err).toBeInstanceOf(AIClientError);
@@ -570,49 +621,52 @@ describe('stream', () => {
       return makeStreamResult();
     });
 
-    await stream({
-      model: 'claude-sonnet-4-6',
-      prompt: 'search',
-      tools: ['WebSearch'],
-      onChunk: () => {
-        throw new Error('callback boom');
-      },
-    });
+    await withEnv('MOONSHOT_API_KEY', 'moonshot-key', async () => {
+      await stream({
+        model: 'moonshot:kimi-k2.6',
+        prompt: 'search',
+        tools: ['WebSearch'],
+        onChunk: () => {
+          throw new Error('callback boom');
+        },
+      });
 
-    // Simulate a tool-call chunk that triggers the throwing onChunk
-    capturedOnChunk({
-      chunk: { type: 'tool-call', toolName: 'web_search', args: { query: 'test' } },
-    });
+      // Simulate a tool-call chunk that triggers the throwing onChunk
+      capturedOnChunk({
+        chunk: { type: 'tool-call', toolName: 'web_search', args: { query: 'test' } },
+      });
 
-    expect(logError).toHaveBeenCalledWith(
-      'onChunk callback error (sync)',
-      expect.objectContaining({ error: 'callback boom' }),
-    );
+      expect(logError).toHaveBeenCalledWith(
+        'onChunk callback error (sync)',
+        expect.objectContaining({ error: 'callback boom' }),
+      );
+    });
   });
 });
 
 // ── withRetry tests (via generate/stream) ──────────────────────────────────
 
 describe('withRetry', () => {
-  let originalAnthropicKey;
+  let originalMinimaxKey;
 
   beforeEach(() => {
     _clearProviderCache();
+    seedRegistry();
     mockGenerateText.mockReset();
     mockStreamText.mockReset();
     mockCalculateCost.mockReset();
     mockCreateAnthropic.mockClear();
     mockCalculateCost.mockReturnValue(0.001);
-    originalAnthropicKey = process.env.ANTHROPIC_API_KEY;
-    process.env.ANTHROPIC_API_KEY = 'sk-ant-test-key';
+    originalMinimaxKey = process.env.MINIMAX_API_KEY;
+    process.env.MINIMAX_API_KEY = 'minimax-test-key';
   });
 
   afterEach(() => {
     _clearProviderCache();
-    if (originalAnthropicKey === undefined) {
-      delete process.env.ANTHROPIC_API_KEY;
+    if (originalMinimaxKey === undefined) {
+      delete process.env.MINIMAX_API_KEY;
     } else {
-      process.env.ANTHROPIC_API_KEY = originalAnthropicKey;
+      process.env.MINIMAX_API_KEY = originalMinimaxKey;
     }
   });
 
@@ -625,7 +679,7 @@ describe('withRetry', () => {
       .mockRejectedValueOnce(rateLimitErr)
       .mockResolvedValueOnce(makeGenerateResult());
 
-    const result = await generate({ model: 'claude-haiku-4-5', prompt: 'retry me' });
+    const result = await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'retry me' });
 
     expect(mockGenerateText).toHaveBeenCalledTimes(2);
     expect(result.text).toBe('{"classification":"respond"}');
@@ -640,9 +694,9 @@ describe('withRetry', () => {
       .mockRejectedValueOnce(serverErr)
       .mockRejectedValueOnce(serverErr);
 
-    await expect(generate({ model: 'claude-haiku-4-5', prompt: 'always fail' })).rejects.toThrow(
-      AIClientError,
-    );
+    await expect(
+      generate({ model: 'minimax:MiniMax-M2.7', prompt: 'always fail' }),
+    ).rejects.toThrow(AIClientError);
 
     expect(mockGenerateText).toHaveBeenCalledTimes(3);
   });
@@ -653,7 +707,7 @@ describe('withRetry', () => {
 
     mockGenerateText.mockRejectedValue(authErr);
 
-    await expect(generate({ model: 'claude-haiku-4-5', prompt: 'bad key' })).rejects.toThrow(
+    await expect(generate({ model: 'minimax:MiniMax-M2.7', prompt: 'bad key' })).rejects.toThrow(
       AIClientError,
     );
 
@@ -671,7 +725,7 @@ describe('withRetry', () => {
       })
       .mockReturnValueOnce(makeStreamResult({ text: Promise.resolve('retried stream') }));
 
-    const result = await stream({ model: 'claude-haiku-4-5', prompt: 'retry stream' });
+    const result = await stream({ model: 'minimax:MiniMax-M2.7', prompt: 'retry stream' });
 
     expect(mockStreamText).toHaveBeenCalledTimes(2);
     expect(result.text).toBe('retried stream');
@@ -681,25 +735,26 @@ describe('withRetry', () => {
 // ── generate edge cases ────────────────────────────────────────────────────
 
 describe('generate — edge cases', () => {
-  let originalAnthropicKey;
+  let originalMinimaxKey;
 
   beforeEach(() => {
     _clearProviderCache();
+    seedRegistry();
     mockGenerateText.mockReset();
     mockStreamText.mockReset();
     mockCalculateCost.mockReset();
     mockCreateAnthropic.mockClear();
     mockCalculateCost.mockReturnValue(0.001);
-    originalAnthropicKey = process.env.ANTHROPIC_API_KEY;
-    process.env.ANTHROPIC_API_KEY = 'sk-ant-test-key';
+    originalMinimaxKey = process.env.MINIMAX_API_KEY;
+    process.env.MINIMAX_API_KEY = 'minimax-test-key';
   });
 
   afterEach(() => {
     _clearProviderCache();
-    if (originalAnthropicKey === undefined) {
-      delete process.env.ANTHROPIC_API_KEY;
+    if (originalMinimaxKey === undefined) {
+      delete process.env.MINIMAX_API_KEY;
     } else {
-      process.env.ANTHROPIC_API_KEY = originalAnthropicKey;
+      process.env.MINIMAX_API_KEY = originalMinimaxKey;
     }
   });
 
@@ -710,52 +765,32 @@ describe('generate — edge cases', () => {
     });
     mockGenerateText.mockResolvedValue(result);
 
-    const res = await generate({ model: 'claude-haiku-4-5', prompt: 'fallback usage' });
+    const res = await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'fallback usage' });
 
     expect(res.usage.inputTokens).toBe(42);
     expect(res.usage.outputTokens).toBe(17);
   });
 
-  it('should extract cachedInputTokens from providerMetadata and pass to calculateCost', async () => {
+  it('should extract cache tokens from the provider-keyed providerMetadata bucket', async () => {
     const result = makeGenerateResult({
-      providerMetadata: { anthropic: { cacheReadInputTokens: 75 } },
+      providerMetadata: {
+        minimax: { cacheReadInputTokens: 75, cacheCreationInputTokens: 10 },
+      },
     });
     mockGenerateText.mockResolvedValue(result);
     mockCalculateCost.mockReturnValue(0.005);
 
-    await generate({ model: 'claude-sonnet-4-6', prompt: 'cached' });
+    await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'cached' });
 
-    expect(mockCalculateCost).toHaveBeenCalledWith('anthropic', 'claude-sonnet-4-6', {
+    expect(mockCalculateCost).toHaveBeenCalledWith('minimax', 'MiniMax-M2.7', {
       inputTokens: 100,
       outputTokens: 50,
       cachedInputTokens: 75,
-      cacheCreationInputTokens: 0,
+      cacheCreationInputTokens: 10,
     });
   });
 
-  it('should extract cachedInputTokens using dynamic provider name from model string', async () => {
-    const result = makeGenerateResult({
-      providerMetadata: { minimax: { cacheReadInputTokens: 50 } },
-    });
-    mockGenerateText.mockResolvedValue(result);
-    mockCalculateCost.mockReturnValue(0.003);
-    process.env.MINIMAX_API_KEY = 'minimax-key';
-
-    try {
-      await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'cached provider' });
-
-      expect(mockCalculateCost).toHaveBeenCalledWith('minimax', 'MiniMax-M2.7', {
-        inputTokens: 100,
-        outputTokens: 50,
-        cachedInputTokens: 50,
-        cacheCreationInputTokens: 0,
-      });
-    } finally {
-      delete process.env.MINIMAX_API_KEY;
-    }
-  });
-
-  it('should fall back to anthropic providerMetadata for Anthropic-compatible providers', async () => {
+  it('should fall back to the anthropic providerMetadata bucket when the provider bucket is absent', async () => {
     const result = makeGenerateResult({
       providerMetadata: {
         anthropic: {
@@ -766,19 +801,14 @@ describe('generate — edge cases', () => {
     });
     mockGenerateText.mockResolvedValue(result);
     mockCalculateCost.mockReturnValue(0.003);
-    process.env.MINIMAX_API_KEY = 'minimax-key';
 
-    try {
-      await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'cached provider' });
+    await generate({ model: 'minimax:MiniMax-M2.7', prompt: 'cached provider' });
 
-      expect(mockCalculateCost).toHaveBeenCalledWith('minimax', 'MiniMax-M2.7', {
-        inputTokens: 100,
-        outputTokens: 50,
-        cachedInputTokens: 50,
-        cacheCreationInputTokens: 25,
-      });
-    } finally {
-      delete process.env.MINIMAX_API_KEY;
-    }
+    expect(mockCalculateCost).toHaveBeenCalledWith('minimax', 'MiniMax-M2.7', {
+      inputTokens: 100,
+      outputTokens: 50,
+      cachedInputTokens: 50,
+      cacheCreationInputTokens: 25,
+    });
   });
 });

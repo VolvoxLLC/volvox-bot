@@ -298,7 +298,9 @@ export default function MemberDetailPage() {
       a.download = `members-${guildId}.csv`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 100);
-      toast.success('Export downloaded', { description: `members-${guildId}.csv` });
+      toast.success('Export downloaded', {
+        description: `members-${guildId}.csv`,
+      });
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : 'Failed to export CSV';
       setExportError(errMsg);
@@ -378,14 +380,15 @@ export default function MemberDetailPage() {
     >
       <div className="space-y-6">
         {/* Back button */}
-        <button
-          type="button"
+        <Button
+          variant="outline"
+          size="sm"
           onClick={() => router.push('/dashboard/members')}
-          className="group inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-card/40 px-4 py-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/70 backdrop-blur-sm shadow-sm transition-all hover:bg-card/60 hover:text-foreground active:scale-95"
+          className="group text-[10px] font-black uppercase tracking-[0.2em]"
         >
-          <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
+          <ArrowLeft className="mr-2 h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
           Back to Members
-        </button>
+        </Button>
 
         {/* Hero Header Panel */}
         <div className="group relative overflow-hidden rounded-[28px] border border-border/40 bg-card/40 p-6 backdrop-blur-2xl shadow-xl transition-all hover:bg-card/50 md:p-8">
@@ -590,103 +593,124 @@ export default function MemberDetailPage() {
         {/* Admin Actions */}
         <div className="group relative overflow-hidden rounded-[24px] border border-border/40 bg-card/40 backdrop-blur-2xl shadow-lg transition-all">
           <div className="border-b border-border/30 px-6 py-4">
-            <h3 className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground/60">
-              Admin Actions
+            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">
+              Administrative Clearances
             </h3>
           </div>
           <div className="p-6 space-y-5">
             {/* Adjust XP */}
             <div className="rounded-[18px] border border-border/30 bg-background/20 p-5 space-y-4">
               <div className="flex items-center gap-2">
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 shadow-[0_0_12px_hsl(var(--primary)/0.2)]">
                   <Zap className="h-3.5 w-3.5 text-primary" />
                 </div>
-                <h4 className="text-xs font-bold uppercase tracking-widest text-foreground/70">
-                  Adjust XP
+                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/70">
+                  XP Synchronization
                 </h4>
               </div>
               <form
                 onSubmit={handleAdjustXp}
-                className="grid grid-cols-1 gap-3 sm:grid-cols-[9rem_1fr_auto] sm:items-end"
+                className="grid grid-cols-1 gap-4 sm:grid-cols-[10rem_1fr_auto] sm:items-end"
               >
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <label
                     htmlFor="xp-amount"
-                    className="block text-[11px] font-medium text-muted-foreground/50"
+                    className="block text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 ml-1"
                   >
-                    Amount
+                    Delta Amount
                   </label>
-                  <Input
-                    id="xp-amount"
-                    type="number"
-                    placeholder="e.g. 100 or -50"
-                    value={xpAmount}
-                    onChange={(e) => setXpAmount(e.target.value)}
-                    className="h-9 rounded-xl border-border/40 bg-background/50 text-sm"
-                  />
+                  <div className="relative">
+                    <Zap className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-primary/30 pointer-events-none" />
+                    <Input
+                      id="xp-amount"
+                      type="number"
+                      placeholder="e.g. 100 or -50"
+                      value={xpAmount}
+                      onChange={(e) => setXpAmount(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <label
                     htmlFor="xp-reason"
-                    className="block text-[11px] font-medium text-muted-foreground/50"
+                    className="block text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 ml-1"
                   >
-                    Reason <span className="text-muted-foreground/30">(optional)</span>
+                    Authorization Reason <span className="opacity-40">(Optional)</span>
                   </label>
                   <Input
                     id="xp-reason"
-                    placeholder="Reason for adjustment..."
+                    placeholder="Specify adjustment context..."
                     value={xpReason}
                     onChange={(e) => setXpReason(e.target.value)}
-                    className="h-9 rounded-xl border-border/40 bg-background/50 text-sm"
                   />
                 </div>
                 <Button
                   type="submit"
-                  size="sm"
                   disabled={!xpAmount || xpSubmitting}
-                  className="h-9 rounded-xl px-5"
+                  className="px-8 text-[10px] font-black uppercase tracking-[0.2em]"
                 >
-                  {xpSubmitting && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-                  Apply
+                  {xpSubmitting ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Zap className="mr-2 h-3.5 w-3.5" />
+                  )}
+                  {xpSubmitting ? 'Applying...' : 'Apply'}
                 </Button>
               </form>
-              {xpSuccess && <p className="text-xs font-medium text-emerald-500">{xpSuccess}</p>}
-              {xpError && <p className="text-xs font-medium text-destructive">{xpError}</p>}
+              {xpSuccess && (
+                <p
+                  role="status"
+                  aria-live="polite"
+                  className="text-[10px] font-bold uppercase tracking-wider text-emerald-500/80 ml-1"
+                >
+                  {xpSuccess}
+                </p>
+              )}
+              {xpError && (
+                <p
+                  role="alert"
+                  className="text-[10px] font-bold uppercase tracking-wider text-destructive/80 ml-1"
+                >
+                  {xpError}
+                </p>
+              )}
             </div>
 
             {/* Export */}
             <div className="rounded-[18px] border border-border/30 bg-background/20 p-5">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div className="flex items-center gap-2">
-                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-muted/60">
-                    <Download className="h-3.5 w-3.5 text-muted-foreground" />
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted/20 border border-border/30">
+                    <Download className="h-4 w-4 text-muted-foreground" />
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold uppercase tracking-widest text-foreground/70">
-                      Export Members
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/70">
+                      Data Export
                     </h4>
-                    <p className="text-[11px] text-muted-foreground/50">
-                      Download all guild members as CSV
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/30">
+                      Archive guild membership (CSV)
                     </p>
                   </div>
                 </div>
                 <Button
                   variant="outline"
-                  size="sm"
-                  className="gap-2 rounded-xl border-border/40 bg-background/40 hover:bg-background/60 text-xs font-bold uppercase tracking-wider"
                   onClick={handleExport}
                   disabled={exporting}
+                  className="px-6 text-[10px] font-black uppercase tracking-[0.2em]"
                 >
                   {exporting ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
-                    <Download className="h-3.5 w-3.5" />
+                    <Download className="mr-2 h-4 w-4" />
                   )}
-                  {exporting ? 'Exporting…' : 'Download CSV'}
+                  {exporting ? 'Exporting...' : 'Download Archive'}
                 </Button>
               </div>
               {exportError && (
-                <p className="mt-3 text-xs font-medium text-destructive">{exportError}</p>
+                <p className="mt-3 text-[10px] font-bold uppercase tracking-wider text-destructive/80 ml-1">
+                  {exportError}
+                </p>
               )}
             </div>
           </div>

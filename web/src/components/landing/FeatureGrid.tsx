@@ -119,8 +119,8 @@ const features: readonly Feature[] = [
   },
   {
     icon: FileText,
-    title: 'TLDR',
-    description: 'AI-powered conversation summaries. Never miss what you missed.',
+    title: 'TL;DR',
+    description: 'AI-powered conversation summaries. Never miss what happened while you were away.',
     size: 'small',
     className: 'md:col-span-1 lg:col-span-1',
     animationOrder: 4,
