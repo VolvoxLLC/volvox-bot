@@ -68,7 +68,7 @@ jobs:
         uses: coverallsapp/github-action@v2.3.6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          path-to-lcov: coverage/lcov.info,web/coverage/lcov.info
+          files: coverage/lcov.info web/coverage/lcov.info
 
       - name: Upload coverage artifacts (bot)
         if: success()
