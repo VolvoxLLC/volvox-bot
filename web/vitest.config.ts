@@ -10,7 +10,7 @@ export default defineConfig({
     include: ['tests/**/*.test.{ts,tsx}'],
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html'],
+      reporter: ['text', 'json', 'html', 'lcov'],
       /**
        * Use a broad include pattern so all source files contribute to coverage
        * metrics by default. Rely on the `exclude` list below for any files
