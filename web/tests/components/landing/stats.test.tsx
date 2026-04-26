@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { SUPPORT_DISCORD_URL } from '@/lib/support';
 
 const { mockUseInView, mockUseReducedMotion } = vi.hoisted(() => ({
   mockUseInView: vi.fn(),
@@ -85,7 +86,7 @@ describe('Stats', () => {
     expect(screen.getByText('Feedback wanted.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Share Feedback' })).toHaveAttribute(
       'href',
-      'https://discord.gg/8ahXACdamN',
+      SUPPORT_DISCORD_URL,
     );
     expect(screen.queryByText(/Alex Rivers/i)).not.toBeInTheDocument();
   });

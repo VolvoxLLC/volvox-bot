@@ -42,11 +42,12 @@ test.describe('Desktop Navigation', () => {
     await page.goto('/');
   });
 
-  test('shows desktop nav buttons for Features, Dashboard, Compare', async ({ page }) => {
+  test('shows desktop nav buttons for Dashboard, Compare, Features, Status', async ({ page }) => {
     const desktopNav = page.locator('header nav').first();
-    await expect(desktopNav.getByText('Features')).toBeVisible();
     await expect(desktopNav.getByText('Dashboard')).toBeVisible();
     await expect(desktopNav.getByText('Compare')).toBeVisible();
+    await expect(desktopNav.getByText('Features')).toBeVisible();
+    await expect(desktopNav.getByText('Status')).toBeVisible();
   });
 
   test('nav buttons scroll the page', async ({ page, browserName }) => {
@@ -80,6 +81,7 @@ test.describe('Mobile Navigation', () => {
     await expect(mobileNav.getByText('Features')).toBeVisible();
     await expect(mobileNav.getByText('Dashboard')).toBeVisible();
     await expect(mobileNav.getByText('Compare')).toBeVisible();
+    await expect(mobileNav.getByText('Status')).toBeVisible();
   });
 });
 
@@ -224,6 +226,7 @@ test.describe('Full Page', () => {
     await expect(page.locator('#pricing')).not.toBeAttached();
     await expect(page.locator('#dashboard')).toBeAttached();
     await expect(page.locator('#compare')).toBeAttached();
+    await expect(page.locator('#stats')).toBeAttached();
     await expect(page.locator('footer')).toBeAttached();
   });
 });

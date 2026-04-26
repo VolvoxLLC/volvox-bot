@@ -1,8 +1,12 @@
 'use client';
 
-import { type FocusEvent, useCallback } from 'react';
+import { useCallback } from 'react';
 import { useConfigContext } from '@/components/dashboard/config-context';
-import { inputClasses, parseNumberInput } from '@/components/dashboard/config-editor-utils';
+import {
+  inputClasses,
+  parseNumberInput,
+  selectNumericValueOnFocus,
+} from '@/components/dashboard/config-editor-utils';
 import { AuditLogSection } from '@/components/dashboard/config-sections/AuditLogSection';
 import { ChannelSelector } from '@/components/ui/channel-selector';
 import { InfoTip } from '@/components/ui/info-tip';
@@ -24,13 +28,6 @@ export function ModerationSafetyCategory() {
   const { draftConfig, saving, guildId, updateDraftConfig, activeTabId } = useConfigContext();
 
   const activeTab = activeTabId;
-
-  const selectNumericValueOnFocus = useCallback((event: FocusEvent<HTMLInputElement>) => {
-    // Number inputs do not expose a better cross-browser text selection API than
-    // select(). Keep the current best-effort behavior without changing the control
-    // type, which still highlights the value in Chromium-based browsers.
-    event.currentTarget.select();
-  }, []);
 
   // Moderation state updates
   const updateModerationEnabled = useCallback(

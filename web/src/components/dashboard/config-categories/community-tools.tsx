@@ -1,8 +1,12 @@
 'use client';
 
-import { type FocusEvent, useCallback } from 'react';
+import { useCallback } from 'react';
 import { useConfigContext } from '@/components/dashboard/config-context';
-import { inputClasses, parseNumberInput } from '@/components/dashboard/config-editor-utils';
+import {
+  inputClasses,
+  parseNumberInput,
+  selectNumericValueOnFocus,
+} from '@/components/dashboard/config-editor-utils';
 import { ChannelSelector } from '@/components/ui/channel-selector';
 import { cn } from '@/lib/utils';
 import { ToggleSwitch } from '../toggle-switch';
@@ -13,10 +17,6 @@ import { ConfigCategoryLayout } from './config-category-layout';
  */
 export function CommunityToolsCategory() {
   const { draftConfig, saving, guildId, updateDraftConfig, activeTabId } = useConfigContext();
-
-  const selectNumericValueOnFocus = useCallback((event: FocusEvent<HTMLInputElement>) => {
-    event.currentTarget.select();
-  }, []);
 
   const updateStarboardField = useCallback(
     (field: string, value: unknown) => {
@@ -195,7 +195,11 @@ export function CommunityToolsCategory() {
                     id="emoji"
                     type="text"
                     value={draftConfig.starboard?.emoji ?? '*'}
-                    onChange={(e) => updateStarboardField('emoji', e.target.value.trim() || '*')}
+                    onChange={(e) => updateStarboardField('emoji', e.target.value)}
+                    onBlur={(e) => {
+                      const next = e.target.value.trim();
+                      updateStarboardField('emoji', next === '✱' || next.length === 0 ? '*' : next);
+                    }}
                     onFocus={(e) => e.target.select()}
                     disabled={saving}
                     className={inputClasses}
@@ -206,7 +210,7 @@ export function CommunityToolsCategory() {
                     onClick={() => updateStarboardField('emoji', '*')}
                     disabled={saving}
                     className={`shrink-0 rounded-[12px] px-3 py-2 text-xs font-medium transition-colors border ${
-                      draftConfig.starboard?.emoji === '*'
+                      draftConfig.starboard?.emoji === '*' || draftConfig.starboard?.emoji === '✱'
                         ? 'bg-primary/20 text-primary border-primary/20 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]'
                         : 'bg-muted/30 text-muted-foreground border-transparent hover:text-foreground hover:bg-muted/50'
                     }`}

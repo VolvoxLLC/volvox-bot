@@ -11,6 +11,8 @@ import { siDiscord, siX } from 'simple-icons';
 import { SimpleIcon } from '@/components/ui/simple-icon';
 import { WEB_APP_VERSION } from '@/lib/app-version';
 import { getBotInviteUrl } from '@/lib/discord';
+import { scrollToLandingSection } from '@/lib/scroll-to-section';
+import { SUPPORT_DISCORD_URL } from '@/lib/support';
 
 if (typeof window !== 'undefined') {
   gsap.registerPlugin(ScrollTrigger);
@@ -31,7 +33,7 @@ const footerLinks = [
     title: 'RESOURCES',
     links: [
       { label: 'Documentation', href: 'https://docs.volvox.bot' },
-      { label: 'Support Node', href: 'https://discord.gg/8ahXACdamN' },
+      { label: 'Support Node', href: SUPPORT_DISCORD_URL },
     ],
   },
   {
@@ -65,15 +67,9 @@ export function Footer() {
   const handleSectionLinkClick = (event: MouseEvent<HTMLAnchorElement>, href: string) => {
     if (!href.startsWith('#')) return;
 
-    const element = document.getElementById(href.slice(1));
-    if (!element) return;
-
-    event.preventDefault();
-    const target = element.querySelector<HTMLElement>('[data-scroll-content]') ?? element;
-    const navbarHeight = window.innerWidth >= 768 ? 80 : 72;
-    const top = target.getBoundingClientRect().top + window.scrollY - navbarHeight;
-    const isReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    window.scrollTo({ top, behavior: isReduced ? 'auto' : 'smooth' });
+    if (scrollToLandingSection(href)) {
+      event.preventDefault();
+    }
   };
 
   useGSAP(
@@ -272,7 +268,7 @@ export function Footer() {
                   icon: (props: { className?: string }) => (
                     <SimpleIcon path={siDiscord.path} {...props} />
                   ),
-                  href: 'https://discord.gg/8ahXACdamN',
+                  href: SUPPORT_DISCORD_URL,
                 },
                 {
                   label: 'X',

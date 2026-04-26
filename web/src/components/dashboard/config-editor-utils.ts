@@ -1,3 +1,4 @@
+import type { FocusEvent } from 'react';
 import type { BotConfig, DeepPartial } from '@/types/config';
 
 /** Config sections exposed by the API — all fields optional for partial API responses. */
@@ -54,6 +55,12 @@ export function parseNumberInput(raw: string, min?: number, max?: number): numbe
   if (min !== undefined && num < min) return min;
   if (max !== undefined && num > max) return max;
   return num;
+}
+
+export function selectNumericValueOnFocus(event: FocusEvent<HTMLInputElement>) {
+  // Number inputs do not expose a better cross-browser text selection API than
+  // select(). Keep the current best-effort behavior without changing the control type.
+  event.currentTarget.select();
 }
 
 /**

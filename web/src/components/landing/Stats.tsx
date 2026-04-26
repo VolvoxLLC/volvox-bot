@@ -6,6 +6,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Activity, Clock, MessageSquare, Terminal, Users } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { WEB_APP_VERSION } from '@/lib/app-version';
+import { SUPPORT_DISCORD_URL } from '@/lib/support';
 import { cn } from '@/lib/utils';
 import { AnimatedCounter, formatNumber } from './AnimatedCounter';
 import { PrismaticBackground } from './Hero';
@@ -36,8 +37,6 @@ function formatUptime(seconds: number): string {
   if (hours > 0) return `${hours}h ${minutes}m`;
   return `${minutes}m`;
 }
-
-// ─── Feedback CTA ────────────────────────────────────────────────────────────
 
 // ─── Data Threads (Variant) ──────────────────────────────────────────────────
 
@@ -179,7 +178,10 @@ export function Stats() {
         {/* Top Label */}
         <div className="stats-label-primary flex items-center gap-4 mb-10 opacity-40 justify-center">
           <div className="h-[1px] w-6 bg-foreground/20" />
-          <span className="text-[10px] font-black uppercase tracking-[0.4em] text-foreground font-mono">
+          <span
+            className="text-[10px] font-black uppercase tracking-[0.4em] text-foreground font-mono"
+            suppressHydrationWarning
+          >
             Network Status v{WEB_APP_VERSION}
           </span>
           <div className="h-[1px] w-6 bg-foreground/20" />
@@ -268,7 +270,7 @@ export function Stats() {
                 </p>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                   <a
-                    href="https://discord.gg/8ahXACdamN"
+                    href={SUPPORT_DISCORD_URL}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex h-11 items-center justify-center rounded-2xl bg-foreground px-5 text-xs font-black uppercase tracking-[0.18em] text-background transition-all hover:scale-[1.02] active:scale-95"

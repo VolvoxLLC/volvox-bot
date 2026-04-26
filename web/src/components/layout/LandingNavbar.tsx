@@ -16,6 +16,7 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { scrollToLandingSection } from '@/lib/scroll-to-section';
 import { cn } from '@/lib/utils';
 
 export function LandingNavbar() {
@@ -35,13 +36,7 @@ export function LandingNavbar() {
   });
 
   const scrollToSection = useCallback((id: string) => {
-    const element = document.getElementById(id);
-    if (!element) return;
-    const target = element.querySelector<HTMLElement>('[data-scroll-content]') ?? element;
-    const navbarHeight = window.innerWidth >= 768 ? 80 : 72;
-    const top = target.getBoundingClientRect().top + window.scrollY - navbarHeight;
-    const isReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    window.scrollTo({ top, behavior: isReduced ? 'auto' : 'smooth' });
+    scrollToLandingSection(id);
   }, []);
 
   return (

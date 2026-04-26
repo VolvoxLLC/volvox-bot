@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { siDiscord, siX } from 'simple-icons';
 import { GithubIcon } from '@/components/ui/github-icon';
 import { SimpleIcon } from '@/components/ui/simple-icon';
+import { SUPPORT_DISCORD_URL } from '@/lib/support';
 
 interface FooterLink {
   label: string;
@@ -33,7 +34,7 @@ const defaultSections: FooterSection[] = [
     links: [
       { label: 'Documentation', href: 'https://docs.volvox.bot' },
       { label: 'GitHub', href: 'https://github.com/VolvoxLLC' },
-      { label: 'Support Server', href: 'https://discord.gg/8ahXACdamN' },
+      { label: 'Support Server', href: SUPPORT_DISCORD_URL },
     ],
   },
   {
@@ -160,7 +161,7 @@ export function NeoMinimalFooter({ sections = defaultSections }: NeoMinimalFoote
                 <GithubIcon className="w-[18px] h-[18px]" />
               </a>
               <a
-                href="https://discord.gg/8ahXACdamN"
+                href={SUPPORT_DISCORD_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-muted-foreground/60 hover:text-foreground transition-colors"

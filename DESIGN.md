@@ -96,7 +96,7 @@ Cards should feel tactile but quiet:
 - Border: `border border-border/40` to `border-border/80`.
 - Fill: `bg-card`, `bg-card/40`, `bg-muted/20`, or `bg-background/40`.
 - Blur: use `backdrop-blur-xl` or `backdrop-blur-3xl` only when a panel is intentionally glassy.
-- Shadow: soft, low opacity. Avoid heavy colored glows except subtle `primary/5` accents.
+- Shadow: soft, low-opacity. Avoid heavy colored glows except subtle `primary/5` accents.
 
 Preferred dashboard card wrapper: `DashboardCard` in `web/src/components/dashboard/dashboard-card.tsx`.
 
@@ -141,16 +141,16 @@ The landing navbar is fixed and responsive.
 - Mobile uses a top sheet menu.
 - Logo uses `/icon-192.png`.
 - Desktop actions: theme toggle, `Sign In`, and invite CTA.
-- Section links scroll to `features`, `dashboard`, and `compare` with reduced-motion support.
+- Section links scroll to `dashboard`, `compare`, `features`, and `stats` with reduced-motion support.
 
 ### Hero
 
 The hero is brand-first.
 
-- H1 text is `VOLVOX`, very large, black-weight, and centered.
+- H1 text is `VOLVOX`, large, black-weight, and centered.
 - `BOT` appears underneath as a mono uppercase engine label.
 - Version label sits above the title.
-- Primary CTA is a command-console style `/summon volvox bot` module.
+- Primary CTA is a command-console-style `/summon volvox bot` module.
 - Background uses prismatic shard, grid overlay, grain, vignette, vertical data threads, and small particles.
 - Scroll parallax and entrance animation use GSAP and Framer Motion.
 
@@ -186,13 +186,13 @@ Current feature set:
 
 Cards have icon boxes, concise copy, and embedded UI previews. Keep preview content short and functional-looking.
 
-### Stats and Testimonials
+### Stats
 
-Stats combines live metrics and testimonial quotes.
+Stats combines live metrics with a feedback CTA for early operators.
 
 - Uses `PrismaticBackground` and low-opacity vertical mini threads.
 - Left side is a stat card grid.
-- Right side is a compact testimonial rail.
+- Right side is an `Early Operators` feedback CTA with a `Share Feedback` action.
 - Stat cards use mono labels, live dots, count-up animation, and large tabular values.
 
 ### Footer

@@ -238,10 +238,10 @@ export function Pricing() {
           </div>
         </div>
 
-        <div className="mb-8 grid w-full max-w-4xl grid-cols-1 gap-3 rounded-[1.5rem] border border-border/60 bg-card/70 p-4 shadow-sm sm:grid-cols-3">
+        <ul className="mb-8 grid w-full max-w-4xl grid-cols-1 gap-3 rounded-[1.5rem] border border-border/60 bg-card/70 p-4 shadow-sm sm:grid-cols-3">
           {['Core command modules', 'Configuration dashboard', 'AI setup and moderation'].map(
             (feature) => (
-              <div
+              <li
                 key={feature}
                 className="flex items-center gap-3 rounded-2xl bg-background/60 px-4 py-3 text-sm font-medium text-foreground/70"
               >
@@ -249,10 +249,10 @@ export function Pricing() {
                   <Check className="h-3 w-3 stroke-[3px]" />
                 </div>
                 {feature}
-              </div>
+              </li>
             ),
           )}
-        </div>
+        </ul>
 
         {/* Pricing Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl relative">
