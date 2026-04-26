@@ -43,7 +43,10 @@ paths = [
   '''\.gitleaks\.toml$''',
   '''pnpm-lock\.yaml$''',
 ]
-# Historical false positive: dummy token in deleted verify-sensitive-data-redaction.js
+# Historical false positives in deleted files/docs examples.
 commits = [
+  # Dummy token in deleted verify-sensitive-data-redaction.js
   "0286a77d7695030adffa322c55b4f6c20f420dd4",
+  # Placeholder Authorization header in deleted docs/api-reference.mdx
+  "4b6e23fc46d8dd755f5b1b7e19335058539234ea",
 ]
