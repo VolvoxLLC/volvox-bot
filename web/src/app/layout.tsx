@@ -14,6 +14,8 @@ const jetbrainsMono = JetBrains_Mono({
   variable: '--font-jetbrains-mono',
 });
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://volvox.bot';
+
 export const metadata: Metadata = {
   title: {
     default: APP_TITLE,
@@ -21,11 +23,11 @@ export const metadata: Metadata = {
   },
   description:
     'The AI-powered Discord bot for modern communities. Moderation, AI chat, dynamic welcomes, spam detection, and a fully configurable web dashboard.',
-  metadataBase: new URL('https://volvox.bot'),
+  metadataBase: new URL(APP_URL),
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://volvox.bot',
+    url: APP_URL,
     siteName: 'Volvox.Bot',
     title: 'Volvox.Bot — AI-Powered Discord Bot',
     description:

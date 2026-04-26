@@ -8,12 +8,15 @@ const PRODUCTION_URL = 'https://volvox.bot';
  * Static sitemap for public-facing pages. AI agents and search engines
  * use this to discover crawlable content. Dashboard and auth routes are excluded.
  *
- * Uses VERCEL_PROJECT_PRODUCTION_URL for the production domain on Vercel,
- * falling back to volvox.bot for local development.
+ * Uses NEXT_PUBLIC_APP_URL for the canonical domain, falling back to
+ * VERCEL_PROJECT_PRODUCTION_URL (Vercel) or volvox.bot for local development.
  * Ensures the URL always includes the https:// protocol.
  */
 export default function sitemap(): MetadataRoute.Sitemap {
-  const rawUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL ?? PRODUCTION_URL;
+  const rawUrl =
+    process.env.NEXT_PUBLIC_APP_URL ??
+    process.env.VERCEL_PROJECT_PRODUCTION_URL ??
+    PRODUCTION_URL;
   const siteUrl = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
 
   return [
