@@ -73,7 +73,12 @@ Run checks that prove the change without wasting time:
 
 Docs updates are part of done criteria, not optional cleanup.
 
+- Update all affected docs in the same PR when behavior, setup, config, commands, public docs navigation, or architecture changes.
 - Update `AGENTS.md` when repo-specific operating rules, workflows, or gotchas change.
 - Update `DESIGN.md` when visual/design-system direction changes.
-- Update `README.md` or user docs only for user-facing behavior, setup, or operational instructions.
+- Update `DEVELOPMENT.md` when local setup, dev commands, environment variables, project structure, or contributor/developer workflow changes.
+- Update `README.md` when the public/product overview, user-facing setup, or feature summaries change.
+- Update `CONTRIBUTING.md` when contribution workflow or review expectations change.
+- Update Mintlify docs (`docs/**/*.mdx`) and `docs/docs.json` when user-facing feature/config/security/help docs, dashboard docs, public behavior, or docs navigation changes.
+- Update `.github/workflows/maintain-docs.md` when the automated doc-maintenance scope or rules change.
 - Do not bury agent-only rules in `README.md`; keep them here.

@@ -52,11 +52,6 @@ pnpm mono:typecheck    # Typecheck all workspaces
 
 ## Project Structure
 
-See [AGENTS.md](AGENTS.md) for a detailed guide to the codebase, including:
+See [AGENTS.md](AGENTS.md) for repo-specific agent rules, workflows, and gotchas.
 
-- Key files and their purposes
-- How to add commands and modules
-- Code conventions
-- Common pitfalls
-
-See [DESIGN.md](DESIGN.md) for the dashboard design system.
+See [DESIGN.md](DESIGN.md) for dashboard visual direction and the design system.
