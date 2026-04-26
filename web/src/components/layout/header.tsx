@@ -669,7 +669,7 @@ export function Header() {
 
                     <DropdownMenuItem asChild>
                       <a
-                        href="https://doc.volvox.bot"
+                        href="https://docs.volvox.bot"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-2"
