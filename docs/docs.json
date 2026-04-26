@@ -3,9 +3,9 @@
   "theme": "mint",
   "name": "Volvox.Bot",
   "colors": {
-    "primary": "#131410",
-    "light": "#fafaf9",
-    "dark": "#10110e"
+    "primary": "#A6B895",
+    "light": "#FAFAF9",
+    "dark": "#110110"
   },
   "favicon": "/logo/logo.png",
   "navigation": {
