@@ -51,16 +51,13 @@
     "enabled": true,
     "channelId": "1438631182379253814",
     "message": "{{greeting}}\n\n{{milestoneLine}}\n\n{{vibeLine}}\n\n{{ctaLine}}",
+    "returningMessage": "Welcome back, {{user}}! Glad to see you again. Jump back in whenever you are ready.",
     "dynamic": {
       "enabled": true,
       "timezone": "America/New_York",
       "activityWindowMinutes": 45,
       "milestoneInterval": 25,
-      "highlightChannels": [
-        "1438631182379253814",
-        "1444154471704957069",
-        "1446317676988465242"
-      ],
+      "highlightChannels": [],
       "excludeChannels": []
     },
     "rulesChannel": null,

@@ -204,6 +204,8 @@ export const CONFIG_SCHEMA = {
       enabled: { type: 'boolean' },
       channelId: { type: 'string', nullable: true },
       message: { type: 'string' },
+      returningMessage: { type: 'string', nullable: true },
+      returningMessageEnabled: { type: 'boolean' },
       variants: {
         type: 'array',
         items: { type: 'string' },

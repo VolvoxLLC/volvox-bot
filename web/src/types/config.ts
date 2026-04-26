@@ -76,6 +76,8 @@ export interface WelcomeConfig {
   enabled: boolean;
   channelId: string;
   message: string;
+  returningMessage?: string | null;
+  returningMessageEnabled?: boolean;
   dynamic: WelcomeDynamic;
   rulesChannel: string | null;
   verifiedRole: string | null;

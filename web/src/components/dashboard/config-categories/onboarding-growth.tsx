@@ -256,6 +256,31 @@ export function OnboardingGrowthCategory() {
               />
             </div>
 
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <ToggleSwitch
+                  checked={draftConfig.welcome?.returningMessageEnabled !== false}
+                  onChange={(v) => updateWelcomeField('returningMessageEnabled', v)}
+                  disabled={saving}
+                  label="Returning member message"
+                />
+                <span className="text-[10px] font-normal text-muted-foreground/60">
+                  Sent when someone rejoins your server
+                </span>
+              </div>
+              {draftConfig.welcome?.returningMessageEnabled !== false && (
+                <DiscordMarkdownEditor
+                  value={draftConfig.welcome?.returningMessage ?? ''}
+                  onChange={(v) => updateWelcomeField('returningMessage', v || null)}
+                  variables={welcomeVariables}
+                  variableSamples={welcomeVariableSamples}
+                  maxLength={2000}
+                  placeholder="Welcome back, {{user}}! Glad to see you again."
+                  disabled={saving}
+                />
+              )}
+            </div>
+
             <details className="group">
               <summary className="cursor-pointer text-xs font-bold uppercase tracking-widest text-muted-foreground/60 hover:text-primary transition-colors flex items-center gap-2">
                 <span>View Variables Guide</span>

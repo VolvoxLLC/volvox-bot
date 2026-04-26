@@ -208,6 +208,35 @@ describe('modules/config', () => {
       expect(config.ai.model).toBe('db-model');
     });
 
+    it('should preserve new config.json defaults when existing DB sections omit them', async () => {
+      const { readFileSync: mockRead } = await import('node:fs');
+      mockRead.mockReturnValue(
+        JSON.stringify({
+          ai: { enabled: true, model: 'test-model' },
+          welcome: {
+            enabled: false,
+            returningMessage:
+              'Welcome back, {{user}}! Glad to see you again. Jump back in whenever you are ready.',
+          },
+        }),
+      );
+
+      const mockPool = {
+        query: vi.fn().mockResolvedValue({
+          rows: [{ guild_id: 'global', key: 'welcome', value: { enabled: true } }],
+        }),
+      };
+      const { getPool: mockGetPool } = await import('../../src/db.js');
+      mockGetPool.mockReturnValue(mockPool);
+
+      const config = await configModule.loadConfig();
+
+      expect(config.welcome.enabled).toBe(true);
+      expect(config.welcome.returningMessage).toBe(
+        'Welcome back, {{user}}! Glad to see you again. Jump back in whenever you are ready.',
+      );
+    });
+
     it('should handle DB error and fall back to config.json', async () => {
       const mockPool = {
         query: vi.fn().mockRejectedValue(new Error('DB connection failed')),
