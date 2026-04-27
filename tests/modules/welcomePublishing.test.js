@@ -512,6 +512,24 @@ describe('welcomePublishing module', () => {
     });
   });
 
+  it('surfaces persistence warnings when the database pool is unavailable', async () => {
+    const channel = createTextChannel({ id: 'rules-channel' });
+    fetchChannelCached.mockResolvedValue(channel);
+    safeSend.mockResolvedValue({ id: 'sent-message' });
+    getPool.mockImplementation(() => {
+      throw new Error('pool unavailable');
+    });
+
+    const result = await publishWelcomePanel({}, 'guild-1', 'rules');
+
+    expect(result).toMatchObject({
+      status: 'posted',
+      messageId: 'sent-message',
+      persistWarning: true,
+      lastError: 'Published to Discord but failed to save publication state.',
+    });
+  });
+
   it('records failed status when Discord publish throws', async () => {
     const channel = createTextChannel({
       id: 'rules-channel',
