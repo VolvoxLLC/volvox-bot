@@ -31,6 +31,10 @@ COPY --chown=botuser:botgroup migrations/ ./migrations/
 # Create data directory for state persistence
 RUN mkdir -p data && chown botuser:botgroup data
 
+EXPOSE 3001
+ENV PORT=3001
+ENV BOT_API_HOST="0.0.0.0"
+
 USER botuser
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
