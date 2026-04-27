@@ -109,6 +109,15 @@ describe('welcomeOnboarding module', () => {
     });
   });
 
+  it('falls back to the welcome message channel for legacy role menu configs', () => {
+    const result = normalizeWelcomeOnboardingConfig({
+      channelId: ' legacy-welcome-channel ',
+      roleMenuChannel: null,
+    });
+
+    expect(result.roleMenuChannel).toBe('legacy-welcome-channel');
+  });
+
   it('builds the rules agreement message with accept button', () => {
     const message = buildRulesAgreementMessage();
     const button = message.components[0].components[0].toJSON();
