@@ -21,6 +21,46 @@ function createDeferred<T>() {
   return { promise, resolve, reject };
 }
 
+function roleResponse(...roles: Array<{ id: string; name: string; color: number }>) {
+  return {
+    ok: true,
+    status: 200,
+    json: async () => roles,
+  } as Response;
+}
+
+function failedResponse(status: number, statusText: string) {
+  return {
+    ok: false,
+    status,
+    statusText,
+  } as Response;
+}
+
+function abortableRoleFetch(deferred: ReturnType<typeof createDeferred<Response>>) {
+  return (_input: RequestInfo | URL, init?: RequestInit) => {
+    const requestSignal = init?.signal;
+    if (!(requestSignal instanceof AbortSignal)) {
+      throw new Error('Expected abort signal');
+    }
+
+    return Promise.race([deferred.promise, rejectWhenAborted(requestSignal)]);
+  };
+}
+
+function rejectWhenAborted(signal: AbortSignal) {
+  return new Promise<never>((_resolve, reject) => {
+    const rejectAbort = () => reject(new DOMException('Aborted', 'AbortError'));
+
+    if (signal.aborted) {
+      rejectAbort();
+      return;
+    }
+
+    signal.addEventListener('abort', rejectAbort, { once: true });
+  });
+}
+
 function RoleConsumer({ guildId }: { guildId: string | null }) {
   const { roles, loading, error } = useGuildRoles(guildId);
 
@@ -39,6 +79,20 @@ function RoleConsumer({ guildId }: { guildId: string | null }) {
   return <div>{roles.map((role) => role.name).join(', ')}</div>;
 }
 
+function RefreshConsumer({ buttonLabel }: { buttonLabel: string }) {
+  const { error, loading, refreshRoles, roles } = useGuildRoles('guild-1');
+  const roleNames = roles.map((role) => role.name).join(', ');
+
+  return (
+    <div>
+      <button type="button" onClick={() => void refreshRoles()}>
+        {buttonLabel}
+      </button>
+      <span>{error ?? (loading ? 'Loading roles' : roleNames)}</span>
+    </div>
+  );
+}
+
 describe('RoleDirectoryProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -50,14 +104,14 @@ describe('RoleDirectoryProvider', () => {
   });
 
   it('shares a single client-side role fetch across duplicate consumers', async () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => [
-        { id: '1', name: 'Admin', color: 15_292_223 },
-        { id: '2', name: 'Mod', color: 3_443_003 },
-      ],
-    } as Response);
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(
+        roleResponse(
+          { id: '1', name: 'Admin', color: 15_292_223 },
+          { id: '2', name: 'Mod', color: 3_443_003 },
+        ),
+      );
 
     render(
       <RoleDirectoryProvider>
@@ -80,16 +134,8 @@ describe('RoleDirectoryProvider', () => {
   it('resets the client cache and refetches when the dashboard route changes', async () => {
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => [{ id: '1', name: 'Admin', color: 15_292_223 }],
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => [{ id: '2', name: 'Helper', color: 3_443_003 }],
-      } as Response);
+      .mockResolvedValueOnce(roleResponse({ id: '1', name: 'Admin', color: 15_292_223 }))
+      .mockResolvedValueOnce(roleResponse({ id: '2', name: 'Helper', color: 3_443_003 }));
 
     const view = render(
       <RoleDirectoryProvider>
@@ -115,33 +161,12 @@ describe('RoleDirectoryProvider', () => {
     const user = userEvent.setup();
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => [{ id: '1', name: 'Admin', color: 15_292_223 }],
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => [{ id: '1', name: 'Owner', color: 16_711_680 }],
-      } as Response);
-
-    function RefreshConsumer() {
-      const { roles, refreshRoles } = useGuildRoles('guild-1');
-
-      return (
-        <div>
-          <button type="button" onClick={() => void refreshRoles()}>
-            Refresh
-          </button>
-          <span>{roles.map((role) => role.name).join(', ')}</span>
-        </div>
-      );
-    }
+      .mockResolvedValueOnce(roleResponse({ id: '1', name: 'Admin', color: 15_292_223 }))
+      .mockResolvedValueOnce(roleResponse({ id: '1', name: 'Owner', color: 16_711_680 }));
 
     render(
       <RoleDirectoryProvider>
-        <RefreshConsumer />
+        <RefreshConsumer buttonLabel="Refresh" />
       </RoleDirectoryProvider>,
     );
 
@@ -156,33 +181,12 @@ describe('RoleDirectoryProvider', () => {
     const user = userEvent.setup();
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 503,
-        statusText: 'Service Unavailable',
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => [{ id: '1', name: 'Admin', color: 15_292_223 }],
-      } as Response);
-
-    function RefreshConsumer() {
-      const { roles, error, refreshRoles } = useGuildRoles('guild-1');
-
-      return (
-        <div>
-          <button type="button" onClick={() => void refreshRoles()}>
-            Retry
-          </button>
-          <span>{error ?? roles.map((role) => role.name).join(', ')}</span>
-        </div>
-      );
-    }
+      .mockResolvedValueOnce(failedResponse(503, 'Service Unavailable'))
+      .mockResolvedValueOnce(roleResponse({ id: '1', name: 'Admin', color: 15_292_223 }));
 
     render(
       <RoleDirectoryProvider>
-        <RefreshConsumer />
+        <RefreshConsumer buttonLabel="Retry" />
       </RoleDirectoryProvider>,
     );
 
@@ -197,11 +201,7 @@ describe('RoleDirectoryProvider', () => {
     const locationSpy = vi.spyOn(globalThis, 'location', 'get').mockReturnValue({
       href: 'http://localhost:3000/dashboard/moderation',
     } as Location);
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      ok: false,
-      status: 401,
-      statusText: 'Unauthorized',
-    } as Response);
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(failedResponse(401, 'Unauthorized'));
 
     render(
       <RoleDirectoryProvider>
@@ -222,39 +222,12 @@ describe('RoleDirectoryProvider', () => {
     const secondRequest = createDeferred<Response>();
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
-      .mockImplementationOnce((_input, init) => {
-        const signal = init?.signal;
-        if (!(signal instanceof AbortSignal)) {
-          throw new Error('Expected abort signal');
-        }
-
-        return new Promise<Response>((resolve, reject) => {
-          signal.addEventListener(
-            'abort',
-            () => reject(new DOMException('Aborted', 'AbortError')),
-            { once: true },
-          );
-          void firstRequest.promise.then(resolve, reject);
-        });
-      })
+      .mockImplementationOnce(abortableRoleFetch(firstRequest))
       .mockImplementationOnce(() => secondRequest.promise);
-
-    function RefreshConsumer() {
-      const { loading, refreshRoles, roles } = useGuildRoles('guild-1');
-
-      return (
-        <div>
-          <button type="button" onClick={() => void refreshRoles()}>
-            Refresh
-          </button>
-          <span>{loading ? 'Loading roles' : roles.map((role) => role.name).join(', ')}</span>
-        </div>
-      );
-    }
 
     render(
       <RoleDirectoryProvider>
-        <RefreshConsumer />
+        <RefreshConsumer buttonLabel="Refresh" />
       </RoleDirectoryProvider>,
     );
 
@@ -265,11 +238,7 @@ describe('RoleDirectoryProvider', () => {
       expect(fetchSpy).toHaveBeenCalledTimes(2);
     });
 
-    secondRequest.resolve({
-      ok: true,
-      status: 200,
-      json: async () => [{ id: '1', name: 'Owner', color: 16_711_680 }],
-    } as Response);
+    secondRequest.resolve(roleResponse({ id: '1', name: 'Owner', color: 16_711_680 }));
 
     await screen.findByText('Owner');
     expect(fetchSpy).toHaveBeenCalledTimes(2);
