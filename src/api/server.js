@@ -138,10 +138,11 @@ export async function startServer(client, dbPool, options = {}) {
     });
   }
   const port = isValidPort ? parsed : 3001;
+  const host = process.env.BOT_API_HOST ?? '0.0.0.0';
 
   return new Promise((resolve, reject) => {
-    server = app.listen(port, () => {
-      info('API server started', { port });
+    server = app.listen(port, host, () => {
+      info('API server started', { port, host });
 
       // Attach WebSocket log stream if transport provided
       if (options.wsTransport) {

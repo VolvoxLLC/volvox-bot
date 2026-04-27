@@ -164,6 +164,27 @@ describe('API server', () => {
       await stopServer();
     });
 
+    it('should bind to all interfaces by default for container health checks', async () => {
+      vi.stubEnv('BOT_API_PORT', '0');
+      const server = await startServer(client, null);
+      const addr = server.address();
+
+      expect(addr.address).toBe('0.0.0.0');
+
+      await stopServer();
+    });
+
+    it('should allow overriding the API bind host', async () => {
+      vi.stubEnv('BOT_API_PORT', '0');
+      vi.stubEnv('BOT_API_HOST', '127.0.0.1');
+      const server = await startServer(client, null);
+      const addr = server.address();
+
+      expect(addr.address).toBe('127.0.0.1');
+
+      await stopServer();
+    });
+
     it('should setup WebSocket log stream when wsTransport is provided', async () => {
       vi.stubEnv('BOT_API_PORT', '0');
       const wsTransport = { on: vi.fn(), emit: vi.fn() };
