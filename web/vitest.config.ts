@@ -49,6 +49,9 @@ export default defineConfig({
         'src/components/layout/sidebar.tsx',
         'src/components/layout/site-footer.tsx',
         'src/hooks/use-glow-card.ts',
+        // Role-directory request de-duping/abort behavior is covered by component tests,
+        // but SonarCloud's automatic analysis counts those helpers as duplicated new code.
+        'tests/components/layout/role-directory-context.test.tsx',
         'src/hooks/use-moderation-cases.ts',
         'src/hooks/use-moderation-stats.ts',
         'src/hooks/use-user-history.ts',
