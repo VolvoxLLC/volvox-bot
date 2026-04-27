@@ -310,6 +310,17 @@ export async function publishWelcomePanel(client, guildId, panelType, actor = {}
       return null;
     });
 
+    if (!saved && !persistWarning) {
+      persistWarning = 'Published to Discord but failed to save publication state.';
+      warn('Welcome publication state unavailable', {
+        guildId,
+        panelType,
+        channelId: payload.channelId,
+        messageId: publishedMessageId,
+        error: 'Database pool unavailable',
+      });
+    }
+
     if (saved) {
       await deleteStoredPublicationMessage(client, guildId, panelType, stored, payload.channelId);
     }
