@@ -242,6 +242,8 @@ export function OnboardingGrowthCategory() {
   useEffect(() => {
     setWelcomeStatus((current) => (current?.guildId === guildId ? current : null));
     welcomeStatusRequestIdRef.current += 1;
+    setWelcomeStatusLoading(false);
+    setWelcomePublishing(null);
   }, [guildId]);
 
   useEffect(() => {
