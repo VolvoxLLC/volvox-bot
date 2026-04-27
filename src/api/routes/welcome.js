@@ -74,6 +74,7 @@ router.post('/preview', (req, res) => {
 router.get(
   '/status',
   welcomePublishRateLimit,
+  // codeql[js/missing-rate-limiting] The route is rate-limited by welcomePublishRateLimit above.
   requireGuildAdmin,
   validateGuild,
   async (req, res) => {
@@ -93,6 +94,7 @@ router.get(
 router.post(
   '/publish',
   welcomePublishRateLimit,
+  // codeql[js/missing-rate-limiting] The route is rate-limited by welcomePublishRateLimit above.
   requireGuildAdmin,
   validateGuild,
   async (req, res) => {
@@ -116,6 +118,7 @@ router.post(
 router.post(
   '/publish/:panelType',
   welcomePublishRateLimit,
+  // codeql[js/missing-rate-limiting] The route is rate-limited by welcomePublishRateLimit above.
   requireGuildAdmin,
   validateGuild,
   async (req, res) => {
