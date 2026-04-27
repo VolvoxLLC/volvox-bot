@@ -25,6 +25,8 @@ describe('analytics utils', () => {
 
   it('formats money, numbers, and timestamps', () => {
     expect(formatUsd(2)).toBe('$2.00');
+    expect(formatUsd(1)).toBe('$1.00');
+    expect(formatUsd(0)).toBe('$0.0000');
     expect(formatUsd(0.1234)).toBe('$0.1234');
     expect(formatNumber(1234567)).toBe('1,234,567');
     expect(formatLastUpdatedTime(new Date(2026, 3, 7, 9, 5, 6))).toMatch(/9:05:06/);
