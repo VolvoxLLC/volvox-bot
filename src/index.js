@@ -19,7 +19,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Client, Collection, GatewayIntentBits, Partials } from 'discord.js';
 import { config as dotenvConfig } from 'dotenv';
-import { startServer, stopServer } from './api/server.js';
+import { setServerDbPool, startServer, stopServer } from './api/server.js';
 import {
   registerConfigListeners,
   removeLoggingTransport,
@@ -130,18 +130,16 @@ let apiWsTransport = null;
 
 /**
  * Start the REST API server once, wiring WebSocket log streaming when available.
- * The API intentionally comes up before Discord login so deployment health checks
- * can succeed while the bot finishes longer Discord/memory startup work.
- *
- * @param {import('pg').Pool | null} dbPool
+ * The API intentionally comes up before database/config/Discord startup so
+ * deployment health checks can succeed while slower initialization continues.
  */
-async function startApiServer(dbPool) {
+async function startApiServer() {
   if (apiWsTransport) return;
 
   let wsTransport = null;
   try {
     wsTransport = addWebSocketTransport();
-    await startServer(client, dbPool, { wsTransport });
+    await startServer(client, null, { wsTransport });
     apiWsTransport = wsTransport;
   } catch (err) {
     // Clean up orphaned transport if startServer failed after it was created
@@ -312,10 +310,16 @@ async function startup() {
   // Pre-warm AI SDK in background (non-blocking) — avoids 6s import delay on first AI request
   preloadSDK();
 
+  // Start REST API server immediately so platform health checks can pass while
+  // database/config/Discord startup work continues. The DB pool is attached
+  // below once initialization completes.
+  await startApiServer();
+
   // Initialize database
   let dbPool = null;
   if (process.env.DATABASE_URL) {
     dbPool = await initDb();
+    setServerDbPool(dbPool);
 
     // Initialize Redis (gracefully degrades if REDIS_URL not set)
     initRedis();
@@ -362,9 +366,6 @@ async function startup() {
       }
     }
   }
-
-  // Start REST API server as soon as database/config/logging setup is ready.
-  await startApiServer(dbPool);
 
   // DEPRECATED: loadState() seeds conversation history from data/state.json for
   // non-DB environments. When a database is configured, initConversationHistory()

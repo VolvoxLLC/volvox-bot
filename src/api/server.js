@@ -17,6 +17,9 @@ import { setupLogStream, stopLogStream } from './ws/logStream.js';
 /** @type {import('node:http').Server | null} */
 let server = null;
 
+/** @type {import('express').Application | null} */
+let activeApp = null;
+
 /** @type {ReturnType<typeof redisRateLimit> | null} */
 let rateLimiter = null;
 
@@ -122,6 +125,7 @@ export async function startServer(client, dbPool, options = {}) {
   }
 
   const app = createApp(client, dbPool);
+  activeApp = app;
   // Railway injects PORT at runtime; keep BOT_API_PORT as local/dev fallback.
   const portEnv = process.env.PORT ?? process.env.BOT_API_PORT;
   const parsed = portEnv != null ? Number.parseInt(portEnv, 10) : NaN;
@@ -162,9 +166,29 @@ export async function startServer(client, dbPool, options = {}) {
     server.once('error', (err) => {
       error('API server failed to start', { error: err.message });
       server = null;
+      activeApp = null;
       reject(err);
     });
   });
+}
+
+/**
+ * Update the database pool reference used by the running Express app.
+ *
+ * This lets deployment health checks come online before database initialization
+ * finishes while preserving DB-backed API behavior once the pool is ready.
+ *
+ * @param {import('pg').Pool | null} dbPool - PostgreSQL connection pool
+ * @returns {boolean} true when a running app was updated
+ */
+export function setServerDbPool(dbPool) {
+  if (!activeApp) {
+    warn('setServerDbPool called but no API app is active');
+    return false;
+  }
+
+  activeApp.locals.dbPool = dbPool;
+  return true;
 }
 
 /**
@@ -188,6 +212,7 @@ export async function stopServer() {
   }
 
   if (!server) {
+    activeApp = null;
     warn('API server stop called but no server running');
     return;
   }
@@ -206,6 +231,7 @@ export async function stopServer() {
         closing.closeAllConnections();
       }
       server = null;
+      activeApp = null;
       resolve();
     }, SHUTDOWN_TIMEOUT_MS);
 
@@ -214,6 +240,7 @@ export async function stopServer() {
       if (settled) return;
       settled = true;
       server = null;
+      activeApp = null;
       if (err) {
         error('Error closing API server', { error: err.message });
         reject(err);

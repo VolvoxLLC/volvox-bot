@@ -34,6 +34,7 @@ const mocks = vi.hoisted(() => ({
   apiServer: {
     startServer: vi.fn(),
     stopServer: vi.fn(),
+    setServerDbPool: vi.fn(),
   },
 
   db: {
@@ -178,6 +179,7 @@ vi.mock('../src/logger.js', () => ({
 vi.mock('../src/api/server.js', () => ({
   startServer: mocks.apiServer.startServer,
   stopServer: mocks.apiServer.stopServer,
+  setServerDbPool: mocks.apiServer.setServerDbPool,
 }));
 
 vi.mock('../src/modules/ai.js', () => ({
@@ -300,6 +302,7 @@ async function importIndex({
     mocks.apiServer.startServer.mockResolvedValue({ listening: true });
   }
   mocks.apiServer.stopServer.mockReset().mockResolvedValue(undefined);
+  mocks.apiServer.setServerDbPool.mockReset().mockReturnValue(true);
 
   mocks.db.initDb.mockReset();
   if (initDbReject) {
@@ -427,18 +430,34 @@ describe('index.js', () => {
     );
   });
 
-  it('should start REST API before memory checks and Discord login', async () => {
-    await importIndex({ token: 'abc', databaseUrl: null });
+  it('should start REST API before database, config, memory checks, and Discord login', async () => {
+    await importIndex({ token: 'abc', databaseUrl: 'postgres://db' });
 
     expect(mocks.logger.addWebSocketTransport).toHaveBeenCalledTimes(1);
     expect(mocks.apiServer.startServer).toHaveBeenCalledWith(mocks.client, null, {
       wsTransport: { _wsTransport: true },
     });
     expect(mocks.apiServer.startServer.mock.invocationCallOrder.at(-1)).toBeLessThan(
+      mocks.db.initDb.mock.invocationCallOrder.at(-1),
+    );
+    expect(mocks.apiServer.startServer.mock.invocationCallOrder.at(-1)).toBeLessThan(
+      mocks.config.loadConfig.mock.invocationCallOrder.at(-1),
+    );
+    expect(mocks.apiServer.startServer.mock.invocationCallOrder.at(-1)).toBeLessThan(
       mocks.memory.checkMem0Health.mock.invocationCallOrder.at(-1),
     );
     expect(mocks.apiServer.startServer.mock.invocationCallOrder.at(-1)).toBeLessThan(
       mocks.client.login.mock.invocationCallOrder.at(-1),
+    );
+  });
+
+  it('should attach the initialized db pool to the running API app', async () => {
+    await importIndex({ token: 'abc', databaseUrl: 'postgres://db' });
+
+    const dbPool = await mocks.db.initDb.mock.results.at(-1).value;
+    expect(mocks.apiServer.setServerDbPool).toHaveBeenCalledWith(dbPool);
+    expect(mocks.db.initDb.mock.invocationCallOrder.at(-1)).toBeLessThan(
+      mocks.apiServer.setServerDbPool.mock.invocationCallOrder.at(-1),
     );
   });
 

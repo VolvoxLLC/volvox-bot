@@ -17,7 +17,7 @@ vi.mock('../../src/api/ws/logStream.js', () => ({
   stopLogStream: vi.fn().mockResolvedValue(undefined),
 }));
 
-import { createApp, startServer, stopServer } from '../../src/api/server.js';
+import { createApp, setServerDbPool, startServer, stopServer } from '../../src/api/server.js';
 import { setupLogStream } from '../../src/api/ws/logStream.js';
 
 describe('API server', () => {
@@ -171,6 +171,20 @@ describe('API server', () => {
       await startServer(client, null, { wsTransport });
       expect(setupLogStream).toHaveBeenCalled();
       await stopServer();
+    });
+
+    it('should update the running app dbPool after early API startup', async () => {
+      vi.stubEnv('BOT_API_PORT', '0');
+      await startServer(client, null);
+
+      const pool = { query: vi.fn() };
+      expect(setServerDbPool(pool)).toBe(true);
+
+      await stopServer();
+    });
+
+    it('should return false when updating dbPool without an active app', () => {
+      expect(setServerDbPool({ query: vi.fn() })).toBe(false);
     });
 
     it('should continue when setupLogStream throws', async () => {
