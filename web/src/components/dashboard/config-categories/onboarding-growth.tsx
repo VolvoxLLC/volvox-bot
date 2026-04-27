@@ -109,13 +109,14 @@ function getWelcomePublishFailureMessage(
   panelType?: 'rules' | 'role_menu',
 ) {
   if (panelType) {
-    if (data?.status === 'posted') return null;
+    if (data?.status === 'posted' || data?.status === 'unconfigured') return null;
     return data?.lastError || `Publish returned status "${data?.status ?? 'unknown'}"`;
   }
 
   const results = Array.isArray(data?.results) ? data.results : [];
-  const failed = results.filter((entry) => entry.status !== 'posted');
-  if (results.length > 0 && failed.length === 0) return null;
+  const failed = results.filter((entry) => entry.status === 'failed');
+  const posted = results.filter((entry) => entry.status === 'posted');
+  if (failed.length === 0 && posted.length > 0) return null;
 
   if (failed.length > 0) {
     return failed
@@ -126,7 +127,7 @@ function getWelcomePublishFailureMessage(
       .join('; ');
   }
 
-  return 'Welcome publish response did not include panel results.';
+  return 'No welcome panels were published. Check that channels are configured.';
 }
 
 /**
