@@ -10,6 +10,7 @@ import {
 export const dynamic = 'force-dynamic';
 
 const LOG_PREFIX = '[api/guilds/:guildId/welcome/publish/:panelType]';
+// Keep this mirrored with WELCOME_PANEL_TYPES in src/modules/welcomePublishing.js.
 const PANEL_TYPES = new Set(['rules', 'role_menu']);
 
 export async function POST(
