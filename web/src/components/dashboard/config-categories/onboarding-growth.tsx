@@ -58,8 +58,8 @@ const DYNAMIC_VARIABLE_DEFINITIONS = [
   },
 ] as const;
 const INTRODUCTION_VARIABLE_DEFINITIONS = [
-  { name: 'user', description: 'Mention member', sample: '@johndoe' },
-  { name: 'username', description: 'Plain name', sample: 'johndoe' },
+  { name: 'user', description: 'Mention member (pings)', sample: '@johndoe' },
+  { name: 'username', description: 'Plain name (no ping)', sample: 'johndoe' },
   { name: 'server', description: 'Server name', sample: 'Volvox' },
 ] as const;
 
@@ -419,6 +419,10 @@ export function OnboardingGrowthCategory() {
                   placeholder="Welcome {{user}}! Drop a quick intro so we can meet you."
                   disabled={saving}
                 />
+                <p className="text-[10px] font-medium text-muted-foreground/60">
+                  <code>{'{{user}}'}</code> mentions the member. Use <code>{'{{username}}'}</code>{' '}
+                  for plain text.
+                </p>
               </div>
             </div>
 
