@@ -142,9 +142,37 @@ describe('health route', () => {
     expect(res.body.restarts).toHaveLength(0);
   });
 
+  it('should return 503 while database is configured but pool is not ready', async () => {
+    vi.stubEnv('DATABASE_URL', 'postgres://example');
+    const app = buildApp();
+
+    const res = await request(app).get('/api/v1/health');
+
+    expect(res.status).toBe(503);
+    expect(res.body.status).toBe('starting');
+    expect(res.body.uptime).toBeTypeOf('number');
+    expect(res.body.database).toEqual({ status: 'connecting' });
+    expect(res.body.memory).toBeUndefined();
+    expect(res.body.redis).toBeUndefined();
+    expect(res.body.restarts).toBeUndefined();
+  });
+
   it('should return connecting status when client.ws is not yet available', async () => {
     const client = { guilds: { cache: new Map() }, ws: null };
     const app = createApp(client, null);
+
+    const res = await request(app).get('/api/v1/health');
+
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('ok');
+    expect(res.body.discord.ws.status).toBe('connecting');
+  });
+
+  it('should return 200 when database pool is ready but client.ws is not yet available', async () => {
+    vi.stubEnv('DATABASE_URL', 'postgres://example');
+    const client = { guilds: { cache: new Map() }, ws: null };
+    const pool = { query: vi.fn() };
+    const app = createApp(client, pool);
 
     const res = await request(app).get('/api/v1/health');
 

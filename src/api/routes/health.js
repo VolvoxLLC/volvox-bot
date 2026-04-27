@@ -131,7 +131,15 @@ try {
  *                         nullable: true
  */
 router.get('/', async (req, res) => {
-  const { client } = req.app.locals;
+  const { client, dbPool } = req.app.locals;
+
+  if (process.env.DATABASE_URL && !dbPool) {
+    return res.status(503).json({
+      status: 'starting',
+      uptime: process.uptime(),
+      database: { status: 'connecting' },
+    });
+  }
 
   // Defensive guard in case health check is hit before Discord login completes
   if (!client?.ws) {
