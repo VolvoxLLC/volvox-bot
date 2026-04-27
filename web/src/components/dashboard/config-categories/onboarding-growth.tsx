@@ -1,7 +1,7 @@
 'use client';
 
 import { Copy, Info, RefreshCw, Send } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useConfigContext } from '@/components/dashboard/config-context';
 import {
@@ -100,6 +100,7 @@ export function OnboardingGrowthCategory() {
   const [welcomeStatus, setWelcomeStatus] = useState<WelcomePublicationStatus | null>(null);
   const [welcomeStatusLoading, setWelcomeStatusLoading] = useState(false);
   const [welcomePublishing, setWelcomePublishing] = useState<string | null>(null);
+  const welcomeStatusRequestIdRef = useRef(0);
 
   useEffect(() => {
     if (draftConfig?.welcome?.dmSequence?.steps) {
@@ -197,24 +198,40 @@ export function OnboardingGrowthCategory() {
   const fetchWelcomeStatus = useCallback(async () => {
     if (!guildId || activeTab !== 'welcome') return;
 
+    const requestGuildId = guildId;
+    const requestId = ++welcomeStatusRequestIdRef.current;
     setWelcomeStatusLoading(true);
     try {
-      const response = await fetch(`/api/guilds/${encodeURIComponent(guildId)}/welcome/status`, {
-        cache: 'no-store',
-      });
+      const response = await fetch(
+        `/api/guilds/${encodeURIComponent(requestGuildId)}/welcome/status`,
+        {
+          cache: 'no-store',
+        },
+      );
       const data = await response.json().catch(() => null);
       if (!response.ok) {
         throw new Error(data?.error || 'Failed to fetch welcome publish status');
       }
+      if (welcomeStatusRequestIdRef.current !== requestId || data?.guildId !== requestGuildId) {
+        return;
+      }
       setWelcomeStatus(data);
     } catch (error) {
+      if (welcomeStatusRequestIdRef.current !== requestId) return;
       toast.error('Failed to load welcome publish status', {
         description: error instanceof Error ? error.message : 'A network error occurred.',
       });
     } finally {
-      setWelcomeStatusLoading(false);
+      if (welcomeStatusRequestIdRef.current === requestId) {
+        setWelcomeStatusLoading(false);
+      }
     }
   }, [activeTab, guildId]);
+
+  useEffect(() => {
+    setWelcomeStatus((current) => (current?.guildId === guildId ? current : null));
+    welcomeStatusRequestIdRef.current += 1;
+  }, [guildId]);
 
   useEffect(() => {
     void fetchWelcomeStatus();
