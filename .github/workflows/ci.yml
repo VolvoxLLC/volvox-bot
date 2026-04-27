@@ -226,13 +226,13 @@ jobs:
           fetch-depth: 0
 
       - name: Download coverage artifacts (bot)
-        uses: actions/download-artifact@v7.0.1
+        uses: actions/download-artifact@v8.0.1
         with:
           name: coverage-${{ github.run_id }}
           path: coverage/
 
       - name: Download coverage artifacts (web)
-        uses: actions/download-artifact@v7.0.1
+        uses: actions/download-artifact@v8.0.1
         with:
           name: web-coverage-${{ github.run_id }}
           path: web/coverage/
