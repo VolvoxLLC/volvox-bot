@@ -175,6 +175,32 @@ async function fetchExistingMessage(channel, messageId) {
   return channel.messages.fetch(messageId).catch(() => null);
 }
 
+async function deleteStoredPublicationMessage(client, guildId, panelType, stored, nextChannelId) {
+  if (!stored?.message_id || !stored?.channel_id || stored.channel_id === nextChannelId) return;
+
+  try {
+    const previousChannel = await fetchChannelCached(client, stored.channel_id, guildId);
+    const previousMessage = await fetchExistingMessage(previousChannel, stored.message_id);
+    if (typeof previousMessage?.delete === 'function') {
+      await previousMessage.delete();
+      info('Deleted stale welcome panel message', {
+        guildId,
+        panelType,
+        channelId: stored.channel_id,
+        messageId: stored.message_id,
+      });
+    }
+  } catch (err) {
+    warn('Failed to delete stale welcome panel message', {
+      guildId,
+      panelType,
+      channelId: stored.channel_id,
+      messageId: stored.message_id,
+      error: err.message,
+    });
+  }
+}
+
 export async function publishWelcomePanel(client, guildId, panelType, actor = {}) {
   if (!WELCOME_PANEL_TYPES.has(panelType)) {
     throw new Error(`Unknown welcome panel type: ${panelType}`);
@@ -221,6 +247,7 @@ export async function publishWelcomePanel(client, guildId, panelType, actor = {}
     stored?.channel_id === payload.channelId
       ? await fetchExistingMessage(channel, stored?.message_id)
       : null;
+  await deleteStoredPublicationMessage(client, guildId, panelType, stored, payload.channelId);
 
   try {
     const message = existing
