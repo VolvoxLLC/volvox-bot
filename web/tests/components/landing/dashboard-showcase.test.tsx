@@ -28,12 +28,21 @@ vi.mock('framer-motion', async () => {
   };
 });
 
-vi.mock('gsap', () => ({
-  gsap: { registerPlugin: vi.fn(), fromTo: vi.fn(), to: vi.fn() },
-  default: { registerPlugin: vi.fn(), fromTo: vi.fn(), to: vi.fn() },
+const { mockUseGSAP } = vi.hoisted(() => ({
+  mockUseGSAP: vi.fn((callback: () => void) => callback()),
 }));
+
+vi.mock('gsap', () => {
+  const gsapMock = {
+    registerPlugin: vi.fn(),
+    fromTo: vi.fn(),
+    to: vi.fn(),
+    utils: { toArray: vi.fn(() => []) },
+  };
+  return { gsap: gsapMock, default: gsapMock };
+});
 vi.mock('gsap/ScrollTrigger', () => ({ ScrollTrigger: {} }));
-vi.mock('@gsap/react', () => ({ useGSAP: vi.fn() }));
+vi.mock('@gsap/react', () => ({ useGSAP: mockUseGSAP }));
 
 import { DashboardShowcase } from '@/components/landing/DashboardShowcase';
 

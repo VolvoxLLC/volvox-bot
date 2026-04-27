@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { mockUseInView, mockUseReducedMotion } = vi.hoisted(() => ({
@@ -65,5 +65,30 @@ describe('ComparisonTable', () => {
     expect(
       screen.getByRole('heading', { level: 2, name: /Engineered for Superiority/i }),
     ).toBeInTheDocument();
+  });
+
+  it('handles hover movement and reduced-motion rendering branches', () => {
+    mockUseReducedMotion.mockReturnValue(true);
+
+    render(<ComparisonTable />);
+
+    const firstFeature = screen.getByRole('row', { name: /AI Neural Chat/i });
+    vi.spyOn(firstFeature, 'getBoundingClientRect').mockReturnValue({
+      bottom: 80,
+      height: 40,
+      left: 10,
+      right: 210,
+      top: 40,
+      width: 200,
+      x: 10,
+      y: 40,
+      toJSON: () => ({}),
+    } as DOMRect);
+
+    fireEvent.mouseEnter(firstFeature);
+    fireEvent.mouseMove(firstFeature, { clientX: 110, clientY: 60 });
+    fireEvent.mouseLeave(firstFeature);
+
+    expect(firstFeature).toBeInTheDocument();
   });
 });

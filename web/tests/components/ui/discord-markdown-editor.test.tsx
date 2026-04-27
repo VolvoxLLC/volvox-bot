@@ -56,6 +56,20 @@ describe('parseDiscordMarkdown', () => {
     expect(result).not.toContain('data-lang="hello"');
   });
 
+  it('preserves fenced code that starts with a newline or has an invalid language header', () => {
+    expect(parseDiscordMarkdown('```\nline one\n```')).toContain('<pre><code>line one\n</code></pre>');
+
+    const invalidHeader = parseDiscordMarkdown('```bad lang\nline two\n```');
+    expect(invalidHeader).toContain('<pre><code>bad lang\nline two\n</code></pre>');
+    expect(invalidHeader).not.toContain('data-lang=');
+  });
+
+  it('does not render unterminated fenced code as a code block', () => {
+    const result = parseDiscordMarkdown('before ```js\nconst x = 1');
+    expect(result).not.toContain('<pre><code');
+    expect(result).toContain('const x = 1');
+  });
+
   it('keeps underline parsing scoped to markdown content instead of generated HTML attributes', () => {
     const result = parseDiscordMarkdown('**||__secret__||**');
     expect(result).toContain('<strong><span class="discord-spoiler');
@@ -70,8 +84,20 @@ describe('parseDiscordMarkdown', () => {
     expect(result).toContain('<h3>Small</h3>');
   });
 
+  it('leaves malformed headings, quotes, and empty list markers as paragraphs', () => {
+    const result = parseDiscordMarkdown('#\n>quote\n- \n1. ');
+    expect(result).toContain('#<br/>');
+    expect(result).toContain('&gt;quote<br/>');
+    expect(result).toContain('- <br/>');
+    expect(result).toContain('1. <br/>');
+  });
+
   it('renders block quotes', () => {
     expect(parseDiscordMarkdown('> quoted text')).toContain('<blockquote>quoted text</blockquote>');
+  });
+
+  it('renders an empty block quote', () => {
+    expect(parseDiscordMarkdown('>')).toContain('<blockquote></blockquote>');
   });
 
   it.each([
@@ -86,6 +112,28 @@ describe('parseDiscordMarkdown', () => {
     const result = parseDiscordMarkdown('<script>alert("xss")</script>');
     expect(result).not.toContain('<script>');
     expect(result).toContain('&lt;script&gt;');
+  });
+
+  it('switches between unordered and ordered list containers', () => {
+    expect(parseDiscordMarkdown('- item\n1. first')).toContain('</ul><ol>');
+    expect(parseDiscordMarkdown('1. first\n- item')).toContain('</ol><ul>');
+  });
+
+  it('respects variable allowlists and rejects malformed variables', () => {
+    expect(parseDiscordMarkdown('{{username}} {{unknown}} {{bad-name}}', ['username']))
+      .toContain('data-variable="username"');
+    const result = parseDiscordMarkdown('{{username}} {{unknown}} {{bad-name}}', ['username']);
+    expect(result).toContain('{{unknown}}');
+    expect(result).toContain('{{bad-name}}');
+    expect(parseDiscordMarkdown('{{}}')).toContain('{{}}');
+  });
+
+  it('leaves unclosed inline code and empty inline formats as text', () => {
+    const result = parseDiscordMarkdown('before `code\n****');
+    expect(result).toContain('before `code<br/>');
+    expect(result).toContain('****<br/>');
+    expect(result).not.toContain('<code>code');
+    expect(result).not.toContain('<strong>');
   });
 });
 

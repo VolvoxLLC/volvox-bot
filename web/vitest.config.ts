@@ -63,7 +63,7 @@ export default defineConfig({
         statements: 85,
         // Branch coverage is more volatile in jsdom/component tests; keep it high enough
         // to catch regressions without failing CI on defensive UI/environment branches.
-        branches: 80,
+        branches: 85,
         functions: 85,
         lines: 85,
       },

@@ -11,6 +11,16 @@ vi.mock('next/navigation', () => ({
   usePathname: () => mockUsePathname(),
 }));
 
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
 function RoleConsumer({ guildId }: { guildId: string | null }) {
   const { roles, loading, error } = useGuildRoles(guildId);
 
@@ -180,6 +190,88 @@ describe('RoleDirectoryProvider', () => {
     await user.click(await screen.findByRole('button', { name: 'Retry' }));
 
     await screen.findByText('Admin');
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('clears loading and redirects with a callback URL after an unauthorized response', async () => {
+    const locationSpy = vi.spyOn(globalThis, 'location', 'get').mockReturnValue({
+      href: 'http://localhost:3000/dashboard/moderation',
+    } as Location);
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: false,
+      status: 401,
+      statusText: 'Unauthorized',
+    } as Response);
+
+    render(
+      <RoleDirectoryProvider>
+        <RoleConsumer guildId="guild-1" />
+      </RoleDirectoryProvider>,
+    );
+
+    await screen.findByText('Unauthorized');
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(locationSpy.mock.results[0]?.value.href).toBe(
+      '/login?callbackUrl=%2Fdashboard%2Fmoderation',
+    );
+  });
+
+  it('forces a new fetch during an in-flight request', async () => {
+    const user = userEvent.setup();
+    const firstRequest = createDeferred<Response>();
+    const secondRequest = createDeferred<Response>();
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementationOnce((_input, init) => {
+        const signal = init?.signal;
+        if (!(signal instanceof AbortSignal)) {
+          throw new Error('Expected abort signal');
+        }
+
+        return new Promise<Response>((resolve, reject) => {
+          signal.addEventListener(
+            'abort',
+            () => reject(new DOMException('Aborted', 'AbortError')),
+            { once: true },
+          );
+          void firstRequest.promise.then(resolve, reject);
+        });
+      })
+      .mockImplementationOnce(() => secondRequest.promise);
+
+    function RefreshConsumer() {
+      const { loading, refreshRoles, roles } = useGuildRoles('guild-1');
+
+      return (
+        <div>
+          <button type="button" onClick={() => void refreshRoles()}>
+            Refresh
+          </button>
+          <span>{loading ? 'Loading roles' : roles.map((role) => role.name).join(', ')}</span>
+        </div>
+      );
+    }
+
+    render(
+      <RoleDirectoryProvider>
+        <RefreshConsumer />
+      </RoleDirectoryProvider>,
+    );
+
+    await screen.findByText('Loading roles');
+    await user.click(await screen.findByRole('button', { name: 'Refresh' }));
+
+    await waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+    });
+
+    secondRequest.resolve({
+      ok: true,
+      status: 200,
+      json: async () => [{ id: '1', name: 'Owner', color: 16_711_680 }],
+    } as Response);
+
+    await screen.findByText('Owner');
     expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
 });
