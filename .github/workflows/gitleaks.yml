@@ -50,6 +50,30 @@ jobs:
           echo "Scanning final working tree"
           gitleaks dir . "${gitleaks_flags[@]}"
 
+          scan_pushed_commits_from_event() {
+            if [[ -z "${GITHUB_EVENT_PATH:-}" || ! -f "${GITHUB_EVENT_PATH}" ]]; then
+              echo "::error::Cannot determine pushed commit count: GITHUB_EVENT_PATH is unavailable"
+              exit 1
+            fi
+
+            local commit_count
+            if ! commit_count="$(jq -r 'if (.commits | type) == "array" then (.commits | length) else empty end' "${GITHUB_EVENT_PATH}")"; then
+              echo "::error::Cannot determine pushed commit count from ${GITHUB_EVENT_PATH}"
+              exit 1
+            fi
+            if [[ -z "${commit_count}" || ! "${commit_count}" =~ ^[0-9]+$ ]]; then
+              echo "::error::Cannot determine pushed commit count from ${GITHUB_EVENT_PATH}"
+              exit 1
+            fi
+
+            if (( commit_count > 0 )); then
+              echo "Scanning ${commit_count} pushed commit(s) from event payload"
+              gitleaks git . --log-opts="--max-count=${commit_count} HEAD" "${gitleaks_flags[@]}"
+            else
+              echo "Push event payload contains no commits; skipping commit history scan"
+            fi
+          }
+
           case "${EVENT_NAME}" in
             pull_request)
               if [[ -z "${PR_BASE_SHA}" ]]; then
@@ -61,17 +85,18 @@ jobs:
               gitleaks git . --log-opts="${PR_BASE_SHA}..HEAD" "${gitleaks_flags[@]}"
               ;;
             push)
-              if [[ -z "${PUSH_BEFORE_SHA}" || "${PUSH_BEFORE_SHA}" =~ ^0+$ ]]; then
-                echo "Skipping commit-range scan: push before SHA is unavailable or all-zero"
-                exit 0
+              if [[ -n "${PUSH_BEFORE_SHA}" && ! "${PUSH_BEFORE_SHA}" =~ ^0+$ ]]; then
+                if git merge-base --is-ancestor "${PUSH_BEFORE_SHA}" HEAD 2>/dev/null; then
+                  echo "Scanning push commit range ${PUSH_BEFORE_SHA}..HEAD"
+                  gitleaks git . --log-opts="${PUSH_BEFORE_SHA}..HEAD" "${gitleaks_flags[@]}"
+                else
+                  echo "Push before SHA ${PUSH_BEFORE_SHA} is not an ancestor of HEAD; scanning pushed commits from event payload"
+                  scan_pushed_commits_from_event
+                fi
+              else
+                echo "Push before SHA is unavailable or all-zero; scanning pushed commits from event payload"
+                scan_pushed_commits_from_event
               fi
-              if ! git cat-file -e "${PUSH_BEFORE_SHA}^{commit}" 2>/dev/null; then
-                echo "Skipping commit-range scan: push before SHA ${PUSH_BEFORE_SHA} is not reachable"
-                exit 0
-              fi
-
-              echo "Scanning push commit range ${PUSH_BEFORE_SHA}..HEAD"
-              gitleaks git . --log-opts="${PUSH_BEFORE_SHA}..HEAD" "${gitleaks_flags[@]}"
               ;;
             *)
               echo "Skipping commit-range scan for ${EVENT_NAME} event"
