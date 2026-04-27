@@ -16,9 +16,11 @@ import {
   publishWelcomePanels,
   WELCOME_PANEL_TYPES,
 } from '../../modules/welcomePublishing.js';
+import { rateLimit } from '../middleware/rateLimit.js';
 import { requireGuildAdmin, validateGuild } from './guilds.js';
 
 const router = Router({ mergeParams: true });
+const welcomePublishRateLimit = rateLimit({ windowMs: 60 * 1000, max: 30 });
 
 /**
  * POST /guilds/:id/welcome/preview
@@ -68,42 +70,60 @@ router.post('/preview', (req, res) => {
   return res.json({ rendered, template });
 });
 
-router.get('/status', requireGuildAdmin, validateGuild, async (req, res) => {
-  try {
-    return res.json(await getWelcomePublicationStatus(req.params.id));
-  } catch {
-    return res.status(500).json({ error: 'Failed to read welcome publication status' });
-  }
-});
+router.get(
+  '/status',
+  welcomePublishRateLimit,
+  requireGuildAdmin,
+  validateGuild,
+  async (req, res) => {
+    try {
+      return res.json(await getWelcomePublicationStatus(req.params.id));
+    } catch {
+      return res.status(500).json({ error: 'Failed to read welcome publication status' });
+    }
+  },
+);
 
-router.post('/publish', requireGuildAdmin, validateGuild, async (req, res) => {
-  try {
-    const result = await publishWelcomePanels(req.app.locals.client, req.params.id, {
-      source: 'dashboard',
-      userId: req.user?.userId || req.authMethod || null,
-    });
-    return res.json(result);
-  } catch {
-    return res.status(500).json({ error: 'Failed to publish welcome panels' });
-  }
-});
+router.post(
+  '/publish',
+  welcomePublishRateLimit,
+  requireGuildAdmin,
+  validateGuild,
+  async (req, res) => {
+    try {
+      const result = await publishWelcomePanels(req.app.locals.client, req.params.id, {
+        source: 'dashboard',
+        userId: req.user?.userId || req.authMethod || null,
+      });
+      return res.json(result);
+    } catch {
+      return res.status(500).json({ error: 'Failed to publish welcome panels' });
+    }
+  },
+);
 
-router.post('/publish/:panelType', requireGuildAdmin, validateGuild, async (req, res) => {
-  const panelType = req.params.panelType;
-  if (!WELCOME_PANEL_TYPES.has(panelType)) {
-    return res.status(400).json({ error: 'Invalid welcome panel type' });
-  }
+router.post(
+  '/publish/:panelType',
+  welcomePublishRateLimit,
+  requireGuildAdmin,
+  validateGuild,
+  async (req, res) => {
+    const panelType = req.params.panelType;
+    if (!WELCOME_PANEL_TYPES.has(panelType)) {
+      return res.status(400).json({ error: 'Invalid welcome panel type' });
+    }
 
-  try {
-    const result = await publishWelcomePanel(req.app.locals.client, req.params.id, panelType, {
-      source: 'dashboard',
-      userId: req.user?.userId || req.authMethod || null,
-    });
-    return res.json(result);
-  } catch {
-    return res.status(500).json({ error: 'Failed to publish welcome panel' });
-  }
-});
+    try {
+      const result = await publishWelcomePanel(req.app.locals.client, req.params.id, panelType, {
+        source: 'dashboard',
+        userId: req.user?.userId || req.authMethod || null,
+      });
+      return res.json(result);
+    } catch {
+      return res.status(500).json({ error: 'Failed to publish welcome panel' });
+    }
+  },
+);
 
 /**
  * GET /guilds/:id/welcome/variables
