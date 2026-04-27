@@ -74,7 +74,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-${{ github.run_id }}
+          name: coverage-${{ github.run_id }}-${{ github.run_attempt }}
           path: coverage/
           if-no-files-found: error
           retention-days: 7
@@ -83,7 +83,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: web-coverage-${{ github.run_id }}
+          name: web-coverage-${{ github.run_id }}-${{ github.run_attempt }}
           path: web/coverage/
           if-no-files-found: error
           retention-days: 7
@@ -167,7 +167,7 @@ jobs:
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-${{ github.run_id }}-${{ strategy.job-index }}
+          name: playwright-report-${{ github.run_id }}-${{ github.run_attempt }}-${{ strategy.job-index }}
           path: |
             web/playwright-report/
             web/blob-report/
@@ -218,13 +218,13 @@ jobs:
       - name: Download coverage artifacts (bot)
         uses: actions/download-artifact@v4
         with:
-          name: coverage-${{ github.run_id }}
+          name: coverage-${{ github.run_id }}-${{ github.run_attempt }}
           path: coverage/
 
       - name: Download coverage artifacts (web)
         uses: actions/download-artifact@v4
         with:
-          name: web-coverage-${{ github.run_id }}
+          name: web-coverage-${{ github.run_id }}-${{ github.run_attempt }}
           path: web/coverage/
 
       - name: SonarQube Scan

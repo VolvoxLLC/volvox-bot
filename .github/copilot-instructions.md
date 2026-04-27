@@ -103,7 +103,7 @@ pnpm test:coverage         # Run with coverage thresholds enforced
 
 - **Framework:** Vitest 4 with `node` environment
 - **Test files:** `tests/**/*.test.js` (JavaScript, ESM)
-- **Coverage thresholds** (from `vitest.config.js`): statements 85%, branches 82%, functions 85%, lines 85%
+- **Coverage thresholds** (from `vitest.config.js`): 85% across all metrics
 - **Never lower coverage thresholds** — add tests to cover new code instead
 
 ### Web Dashboard Tests
@@ -271,7 +271,7 @@ The web dashboard has its own `pnpm-lock.yaml` and dependencies. Use `pnpm --pre
 
 2. **No `console.*`:** Biome treats `console.log`, `console.error`, etc. as errors via the `noConsole` rule. Always use the Winston logger from `src/logger.js`.
 
-3. **Coverage thresholds are strict:** Bot tests enforce thresholds from `vitest.config.js` (statements 85%, branches 82%, functions 85%, lines 85%); web tests require 85% across all metrics. If your changes reduce coverage, CI fails. Write tests for new code.
+3. **Coverage thresholds are strict:** Bot and web tests enforce 85% across all metrics. If your changes reduce coverage, CI fails. Write tests for new code.
 
 4. **`pnpm` only:** The project uses `engine-strict=true` in `.npmrc` and requires pnpm 10.30.3+. Do not use npm or yarn.
 

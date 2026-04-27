@@ -13,14 +13,52 @@ export default defineConfig({
       reporter: ['text', 'json', 'html', 'lcov'],
       /**
        * Keep coverage focused on code that Vitest unit tests can meaningfully
-       * exercise. Next.js App Router entrypoints, route-handler proxy glue, and
-       * heavily visual shell/marketing components are validated by their route,
-       * component, integration, or e2e tests instead of global unit coverage.
+       * exercise. Next.js App Router page/layout/error metadata glue and heavily
+       * visual shell/marketing components are validated by their route, component,
+       * integration, or e2e tests instead of global unit coverage.
        */
       include: ['src/**/*.{ts,tsx}'],
       exclude: [
         'src/types/**',
-        'src/app/**',
+        'src/app/**/page.tsx',
+        'src/app/**/layout.tsx',
+        'src/app/**/loading.tsx',
+        'src/app/**/error.tsx',
+        'src/app/global-error.tsx',
+        'src/app/globals.css',
+        'src/app/opengraph-image.tsx',
+        'src/app/robots.ts',
+        'src/app/sitemap.ts',
+        // Thin bot API proxy route glue is exercised through shared proxy helpers and
+        // targeted route tests where behavior differs from the common proxy path.
+        'src/app/api/guilds/[guildId]/ai-feedback/recent/route.ts',
+        'src/app/api/guilds/[guildId]/ai-feedback/stats/route.ts',
+        'src/app/api/guilds/[guildId]/audit-log/route.ts',
+        'src/app/api/guilds/[guildId]/config/route.ts',
+        'src/app/api/guilds/[guildId]/conversations/route.ts',
+        'src/app/api/guilds/[guildId]/conversations/[conversationId]/route.ts',
+        'src/app/api/guilds/[guildId]/conversations/[conversationId]/flag/route.ts',
+        'src/app/api/guilds/[guildId]/conversations/flags/route.ts',
+        'src/app/api/guilds/[guildId]/conversations/stats/route.ts',
+        'src/app/api/guilds/[guildId]/members/route.ts',
+        'src/app/api/guilds/[guildId]/members/[userId]/route.ts',
+        'src/app/api/guilds/[guildId]/members/[userId]/cases/route.ts',
+        'src/app/api/guilds/[guildId]/members/export/route.ts',
+        'src/app/api/guilds/[guildId]/tickets/route.ts',
+        'src/app/api/guilds/[guildId]/tickets/[ticketId]/route.ts',
+        'src/app/api/guilds/[guildId]/tickets/stats/route.ts',
+        'src/app/api/moderation/cases/route.ts',
+        'src/app/api/moderation/cases/[id]/route.ts',
+        'src/app/api/moderation/stats/route.ts',
+        'src/app/api/moderation/user/[userId]/history/route.ts',
+        'src/app/api/performance/route.ts',
+        'src/app/api/performance/thresholds/route.ts',
+        'src/app/api/stats/route.ts',
+        'src/app/api/temp-roles/route.ts',
+        'src/app/api/temp-roles/[id]/route.ts',
+        // These app-local dashboard clients are visual/interaction shells; covered by
+        // component/integration/e2e tests rather than the global unit coverage gate.
+        'src/app/dashboard/**/*-client.tsx',
         'src/stores/**',
         'src/contexts/analytics-context.tsx',
         'src/components/ui/**',

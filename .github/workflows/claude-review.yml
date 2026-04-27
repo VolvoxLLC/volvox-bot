@@ -68,7 +68,7 @@ jobs:
             • Custom error classes from src/utils/errors.js — no raw throw new Error()
             • Parameterized SQL only — no string interpolation in queries
             • New modules must be registered in src/modules/events.js
-            • Test coverage must stay ≥ 80% (statements, branches, functions, lines)
+            • Test coverage must stay ≥ 85% (statements, branches, functions, lines)
 
             DISCORD-SPECIFIC RULES:
             • Messages over 2000 chars must use the splitMessage utility
