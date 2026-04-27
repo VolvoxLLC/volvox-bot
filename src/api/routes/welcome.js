@@ -99,7 +99,7 @@ router.post(
     try {
       const result = await publishWelcomePanels(req.app.locals.client, req.params.id, {
         source: 'dashboard',
-        userId: req.user?.userId || req.authMethod || null,
+        userId: req.user?.userId ?? null,
       });
       return res.json(result);
     } catch (err) {
@@ -127,7 +127,7 @@ router.post(
     try {
       const result = await publishWelcomePanel(req.app.locals.client, req.params.id, panelType, {
         source: 'dashboard',
-        userId: req.user?.userId || req.authMethod || null,
+        userId: req.user?.userId ?? null,
       });
       return res.json(result);
     } catch (err) {
