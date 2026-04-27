@@ -42,7 +42,8 @@ export default defineConfig({
         // TODO(#363): Add Playwright e2e suite and revisit these exclusions once automated e2e coverage
         // is in place. See discussion in PR #362 for context on why unit tests are impractical here.
         'src/components/dashboard/**',
-        // Landing and static layout surfaces are visual composition covered by page and e2e tests.
+        // Landing and static layout surfaces are visual composition currently checked
+        // through page tests and manual QA; broader Playwright coverage is tracked above.
         'src/components/landing/**',
         'src/components/layout/LandingNavbar.tsx',
         'src/components/layout/site-footer.tsx',
