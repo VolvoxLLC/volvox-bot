@@ -37,11 +37,12 @@ export function getWelcomePanelPayload(panelType, welcomeConfig) {
   }
 
   if (panelType === 'role_menu') {
+    const onboarding = normalizeWelcomeOnboardingConfig(welcomeConfig);
     const message = buildRoleMenuMessage(welcomeConfig);
-    if (!message || !welcomeConfig?.channelId) return null;
+    if (!message || !onboarding.roleMenuChannel) return null;
     return {
       panelType,
-      channelId: welcomeConfig.channelId,
+      channelId: onboarding.roleMenuChannel,
       message,
       configHash: hashWelcomePanelConfig(panelType, welcomeConfig),
       configured: true,
@@ -62,7 +63,7 @@ export function hashWelcomePanelConfig(panelType, welcomeConfig = {}) {
         }
       : {
           panelType,
-          channelId: welcomeConfig?.channelId ?? null,
+          channelId: onboarding.roleMenuChannel,
           roleMenu: onboarding.roleMenu,
         };
 
