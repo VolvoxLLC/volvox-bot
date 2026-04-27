@@ -312,6 +312,8 @@ Button defaults:
 
 - Keep inputs compact, bordered, and theme-aware.
 - For channels and roles, use the existing selector components.
+- Welcome setup panel destinations should use dedicated channel selectors for each published panel.
+- Published panel summaries should show readable channel names first and keep raw IDs available through a compact copy action.
 - For larger option sets, prefer searchable command/popover patterns.
 - Do not add extra guild-fetch loops in leaf components. Use `GuildDirectoryProvider` when a dashboard client needs guild data.
 
