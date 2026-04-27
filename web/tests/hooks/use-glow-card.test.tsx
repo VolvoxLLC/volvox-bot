@@ -51,8 +51,12 @@ describe('useGlowCard', () => {
   });
 
   it('removes the pointer listener and cancels pending frames on unmount', () => {
-    vi.spyOn(window, 'requestAnimationFrame').mockReturnValue(7);
-    const cancelAnimationFrameSpy = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+    const requestAnimationFrameSpy = vi
+      .spyOn(globalThis, 'requestAnimationFrame')
+      .mockReturnValue(7);
+    const cancelAnimationFrameSpy = vi
+      .spyOn(globalThis, 'cancelAnimationFrame')
+      .mockImplementation(() => {});
 
     const { unmount } = renderHook(() => useGlowCard());
     document.dispatchEvent(new PointerEvent('pointermove', { bubbles: true }));
@@ -60,5 +64,7 @@ describe('useGlowCard', () => {
     unmount();
 
     expect(cancelAnimationFrameSpy).toHaveBeenCalledWith(7);
+    document.dispatchEvent(new PointerEvent('pointermove', { bubbles: true }));
+    expect(requestAnimationFrameSpy).toHaveBeenCalledTimes(1);
   });
 });
