@@ -255,7 +255,7 @@ export function OnboardingGrowthCategory() {
       const publishingKey = panelType ?? 'all';
       setWelcomePublishing(publishingKey);
       try {
-        const suffix = panelType ? `/publish/${panelType}` : '/publish';
+        const suffix = panelType ? `/publish/${encodeURIComponent(panelType)}` : '/publish';
         const response = await fetch(
           `/api/guilds/${encodeURIComponent(guildId)}/welcome${suffix}`,
           { method: 'POST' },
