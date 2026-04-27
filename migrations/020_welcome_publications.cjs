@@ -2,6 +2,8 @@
 
 /** @param {import('node-pg-migrate').MigrationBuilder} pgm */
 exports.up = (pgm) => {
+  // CHECK constraints intentionally mirror the current welcome panel/status sets.
+  // Add a follow-up ALTER TABLE migration if those sets expand.
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS welcome_publications (
       guild_id TEXT NOT NULL,
