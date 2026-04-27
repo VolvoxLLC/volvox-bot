@@ -67,6 +67,7 @@ export interface WelcomeRoleOption {
 /** Self-assignable role menu settings. */
 export interface WelcomeRoleMenu {
   enabled: boolean;
+  message?: string;
   options: WelcomeRoleOption[];
 }
 
@@ -83,6 +84,8 @@ export interface WelcomeConfig {
   message: string;
   returningMessage?: string | null;
   returningMessageEnabled?: boolean;
+  rulesMessage?: string;
+  introMessage?: string;
   dynamic: WelcomeDynamic;
   rulesChannel: string | null;
   verifiedRole: string | null;

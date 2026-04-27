@@ -46,7 +46,7 @@
     "express": "^5.2.1",
     "ioredis": "^5.10.1",
     "jsonwebtoken": "^9.0.3",
-    "mem0ai": "^3.0.1",
+    "mem0ai": "^3.0.2",
     "node-pg-migrate": "^8.0.4",
     "pg": "^8.20.0",
     "swagger-jsdoc": "^6.2.8",

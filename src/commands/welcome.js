@@ -1,14 +1,9 @@
 import { PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
 import { info } from '../logger.js';
 import { getConfig } from '../modules/config.js';
-import {
-  buildRoleMenuMessage,
-  buildRulesAgreementMessage,
-  normalizeWelcomeOnboardingConfig,
-} from '../modules/welcomeOnboarding.js';
-import { fetchChannelCached } from '../utils/discordCache.js';
+import { publishWelcomePanels } from '../modules/welcomePublishing.js';
 import { isModerator } from '../utils/permissions.js';
-import { safeEditReply, safeSend } from '../utils/safeSend.js';
+import { safeEditReply } from '../utils/safeSend.js';
 
 export const adminOnly = true;
 
@@ -16,15 +11,25 @@ export const data = new SlashCommandBuilder()
   .setName('welcome')
   .setDescription('Welcome/onboarding admin helpers')
   .addSubcommand((sub) =>
-    sub.setName('setup').setDescription('Post rules agreement and role menu onboarding panels'),
+    sub.setName('setup').setDescription('Publish or refresh rules and role menu onboarding panels'),
   );
 
+function formatPublishLine(result) {
+  const label = result.panelType === 'rules' ? 'Rules agreement panel' : 'Role menu panel';
+  if (result.status === 'posted') {
+    const action = result.action === 'updated' ? 'Updated' : 'Posted';
+    return `${action} ${label.toLowerCase()} in <#${result.channelId}>.`;
+  }
+  if (result.status === 'unconfigured') {
+    return `${label} is not configured.`;
+  }
+  return `${label} failed: ${result.lastError || 'unknown error'}.`;
+}
+
 /**
- * Handles the `/welcome setup` command by posting the configured onboarding panels (rules agreement and role menu) into the target guild channels.
+ * Handles `/welcome setup` by delegating to the shared welcome publisher used by the dashboard.
  *
- * The command is restricted to administrators or guild moderators; it edits an ephemeral reply summarizing which panels were posted or why they were not, and logs the execution metadata.
- *
- * @param {import('discord.js').CommandInteraction} interaction - The interaction invoking the command, used to read guild configuration, send messages, and reply to the user.
+ * @param {import('discord.js').CommandInteraction} interaction
  */
 export async function execute(interaction) {
   await interaction.deferReply({ ephemeral: true });
@@ -35,49 +40,18 @@ export async function execute(interaction) {
     !isModerator(interaction.member, guildConfig)
   ) {
     await safeEditReply(interaction, {
-      content: '❌ You need moderator or administrator permissions to run this command.',
+      content: 'You need moderator or administrator permissions to run this command.',
     });
     return;
   }
 
-  const onboarding = normalizeWelcomeOnboardingConfig(guildConfig?.welcome);
-  const resultLines = [];
-
-  if (onboarding.rulesChannel) {
-    const rulesChannel = await fetchChannelCached(interaction.client, onboarding.rulesChannel);
-
-    if (rulesChannel?.isTextBased?.()) {
-      const rulesMsg = buildRulesAgreementMessage();
-      await safeSend(rulesChannel, rulesMsg);
-      resultLines.push(`✅ Posted rules agreement panel in <#${rulesChannel.id}>.`);
-    } else {
-      resultLines.push('⚠️ Could not find `welcome.rulesChannel`; rules panel not posted.');
-    }
-  } else {
-    resultLines.push('⚠️ `welcome.rulesChannel` is not configured.');
-  }
-
-  const roleMenuMsg = buildRoleMenuMessage(guildConfig?.welcome);
-  if (roleMenuMsg && guildConfig?.welcome?.channelId) {
-    const welcomeChannel = await fetchChannelCached(
-      interaction.client,
-      guildConfig.welcome.channelId,
-    );
-
-    if (welcomeChannel?.isTextBased?.()) {
-      await safeSend(welcomeChannel, roleMenuMsg);
-      resultLines.push(`✅ Posted role menu in <#${welcomeChannel.id}>.`);
-    } else {
-      resultLines.push('⚠️ Could not find `welcome.channelId`; role menu not posted.');
-    }
-  } else if (roleMenuMsg) {
-    resultLines.push('⚠️ `welcome.channelId` is not configured; role menu not posted.');
-  } else {
-    resultLines.push('⚠️ `welcome.roleMenu` is disabled or has no valid options.');
-  }
+  const publishResult = await publishWelcomePanels(interaction.client, interaction.guildId, {
+    source: 'slash-command',
+    userId: interaction.user.id,
+  });
 
   await safeEditReply(interaction, {
-    content: resultLines.join('\n'),
+    content: publishResult.results.map(formatPublishLine).join('\n'),
   });
 
   info('Welcome setup command executed', {

@@ -1,7 +1,8 @@
 'use client';
 
-import { Info } from 'lucide-react';
+import { Copy, Info, RefreshCw, Send } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import { AiModelSelect } from '@/components/dashboard/ai-model-select';
 import { useConfigContext } from '@/components/dashboard/config-context';
 import {
@@ -12,6 +13,7 @@ import {
 } from '@/components/dashboard/config-editor-utils';
 import type { ConfigFeatureId } from '@/components/dashboard/config-workspace/types';
 import { XpLevelActionsEditor } from '@/components/dashboard/xp-level-actions-editor';
+import { useGuildChannels } from '@/components/layout/channel-directory-context';
 import { Button } from '@/components/ui/button';
 import { ChannelSelector } from '@/components/ui/channel-selector';
 import { DiscordMarkdownEditor } from '@/components/ui/discord-markdown-editor';
@@ -66,6 +68,31 @@ const DYNAMIC_VARIABLE_DEFINITIONS = [
     sample: '#general, #projects, #showcase',
   },
 ] as const;
+const INTRODUCTION_VARIABLE_DEFINITIONS = [
+  { name: 'user', description: 'Mention member', sample: '@johndoe' },
+  { name: 'username', description: 'Plain name', sample: 'johndoe' },
+  { name: 'server', description: 'Server name', sample: 'Volvox' },
+] as const;
+
+type WelcomePanelStatus = {
+  panelType: 'rules' | 'role_menu';
+  configured: boolean;
+  status: 'unconfigured' | 'missing' | 'posted' | 'failed';
+  channelId: string | null;
+  configuredChannelId?: string | null;
+  messageId: string | null;
+  stale: boolean;
+  lastPublishedAt: string | null;
+  lastError: string | null;
+};
+
+type WelcomePublicationStatus = {
+  guildId: string;
+  panels: {
+    rules?: WelcomePanelStatus;
+    role_menu?: WelcomePanelStatus;
+  };
+};
 
 /**
  * Renders the Onboarding & Growth configuration category UI that allows editing multiple feature sections based on the active tab.
@@ -76,10 +103,14 @@ const DYNAMIC_VARIABLE_DEFINITIONS = [
  */
 export function OnboardingGrowthCategory() {
   const { draftConfig, saving, guildId, updateDraftConfig, activeTabId } = useConfigContext();
+  const { channels: guildChannels } = useGuildChannels(guildId || null);
 
   const activeTab = activeTabId as ConfigFeatureId | null;
 
   const [dmStepsRaw, setDmStepsRaw] = useState('');
+  const [welcomeStatus, setWelcomeStatus] = useState<WelcomePublicationStatus | null>(null);
+  const [welcomeStatusLoading, setWelcomeStatusLoading] = useState(false);
+  const [welcomePublishing, setWelcomePublishing] = useState<string | null>(null);
 
   useEffect(() => {
     if (draftConfig?.welcome?.dmSequence?.steps) {
@@ -166,6 +197,69 @@ export function OnboardingGrowthCategory() {
     return samples;
   }, [draftConfig?.welcome?.dynamic?.enabled]);
 
+  const introductionVariableSamples = useMemo(
+    () =>
+      Object.fromEntries(
+        INTRODUCTION_VARIABLE_DEFINITIONS.map((variable) => [variable.name, variable.sample]),
+      ) as Record<string, string>,
+    [],
+  );
+
+  const fetchWelcomeStatus = useCallback(async () => {
+    if (!guildId || activeTab !== 'welcome') return;
+
+    setWelcomeStatusLoading(true);
+    try {
+      const response = await fetch(`/api/guilds/${encodeURIComponent(guildId)}/welcome/status`, {
+        cache: 'no-store',
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error || 'Failed to fetch welcome publish status');
+      }
+      setWelcomeStatus(data);
+    } catch (error) {
+      toast.error('Failed to load welcome publish status', {
+        description: error instanceof Error ? error.message : 'A network error occurred.',
+      });
+    } finally {
+      setWelcomeStatusLoading(false);
+    }
+  }, [activeTab, guildId]);
+
+  useEffect(() => {
+    void fetchWelcomeStatus();
+  }, [fetchWelcomeStatus]);
+
+  const publishWelcomePanel = useCallback(
+    async (panelType?: 'rules' | 'role_menu') => {
+      if (!guildId) return;
+
+      const publishingKey = panelType ?? 'all';
+      setWelcomePublishing(publishingKey);
+      try {
+        const suffix = panelType ? `/publish/${panelType}` : '/publish';
+        const response = await fetch(
+          `/api/guilds/${encodeURIComponent(guildId)}/welcome${suffix}`,
+          { method: 'POST' },
+        );
+        const data = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(data?.error || 'Failed to publish welcome panels');
+        }
+        toast.success(panelType ? 'Welcome panel published' : 'Welcome panels published');
+        await fetchWelcomeStatus();
+      } catch (error) {
+        toast.error('Failed to publish welcome panel', {
+          description: error instanceof Error ? error.message : 'A network error occurred.',
+        });
+      } finally {
+        setWelcomePublishing(null);
+      }
+    },
+    [fetchWelcomeStatus, guildId],
+  );
+
   const welcomeRoleOptions = useMemo(
     () =>
       (draftConfig?.welcome?.roleMenu?.options ?? []).map((option) => ({
@@ -174,6 +268,19 @@ export function OnboardingGrowthCategory() {
       })),
     [draftConfig?.welcome?.roleMenu?.options],
   );
+  const channelNameById = useMemo(
+    () => new Map(guildChannels.map((channel) => [channel.id, channel.name])),
+    [guildChannels],
+  );
+
+  const copyChannelId = useCallback(async (channelId: string) => {
+    try {
+      await navigator.clipboard.writeText(channelId);
+      toast.success('Channel ID copied');
+    } catch {
+      toast.error('Failed to copy channel ID');
+    }
+  }, []);
 
   useEffect(() => {
     if (!draftConfig) return;
@@ -211,6 +318,8 @@ export function OnboardingGrowthCategory() {
 
   if (!draftConfig) return null;
   if (!activeTab) return null;
+
+  const welcomePanels = welcomeStatus?.panels;
 
   let isCurrentFeatureEnabled = false;
   let handleToggleCurrentFeature = (_v: boolean) => {};
@@ -314,6 +423,38 @@ export function OnboardingGrowthCategory() {
               )}
             </div>
 
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <span className="block text-sm font-bold tracking-tight text-foreground/80">
+                  Rules agreement message
+                </span>
+                <DiscordMarkdownEditor
+                  value={draftConfig.welcome?.rulesMessage ?? ''}
+                  onChange={(v) => updateWelcomeField('rulesMessage', v)}
+                  variables={[]}
+                  variableSamples={{}}
+                  maxLength={2000}
+                  placeholder="Read the server rules, then click below to verify your access."
+                  disabled={saving}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <span className="block text-sm font-bold tracking-tight text-foreground/80">
+                  Introduction prompt
+                </span>
+                <DiscordMarkdownEditor
+                  value={draftConfig.welcome?.introMessage ?? ''}
+                  onChange={(v) => updateWelcomeField('introMessage', v)}
+                  variables={INTRODUCTION_VARIABLE_DEFINITIONS.map((variable) => variable.name)}
+                  variableSamples={introductionVariableSamples}
+                  maxLength={2000}
+                  placeholder="Welcome {{user}}! Drop a quick intro so we can meet you."
+                  disabled={saving}
+                />
+              </div>
+            </div>
+
             <details className="group">
               <summary className="cursor-pointer text-xs font-bold uppercase tracking-widest text-muted-foreground/60 hover:text-primary transition-colors flex items-center gap-2">
                 <span>View Variables Guide</span>
@@ -406,6 +547,122 @@ export function OnboardingGrowthCategory() {
                   filter="text"
                 />
               </div>
+            </div>
+          </div>
+
+          <div className="p-4 sm:p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-0.5">
+                <h3 className="text-sm font-bold text-foreground/90">Published Panels</h3>
+                <p className="text-[11px] text-muted-foreground/60 font-medium">
+                  Publish updates the existing Discord messages when possible.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={welcomeStatusLoading || welcomePublishing !== null}
+                  onClick={() => void fetchWelcomeStatus()}
+                  className="h-8 gap-2 text-[10px] uppercase tracking-widest font-bold border border-border/40 rounded-xl"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Refresh
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={saving || welcomePublishing !== null}
+                  onClick={() => void publishWelcomePanel()}
+                  className="h-8 gap-2 text-[10px] uppercase tracking-widest font-bold rounded-xl"
+                >
+                  <Send className="h-3.5 w-3.5" />
+                  Publish All
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {[
+                { key: 'rules' as const, label: 'Rules Agreement' },
+                { key: 'role_menu' as const, label: 'Self-Assign Roles' },
+              ].map((panel) => {
+                const status = welcomePanels?.[panel.key];
+                const statusText = status?.stale
+                  ? 'stale'
+                  : (status?.status ?? (welcomeStatusLoading ? 'loading' : 'unknown'));
+                const channelId = status?.configuredChannelId ?? status?.channelId;
+                const channelName = channelId ? channelNameById.get(channelId) : null;
+
+                return (
+                  <div
+                    key={panel.key}
+                    className="rounded-2xl border border-border/40 bg-background/60 p-4 space-y-3"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="text-xs font-bold text-foreground/90">{panel.label}</div>
+                        <div className="flex min-h-5 flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground/70">
+                          {channelId ? (
+                            <>
+                              <span>
+                                Channel:{' '}
+                                <span className="font-semibold text-foreground/80">
+                                  #{channelName ?? 'unknown-channel'}
+                                </span>
+                              </span>
+                              <button
+                                type="button"
+                                className="inline-flex h-5 items-center gap-1 rounded-lg border border-border/40 px-1.5 font-mono text-[10px] text-muted-foreground hover:border-primary/30 hover:text-primary"
+                                aria-label={`Copy ${panel.label} channel ID`}
+                                title={`Copy channel ID ${channelId}`}
+                                onClick={() => void copyChannelId(channelId)}
+                              >
+                                <Copy className="h-3 w-3" />
+                                ID
+                              </button>
+                            </>
+                          ) : (
+                            'No channel configured'
+                          )}
+                        </div>
+                      </div>
+                      <span
+                        className={cn(
+                          'rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider',
+                          statusText === 'posted'
+                            ? 'border-primary/30 text-primary bg-primary/10'
+                            : statusText === 'failed'
+                              ? 'border-destructive/30 text-destructive bg-destructive/10'
+                              : 'border-border/50 text-muted-foreground bg-muted/30',
+                        )}
+                      >
+                        {statusText}
+                      </span>
+                    </div>
+                    {status?.messageId && (
+                      <div className="text-[11px] font-mono text-muted-foreground/70">
+                        Message: {status.messageId}
+                      </div>
+                    )}
+                    {status?.lastError && (
+                      <div className="text-[11px] text-destructive">{status.lastError}</div>
+                    )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={saving || welcomePublishing !== null}
+                      onClick={() => void publishWelcomePanel(panel.key)}
+                      className="h-8 w-full gap-2 text-[10px] uppercase tracking-widest font-bold text-primary hover:bg-primary/5 border border-primary/20 rounded-xl"
+                    >
+                      <Send className="h-3.5 w-3.5" />
+                      {status?.messageId ? 'Publish Changes' : 'Publish'}
+                    </Button>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -554,6 +811,21 @@ export function OnboardingGrowthCategory() {
                   label="Role Menu"
                 />
               </div>
+            </div>
+
+            <div className="mb-6 space-y-2">
+              <span className="block text-sm font-bold tracking-tight text-foreground/80">
+                Self-assign roles message
+              </span>
+              <DiscordMarkdownEditor
+                value={draftConfig.welcome?.roleMenu?.message ?? ''}
+                onChange={(v) => updateWelcomeRoleMenu('message', v)}
+                variables={[]}
+                variableSamples={{}}
+                maxLength={2000}
+                placeholder="Pick your roles below. You can update them anytime."
+                disabled={saving}
+              />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">

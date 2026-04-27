@@ -236,7 +236,7 @@ async function handleApply(interaction) {
     : '';
 
   await safeEditReply(interaction, {
-    content: `✅ Applied template **${tpl.name}** to role menu config (${validOptions.length} option${validOptions.length !== 1 ? 's' : ''}).${merge ? ' Merged with existing options.' : ''}${builtinNote}${filterNote}\n\nRun \`/welcome setup\` to post the updated role menu.`,
+    content: `✅ Applied template **${tpl.name}** to role menu config (${validOptions.length} option${validOptions.length !== 1 ? 's' : ''}).${merge ? ' Merged with existing options.' : ''}${builtinNote}${filterNote}\n\nPublish the updated role menu from the dashboard or run \`/welcome setup\`.`,
   });
 }
 
