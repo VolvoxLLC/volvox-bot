@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockUseConfigContext = vi.fn();
 
@@ -425,7 +425,7 @@ describe('OnboardingGrowthCategory', () => {
   });
 
   beforeEach(() => {
-    global.fetch = vi.fn(async () =>
+    vi.stubGlobal('fetch', vi.fn(async () =>
       Response.json({
         guildId: 'guild-1',
         panels: {
@@ -447,7 +447,11 @@ describe('OnboardingGrowthCategory', () => {
           },
         },
       }),
-    ) as typeof fetch;
+    ));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it('shows the full dynamic variable guide for welcome messages', async () => {
