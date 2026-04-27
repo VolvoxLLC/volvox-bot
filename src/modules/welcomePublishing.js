@@ -254,18 +254,23 @@ export async function publishWelcomePanel(client, guildId, panelType, actor = {}
       ? await safeEditMessage(existing, payload.message)
       : await safeSend(channel, payload.message);
     const sentMessage = Array.isArray(message) ? message[0] : message;
+    const publishedMessageId = sentMessage?.id ?? stored?.message_id ?? null;
+    let persistWarning = null;
 
     const saved = await upsertPublication(guildId, panelType, {
       channelId: payload.channelId,
-      messageId: sentMessage?.id ?? stored?.message_id ?? null,
+      messageId: publishedMessageId,
       configHash: payload.configHash,
       status: 'posted',
       lastError: null,
       createdBy: actor.userId ?? null,
     }).catch((err) => {
+      persistWarning = 'Published to Discord but failed to save publication state.';
       warn('Failed to persist welcome publication state', {
         guildId,
         panelType,
+        channelId: payload.channelId,
+        messageId: publishedMessageId,
         error: err.message,
       });
       return null;
@@ -275,9 +280,10 @@ export async function publishWelcomePanel(client, guildId, panelType, actor = {}
       guildId,
       panelType,
       channelId: payload.channelId,
-      messageId: sentMessage?.id ?? null,
+      messageId: publishedMessageId,
       action: existing ? 'updated' : 'created',
       actor: actor.userId ?? null,
+      persisted: Boolean(saved),
     });
 
     return {
@@ -285,10 +291,11 @@ export async function publishWelcomePanel(client, guildId, panelType, actor = {}
       status: 'posted',
       configured: true,
       channelId: payload.channelId,
-      messageId: saved?.message_id ?? sentMessage?.id ?? null,
+      messageId: saved?.message_id ?? publishedMessageId,
       action: existing ? 'updated' : 'created',
       stale: false,
-      lastError: null,
+      lastError: persistWarning,
+      persistWarning: Boolean(persistWarning),
     };
   } catch (err) {
     logError('Failed to publish welcome panel', {
