@@ -102,14 +102,21 @@ async function upsertPublication(guildId, panelType, values) {
     `INSERT INTO welcome_publications
        (guild_id, panel_type, channel_id, message_id, config_hash, status,
         last_published_at, last_error, created_by, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7, $8, NOW())
+     VALUES (
+       $1, $2, $3, $4, $5, $6,
+       CASE WHEN $6 = 'posted' THEN NOW() ELSE NULL END,
+       $7, $8, NOW()
+     )
      ON CONFLICT (guild_id, panel_type)
      DO UPDATE SET
        channel_id = EXCLUDED.channel_id,
        message_id = EXCLUDED.message_id,
        config_hash = EXCLUDED.config_hash,
        status = EXCLUDED.status,
-       last_published_at = EXCLUDED.last_published_at,
+       last_published_at = CASE
+         WHEN EXCLUDED.status = 'posted' THEN EXCLUDED.last_published_at
+         ELSE welcome_publications.last_published_at
+       END,
        last_error = EXCLUDED.last_error,
        created_by = COALESCE(EXCLUDED.created_by, welcome_publications.created_by),
        updated_at = NOW()
@@ -275,7 +282,6 @@ export async function publishWelcomePanel(client, guildId, panelType, actor = {}
     stored?.channel_id === payload.channelId
       ? await fetchExistingMessage(channel, stored?.message_id)
       : null;
-  await deleteStoredPublicationMessage(client, guildId, panelType, stored, payload.channelId);
 
   try {
     const message = existing
@@ -303,6 +309,10 @@ export async function publishWelcomePanel(client, guildId, panelType, actor = {}
       });
       return null;
     });
+
+    if (saved) {
+      await deleteStoredPublicationMessage(client, guildId, panelType, stored, payload.channelId);
+    }
 
     info('Welcome panel published', {
       guildId,

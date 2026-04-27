@@ -36,6 +36,11 @@ const MAX_ROLE_MENU_OPTIONS = 25;
  * }}
  */
 export function normalizeWelcomeOnboardingConfig(welcomeConfig = {}) {
+  const legacyRoleMenuChannel =
+    typeof welcomeConfig?.channelId === 'string' && welcomeConfig.channelId.trim()
+      ? welcomeConfig.channelId.trim()
+      : null;
+
   const roleMenuOptions = Array.isArray(welcomeConfig?.roleMenu?.options)
     ? welcomeConfig.roleMenu.options
         .filter((opt) => opt && typeof opt === 'object')
@@ -60,7 +65,7 @@ export function normalizeWelcomeOnboardingConfig(welcomeConfig = {}) {
     roleMenuChannel:
       typeof welcomeConfig?.roleMenuChannel === 'string' && welcomeConfig.roleMenuChannel.trim()
         ? welcomeConfig.roleMenuChannel.trim()
-        : null,
+        : legacyRoleMenuChannel,
     verifiedRole:
       typeof welcomeConfig?.verifiedRole === 'string' && welcomeConfig.verifiedRole.trim()
         ? welcomeConfig.verifiedRole.trim()

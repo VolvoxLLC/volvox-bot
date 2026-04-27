@@ -68,7 +68,7 @@ function mockPool(query) {
 
 describe('welcomePublishing module', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
     getPool.mockReturnValue(null);
     getConfig.mockReturnValue({ welcome: createWelcomeConfig() });
   });
@@ -105,6 +105,33 @@ describe('welcomePublishing module', () => {
       ),
     ).toBeNull();
     expect(() => getWelcomePanelPayload('bogus', {})).toThrow('Unknown welcome panel type');
+  });
+
+  it('uses the welcome message channel as the legacy role menu channel fallback', () => {
+    const payload = getWelcomePanelPayload(
+      'role_menu',
+      createWelcomeConfig({
+        channelId: 'legacy-welcome-channel',
+        roleMenuChannel: null,
+      }),
+    );
+
+    expect(payload).toMatchObject({
+      panelType: 'role_menu',
+      channelId: 'legacy-welcome-channel',
+      configured: true,
+    });
+    expect(
+      hashWelcomePanelConfig(
+        'role_menu',
+        createWelcomeConfig({ channelId: 'channel-a', roleMenuChannel: null }),
+      ),
+    ).not.toBe(
+      hashWelcomePanelConfig(
+        'role_menu',
+        createWelcomeConfig({ channelId: 'channel-b', roleMenuChannel: null }),
+      ),
+    );
   });
 
   it('serializes publication status with stale detection', async () => {
@@ -259,7 +286,7 @@ describe('welcomePublishing module', () => {
     expect(result.action).toBe('updated');
   });
 
-  it('deletes a stale tracked message when a panel changes channels', async () => {
+  it('deletes a stale tracked message after a panel changes channels and persists', async () => {
     const previousMessage = { id: 'old-message', delete: vi.fn().mockResolvedValue(undefined) };
     const previousChannel = createTextChannel({
       id: 'old-channel',
@@ -288,7 +315,72 @@ describe('welcomePublishing module', () => {
     await publishWelcomePanel({}, 'guild-1', 'rules');
 
     expect(fetchChannelCached).toHaveBeenNthCalledWith(2, {}, 'old-channel', 'guild-1');
+    expect(safeSend.mock.invocationCallOrder[0]).toBeLessThan(
+      previousMessage.delete.mock.invocationCallOrder[0],
+    );
     expect(previousMessage.delete).toHaveBeenCalled();
+  });
+
+  it('does not delete the previous panel when publishing to the new channel fails', async () => {
+    const previousMessage = { id: 'old-message', delete: vi.fn().mockResolvedValue(undefined) };
+    const previousChannel = createTextChannel({
+      id: 'old-channel',
+      messages: { fetch: vi.fn().mockResolvedValue(previousMessage) },
+    });
+    const nextChannel = createTextChannel({ id: 'rules-channel' });
+    fetchChannelCached.mockResolvedValueOnce(nextChannel).mockResolvedValueOnce(previousChannel);
+    safeSend.mockRejectedValue(new Error('discord rejected'));
+    mockPool(async (sql, params) => {
+      if (sql.includes('SELECT')) {
+        return {
+          rows: [
+            {
+              panel_type: params[1],
+              channel_id: 'old-channel',
+              message_id: 'old-message',
+              config_hash: 'old-hash',
+              status: 'posted',
+            },
+          ],
+        };
+      }
+      return { rows: [{ channel_id: params[2], message_id: params[3], status: params[5] }] };
+    });
+
+    await publishWelcomePanel({}, 'guild-1', 'rules');
+
+    expect(previousMessage.delete).not.toHaveBeenCalled();
+  });
+
+  it('does not delete the previous panel when publication state fails to persist', async () => {
+    const previousMessage = { id: 'old-message', delete: vi.fn().mockResolvedValue(undefined) };
+    const previousChannel = createTextChannel({
+      id: 'old-channel',
+      messages: { fetch: vi.fn().mockResolvedValue(previousMessage) },
+    });
+    const nextChannel = createTextChannel({ id: 'rules-channel' });
+    fetchChannelCached.mockResolvedValueOnce(nextChannel).mockResolvedValueOnce(previousChannel);
+    safeSend.mockResolvedValue({ id: 'new-message' });
+    mockPool(async (sql, params) => {
+      if (sql.includes('SELECT')) {
+        return {
+          rows: [
+            {
+              panel_type: params[1],
+              channel_id: 'old-channel',
+              message_id: 'old-message',
+              config_hash: 'old-hash',
+              status: 'posted',
+            },
+          ],
+        };
+      }
+      throw new Error('insert failed');
+    });
+
+    await publishWelcomePanel({}, 'guild-1', 'rules');
+
+    expect(previousMessage.delete).not.toHaveBeenCalled();
   });
 
   it('continues publishing when stale message deletion fails', async () => {
@@ -333,6 +425,12 @@ describe('welcomePublishing module', () => {
     expect(failedPool.query).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO welcome_publications'),
       expect.arrayContaining(['guild-1', 'rules', 'rules-channel', null]),
+    );
+    expect(failedPool.query.mock.calls[0][0]).toContain(
+      "CASE WHEN $6 = 'posted' THEN NOW() ELSE NULL END",
+    );
+    expect(failedPool.query.mock.calls[0][0]).toContain(
+      "WHEN EXCLUDED.status = 'posted' THEN EXCLUDED.last_published_at",
     );
 
     getConfig.mockReturnValue({
