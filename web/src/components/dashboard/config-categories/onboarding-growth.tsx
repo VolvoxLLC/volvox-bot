@@ -94,6 +94,41 @@ type WelcomePublicationStatus = {
   };
 };
 
+type WelcomePublishResult = {
+  panelType?: 'rules' | 'role_menu';
+  status?: WelcomePanelStatus['status'];
+  lastError?: string | null;
+};
+
+type WelcomeBulkPublishResult = {
+  results?: WelcomePublishResult[];
+};
+
+function getWelcomePublishFailureMessage(
+  data: (WelcomePublishResult & WelcomeBulkPublishResult) | null,
+  panelType?: 'rules' | 'role_menu',
+) {
+  if (panelType) {
+    if (data?.status === 'posted') return null;
+    return data?.lastError || `Publish returned status "${data?.status ?? 'unknown'}"`;
+  }
+
+  const results = Array.isArray(data?.results) ? data.results : [];
+  const failed = results.filter((entry) => entry.status !== 'posted');
+  if (results.length > 0 && failed.length === 0) return null;
+
+  if (failed.length > 0) {
+    return failed
+      .map((entry) => {
+        const label = entry.panelType === 'role_menu' ? 'role menu' : entry.panelType || 'panel';
+        return `${label}: ${entry.lastError || entry.status || 'unknown'}`;
+      })
+      .join('; ');
+  }
+
+  return 'Welcome publish response did not include panel results.';
+}
+
 /**
  * Renders the Onboarding & Growth configuration category UI that allows editing multiple feature sections based on the active tab.
  *
@@ -265,6 +300,10 @@ export function OnboardingGrowthCategory() {
         const data = await response.json().catch(() => null);
         if (!response.ok) {
           throw new Error(data?.error || 'Failed to publish welcome panels');
+        }
+        const failureMessage = getWelcomePublishFailureMessage(data, panelType);
+        if (failureMessage) {
+          throw new Error(failureMessage);
         }
         toast.success(panelType ? 'Welcome panel published' : 'Welcome panels published');
         await fetchWelcomeStatus();
