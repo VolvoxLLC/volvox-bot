@@ -52,6 +52,8 @@
     "channelId": "1438631182379253814",
     "message": "{{greeting}}\n\n{{milestoneLine}}\n\n{{vibeLine}}\n\n{{ctaLine}}",
     "returningMessage": "Welcome back, {{user}}! Glad to see you again. Jump back in whenever you are ready.",
+    "rulesMessage": "Read the server rules, then click below to verify your access.",
+    "introMessage": "Welcome {{user}}! Drop a quick intro so we can meet you.",
     "dynamic": {
       "enabled": true,
       "timezone": "America/New_York",
@@ -65,6 +67,7 @@
     "introChannel": null,
     "roleMenu": {
       "enabled": false,
+      "message": "Pick your roles below. You can update them anytime.",
       "options": []
     },
     "dmSequence": {

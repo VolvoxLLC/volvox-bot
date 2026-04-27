@@ -206,6 +206,8 @@ export const CONFIG_SCHEMA = {
       message: { type: 'string' },
       returningMessage: { type: 'string', nullable: true },
       returningMessageEnabled: { type: 'boolean' },
+      rulesMessage: { type: 'string', maxLength: 2000 },
+      introMessage: { type: 'string', maxLength: 2000 },
       variants: {
         type: 'array',
         items: { type: 'string' },
@@ -240,6 +242,7 @@ export const CONFIG_SCHEMA = {
         type: 'object',
         properties: {
           enabled: { type: 'boolean' },
+          message: { type: 'string', maxLength: 2000 },
           options: { type: 'array', items: { type: 'object', required: ['label', 'roleId'] } },
         },
       },

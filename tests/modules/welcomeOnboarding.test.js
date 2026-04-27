@@ -55,7 +55,13 @@ describe('welcomeOnboarding module', () => {
       rulesChannel: null,
       verifiedRole: null,
       introChannel: null,
-      roleMenu: { enabled: false, options: [] },
+      rulesMessage: 'Read the server rules, then click below to verify your access.',
+      roleMenu: {
+        enabled: false,
+        message: 'Pick your roles below. You can update them anytime.',
+        options: [],
+      },
+      introMessage: 'Welcome {{user}}! Drop a quick intro so we can meet you.',
       dmSequence: { enabled: false, steps: [] },
     });
   });
@@ -65,8 +71,11 @@ describe('welcomeOnboarding module', () => {
       rulesChannel: '  rules-1  ',
       verifiedRole: ' verified-role ',
       introChannel: ' intro-1 ',
+      rulesMessage: ' Custom rules ',
+      introMessage: ' Say hi {{username}} ',
       roleMenu: {
         enabled: true,
+        message: ' Choose roles ',
         options: [
           { label: '  Gamer ', roleId: ' role-1 ', description: '  likes games  ' },
           { label: '', roleId: 'role-2' },
@@ -83,10 +92,13 @@ describe('welcomeOnboarding module', () => {
       rulesChannel: 'rules-1',
       verifiedRole: 'verified-role',
       introChannel: 'intro-1',
+      rulesMessage: 'Custom rules',
       roleMenu: {
         enabled: true,
+        message: 'Choose roles',
         options: [{ label: 'Gamer', roleId: 'role-1', description: 'likes games' }],
       },
+      introMessage: 'Say hi {{username}}',
       dmSequence: {
         enabled: true,
         steps: ['welcome', 'read the rules'],
@@ -102,6 +114,21 @@ describe('welcomeOnboarding module', () => {
     expect(message.components).toHaveLength(1);
     expect(button.label).toBe('Accept Rules');
     expect(button.custom_id).toBe(RULES_ACCEPT_BUTTON_ID);
+  });
+
+  it('uses configurable rules and role menu messages', () => {
+    expect(buildRulesAgreementMessage({ rulesMessage: 'Custom rules panel' }).content).toBe(
+      'Custom rules panel',
+    );
+    expect(
+      buildRoleMenuMessage({
+        roleMenu: {
+          enabled: true,
+          message: 'Custom roles panel',
+          options: [{ label: 'Role A', roleId: 'role-a' }],
+        },
+      })?.content,
+    ).toBe('Custom roles panel');
   });
 
   it('detects returning members via the DidRejoin flag', () => {

@@ -206,3 +206,20 @@ export async function safeUpdate(interaction, options) {
     throw err;
   }
 }
+
+/**
+ * Safely edit a Discord message.
+ * Sanitizes content, enforces allowedMentions, and truncates long content.
+ *
+ * @param {import('discord.js').Message} message - Message to edit
+ * @param {string|object} options - Edit payload
+ * @returns {Promise<import('discord.js').Message>} The edited message
+ */
+export async function safeEditMessage(message, options) {
+  try {
+    return await message.edit(truncateForInteraction(prepareOptions(options)));
+  } catch (err) {
+    logError('safeEditMessage failed', { error: err.message, stack: err.stack });
+    throw err;
+  }
+}
