@@ -4,6 +4,7 @@
  */
 
 import { Router } from 'express';
+import { error as logError } from '../../logger.js';
 import { getConfig } from '../../modules/config.js';
 import {
   pickWelcomeVariant,
@@ -78,7 +79,12 @@ router.get(
   async (req, res) => {
     try {
       return res.json(await getWelcomePublicationStatus(req.params.id));
-    } catch {
+    } catch (err) {
+      logError('Failed to read welcome publication status', {
+        guildId: req.params.id,
+        userId: req.user?.userId ?? null,
+        error: err?.message,
+      });
       return res.status(500).json({ error: 'Failed to read welcome publication status' });
     }
   },
@@ -96,7 +102,12 @@ router.post(
         userId: req.user?.userId || req.authMethod || null,
       });
       return res.json(result);
-    } catch {
+    } catch (err) {
+      logError('Failed to publish welcome panels from API', {
+        guildId: req.params.id,
+        userId: req.user?.userId ?? null,
+        error: err?.message,
+      });
       return res.status(500).json({ error: 'Failed to publish welcome panels' });
     }
   },
@@ -119,7 +130,13 @@ router.post(
         userId: req.user?.userId || req.authMethod || null,
       });
       return res.json(result);
-    } catch {
+    } catch (err) {
+      logError('Failed to publish welcome panel from API', {
+        guildId: req.params.id,
+        panelType,
+        userId: req.user?.userId ?? null,
+        error: err?.message,
+      });
       return res.status(500).json({ error: 'Failed to publish welcome panel' });
     }
   },
