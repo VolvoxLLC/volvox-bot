@@ -64,14 +64,15 @@ function prepareOptions(options) {
  * support a single message — splitting is not possible.
  *
  * @param {object} prepared - The sanitized options object
+ * @param {string} context - Short log label for the caller category
  * @returns {object} Options with content truncated to DISCORD_MAX_LENGTH
  */
-function truncateForInteraction(prepared) {
+function truncateContent(prepared, context = 'Message') {
   const content = prepared.content;
   if (typeof content === 'string' && content.length > DISCORD_MAX_LENGTH) {
     const truncatedContent =
       content.slice(0, DISCORD_MAX_LENGTH - TRUNCATION_INDICATOR.length) + TRUNCATION_INDICATOR;
-    logWarn('Interaction content truncated', {
+    logWarn(`${context} content truncated`, {
       originalLength: content.length,
       maxLength: DISCORD_MAX_LENGTH,
     });
@@ -137,7 +138,7 @@ export async function safeSend(channel, options) {
  */
 export async function safeReply(target, options) {
   try {
-    return await target.reply(truncateForInteraction(prepareOptions(options)));
+    return await target.reply(truncateContent(prepareOptions(options), 'Interaction'));
   } catch (err) {
     logError('safeReply failed', { error: err.message, stack: err.stack });
     throw err;
@@ -157,7 +158,7 @@ export async function safeReply(target, options) {
  */
 export async function safeFollowUp(interaction, options) {
   try {
-    return await interaction.followUp(truncateForInteraction(prepareOptions(options)));
+    return await interaction.followUp(truncateContent(prepareOptions(options), 'Interaction'));
   } catch (err) {
     logError('safeFollowUp failed', { error: err.message, stack: err.stack });
     throw err;
@@ -177,7 +178,7 @@ export async function safeFollowUp(interaction, options) {
  */
 export async function safeEditReply(interaction, options) {
   try {
-    return await interaction.editReply(truncateForInteraction(prepareOptions(options)));
+    return await interaction.editReply(truncateContent(prepareOptions(options), 'Interaction'));
   } catch (err) {
     logError('safeEditReply failed', { error: err.message, stack: err.stack });
     throw err;
@@ -200,7 +201,7 @@ export async function safeEditReply(interaction, options) {
  */
 export async function safeUpdate(interaction, options) {
   try {
-    return await interaction.update(truncateForInteraction(prepareOptions(options)));
+    return await interaction.update(truncateContent(prepareOptions(options), 'Interaction'));
   } catch (err) {
     logError('safeUpdate failed', { error: err.message, stack: err.stack });
     throw err;
@@ -217,7 +218,7 @@ export async function safeUpdate(interaction, options) {
  */
 export async function safeEditMessage(message, options) {
   try {
-    return await message.edit(truncateForInteraction(prepareOptions(options)));
+    return await message.edit(truncateContent(prepareOptions(options), 'Message edit'));
   } catch (err) {
     logError('safeEditMessage failed', { error: err.message, stack: err.stack });
     throw err;
