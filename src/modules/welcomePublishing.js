@@ -193,7 +193,7 @@ export async function publishWelcomePanel(client, guildId, panelType, actor = {}
     };
   }
 
-  const channel = await fetchChannelCached(client, payload.channelId);
+  const channel = await fetchChannelCached(client, payload.channelId, guildId);
   if (!channel?.isTextBased?.()) {
     const lastError = `Configured channel ${payload.channelId} was not found or is not text-based`;
     await upsertPublication(guildId, panelType, {
