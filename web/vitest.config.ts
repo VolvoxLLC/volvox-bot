@@ -20,9 +20,18 @@ export default defineConfig({
       include: ['src/**/*.{ts,tsx}'],
       exclude: [
         'src/types/**',
-        // Next.js app-router entry points are exercised by route and page tests,
-        // but are framework glue and visual composition rather than reusable units.
-        'src/app/**',
+        // Next.js app-router UI entry points are framework glue and visual composition.
+        // Keep src/app/api/** route handlers covered.
+        'src/app/**/page.tsx',
+        'src/app/**/layout.tsx',
+        'src/app/**/loading.tsx',
+        'src/app/**/error.tsx',
+        'src/app/global-error.tsx',
+        'src/app/globals.css',
+        'src/app/opengraph-image.tsx',
+        'src/app/robots.ts',
+        'src/app/sitemap.ts',
+        'src/app/dashboard/**/*-client.tsx',
         'src/stores/**',
         'src/components/ui/**',
         'src/components/error-card.tsx',
