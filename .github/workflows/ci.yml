@@ -74,19 +74,21 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-${{ github.run_id }}-${{ github.run_attempt }}
+          name: coverage-${{ github.run_id }}
           path: coverage/
           if-no-files-found: error
           retention-days: 7
+          overwrite: true
 
       - name: Upload coverage artifacts (web)
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: web-coverage-${{ github.run_id }}-${{ github.run_attempt }}
+          name: web-coverage-${{ github.run_id }}
           path: web/coverage/
           if-no-files-found: error
           retention-days: 7
+          overwrite: true
 
   build:
     name: Typecheck & Build
@@ -176,7 +178,7 @@ jobs:
   ci:
     name: CI
     runs-on: ubuntu-latest
-    needs: [lint, test, build, e2e, docker-build-validation]
+    needs: [lint, test, build, e2e, docker-build-validation, sonarqube]
     if: ${{ always() }}
 
     steps:
@@ -187,6 +189,7 @@ jobs:
           echo "build result: ${{ needs.build.result }}"
           echo "e2e result: ${{ needs.e2e.result }}"
           echo "docker result: ${{ needs.docker-build-validation.result }}"
+          echo "sonarqube result: ${{ needs.sonarqube.result }}"
 
           if [ "${{ needs.lint.result }}" != "success" ] || \
              [ "${{ needs.test.result }}" != "success" ] || \
@@ -198,6 +201,11 @@ jobs:
 
           if [ "${{ needs.docker-build-validation.result }}" != "success" ]; then
             echo "Docker build validation failed."
+            exit 1
+          fi
+
+          if [ "${{ needs.sonarqube.result }}" != "success" ] && [ "${{ needs.sonarqube.result }}" != "skipped" ]; then
+            echo "SonarQube analysis failed or was cancelled."
             exit 1
           fi
 
@@ -218,13 +226,13 @@ jobs:
       - name: Download coverage artifacts (bot)
         uses: actions/download-artifact@v4
         with:
-          name: coverage-${{ github.run_id }}-${{ github.run_attempt }}
+          name: coverage-${{ github.run_id }}
           path: coverage/
 
       - name: Download coverage artifacts (web)
         uses: actions/download-artifact@v4
         with:
-          name: web-coverage-${{ github.run_id }}-${{ github.run_attempt }}
+          name: web-coverage-${{ github.run_id }}
           path: web/coverage/
 
       - name: SonarQube Scan

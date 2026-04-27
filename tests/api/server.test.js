@@ -17,7 +17,13 @@ vi.mock('../../src/api/ws/logStream.js', () => ({
   stopLogStream: vi.fn().mockResolvedValue(undefined),
 }));
 
-import { createApp, setServerDbPool, startServer, stopServer } from '../../src/api/server.js';
+import {
+  createApp,
+  setServerDbPool,
+  setServerReady,
+  startServer,
+  stopServer,
+} from '../../src/api/server.js';
 import { setupLogStream } from '../../src/api/ws/logStream.js';
 
 describe('API server', () => {
@@ -44,6 +50,28 @@ describe('API server', () => {
 
       expect(app.locals.client).toBe(client);
       expect(app.locals.dbPool).toBe(mockPool);
+    });
+
+    it('should gate non-health API routes until database-backed startup is ready', async () => {
+      vi.stubEnv('DATABASE_URL', 'postgres://db');
+      const app = createApp(client, null);
+
+      const health = await request(app).get('/api/v1/health');
+      const res = await request(app).get('/api/v1/nonexistent');
+
+      expect(health.status).toBe(503);
+      expect(health.body.status).toBe('starting');
+      expect(res.status).toBe(503);
+      expect(res.body).toEqual({ error: 'API not ready' });
+    });
+
+    it('should allow non-health API routes once startup is ready', async () => {
+      vi.stubEnv('DATABASE_URL', 'postgres://db');
+      const app = createApp(client, { query: vi.fn() });
+
+      const res = await request(app).get('/api/v1/nonexistent');
+
+      expect(res.status).toBe(404);
     });
 
     it('should enable trust proxy for correct client IP behind reverse proxies', () => {
@@ -206,6 +234,19 @@ describe('API server', () => {
 
     it('should return false when updating dbPool without an active app', () => {
       expect(setServerDbPool({ query: vi.fn() })).toBe(false);
+    });
+
+    it('should update API readiness on the running app', async () => {
+      vi.stubEnv('BOT_API_PORT', '0');
+      await startServer(client, null);
+
+      expect(setServerReady(true)).toBe(true);
+
+      await stopServer();
+    });
+
+    it('should return false when updating API readiness without an active app', () => {
+      expect(setServerReady(true)).toBe(false);
     });
 
     it('should continue when setupLogStream throws', async () => {

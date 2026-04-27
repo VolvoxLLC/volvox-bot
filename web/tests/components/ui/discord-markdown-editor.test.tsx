@@ -120,9 +120,8 @@ describe('parseDiscordMarkdown', () => {
   });
 
   it('respects variable allowlists and rejects malformed variables', () => {
-    expect(parseDiscordMarkdown('{{username}} {{unknown}} {{bad-name}}', ['username']))
-      .toContain('data-variable="username"');
     const result = parseDiscordMarkdown('{{username}} {{unknown}} {{bad-name}}', ['username']);
+    expect(result).toContain('data-variable="username"');
     expect(result).toContain('{{unknown}}');
     expect(result).toContain('{{bad-name}}');
     expect(parseDiscordMarkdown('{{}}')).toContain('{{}}');

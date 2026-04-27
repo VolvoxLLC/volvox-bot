@@ -19,7 +19,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Client, Collection, GatewayIntentBits, Partials } from 'discord.js';
 import { config as dotenvConfig } from 'dotenv';
-import { setServerDbPool, startServer, stopServer } from './api/server.js';
+import { setServerDbPool, setServerReady, startServer, stopServer } from './api/server.js';
 import {
   registerConfigListeners,
   removeLoggingTransport,
@@ -339,6 +339,7 @@ async function startup() {
   // Load config (from DB if available, else config.json)
   config = await loadConfig();
   info('Configuration loaded', { sections: Object.keys(config) });
+  setServerReady(true);
 
   // Register config change listeners for hot-reload (logging transport,
   // observability listeners for AI/spam/moderation config changes)

@@ -39,6 +39,7 @@ export function createApp(client, dbPool) {
   // Store references for route handlers
   app.locals.client = client;
   app.locals.dbPool = dbPool;
+  app.locals.apiReady = !process.env.DATABASE_URL || Boolean(dbPool);
 
   // CORS - must come BEFORE body parser so error responses include CORS headers
   const dashboardUrl = process.env.DASHBOARD_URL;
@@ -75,6 +76,13 @@ export function createApp(client, dbPool) {
 
   // Raw OpenAPI spec (JSON) — public for Mintlify
   app.get('/api/docs.json', (_req, res) => res.json(swaggerSpec));
+
+  // Keep API health reachable during startup, but do not expose DB/config-backed
+  // API routes until initialization has attached the pool and loaded config.
+  app.use('/api/v1', (req, res, next) => {
+    if (req.path === '/health' || app.locals.apiReady) return next();
+    return res.status(503).json({ error: 'API not ready' });
+  });
 
   // Response time tracking for performance monitoring
   app.use('/api/v1', (req, res, next) => {
@@ -184,11 +192,23 @@ export async function startServer(client, dbPool, options = {}) {
  */
 export function setServerDbPool(dbPool) {
   if (!activeApp) {
-    warn('setServerDbPool called but no API app is active');
     return false;
   }
 
   activeApp.locals.dbPool = dbPool;
+  return true;
+}
+
+/**
+ * Mark the running Express app as ready (or not ready) for non-health API routes.
+ *
+ * @param {boolean} ready - Whether non-health API routes may serve traffic
+ * @returns {boolean} true when a running app was updated
+ */
+export function setServerReady(ready) {
+  if (!activeApp) return false;
+
+  activeApp.locals.apiReady = ready;
   return true;
 }
 

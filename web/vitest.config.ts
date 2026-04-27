@@ -29,8 +29,8 @@ export default defineConfig({
         'src/app/opengraph-image.tsx',
         'src/app/robots.ts',
         'src/app/sitemap.ts',
-        // Thin bot API proxy route glue is exercised through shared proxy helpers and
-        // targeted route tests where behavior differs from the common proxy path.
+        // Explicit temporary exclusions for untested dashboard proxy routes. Keep this
+        // targeted so tested API route handlers stay covered until each route gets its own tests.
         'src/app/api/guilds/[guildId]/ai-feedback/recent/route.ts',
         'src/app/api/guilds/[guildId]/ai-feedback/stats/route.ts',
         'src/app/api/guilds/[guildId]/audit-log/route.ts',
@@ -90,17 +90,11 @@ export default defineConfig({
         'src/hooks/use-moderation-cases.ts',
         'src/hooks/use-moderation-stats.ts',
         'src/hooks/use-user-history.ts',
-        'src/lib/analytics-utils.ts',
-        'src/lib/api-utils.ts',
         'src/lib/log-ws.ts',
         'src/lib/logger.ts',
-        'src/lib/marketing-seo-section.ts',
-        'src/lib/scroll-to-section.ts',
       ],
       thresholds: {
         statements: 85,
-        // Branch coverage is more volatile in jsdom/component tests; keep it high enough
-        // to catch regressions without failing CI on defensive UI/environment branches.
         branches: 85,
         functions: 85,
         lines: 85,

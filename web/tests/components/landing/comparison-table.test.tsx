@@ -1,7 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockUseInView, mockUseReducedMotion } = vi.hoisted(() => ({
+const { mockMotionValueSet, mockUseInView, mockUseReducedMotion } = vi.hoisted(() => ({
+  mockMotionValueSet: vi.fn(),
   mockUseInView: vi.fn(),
   mockUseReducedMotion: vi.fn(),
 }));
@@ -32,7 +33,7 @@ vi.mock('framer-motion', async () => {
     useTransform: (_value: unknown, _input: unknown, output?: unknown[]) => (output ? output[0] : 0),
     useReducedMotion: () => mockUseReducedMotion(),
     animate: vi.fn(() => ({ stop: vi.fn() })),
-    useMotionValue: vi.fn(() => ({ get: () => 0, set: vi.fn(), on: vi.fn() })),
+    useMotionValue: vi.fn(() => ({ get: () => 0, set: mockMotionValueSet, on: vi.fn() })),
   };
 });
 
@@ -40,6 +41,7 @@ import { ComparisonTable } from '@/components/landing/ComparisonTable';
 
 describe('ComparisonTable', () => {
   beforeEach(() => {
+    mockMotionValueSet.mockClear();
     mockUseInView.mockReturnValue(true);
     mockUseReducedMotion.mockReturnValue(false);
   });
@@ -89,6 +91,8 @@ describe('ComparisonTable', () => {
     fireEvent.mouseMove(firstFeature, { clientX: 110, clientY: 60 });
     fireEvent.mouseLeave(firstFeature);
 
-    expect(firstFeature).toBeInTheDocument();
+    expect(mockUseReducedMotion).toHaveBeenCalled();
+    expect(mockMotionValueSet).toHaveBeenCalledWith(100);
+    expect(mockMotionValueSet).toHaveBeenCalledWith(20);
   });
 });

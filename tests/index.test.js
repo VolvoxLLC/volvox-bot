@@ -35,6 +35,7 @@ const mocks = vi.hoisted(() => ({
     startServer: vi.fn(),
     stopServer: vi.fn(),
     setServerDbPool: vi.fn(),
+    setServerReady: vi.fn(),
   },
 
   db: {
@@ -180,6 +181,7 @@ vi.mock('../src/api/server.js', () => ({
   startServer: mocks.apiServer.startServer,
   stopServer: mocks.apiServer.stopServer,
   setServerDbPool: mocks.apiServer.setServerDbPool,
+  setServerReady: mocks.apiServer.setServerReady,
 }));
 
 vi.mock('../src/modules/ai.js', () => ({
@@ -303,6 +305,7 @@ async function importIndex({
   }
   mocks.apiServer.stopServer.mockReset().mockResolvedValue(undefined);
   mocks.apiServer.setServerDbPool.mockReset().mockReturnValue(true);
+  mocks.apiServer.setServerReady.mockReset().mockReturnValue(true);
 
   mocks.db.initDb.mockReset();
   if (initDbReject) {
@@ -458,6 +461,18 @@ describe('index.js', () => {
     expect(mocks.apiServer.setServerDbPool).toHaveBeenCalledWith(dbPool);
     expect(mocks.db.initDb.mock.invocationCallOrder.at(-1)).toBeLessThan(
       mocks.apiServer.setServerDbPool.mock.invocationCallOrder.at(-1),
+    );
+  });
+
+  it('should mark the API ready after configuration has loaded', async () => {
+    await importIndex({ token: 'abc', databaseUrl: 'postgres://db' });
+
+    expect(mocks.apiServer.setServerReady).toHaveBeenCalledWith(true);
+    expect(mocks.config.loadConfig.mock.invocationCallOrder.at(-1)).toBeLessThan(
+      mocks.apiServer.setServerReady.mock.invocationCallOrder.at(-1),
+    );
+    expect(mocks.apiServer.setServerReady.mock.invocationCallOrder.at(-1)).toBeLessThan(
+      mocks.events.registerEventHandlers.mock.invocationCallOrder.at(-1),
     );
   });
 

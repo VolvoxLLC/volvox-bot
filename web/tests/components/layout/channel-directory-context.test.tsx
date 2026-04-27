@@ -5,6 +5,7 @@ import {
   ChannelDirectoryProvider,
   useGuildChannels,
 } from '@/components/layout/channel-directory-context';
+import { abortableFetch, createDeferred } from '../../helpers/async';
 
 const { mockUsePathname } = vi.hoisted(() => ({
   mockUsePathname: vi.fn(),
@@ -13,16 +14,6 @@ const { mockUsePathname } = vi.hoisted(() => ({
 vi.mock('next/navigation', () => ({
   usePathname: () => mockUsePathname(),
 }));
-
-function createDeferred<T>() {
-  let resolve!: (value: T | PromiseLike<T>) => void;
-  let reject!: (reason?: unknown) => void;
-  const promise = new Promise<T>((res, rej) => {
-    resolve = res;
-    reject = rej;
-  });
-  return { promise, resolve, reject };
-}
 
 function ChannelConsumer({ guildId }: { guildId: string | null }) {
   const { channels, loading, error } = useGuildChannels(guildId);
@@ -202,7 +193,7 @@ describe('ChannelDirectoryProvider', () => {
   });
 
   it('clears loading and redirects with a callback URL after an unauthorized response', async () => {
-    const locationSpy = vi.spyOn(globalThis, 'location', 'get').mockReturnValue({
+    vi.spyOn(globalThis, 'location', 'get').mockReturnValue({
       href: 'http://localhost:3000/dashboard/logs',
     } as Location);
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
@@ -219,9 +210,7 @@ describe('ChannelDirectoryProvider', () => {
 
     await screen.findByText('Unauthorized');
     expect(fetchSpy).toHaveBeenCalledTimes(1);
-    expect(locationSpy.mock.results[0]?.value.href).toBe(
-      '/login?callbackUrl=%2Fdashboard%2Flogs',
-    );
+    expect(globalThis.location.href).toBe('/login?callbackUrl=%2Fdashboard%2Flogs');
   });
 
   it('forces a new fetch during an in-flight request', async () => {
@@ -230,24 +219,10 @@ describe('ChannelDirectoryProvider', () => {
     const secondRequest = createDeferred<Response>();
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
-      .mockImplementationOnce((_input, init) => {
-        const signal = init?.signal;
-        if (!(signal instanceof AbortSignal)) {
-          throw new Error('Expected abort signal');
-        }
-
-        return new Promise<Response>((resolve, reject) => {
-          signal.addEventListener(
-            'abort',
-            () => reject(new DOMException('Aborted', 'AbortError')),
-            { once: true },
-          );
-          void firstRequest.promise.then(resolve, reject);
-        });
-      })
+      .mockImplementationOnce(abortableFetch(firstRequest))
       .mockImplementationOnce(() => secondRequest.promise);
 
-    function RefreshConsumer({ label }: { label: string }) {
+    function RefreshConsumer({ label }: Readonly<{ label: string }>) {
       const { channels, loading, refreshChannels } = useGuildChannels('guild-1');
 
       return (
@@ -290,21 +265,7 @@ describe('ChannelDirectoryProvider', () => {
     const secondRequest = createDeferred<Response>();
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
-      .mockImplementationOnce((_input, init) => {
-        const signal = init?.signal;
-        if (!(signal instanceof AbortSignal)) {
-          throw new Error('Expected abort signal');
-        }
-
-        return new Promise<Response>((resolve, reject) => {
-          signal.addEventListener(
-            'abort',
-            () => reject(new DOMException('Aborted', 'AbortError')),
-            { once: true },
-          );
-          void firstRequest.promise.then(resolve, reject);
-        });
-      })
+      .mockImplementationOnce(abortableFetch(firstRequest))
       .mockImplementationOnce(() => secondRequest.promise)
       .mockResolvedValue({
         ok: true,
@@ -312,7 +273,7 @@ describe('ChannelDirectoryProvider', () => {
         json: async () => [{ id: '2', name: 'beta', type: 0 }],
       } as Response);
 
-    function RefreshConsumer({ label }: { label: string }) {
+    function RefreshConsumer({ label }: Readonly<{ label: string }>) {
       const { channels, loading, refreshChannels } = useGuildChannels('guild-1');
 
       return (

@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RoleDirectoryProvider, useGuildRoles } from '@/components/layout/role-directory-context';
+import { abortableFetch, createDeferred } from '../../helpers/async';
 
 const { mockUsePathname } = vi.hoisted(() => ({
   mockUsePathname: vi.fn(),
@@ -10,16 +11,6 @@ const { mockUsePathname } = vi.hoisted(() => ({
 vi.mock('next/navigation', () => ({
   usePathname: () => mockUsePathname(),
 }));
-
-function createDeferred<T>() {
-  let resolve!: (value: T | PromiseLike<T>) => void;
-  let reject!: (reason?: unknown) => void;
-  const promise = new Promise<T>((res, rej) => {
-    resolve = res;
-    reject = rej;
-  });
-  return { promise, resolve, reject };
-}
 
 function roleResponse(...roles: Array<{ id: string; name: string; color: number }>) {
   return {
@@ -35,30 +26,6 @@ function failedResponse(status: number, statusText: string) {
     status,
     statusText,
   } as Response;
-}
-
-function abortableRoleFetch(deferred: ReturnType<typeof createDeferred<Response>>) {
-  return (_input: RequestInfo | URL, init?: RequestInit) => {
-    const requestSignal = init?.signal;
-    if (!(requestSignal instanceof AbortSignal)) {
-      throw new Error('Expected abort signal');
-    }
-
-    return Promise.race([deferred.promise, rejectWhenAborted(requestSignal)]);
-  };
-}
-
-function rejectWhenAborted(signal: AbortSignal) {
-  return new Promise<never>((_resolve, reject) => {
-    const rejectAbort = () => reject(new DOMException('Aborted', 'AbortError'));
-
-    if (signal.aborted) {
-      rejectAbort();
-      return;
-    }
-
-    signal.addEventListener('abort', rejectAbort, { once: true });
-  });
 }
 
 function RoleConsumer({ guildId }: { guildId: string | null }) {
@@ -79,7 +46,7 @@ function RoleConsumer({ guildId }: { guildId: string | null }) {
   return <div>{roles.map((role) => role.name).join(', ')}</div>;
 }
 
-function RefreshConsumer({ buttonLabel }: { buttonLabel: string }) {
+function RefreshConsumer({ buttonLabel }: Readonly<{ buttonLabel: string }>) {
   const { error, loading, refreshRoles, roles } = useGuildRoles('guild-1');
   const roleNames = roles.map((role) => role.name).join(', ');
 
@@ -198,7 +165,7 @@ describe('RoleDirectoryProvider', () => {
   });
 
   it('clears loading and redirects with a callback URL after an unauthorized response', async () => {
-    const locationSpy = vi.spyOn(globalThis, 'location', 'get').mockReturnValue({
+    vi.spyOn(globalThis, 'location', 'get').mockReturnValue({
       href: 'http://localhost:3000/dashboard/moderation',
     } as Location);
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(failedResponse(401, 'Unauthorized'));
@@ -211,9 +178,7 @@ describe('RoleDirectoryProvider', () => {
 
     await screen.findByText('Unauthorized');
     expect(fetchSpy).toHaveBeenCalledTimes(1);
-    expect(locationSpy.mock.results[0]?.value.href).toBe(
-      '/login?callbackUrl=%2Fdashboard%2Fmoderation',
-    );
+    expect(globalThis.location.href).toBe('/login?callbackUrl=%2Fdashboard%2Fmoderation');
   });
 
   it('forces a new fetch during an in-flight request', async () => {
@@ -222,7 +187,7 @@ describe('RoleDirectoryProvider', () => {
     const secondRequest = createDeferred<Response>();
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
-      .mockImplementationOnce(abortableRoleFetch(firstRequest))
+      .mockImplementationOnce(abortableFetch(firstRequest))
       .mockImplementationOnce(() => secondRequest.promise);
 
     render(
