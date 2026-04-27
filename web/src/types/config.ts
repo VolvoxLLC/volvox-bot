@@ -83,6 +83,7 @@ export interface WelcomeConfig {
   introMessage?: string;
   dynamic: WelcomeDynamic;
   rulesChannel: string | null;
+  roleMenuChannel: string | null;
   verifiedRole: string | null;
   introChannel: string | null;
   roleMenu: WelcomeRoleMenu;

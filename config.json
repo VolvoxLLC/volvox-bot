@@ -63,6 +63,7 @@
       "excludeChannels": []
     },
     "rulesChannel": null,
+    "roleMenuChannel": null,
     "verifiedRole": null,
     "introChannel": null,
     "roleMenu": {

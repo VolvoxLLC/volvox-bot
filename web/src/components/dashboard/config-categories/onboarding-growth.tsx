@@ -451,7 +451,7 @@ export function OnboardingGrowthCategory() {
               </div>
             </details>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 pt-4 border-t border-border/40">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-6 pt-4 border-t border-border/40">
               <div className="space-y-2">
                 <label
                   htmlFor="welcome-channel-id"
@@ -480,6 +480,25 @@ export function OnboardingGrowthCategory() {
                     draftConfig.welcome?.rulesChannel ? [draftConfig.welcome.rulesChannel] : []
                   }
                   onChange={(selected) => updateWelcomeField('rulesChannel', selected[0] ?? null)}
+                  disabled={saving}
+                  maxSelections={1}
+                  filter="text"
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1">
+                  Role Menu
+                </div>
+                <ChannelSelector
+                  guildId={guildId}
+                  selected={
+                    draftConfig.welcome?.roleMenuChannel
+                      ? [draftConfig.welcome.roleMenuChannel]
+                      : []
+                  }
+                  onChange={(selected) =>
+                    updateWelcomeField('roleMenuChannel', selected[0] ?? null)
+                  }
                   disabled={saving}
                   maxSelections={1}
                   filter="text"

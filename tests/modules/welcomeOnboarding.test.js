@@ -53,6 +53,7 @@ describe('welcomeOnboarding module', () => {
 
     expect(result).toEqual({
       rulesChannel: null,
+      roleMenuChannel: null,
       verifiedRole: null,
       introChannel: null,
       rulesMessage: 'Read the server rules, then click below to verify your access.',
@@ -69,6 +70,7 @@ describe('welcomeOnboarding module', () => {
   it('normalizes onboarding config by trimming values and dropping junk options', () => {
     const result = normalizeWelcomeOnboardingConfig({
       rulesChannel: '  rules-1  ',
+      roleMenuChannel: ' role-menu-1 ',
       verifiedRole: ' verified-role ',
       introChannel: ' intro-1 ',
       rulesMessage: ' Custom rules ',
@@ -90,6 +92,7 @@ describe('welcomeOnboarding module', () => {
 
     expect(result).toEqual({
       rulesChannel: 'rules-1',
+      roleMenuChannel: 'role-menu-1',
       verifiedRole: 'verified-role',
       introChannel: 'intro-1',
       rulesMessage: 'Custom rules',

@@ -26,6 +26,7 @@ const MAX_ROLE_MENU_OPTIONS = 25;
  * @param {object} welcomeConfig
  * @returns {{
  *   rulesChannel: string|null,
+ *   roleMenuChannel: string|null,
  *   verifiedRole: string|null,
  *   introChannel: string|null,
  *   rulesMessage: string,
@@ -55,6 +56,10 @@ export function normalizeWelcomeOnboardingConfig(welcomeConfig = {}) {
     rulesChannel:
       typeof welcomeConfig?.rulesChannel === 'string' && welcomeConfig.rulesChannel.trim()
         ? welcomeConfig.rulesChannel.trim()
+        : null,
+    roleMenuChannel:
+      typeof welcomeConfig?.roleMenuChannel === 'string' && welcomeConfig.roleMenuChannel.trim()
+        ? welcomeConfig.roleMenuChannel.trim()
         : null,
     verifiedRole:
       typeof welcomeConfig?.verifiedRole === 'string' && welcomeConfig.verifiedRole.trim()

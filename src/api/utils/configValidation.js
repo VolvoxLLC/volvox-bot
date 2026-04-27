@@ -236,6 +236,7 @@ export const CONFIG_SCHEMA = {
         },
       },
       rulesChannel: { type: 'string', nullable: true },
+      roleMenuChannel: { type: 'string', nullable: true },
       verifiedRole: { type: 'string', nullable: true },
       introChannel: { type: 'string', nullable: true },
       roleMenu: {
