@@ -3,6 +3,7 @@ import { getPool } from '../db.js';
 import { info, error as logError, warn } from '../logger.js';
 import { fetchChannelCached } from '../utils/discordCache.js';
 import { safeEditMessage, safeSend } from '../utils/safeSend.js';
+import { DISCORD_MAX_LENGTH } from '../utils/splitMessage.js';
 import { getConfig } from './config.js';
 import {
   buildRoleMenuMessage,
@@ -150,6 +151,12 @@ function serializePublication(panelType, payload, stored) {
   };
 }
 
+function getPayloadContentLength(messagePayload) {
+  if (typeof messagePayload === 'string') return messagePayload.length;
+  if (typeof messagePayload?.content === 'string') return messagePayload.content.length;
+  return 0;
+}
+
 export async function getWelcomePublicationStatus(guildId) {
   const config = getConfig(guildId);
   const panels = {};
@@ -217,6 +224,27 @@ export async function publishWelcomePanel(client, guildId, panelType, actor = {}
       messageId: null,
       action: 'skipped',
       lastError: null,
+    };
+  }
+
+  if (getPayloadContentLength(payload.message) > DISCORD_MAX_LENGTH) {
+    const lastError = `Welcome panel content exceeds Discord's ${DISCORD_MAX_LENGTH} character message limit`;
+    await upsertPublication(guildId, panelType, {
+      channelId: payload.channelId,
+      messageId: null,
+      configHash: payload.configHash,
+      status: 'failed',
+      lastError,
+      createdBy: actor.userId ?? null,
+    }).catch(() => null);
+    return {
+      panelType,
+      status: 'failed',
+      configured: true,
+      channelId: payload.channelId,
+      messageId: null,
+      action: 'failed',
+      lastError,
     };
   }
 
