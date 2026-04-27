@@ -125,6 +125,39 @@ client.commands = new Collection();
 // Initialize health monitor
 const healthMonitor = HealthMonitor.getInstance();
 
+/** @type {import('./transports/websocket.js').WebSocketTransport | null} */
+let apiWsTransport = null;
+
+/**
+ * Start the REST API server once, wiring WebSocket log streaming when available.
+ * The API intentionally comes up before Discord login so deployment health checks
+ * can succeed while the bot finishes longer Discord/memory startup work.
+ *
+ * @param {import('pg').Pool | null} dbPool
+ */
+async function startApiServer(dbPool) {
+  if (apiWsTransport) return;
+
+  let wsTransport = null;
+  try {
+    wsTransport = addWebSocketTransport();
+    await startServer(client, dbPool, { wsTransport });
+    apiWsTransport = wsTransport;
+  } catch (err) {
+    // Clean up orphaned transport if startServer failed after it was created
+    if (wsTransport) {
+      removeWebSocketTransport(wsTransport);
+    }
+    error('REST API server failed to start — continuing without API', { error: err.message });
+  }
+}
+
+function removeApiWebSocketTransport() {
+  if (!apiWsTransport) return;
+  removeWebSocketTransport(apiWsTransport);
+  apiWsTransport = null;
+}
+
 /**
  * Save conversation history to disk
  */
@@ -203,6 +236,8 @@ async function gracefulShutdown(signal) {
     await stopServer();
   } catch (err) {
     error('Failed to stop API server', { error: err.message });
+  } finally {
+    removeApiWebSocketTransport();
   }
 
   // 2. Save state
@@ -328,6 +363,9 @@ async function startup() {
     }
   }
 
+  // Start REST API server as soon as database/config/logging setup is ready.
+  await startApiServer(dbPool);
+
   // DEPRECATED: loadState() seeds conversation history from data/state.json for
   // non-DB environments. When a database is configured, initConversationHistory()
   // immediately overwrites this with DB data. Remove loadState/saveState and the
@@ -398,24 +436,18 @@ async function startup() {
       }
     })
     .catch(() => {});
-
-  // Start REST API server with WebSocket log streaming (non-fatal — bot continues without it)
-  {
-    let wsTransport = null;
-    try {
-      wsTransport = addWebSocketTransport();
-      await startServer(client, dbPool, { wsTransport });
-    } catch (err) {
-      // Clean up orphaned transport if startServer failed after it was created
-      if (wsTransport) {
-        removeWebSocketTransport(wsTransport);
-      }
-      error('REST API server failed to start — continuing without API', { error: err.message });
-    }
-  }
 }
 
-startup().catch((err) => {
+startup().catch(async (err) => {
   error('Startup failed', { error: err.message, stack: err.stack });
+  if (apiWsTransport) {
+    try {
+      await stopServer();
+    } catch (stopErr) {
+      error('Failed to stop API server after startup failure', { error: stopErr.message });
+    } finally {
+      removeApiWebSocketTransport();
+    }
+  }
   process.exit(1);
 });

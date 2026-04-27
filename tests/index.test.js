@@ -27,6 +27,13 @@ const mocks = vi.hoisted(() => ({
     error: vi.fn(),
     addPostgresTransport: vi.fn(),
     removePostgresTransport: vi.fn(),
+    addWebSocketTransport: vi.fn(),
+    removeWebSocketTransport: vi.fn(),
+  },
+
+  apiServer: {
+    startServer: vi.fn(),
+    stopServer: vi.fn(),
   },
 
   db: {
@@ -164,6 +171,13 @@ vi.mock('../src/logger.js', () => ({
   error: mocks.logger.error,
   addPostgresTransport: mocks.logger.addPostgresTransport,
   removePostgresTransport: mocks.logger.removePostgresTransport,
+  addWebSocketTransport: mocks.logger.addWebSocketTransport,
+  removeWebSocketTransport: mocks.logger.removeWebSocketTransport,
+}));
+
+vi.mock('../src/api/server.js', () => ({
+  startServer: mocks.apiServer.startServer,
+  stopServer: mocks.apiServer.stopServer,
 }));
 
 vi.mock('../src/modules/ai.js', () => ({
@@ -246,6 +260,7 @@ async function importIndex({
   loadConfigResult = null,
   throwOnExit = true,
   checkMem0HealthImpl = null,
+  startServerReject = null,
 } = {}) {
   vi.resetModules();
 
@@ -275,6 +290,16 @@ async function importIndex({
   mocks.logger.error.mockReset();
   mocks.logger.addPostgresTransport.mockReset().mockReturnValue({ _transport: true });
   mocks.logger.removePostgresTransport.mockReset().mockResolvedValue(undefined);
+  mocks.logger.addWebSocketTransport.mockReset().mockReturnValue({ _wsTransport: true });
+  mocks.logger.removeWebSocketTransport.mockReset();
+
+  mocks.apiServer.startServer.mockReset();
+  if (startServerReject) {
+    mocks.apiServer.startServer.mockRejectedValue(startServerReject);
+  } else {
+    mocks.apiServer.startServer.mockResolvedValue({ listening: true });
+  }
+  mocks.apiServer.stopServer.mockReset().mockResolvedValue(undefined);
 
   mocks.db.initDb.mockReset();
   if (initDbReject) {
@@ -400,6 +425,47 @@ describe('index.js', () => {
     expect(mocks.client.login.mock.invocationCallOrder.at(-1)).toBeLessThan(
       mocks.botStatus.startBotStatus.mock.invocationCallOrder.at(-1),
     );
+  });
+
+  it('should start REST API before memory checks and Discord login', async () => {
+    await importIndex({ token: 'abc', databaseUrl: null });
+
+    expect(mocks.logger.addWebSocketTransport).toHaveBeenCalledTimes(1);
+    expect(mocks.apiServer.startServer).toHaveBeenCalledWith(mocks.client, null, {
+      wsTransport: { _wsTransport: true },
+    });
+    expect(mocks.apiServer.startServer.mock.invocationCallOrder.at(-1)).toBeLessThan(
+      mocks.memory.checkMem0Health.mock.invocationCallOrder.at(-1),
+    );
+    expect(mocks.apiServer.startServer.mock.invocationCallOrder.at(-1)).toBeLessThan(
+      mocks.client.login.mock.invocationCallOrder.at(-1),
+    );
+  });
+
+  it('should continue startup and remove WebSocket transport when REST API startup fails', async () => {
+    await importIndex({
+      token: 'abc',
+      databaseUrl: null,
+      startServerReject: new Error('port in use'),
+    });
+
+    expect(mocks.logger.removeWebSocketTransport).toHaveBeenCalledWith({ _wsTransport: true });
+    expect(mocks.logger.error).toHaveBeenCalledWith(
+      'REST API server failed to start — continuing without API',
+      { error: 'port in use' },
+    );
+    expect(mocks.client.login).toHaveBeenCalledWith('abc');
+  });
+
+  it('should remove WebSocket transport on graceful shutdown', async () => {
+    await importIndex({ token: 'abc', databaseUrl: null });
+    mocks.logger.removeWebSocketTransport.mockClear();
+
+    const sigintHandler = mocks.processHandlers.SIGINT;
+    await expect(sigintHandler()).rejects.toThrow('process.exit:0');
+
+    expect(mocks.apiServer.stopServer).toHaveBeenCalled();
+    expect(mocks.logger.removeWebSocketTransport).toHaveBeenCalledWith({ _wsTransport: true });
   });
 
   it('should warn and skip db init when DATABASE_URL is not set', async () => {
@@ -867,6 +933,8 @@ describe('index.js', () => {
         error: 'event registration failed',
         stack: expect.any(String),
       });
+      expect(mocks.apiServer.stopServer).toHaveBeenCalled();
+      expect(mocks.logger.removeWebSocketTransport).toHaveBeenCalledWith({ _wsTransport: true });
     });
 
     it('should exit when loadConfig fails', async () => {
