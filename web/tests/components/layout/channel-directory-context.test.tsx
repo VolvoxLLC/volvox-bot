@@ -24,6 +24,14 @@ function createDeferred<T>() {
   return { promise, resolve, reject };
 }
 
+function handleAsyncClick(action: () => Promise<void>) {
+  return () => {
+    action().catch((error: unknown) => {
+      throw error;
+    });
+  };
+}
+
 function ChannelConsumer({ guildId }: { guildId: string | null }) {
   const { channels, loading, error } = useGuildChannels(guildId);
 
@@ -134,7 +142,7 @@ describe('ChannelDirectoryProvider', () => {
 
       return (
         <div>
-          <button type="button" onClick={() => void refreshChannels()}>
+          <button type="button" onClick={handleAsyncClick(refreshChannels)}>
             Refresh
           </button>
           <span>{channels.map((channel) => channel.name).join(', ')}</span>
@@ -176,7 +184,7 @@ describe('ChannelDirectoryProvider', () => {
 
       return (
         <div>
-          <button type="button" onClick={() => void refreshChannels()}>
+          <button type="button" onClick={handleAsyncClick(refreshChannels)}>
             Retry
           </button>
           <span>{error ?? channels.map((channel) => channel.name).join(', ')}</span>
@@ -242,7 +250,7 @@ describe('ChannelDirectoryProvider', () => {
             () => reject(new DOMException('Aborted', 'AbortError')),
             { once: true },
           );
-          void firstRequest.promise.then(resolve, reject);
+          firstRequest.promise.then(resolve, reject).catch(reject);
         });
       })
       .mockImplementationOnce(() => secondRequest.promise);
@@ -252,7 +260,7 @@ describe('ChannelDirectoryProvider', () => {
 
       return (
         <div>
-          <button type="button" onClick={() => void refreshChannels()}>
+          <button type="button" onClick={handleAsyncClick(refreshChannels)}>
             {label}
           </button>
           <span>{loading ? 'Loading channels' : channels.map((channel) => channel.name).join(', ')}</span>
@@ -302,7 +310,7 @@ describe('ChannelDirectoryProvider', () => {
             () => reject(new DOMException('Aborted', 'AbortError')),
             { once: true },
           );
-          void firstRequest.promise.then(resolve, reject);
+          firstRequest.promise.then(resolve, reject).catch(reject);
         });
       })
       .mockImplementationOnce(() => secondRequest.promise)
@@ -317,7 +325,7 @@ describe('ChannelDirectoryProvider', () => {
 
       return (
         <div>
-          <button type="button" onClick={() => void refreshChannels()}>
+          <button type="button" onClick={handleAsyncClick(refreshChannels)}>
             {label}
           </button>
           <span>{loading ? 'Loading channels' : channels.map((channel) => channel.name).join(', ')}</span>
@@ -411,15 +419,28 @@ describe('ChannelDirectoryProvider', () => {
       json: async () => [],
     } as Response);
 
+    let ensureResult: Promise<void> | undefined;
+    let refreshResult: Promise<void> | undefined;
+
     function NoGuildActions() {
       const { ensureChannelsLoaded, refreshChannels } = useGuildChannels(null);
 
       return (
         <div>
-          <button type="button" onClick={() => void ensureChannelsLoaded()}>
+          <button
+            type="button"
+            onClick={() => {
+              ensureResult = ensureChannelsLoaded();
+            }}
+          >
             Ensure
           </button>
-          <button type="button" onClick={() => void refreshChannels()}>
+          <button
+            type="button"
+            onClick={() => {
+              refreshResult = refreshChannels();
+            }}
+          >
             Refresh
           </button>
         </div>
@@ -435,7 +456,9 @@ describe('ChannelDirectoryProvider', () => {
     );
 
     await user.click(screen.getByRole('button', { name: 'Ensure' }));
+    await expect(ensureResult).resolves.toBeUndefined();
     await user.click(screen.getByRole('button', { name: 'Refresh' }));
+    await expect(refreshResult).resolves.toBeUndefined();
 
     expect(screen.getByText('No guild')).toBeInTheDocument();
     expect(fetchSpy).not.toHaveBeenCalled();
