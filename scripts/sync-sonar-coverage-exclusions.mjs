@@ -518,13 +518,49 @@ function isLocalIdentifierAssignmentAt(tokens, cursor) {
   );
 }
 
+function findDestructuringObjectStart(tokens, closeIndex, statementStart) {
+  let depth = 0;
+  for (let cursor = closeIndex; cursor >= statementStart; cursor -= 1) {
+    if (isToken(tokens, cursor, '}')) {
+      depth += 1;
+    } else if (isToken(tokens, cursor, '{')) {
+      depth -= 1;
+      if (depth === 0) {
+        return cursor;
+      }
+    }
+  }
+
+  return -1;
+}
+
+function collectDestructuredAliases(tokens, start, end, exclusionGroupBindings) {
+  for (let cursor = start + 1; cursor < end; cursor += 1) {
+    if (
+      tokens[cursor]?.type === 'identifier' &&
+      !isToken(tokens, cursor + 1, ':')
+    ) {
+      exclusionGroupBindings.add(tokens[cursor].value);
+    }
+  }
+}
+
 function collectImportedExclusionGroupAliases(tokens, start, end, exclusionGroupBindings) {
   for (let cursor = start; cursor < end - 1; cursor += 1) {
-    if (
-      isLocalIdentifierAssignmentAt(tokens, cursor) &&
-      exclusionGroupBindings.has(tokens[cursor + 1]?.value)
-    ) {
+    if (!isAssignmentOperatorAt(tokens, cursor) || !exclusionGroupBindings.has(tokens[cursor + 1]?.value)) {
+      continue;
+    }
+
+    if (isLocalIdentifierAssignmentAt(tokens, cursor)) {
       exclusionGroupBindings.add(tokens[cursor - 1].value);
+      continue;
+    }
+
+    if (isToken(tokens, cursor - 1, '}')) {
+      const destructuringStart = findDestructuringObjectStart(tokens, cursor - 1, start);
+      if (destructuringStart !== -1) {
+        collectDestructuredAliases(tokens, destructuringStart, cursor - 1, exclusionGroupBindings);
+      }
     }
   }
 }

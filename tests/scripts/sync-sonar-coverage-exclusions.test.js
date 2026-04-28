@@ -191,6 +191,50 @@ describe('verifyVitestCoverageExclusions', () => {
     );
   });
 
+  it('rejects mutations through aliases to nested coverage exclusion arrays', () => {
+    const config = `
+      import { defineConfig } from 'vitest/config';
+      import coverageExclusionGroups from './coverage-exclusions.json';
+
+      const dashboardExclusions = coverageExclusionGroups.dashboardPresentationSurfaces;
+      dashboardExclusions.push('src/generated/**');
+
+      export default defineConfig({
+        test: {
+          coverage: {
+            exclude: Object.values(coverageExclusionGroups).flat(),
+          },
+        },
+      });
+    `;
+
+    expect(() => verifyVitestCoverageExclusions(config)).toThrow(
+      /must not mutate the imported coverage exclusions JSON/,
+    );
+  });
+
+  it('rejects mutations through destructured coverage exclusion aliases', () => {
+    const config = `
+      import { defineConfig } from 'vitest/config';
+      import coverageExclusionGroups from './coverage-exclusions.json';
+
+      const { dashboardPresentationSurfaces } = coverageExclusionGroups;
+      dashboardPresentationSurfaces.push('src/generated/**');
+
+      export default defineConfig({
+        test: {
+          coverage: {
+            exclude: Object.values(coverageExclusionGroups).flat(),
+          },
+        },
+      });
+    `;
+
+    expect(() => verifyVitestCoverageExclusions(config)).toThrow(
+      /must not mutate the imported coverage exclusions JSON/,
+    );
+  });
+
   it('rejects mutations inside the exported defineConfig object', () => {
     const config = `
       import { defineConfig } from 'vitest/config';
