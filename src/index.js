@@ -270,6 +270,12 @@ if (!token) {
   process.exit(1);
 }
 
+function canContinueWithoutDatabase() {
+  const environmentName = process.env.RAILWAY_ENVIRONMENT_NAME ?? '';
+  const isRailwayPullRequestEnvironment = /^volvox-bot-pr-\d+$/i.test(environmentName);
+  return process.env.ALLOW_DATABASE_STARTUP_FAILURE === 'true' || isRailwayPullRequestEnvironment;
+}
+
 /**
  * Perform full application startup: initialize the database and optional PostgreSQL logging, load configuration and conversation history, start background services (conversation cleanup, memory checks, triage, tempban scheduler), register event handlers, load slash commands, and log the Discord client in.
  */
@@ -296,21 +302,35 @@ async function startup() {
   // Initialize database
   let dbPool = null;
   if (process.env.DATABASE_URL) {
-    dbPool = await initDb();
+    try {
+      dbPool = await initDb();
 
-    updateServerDbPool(dbPool);
+      updateServerDbPool(dbPool);
 
-    // Initialize Redis (gracefully degrades if REDIS_URL not set)
-    initRedis();
-    info('Database initialized');
+      // Initialize Redis (gracefully degrades if REDIS_URL not set)
+      initRedis();
+      info('Database initialized');
 
-    // Record this startup in the restart history table
-    await recordRestart(dbPool, 'startup', BOT_VERSION);
+      // Record this startup in the restart history table
+      await recordRestart(dbPool, 'startup', BOT_VERSION);
 
-    // Seed built-in role menu templates (idempotent)
-    await seedBuiltinTemplates().catch((err) =>
-      warn('Failed to seed built-in role menu templates', { error: err.message }),
-    );
+      // Seed built-in role menu templates (idempotent)
+      await seedBuiltinTemplates().catch((err) =>
+        warn('Failed to seed built-in role menu templates', { error: err.message }),
+      );
+    } catch (err) {
+      if (!canContinueWithoutDatabase()) {
+        throw err;
+      }
+
+      warn(
+        'Database initialization failed — continuing without persistence for preview deployment',
+        {
+          error: err.message,
+          railwayEnvironment: process.env.RAILWAY_ENVIRONMENT_NAME ?? null,
+        },
+      );
+    }
   } else {
     warn('DATABASE_URL not set — using config.json only (no persistence)');
   }
