@@ -127,12 +127,12 @@ describe('getAiAutoModConfig', () => {
     expect(cfg.thresholds.toxicity).toBe(0.7);
     expect(cfg.thresholds.spam).toBe(0.8);
     expect(cfg.thresholds.harassment).toBe(0.7);
-    expect(cfg.actions.toxicity).toBe('flag');
-    expect(cfg.actions.spam).toBe('delete');
-    expect(cfg.actions.harassment).toBe('warn');
+    expect(cfg.actions.toxicity).toEqual(['flag']);
+    expect(cfg.actions.spam).toEqual(['delete']);
+    expect(cfg.actions.harassment).toEqual(['warn']);
   });
 
-  it('merges guild overrides onto defaults', () => {
+  it('merges guild overrides onto defaults and normalizes legacy single actions', () => {
     const cfg = getAiAutoModConfig({
       aiAutoMod: {
         enabled: true,
@@ -143,8 +143,8 @@ describe('getAiAutoModConfig', () => {
     expect(cfg.enabled).toBe(true);
     expect(cfg.thresholds.toxicity).toBe(0.9);
     expect(cfg.thresholds.spam).toBe(0.8); // default preserved
-    expect(cfg.actions.spam).toBe('ban');
-    expect(cfg.actions.toxicity).toBe('flag'); // default preserved
+    expect(cfg.actions.spam).toEqual(['ban']);
+    expect(cfg.actions.toxicity).toEqual(['flag']); // default preserved
   });
 });
 
@@ -193,19 +193,25 @@ describe('analyzeMessage', () => {
     expect(result.categories).toContain('spam');
   });
 
-  it('picks most severe action from multiple triggered categories', async () => {
+  it('collects every configured action from triggered categories and keeps a primary summary action', async () => {
     mockGenerate.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.9, spam: 0.95, harassment: 0.8 }),
     );
     const cfg = getAiAutoModConfig({
       aiAutoMod: {
-        actions: { toxicity: 'warn', spam: 'timeout', harassment: 'kick' },
+        actions: { toxicity: ['warn', 'delete'], spam: ['timeout'], harassment: ['kick'] },
       },
     });
     const result = await analyzeMessage('very bad message', cfg);
     expect(result.flagged).toBe(true);
     // kick (priority 4) > timeout (priority 3) > warn (priority 2)
     expect(result.action).toBe('kick');
+    expect(result.actions).toEqual(['warn', 'delete', 'timeout', 'kick']);
+    expect(result.actionsByCategory).toMatchObject({
+      toxicity: ['warn', 'delete'],
+      spam: ['timeout'],
+      harassment: ['kick'],
+    });
   });
 
   it('uses the configured model for moderation scoring', async () => {
@@ -485,6 +491,62 @@ describe('checkAiAutoMod', () => {
       'bot-1',
       'Bot#0001',
       guildConfig,
+    );
+  });
+
+  it('executes every configured action for the triggered violation', async () => {
+    mockGenerate.mockResolvedValue(
+      makeClaudeResponse({ toxicity: 0.9, spam: 0.1, harassment: 0.1, reason: 'toxic' }),
+    );
+    const guildConfig = {
+      moderation: {
+        dmNotifications: { warn: true },
+        warnings: { expiryDays: 90, severityPoints: { low: 1, medium: 2, high: 3 } },
+        escalation: { enabled: true, thresholds: [] },
+      },
+      aiAutoMod: {
+        enabled: true,
+        model: 'minimax:MiniMax-M2.7',
+        thresholds: { toxicity: 0.7, spam: 0.8, harassment: 0.7 },
+        actions: { toxicity: ['delete', 'warn', 'timeout'], spam: [], harassment: [] },
+        autoDelete: false,
+        flagChannelId: null,
+        exemptRoleIds: [],
+        timeoutDurationMs: 300000,
+      },
+    };
+
+    const result = await checkAiAutoMod(message, client, guildConfig);
+
+    expect(result).toMatchObject({
+      flagged: true,
+      action: 'timeout',
+      actions: ['delete', 'warn', 'timeout'],
+    });
+    expect(message.delete).toHaveBeenCalledTimes(1);
+    expect(sendDmNotification).toHaveBeenCalledWith(
+      message.member,
+      'warn',
+      'AI Auto-Mod: toxicity — toxic',
+      'guild-1',
+    );
+    expect(createWarning).toHaveBeenCalledWith(
+      'guild-1',
+      expect.objectContaining({ userId: 'user-1', caseId: 1 }),
+      guildConfig,
+    );
+    expect(message.member.timeout).toHaveBeenCalledWith(300000, 'AI Auto-Mod: toxicity — toxic');
+    expect(logAuditEvent).toHaveBeenCalledWith(
+      mockPool,
+      expect.objectContaining({ action: 'ai_automod.delete' }),
+    );
+    expect(logAuditEvent).toHaveBeenCalledWith(
+      mockPool,
+      expect.objectContaining({ action: 'ai_automod.warn' }),
+    );
+    expect(logAuditEvent).toHaveBeenCalledWith(
+      mockPool,
+      expect.objectContaining({ action: 'ai_automod.timeout' }),
     );
   });
 

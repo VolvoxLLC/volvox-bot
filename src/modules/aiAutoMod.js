@@ -1,8 +1,7 @@
 /**
  * AI Auto-Moderation Module
  * Uses the Vercel AI SDK to analyze messages for toxicity, spam, harassment, and related safety categories.
- * Supports configurable thresholds, per-guild settings, and multiple actions:
- * warn, timeout, kick, ban, or flag for review.
+ * Supports configurable thresholds, per-guild settings, and multiple actions per violation.
  */
 
 import { EmbedBuilder } from 'discord.js';
@@ -66,6 +65,17 @@ const SCORE_ALIASES = Object.freeze({
   selfHarm: ['self_harm', 'self-harm'],
 });
 
+const AI_AUTOMOD_ACTION_TYPES = Object.freeze(['flag', 'delete', 'warn', 'timeout', 'kick', 'ban']);
+const ACTION_PRIORITY = Object.freeze({
+  ban: 5,
+  kick: 4,
+  timeout: 3,
+  warn: 2,
+  delete: 2,
+  flag: 1,
+  none: -1,
+});
+
 /** Default config when none is provided */
 const DEFAULTS = {
   enabled: false,
@@ -80,19 +90,53 @@ const DEFAULTS = {
     selfHarm: 0.7,
   },
   actions: {
-    toxicity: 'flag',
-    spam: 'delete',
-    harassment: 'warn',
-    hateSpeech: 'timeout',
-    sexualContent: 'delete',
-    violence: 'ban',
-    selfHarm: 'flag',
+    toxicity: ['flag'],
+    spam: ['delete'],
+    harassment: ['warn'],
+    hateSpeech: ['timeout'],
+    sexualContent: ['delete'],
+    violence: ['ban'],
+    selfHarm: ['flag'],
   },
   timeoutDurationMs: 5 * 60 * 1000,
   flagChannelId: null,
   autoDelete: true,
   exemptRoleIds: [],
 };
+
+function normalizeActionList(value, fallback = []) {
+  const rawActions = Array.isArray(value) ? value : value ? [value] : fallback;
+  const actions = [];
+
+  for (const action of rawActions) {
+    if (action === 'none') continue;
+    if (!AI_AUTOMOD_ACTION_TYPES.includes(action)) continue;
+    if (!actions.includes(action)) {
+      actions.push(action);
+    }
+  }
+
+  return actions;
+}
+
+function normalizeActionMap(rawActions = {}) {
+  return Object.fromEntries(
+    AI_AUTOMOD_CATEGORIES.map(({ key }) => [
+      key,
+      normalizeActionList(rawActions[key], DEFAULTS.actions[key]),
+    ]),
+  );
+}
+
+function getPrimaryAction(actions) {
+  let primaryAction = 'none';
+  for (const action of actions) {
+    if ((ACTION_PRIORITY[action] ?? 0) > (ACTION_PRIORITY[primaryAction] ?? -1)) {
+      primaryAction = action;
+    }
+  }
+  return primaryAction;
+}
 
 /**
  * Get the merged AI auto-mod config for a guild.
@@ -105,7 +149,7 @@ export function getAiAutoModConfig(config) {
     ...DEFAULTS,
     ...raw,
     thresholds: { ...DEFAULTS.thresholds, ...(raw.thresholds ?? {}) },
-    actions: { ...DEFAULTS.actions, ...(raw.actions ?? {}) },
+    actions: normalizeActionMap(raw.actions ?? {}),
   };
 }
 
@@ -127,7 +171,7 @@ function normalizeScore(parsed, categoryKey) {
  *
  * @param {string} content - Message content to analyze
  * @param {Object} autoModConfig - AI auto-mod config
- * @returns {Promise<{flagged: boolean, scores: Object, categories: string[], reason: string, action: string}>}
+ * @returns {Promise<{flagged: boolean, scores: Object, categories: string[], reason: string, action: string, actions: string[], actionsByCategory: Object}>}
  */
 export async function analyzeMessage(content, autoModConfig) {
   const mergedConfig = autoModConfig ?? DEFAULTS;
@@ -139,6 +183,8 @@ export async function analyzeMessage(content, autoModConfig) {
       categories: [],
       reason: 'Message too short',
       action: 'none',
+      actions: [],
+      actionsByCategory: {},
     };
   }
 
@@ -186,6 +232,8 @@ ${responseShape}
       categories: [],
       reason: 'Parse error',
       action: 'none',
+      actions: [],
+      actionsByCategory: {},
     };
   }
 
@@ -200,14 +248,18 @@ ${responseShape}
 
   const flagged = triggeredCategories.length > 0;
 
-  const actionPriority = { ban: 5, kick: 4, timeout: 3, warn: 2, delete: 2, flag: 1, none: -1 };
-  let action = 'none';
+  const actions = [];
+  const actionsByCategory = {};
   for (const categoryName of triggeredCategories) {
-    const categoryAction = mergedConfig.actions[categoryName] ?? 'flag';
-    if ((actionPriority[categoryAction] ?? 0) > (actionPriority[action] ?? -1)) {
-      action = categoryAction;
+    const categoryActions = normalizeActionList(mergedConfig.actions[categoryName], ['flag']);
+    actionsByCategory[categoryName] = categoryActions;
+    for (const categoryAction of categoryActions) {
+      if (!actions.includes(categoryAction)) {
+        actions.push(categoryAction);
+      }
     }
   }
+  const action = getPrimaryAction(actions);
 
   return {
     flagged,
@@ -215,6 +267,8 @@ ${responseShape}
     categories: triggeredCategories,
     reason: parsed.reason ?? 'No reason provided',
     action,
+    actions,
+    actionsByCategory,
   };
 }
 
@@ -243,7 +297,12 @@ async function sendFlagEmbed(message, client, result, autoModConfig) {
   const embed = new EmbedBuilder()
     .setColor(0xff6b6b)
     .setTitle('🤖 AI Auto-Mod Flag')
-    .setDescription(`**Message flagged for review**\nAction taken: \`${result.action}\``)
+    .setDescription(
+      `**Message flagged for review**\nActions queued: \`${
+        normalizeActionList(result.actions, result.action ? [result.action] : []).join(', ') ||
+        'none'
+      }\``,
+    )
     .addFields(
       { name: 'Author', value: `<@${message.author.id}> (${message.author.tag})`, inline: true },
       { name: 'Channel', value: `<#${message.channel.id}>`, inline: true },
@@ -280,6 +339,7 @@ async function logAiAutoModAuditEvent(
   reason,
   botId,
   botTag,
+  action,
 ) {
   const guildId = message.guild?.id;
   if (!guildId) return;
@@ -291,13 +351,15 @@ async function logAiAutoModAuditEvent(
     guildId,
     userId: botId,
     userTag: botTag,
-    action: `ai_automod.${result.action ?? 'none'}`,
+    action: `ai_automod.${action}`,
     targetType: targetId ? 'member' : 'message',
     targetId: targetId ?? message.id,
     targetTag,
     details: {
       source: 'ai_auto_mod',
-      action: result.action ?? 'none',
+      action,
+      actions: result.actions ?? [],
+      actionsByCategory: result.actionsByCategory ?? {},
       model: autoModConfig.model ?? DEFAULTS.model,
       messageId: message.id,
       channelId: message.channel?.id ?? null,
@@ -313,88 +375,86 @@ async function logAiAutoModAuditEvent(
   }).catch((err) =>
     logError('AI auto-mod: audit log failed', {
       guildId,
-      action: result.action,
+      action,
       error: err?.message,
     }),
   );
 }
 
-/**
- * Execute the moderation action on the offending message/member.
- *
- * @param {import('discord.js').Message} message - The flagged message
- * @param {import('discord.js').Client} client - Discord client
- * @param {Object} result - Analysis result
- * @param {Object} autoModConfig - AI auto-mod config
- * @param {Object} guildConfig - Full guild config
- */
-async function executeAction(message, client, result, autoModConfig, _guildConfig) {
+async function executeSingleAction(
+  action,
+  message,
+  client,
+  result,
+  reason,
+  autoModConfig,
+  _guildConfig,
+) {
   const { member, guild } = message;
-
-  const reason = `AI Auto-Mod: ${result.categories.join(', ')} — ${result.reason}`;
   const botId = client.user?.id ?? 'bot';
   const botTag = client.user?.tag ?? 'Bot#0000';
+
   let caseData = null;
 
-  if (autoModConfig.autoDelete) {
-    await message.delete().catch(() => {});
-  }
+  switch (action) {
+    case 'flag':
+      await sendFlagEmbed(message, client, { ...result, action }, autoModConfig).catch((err) =>
+        logError('AI auto-mod: sendFlagEmbed failed', { error: err?.message }),
+      );
+      break;
 
-  switch (result.action) {
     case 'warn':
-      if (!member || !guild) break;
+      if (!member || !guild) return null;
       if (shouldSendDm(_guildConfig, 'warn')) {
         await sendDmNotification(member, 'warn', reason, guild.name ?? guild.id);
       }
-      {
-        caseData = await createCase(guild.id, {
-          action: 'warn',
-          targetId: member.user.id,
-          targetTag: member.user.tag,
+      caseData = await createCase(guild.id, {
+        action: 'warn',
+        targetId: member.user.id,
+        targetTag: member.user.tag,
+        moderatorId: botId,
+        moderatorTag: botTag,
+        reason,
+      }).catch((err) => {
+        logError('AI auto-mod: createCase (warn) failed', { error: err?.message });
+        return null;
+      });
+
+      if (!caseData) return null;
+
+      await createWarning(
+        guild.id,
+        {
+          userId: member.user.id,
           moderatorId: botId,
           moderatorTag: botTag,
           reason,
-        }).catch((err) => {
-          logError('AI auto-mod: createCase (warn) failed', { error: err?.message });
-          return null;
-        });
+          severity: 'low',
+          caseId: caseData.id,
+        },
+        _guildConfig,
+      ).catch((err) =>
+        logError('AI auto-mod: createWarning failed', {
+          userId: member.user.id,
+          error: err?.message,
+        }),
+      );
 
-        if (!caseData) break;
+      await sendModLogEmbed(client, _guildConfig, caseData).catch((err) =>
+        logError('AI auto-mod: sendModLogEmbed (warn) failed', { error: err?.message }),
+      );
 
-        await createWarning(
-          guild.id,
-          {
-            userId: member.user.id,
-            moderatorId: botId,
-            moderatorTag: botTag,
-            reason,
-            severity: 'low',
-            caseId: caseData.id,
-          },
-          _guildConfig,
-        ).catch((err) =>
-          logError('AI auto-mod: createWarning failed', {
+      await checkEscalation(client, guild.id, member.user.id, botId, botTag, _guildConfig).catch(
+        (err) =>
+          logError('AI auto-mod: checkEscalation failed', {
             userId: member.user.id,
             error: err?.message,
           }),
-        );
-
-        await sendModLogEmbed(client, _guildConfig, caseData).catch((err) =>
-          logError('AI auto-mod: sendModLogEmbed (warn) failed', { error: err?.message }),
-        );
-
-        await checkEscalation(client, guild.id, member.user.id, botId, botTag, _guildConfig).catch(
-          (err) =>
-            logError('AI auto-mod: checkEscalation failed', {
-              userId: member.user.id,
-              error: err?.message,
-            }),
-        );
-      }
+      );
       break;
 
     case 'timeout': {
-      if (!member || !guild) break;
+      if (!member || !guild) return null;
       const durationMs = autoModConfig.timeoutDurationMs ?? DEFAULTS.timeoutDurationMs;
       await member
         .timeout(durationMs, reason)
@@ -416,7 +476,7 @@ async function executeAction(message, client, result, autoModConfig, _guildConfi
     }
 
     case 'kick':
-      if (!member || !guild) break;
+      if (!member || !guild) return null;
       await member
         .kick(reason)
         .catch((err) =>
@@ -433,7 +493,7 @@ async function executeAction(message, client, result, autoModConfig, _guildConfi
       break;
 
     case 'ban':
-      if (!member || !guild) break;
+      if (!member || !guild) return null;
       await guild.members
         .ban(member.user.id, { reason, deleteMessageSeconds: 0 })
         .catch((err) =>
@@ -457,11 +517,63 @@ async function executeAction(message, client, result, autoModConfig, _guildConfi
       break;
   }
 
-  await sendFlagEmbed(message, client, result, autoModConfig).catch((err) =>
-    logError('AI auto-mod: sendFlagEmbed failed', { error: err?.message }),
-  );
+  return caseData;
+}
 
-  await logAiAutoModAuditEvent(message, result, autoModConfig, caseData, reason, botId, botTag);
+/**
+ * Execute the moderation action on the offending message/member.
+ *
+ * @param {import('discord.js').Message} message - The flagged message
+ * @param {import('discord.js').Client} client - Discord client
+ * @param {Object} result - Analysis result
+ * @param {Object} autoModConfig - AI auto-mod config
+ * @param {Object} guildConfig - Full guild config
+ */
+async function executeAction(message, client, result, autoModConfig, _guildConfig) {
+  const reason = `AI Auto-Mod: ${result.categories.join(', ')} — ${result.reason}`;
+  const botId = client.user?.id ?? 'bot';
+  const botTag = client.user?.tag ?? 'Bot#0000';
+  const actions = normalizeActionList(result.actions, []);
+
+  if (autoModConfig.autoDelete) {
+    await message.delete().catch(() => {});
+  }
+
+  if (actions.length === 0) {
+    await logAiAutoModAuditEvent(
+      message,
+      result,
+      autoModConfig,
+      null,
+      reason,
+      botId,
+      botTag,
+      'none',
+    );
+    return;
+  }
+
+  for (const action of actions) {
+    const caseData = await executeSingleAction(
+      action,
+      message,
+      client,
+      result,
+      reason,
+      autoModConfig,
+      _guildConfig,
+    );
+    await logAiAutoModAuditEvent(
+      message,
+      result,
+      autoModConfig,
+      caseData,
+      reason,
+      botId,
+      botTag,
+      action,
+    );
+  }
 }
 
 /**
@@ -473,7 +585,7 @@ async function executeAction(message, client, result, autoModConfig, _guildConfi
  * @param {import('discord.js').Message} message - Incoming Discord message to evaluate.
  * @param {import('discord.js').Client} client - Discord client instance used to perform moderation actions.
  * @param {Object} guildConfig - Guild-specific configuration (merged with defaults by the function).
- * @returns {Promise<{flagged: boolean, action?: string, categories?: string[]}>} An object where `flagged` is `true` if the message triggered moderation; when `flagged` is `true`, `action` is the selected moderation action and `categories` lists the triggered categories.
+ * @returns {Promise<{flagged: boolean, action?: string, actions?: string[], categories?: string[]}>} An object where `flagged` is `true` if the message triggered moderation; when `flagged` is `true`, `action` is the highest-severity moderation summary action, `actions` lists every configured action that ran, and `categories` lists the triggered categories.
  */
 export async function checkAiAutoMod(message, client, guildConfig) {
   const autoModConfig = getAiAutoModConfig(guildConfig);
@@ -514,11 +626,13 @@ export async function checkAiAutoMod(message, client, guildConfig) {
       guildId: message.guild?.id,
       categories: result.categories,
       action: result.action,
+      actions: result.actions,
       scores: result.scores,
     });
 
     info('AI auto-mod: executing action', {
       action: result.action,
+      actions: result.actions,
       guildId: message.guild?.id,
       channelId: message.channel?.id,
       userId: message.author.id,
@@ -526,7 +640,12 @@ export async function checkAiAutoMod(message, client, guildConfig) {
 
     await executeAction(message, client, result, autoModConfig, guildConfig);
 
-    return { flagged: true, action: result.action, categories: result.categories };
+    return {
+      flagged: true,
+      action: result.action,
+      actions: result.actions,
+      categories: result.categories,
+    };
   } catch (err) {
     logError('AI auto-mod: analysis failed', {
       channelId: message.channel.id,

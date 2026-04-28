@@ -12,11 +12,13 @@ import {
   VISIBLE_PROVIDER_MODEL_OPTIONS,
 } from '@/lib/provider-model-options';
 import { cn } from '@/lib/utils';
-import type { ChannelMode } from '@/types/config';
+import type { AiAutoModAction, AiAutoModCategory, ChannelMode } from '@/types/config';
 import { SYSTEM_PROMPT_MAX_LENGTH } from '@/types/config';
 import { SystemPromptEditor } from '../system-prompt-editor';
 import { ToggleSwitch } from '../toggle-switch';
 import { ConfigCategoryLayout } from './config-category-layout';
+
+type SelectableAiAutoModAction = Exclude<AiAutoModAction, 'none'>;
 
 const AI_AUTOMOD_MODEL_OPTIONS = [
   { value: 'minimax:MiniMax-M2.7', label: 'MiniMax M2.7' },
@@ -31,29 +33,66 @@ const AI_AUTOMOD_MODEL_OPTIONS = [
 ] as const;
 
 const AI_AUTOMOD_CATEGORIES = [
-  { key: 'toxicity', label: 'Toxicity', defaultThreshold: 0.7, defaultAction: 'flag' },
-  { key: 'spam', label: 'Spam', defaultThreshold: 0.8, defaultAction: 'delete' },
-  { key: 'harassment', label: 'Harassment', defaultThreshold: 0.7, defaultAction: 'warn' },
-  { key: 'hateSpeech', label: 'Hate Speech', defaultThreshold: 0.8, defaultAction: 'timeout' },
+  { key: 'toxicity', label: 'Toxicity', defaultThreshold: 0.7, defaultActions: ['flag'] },
+  { key: 'spam', label: 'Spam', defaultThreshold: 0.8, defaultActions: ['delete'] },
+  { key: 'harassment', label: 'Harassment', defaultThreshold: 0.7, defaultActions: ['warn'] },
+  { key: 'hateSpeech', label: 'Hate Speech', defaultThreshold: 0.8, defaultActions: ['timeout'] },
   {
     key: 'sexualContent',
     label: 'Sexual Content',
     defaultThreshold: 0.8,
-    defaultAction: 'delete',
+    defaultActions: ['delete'],
   },
-  { key: 'violence', label: 'Violence', defaultThreshold: 0.85, defaultAction: 'ban' },
-  { key: 'selfHarm', label: 'Self-Harm', defaultThreshold: 0.7, defaultAction: 'flag' },
-] as const;
+  { key: 'violence', label: 'Violence', defaultThreshold: 0.85, defaultActions: ['ban'] },
+  { key: 'selfHarm', label: 'Self-Harm', defaultThreshold: 0.7, defaultActions: ['flag'] },
+] as const satisfies readonly {
+  key: AiAutoModCategory;
+  label: string;
+  defaultThreshold: number;
+  defaultActions: readonly SelectableAiAutoModAction[];
+}[];
 
 const AI_AUTOMOD_ACTION_OPTIONS = [
-  { value: 'none', label: 'Ignore' },
-  { value: 'delete', label: 'Hard Delete' },
   { value: 'flag', label: 'Flag & Log' },
+  { value: 'delete', label: 'Hard Delete' },
   { value: 'warn', label: 'Issue Warning' },
   { value: 'timeout', label: 'Temporary Timeout' },
   { value: 'kick', label: 'Server Kick' },
   { value: 'ban', label: 'Permanent Ban' },
-] as const;
+] as const satisfies readonly { value: SelectableAiAutoModAction; label: string }[];
+
+const AI_AUTOMOD_ACTION_ORDER = AI_AUTOMOD_ACTION_OPTIONS.map((option) => option.value);
+
+function isSelectableAiAutoModAction(value: unknown): value is SelectableAiAutoModAction {
+  return (
+    typeof value === 'string' &&
+    AI_AUTOMOD_ACTION_ORDER.includes(value as SelectableAiAutoModAction)
+  );
+}
+
+function sortAiAutoModActions(
+  actions: readonly SelectableAiAutoModAction[],
+): SelectableAiAutoModAction[] {
+  const selected = new Set(actions);
+  return AI_AUTOMOD_ACTION_ORDER.filter((action) => selected.has(action));
+}
+
+function normalizeAiAutoModActions(
+  value: unknown,
+  fallback: readonly SelectableAiAutoModAction[],
+): SelectableAiAutoModAction[] {
+  const rawActions = Array.isArray(value)
+    ? value
+    : isSelectableAiAutoModAction(value)
+      ? [value]
+      : fallback;
+  const uniqueActions = rawActions.filter(
+    (action, index, allActions): action is SelectableAiAutoModAction =>
+      isSelectableAiAutoModAction(action) && allActions.indexOf(action) === index,
+  );
+
+  return sortAiAutoModActions(uniqueActions);
+}
 
 const hasVisibleModelOptions = VISIBLE_PROVIDER_MODEL_OPTIONS.length > 0;
 
@@ -376,93 +415,115 @@ export function AiAutomationCategory() {
               </p>
             </div>
 
-            <div className="grid lg:grid-cols-2 gap-8">
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="h-1 w-1 rounded-full bg-primary" />
-                  <span className="text-[11px] font-black uppercase tracking-[0.2em] text-foreground/50">
-                    Thresholds
-                  </span>
-                </div>
-                <div className="grid gap-4">
-                  {AI_AUTOMOD_CATEGORIES.map((category) => (
-                    <div key={category.key} className="flex items-center justify-between gap-6">
-                      <span className="text-sm font-bold text-foreground/80">{category.label}</span>
-                      <div className="relative">
-                        <input
-                          id={`ai-threshold-${category.key}`}
-                          aria-label={`${category.label} Threshold`}
-                          type="number"
-                          min={0}
-                          max={100}
-                          step={5}
-                          value={Math.round(
-                            ((draftConfig.aiAutoMod?.thresholds as Record<string, number>)?.[
-                              category.key
-                            ] ?? category.defaultThreshold) * 100,
-                          )}
-                          onChange={(e) => {
-                            const raw = Number(e.target.value);
-                            const v = Number.isNaN(raw) ? 0 : Math.min(1, Math.max(0, raw / 100));
-                            updateAiAutoModField('thresholds', {
-                              ...((draftConfig.aiAutoMod?.thresholds as Record<string, number>) ??
-                                {}),
-                              [category.key]: v,
-                            });
-                          }}
-                          onFocus={(e) => e.target.select()}
-                          disabled={saving}
-                          className={cn(
-                            inputClasses,
-                            'w-24 text-right pr-8 font-mono font-semibold',
-                          )}
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground">
-                          %
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+            <div className="overflow-hidden rounded-2xl border border-border/30 bg-background/30">
+              <div className="hidden grid-cols-[minmax(10rem,1fr)_8rem_minmax(14rem,2fr)] gap-4 border-b border-border/30 px-4 py-3 sm:grid">
+                <span className="text-[11px] font-black uppercase tracking-[0.2em] text-foreground/50">
+                  Category
+                </span>
+                <span className="text-right text-[11px] font-black uppercase tracking-[0.2em] text-foreground/50">
+                  Threshold
+                </span>
+                <span className="text-[11px] font-black uppercase tracking-[0.2em] text-foreground/50">
+                  Response
+                </span>
               </div>
+              <div className="divide-y divide-border/20">
+                {AI_AUTOMOD_CATEGORIES.map((category) => {
+                  const selectedActions = normalizeAiAutoModActions(
+                    (
+                      draftConfig.aiAutoMod?.actions as
+                        | Partial<Record<AiAutoModCategory, unknown>>
+                        | undefined
+                    )?.[category.key],
+                    category.defaultActions,
+                  );
 
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="h-1 w-1 rounded-full bg-primary" />
-                  <span className="text-[11px] font-black uppercase tracking-[0.2em] text-foreground/50">
-                    Response
-                  </span>
-                </div>
-                <div className="grid gap-4">
-                  {AI_AUTOMOD_CATEGORIES.map((category) => (
-                    <div key={category.key} className="flex items-center justify-between gap-4">
+                  return (
+                    <div
+                      key={category.key}
+                      className="grid gap-3 px-4 py-4 sm:grid-cols-[minmax(10rem,1fr)_8rem_minmax(14rem,2fr)] sm:items-center sm:gap-4 sm:py-3"
+                    >
                       <span className="text-sm font-bold text-foreground/80">{category.label}</span>
-                      <select
-                        id={`ai-action-${category.key}`}
-                        aria-label={`${category.label} Action`}
-                        value={
-                          (draftConfig.aiAutoMod?.actions as Record<string, string>)?.[
-                            category.key
-                          ] ?? category.defaultAction
-                        }
-                        onChange={(e) => {
-                          updateAiAutoModField('actions', {
-                            ...((draftConfig.aiAutoMod?.actions as Record<string, string>) ?? {}),
-                            [category.key]: e.target.value,
-                          });
-                        }}
-                        disabled={saving}
-                        className={cn(inputClasses, 'w-full min-w-[140px] font-semibold')}
-                      >
-                        {AI_AUTOMOD_ACTION_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="grid gap-1.5 sm:block">
+                        <span className="text-[10px] font-black uppercase tracking-[0.18em] text-foreground/40 sm:hidden">
+                          Threshold
+                        </span>
+                        <div className="relative w-full sm:ml-auto sm:w-28">
+                          <input
+                            id={`ai-threshold-${category.key}`}
+                            aria-label={`${category.label} Threshold`}
+                            type="number"
+                            min={0}
+                            max={100}
+                            step={5}
+                            value={Math.round(
+                              ((draftConfig.aiAutoMod?.thresholds as Record<string, number>)?.[
+                                category.key
+                              ] ?? category.defaultThreshold) * 100,
+                            )}
+                            onChange={(e) => {
+                              const raw = Number(e.target.value);
+                              const v = Number.isNaN(raw) ? 0 : Math.min(1, Math.max(0, raw / 100));
+                              updateAiAutoModField('thresholds', {
+                                ...((draftConfig.aiAutoMod?.thresholds as Record<string, number>) ??
+                                  {}),
+                                [category.key]: v,
+                              });
+                            }}
+                            onFocus={(e) => e.target.select()}
+                            disabled={saving}
+                            className={cn(
+                              inputClasses,
+                              'w-full text-right pr-8 font-mono font-semibold',
+                            )}
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground">
+                            %
+                          </span>
+                        </div>
+                      </div>
+                      <fieldset className="grid min-w-0 gap-1.5">
+                        <legend className="sr-only">{category.label} Actions</legend>
+                        <span className="text-[10px] font-black uppercase tracking-[0.18em] text-foreground/40 sm:hidden">
+                          Response
+                        </span>
+                        <div className="flex flex-wrap gap-2">
+                          {AI_AUTOMOD_ACTION_OPTIONS.map((option) => (
+                            <label key={option.value} className="cursor-pointer">
+                              <input
+                                type="checkbox"
+                                aria-label={`${category.label} ${option.label}`}
+                                checked={selectedActions.includes(option.value)}
+                                onChange={(e) => {
+                                  const nextActions = e.target.checked
+                                    ? sortAiAutoModActions([...selectedActions, option.value])
+                                    : selectedActions.filter((action) => action !== option.value);
+
+                                  updateAiAutoModField('actions', {
+                                    ...((draftConfig.aiAutoMod?.actions as Partial<
+                                      Record<AiAutoModCategory, unknown>
+                                    >) ?? {}),
+                                    [category.key]: nextActions,
+                                  });
+                                }}
+                                disabled={saving}
+                                className="peer sr-only"
+                              />
+                              <span className="block rounded-lg border border-border/40 bg-background/70 px-3 py-2 text-[11px] font-bold text-foreground/60 transition-colors peer-checked:border-primary/60 peer-checked:bg-primary/15 peer-checked:text-foreground peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary">
+                                {option.label}
+                              </span>
+                            </label>
+                          ))}
+                          {selectedActions.length === 0 && (
+                            <span className="rounded-lg border border-dashed border-border/40 px-3 py-2 text-[11px] font-bold text-muted-foreground">
+                              No response actions
+                            </span>
+                          )}
+                        </div>
+                      </fieldset>
                     </div>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
             </div>
           </div>

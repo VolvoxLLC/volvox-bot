@@ -37,7 +37,7 @@ export interface AiAutoModConfig {
   enabled: boolean;
   model: string;
   thresholds: Record<AiAutoModCategory, number>;
-  actions: Record<AiAutoModCategory, AiAutoModAction>;
+  actions: Record<AiAutoModCategory, AiAutoModAction[]>;
   timeoutDurationMs: number;
   flagChannelId: string | null;
   autoDelete: boolean;
