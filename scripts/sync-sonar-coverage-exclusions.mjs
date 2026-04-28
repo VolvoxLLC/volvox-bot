@@ -498,23 +498,47 @@ function importedAccessMutates(tokens, importUseIndex, end) {
     (isToken(tokens, cursor, '-') && isToken(tokens, cursor + 1, '-'));
 }
 
-function objectAssignMutatesImportedExclusionGroups(tokens, cursor, importName) {
+function objectAssignMutatesImportedExclusionGroups(tokens, cursor, exclusionGroupBindings) {
   return (
     isIdentifierToken(tokens, cursor, 'Object') &&
     isToken(tokens, cursor + 1, '.') &&
     isIdentifierToken(tokens, cursor + 2, 'assign') &&
     isToken(tokens, cursor + 3, '(') &&
-    isIdentifierToken(tokens, cursor + 4, importName)
+    exclusionGroupBindings.has(tokens[cursor + 4]?.value)
   );
 }
 
-function statementMutatesImportedExclusionGroups(tokens, start, end, importName) {
+function isLocalIdentifierAssignmentAt(tokens, cursor) {
+  return (
+    cursor > 0 &&
+    tokens[cursor - 1]?.type === 'identifier' &&
+    !isToken(tokens, cursor - 2, '.') &&
+    !isToken(tokens, cursor - 2, '[') &&
+    isAssignmentOperatorAt(tokens, cursor)
+  );
+}
+
+function collectImportedExclusionGroupAliases(tokens, start, end, exclusionGroupBindings) {
+  for (let cursor = start; cursor < end - 1; cursor += 1) {
+    if (
+      isLocalIdentifierAssignmentAt(tokens, cursor) &&
+      exclusionGroupBindings.has(tokens[cursor + 1]?.value)
+    ) {
+      exclusionGroupBindings.add(tokens[cursor - 1].value);
+    }
+  }
+}
+
+function statementMutatesImportedExclusionGroups(tokens, start, end, exclusionGroupBindings) {
   for (let cursor = start; cursor < end; cursor += 1) {
-    if (objectAssignMutatesImportedExclusionGroups(tokens, cursor, importName)) {
+    if (objectAssignMutatesImportedExclusionGroups(tokens, cursor, exclusionGroupBindings)) {
       return true;
     }
 
-    if (isIdentifierToken(tokens, cursor, importName) && importedAccessMutates(tokens, cursor, end)) {
+    if (
+      exclusionGroupBindings.has(tokens[cursor]?.value) &&
+      importedAccessMutates(tokens, cursor, end)
+    ) {
       return true;
     }
   }
@@ -522,14 +546,17 @@ function statementMutatesImportedExclusionGroups(tokens, start, end, importName)
   return false;
 }
 
-function hasImportedExclusionGroupMutationBefore(tokens, importName, endIndex) {
+function hasImportedExclusionGroupMutation(tokens, importName) {
+  const exclusionGroupBindings = new Set([importName]);
   let cursor = 0;
-  while (cursor < endIndex) {
-    const statementEnd = Math.min(findStatementEnd(tokens, cursor), endIndex);
-    if (statementMutatesImportedExclusionGroups(tokens, cursor, statementEnd, importName)) {
+
+  while (cursor < tokens.length) {
+    const statementEnd = findStatementEnd(tokens, cursor);
+    if (statementMutatesImportedExclusionGroups(tokens, cursor, statementEnd, exclusionGroupBindings)) {
       return true;
     }
 
+    collectImportedExclusionGroupAliases(tokens, cursor, statementEnd, exclusionGroupBindings);
     cursor = statementEnd + 1;
   }
 
@@ -569,11 +596,7 @@ function verifyVitestCoverageExclusions(config) {
     failures.push('web/vitest.config.ts defineConfig test.coverage object must define coverage.exclude');
   }
 
-  if (
-    importName !== null &&
-    configObject !== null &&
-    hasImportedExclusionGroupMutationBefore(tokens, importName, configObject.start)
-  ) {
+  if (importName !== null && hasImportedExclusionGroupMutation(tokens, importName)) {
     failures.push('web/vitest.config.ts must not mutate the imported coverage exclusions JSON');
   }
 

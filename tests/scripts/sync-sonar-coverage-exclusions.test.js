@@ -169,6 +169,47 @@ describe('verifyVitestCoverageExclusions', () => {
     expect(() => verifyVitestCoverageExclusions(config)).not.toThrow();
   });
 
+  it('rejects alias mutations of the imported coverage exclusions object', () => {
+    const config = `
+      import { defineConfig } from 'vitest/config';
+      import coverageExclusionGroups from './coverage-exclusions.json';
+
+      const groupsAlias = coverageExclusionGroups;
+      groupsAlias.extra = ['src/generated/**'];
+
+      export default defineConfig({
+        test: {
+          coverage: {
+            exclude: Object.values(coverageExclusionGroups).flat(),
+          },
+        },
+      });
+    `;
+
+    expect(() => verifyVitestCoverageExclusions(config)).toThrow(
+      /must not mutate the imported coverage exclusions JSON/,
+    );
+  });
+
+  it('rejects mutations inside the exported defineConfig object', () => {
+    const config = `
+      import { defineConfig } from 'vitest/config';
+      import coverageExclusionGroups from './coverage-exclusions.json';
+
+      export default defineConfig({
+        test: {
+          coverage: {
+            exclude: (coverageExclusionGroups.extra = ['src/generated/**']),
+          },
+        },
+      });
+    `;
+
+    expect(() => verifyVitestCoverageExclusions(config)).toThrow(
+      /must not mutate the imported coverage exclusions JSON/,
+    );
+  });
+
   it('allows read-only comparisons of the imported coverage exclusions object', () => {
     const config = `
       import { defineConfig } from 'vitest/config';
