@@ -458,13 +458,28 @@ const mutatingArrayMethods = new Set([
 ]);
 
 function isAssignmentOperatorAt(tokens, index) {
-  if (!isToken(tokens, index, '=')) {
+  if (isToken(tokens, index, '=')) {
+    const previous = tokens[index - 1]?.value;
+    const next = tokens[index + 1]?.value;
+    return previous !== '=' && previous !== '!' && previous !== '<' && previous !== '>' && next !== '=' && next !== '>';
+  }
+
+  if (isToken(tokens, index + 1, '=')) {
+    return ['+', '-', '*', '/', '%', '&', '|', '^'].includes(tokens[index]?.value);
+  }
+
+  if (!isToken(tokens, index + 2, '=')) {
     return false;
   }
 
-  const previous = tokens[index - 1]?.value;
-  const next = tokens[index + 1]?.value;
-  return previous !== '=' && previous !== '!' && previous !== '<' && previous !== '>' && next !== '=' && next !== '>';
+  return (
+    (isToken(tokens, index, '|') && isToken(tokens, index + 1, '|')) ||
+    (isToken(tokens, index, '&') && isToken(tokens, index + 1, '&')) ||
+    (isToken(tokens, index, '?') && isToken(tokens, index + 1, '?')) ||
+    (isToken(tokens, index, '*') && isToken(tokens, index + 1, '*')) ||
+    (isToken(tokens, index, '<') && isToken(tokens, index + 1, '<')) ||
+    (isToken(tokens, index, '>') && isToken(tokens, index + 1, '>'))
+  );
 }
 
 function findBracketAccessEnd(tokens, openIndex, end) {

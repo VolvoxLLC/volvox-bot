@@ -84,6 +84,14 @@ describe('verifyVitestCoverageExclusions', () => {
     expectMutationRejected("coverageExclusionGroups.framework.push('src/generated/**');");
   });
 
+  it('rejects compound assignments to imported coverage exclusions', () => {
+    expectMutationRejected("coverageExclusionGroups.extra += ['src/generated/**'];");
+  });
+
+  it('rejects logical assignments to imported coverage exclusions', () => {
+    expectMutationRejected('coverageExclusionGroups.extra ||= [];');
+  });
+
   it('rejects Object.assign mutations of the imported coverage exclusions object inside expressions', () => {
     expectMutationRejected(
       "const mergedGroups = Object.assign(coverageExclusionGroups, { extra: ['src/generated/**'] });",
@@ -140,6 +148,10 @@ describe('verifyVitestCoverageExclusions', () => {
 
   it('rejects mutations through direct Object.values-derived exclusion arrays', () => {
     expectMutationRejected("Object.values(coverageExclusionGroups)[0].push('src/generated/**');");
+  });
+
+  it('rejects logical assignments through direct Object.values-derived exclusion arrays', () => {
+    expectMutationRejected('Object.values(coverageExclusionGroups)[0] ??= [];');
   });
 
   it('rejects mutations inside the exported defineConfig object', () => {
