@@ -1,13 +1,23 @@
+import { Inbox, type LucideIcon } from 'lucide-react';
+
 /**
  * Renders a simple empty-state container with a heading and an optional description.
- *
- * @param title - Text to display inside the heading (`h2`)
- * @param description - Optional text to display inside a paragraph (`p`) when provided
- * @returns A React element containing the empty-state markup
+ * Mirrors the production EmptyState prop surface closely enough for dashboard client tests.
  */
-export function MockEmptyState({ title, description }: { title: string; description?: string }) {
+export function MockEmptyState({
+  icon: Icon = Inbox,
+  title,
+  description,
+  className,
+}: {
+  icon?: LucideIcon;
+  title: string;
+  description?: string;
+  className?: string;
+}) {
   return (
-    <div data-testid="empty-state">
+    <div className={className} data-testid="empty-state">
+      <Icon aria-hidden="true" data-testid="empty-state-icon" />
       <h2>{title}</h2>
       {description ? <p>{description}</p> : null}
     </div>
