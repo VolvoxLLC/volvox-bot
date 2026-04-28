@@ -379,6 +379,23 @@ async function startup() {
     startEngagementFlushInterval();
   }
 
+  // Start REST API server before Discord login so Railway health checks can pass
+  // while the bot is still connecting. The health route reports a connecting
+  // Discord state until client.ws is available.
+  {
+    let wsTransport = null;
+    try {
+      wsTransport = addWebSocketTransport();
+      await startServer(client, dbPool, { wsTransport });
+    } catch (err) {
+      // Clean up orphaned transport if startServer failed after it was created
+      if (wsTransport) {
+        removeWebSocketTransport(wsTransport);
+      }
+      error('REST API server failed to start — continuing without API', { error: err.message });
+    }
+  }
+
   // Load commands and login
   await loadCommands();
   await client.login(token);
@@ -398,21 +415,6 @@ async function startup() {
       }
     })
     .catch(() => {});
-
-  // Start REST API server with WebSocket log streaming (non-fatal — bot continues without it)
-  {
-    let wsTransport = null;
-    try {
-      wsTransport = addWebSocketTransport();
-      await startServer(client, dbPool, { wsTransport });
-    } catch (err) {
-      // Clean up orphaned transport if startServer failed after it was created
-      if (wsTransport) {
-        removeWebSocketTransport(wsTransport);
-      }
-      error('REST API server failed to start — continuing without API', { error: err.message });
-    }
-  }
 }
 
 startup().catch((err) => {

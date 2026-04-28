@@ -1,4 +1,4 @@
-import providersCatalog from '../../../src/data/providers.json';
+import providersCatalog from '../data/providers.json';
 
 export interface ProviderModelOption {
   value: string;

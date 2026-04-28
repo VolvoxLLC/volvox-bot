@@ -1,0 +1,122 @@
+{
+  "_comment": "Unified provider + model catalog. Single source of truth for non-secret model/provider state. API keys: <PROVIDER>_API_KEY in .env. Default models: triage.classifyModel / respondModel in config.json (seed; DB overrides at runtime). apiShape is string or array; currently only 'anthropic' is accepted by aiClient - see issue #530 for extensibility.",
+  "providers": {
+    "minimax": {
+      "displayName": "MiniMax",
+      "apiShape": "anthropic",
+      "baseUrl": "https://api.minimax.io/anthropic/v1",
+      "envKey": "MINIMAX_API_KEY",
+      "capabilities": { "webSearch": false, "thinking": false },
+      "models": {
+        "MiniMax-M2.7": {
+          "displayName": "MiniMax M2.7",
+          "pricing": { "input": 0.3, "output": 1.2, "cacheRead": 0.06, "cacheWrite": 0.375 },
+          "availability": { "visible": true, "tier": "free" }
+        },
+        "MiniMax-M2.7-highspeed": {
+          "displayName": "MiniMax M2.7 Highspeed",
+          "pricing": { "input": 0.3, "output": 2.4, "cacheRead": 0.06, "cacheWrite": 0.375 },
+          "availability": { "visible": true, "tier": "free" }
+        },
+        "MiniMax-M2.5": {
+          "displayName": "MiniMax M2.5",
+          "pricing": { "input": 0.3, "output": 1.2, "cacheRead": 0.03, "cacheWrite": 0.375 },
+          "availability": { "visible": true, "tier": "free" }
+        },
+        "MiniMax-M2.5-highspeed": {
+          "displayName": "MiniMax M2.5 Highspeed",
+          "pricing": { "input": 0.3, "output": 2.4, "cacheRead": 0.03, "cacheWrite": 0.375 },
+          "availability": { "visible": true, "tier": "free" }
+        },
+        "MiniMax-M2.1": {
+          "displayName": "MiniMax M2.1",
+          "pricing": { "input": 0.3, "output": 1.2, "cacheRead": 0.03, "cacheWrite": 0.375 },
+          "availability": { "visible": true, "tier": "free" }
+        },
+        "MiniMax-M2.1-highspeed": {
+          "displayName": "MiniMax M2.1 Highspeed",
+          "pricing": { "input": 0.3, "output": 2.4, "cacheRead": 0.03, "cacheWrite": 0.375 },
+          "availability": { "visible": true, "tier": "free" }
+        },
+        "MiniMax-M2": {
+          "displayName": "MiniMax M2",
+          "pricing": { "input": 0.3, "output": 1.2, "cacheRead": 0.03, "cacheWrite": 0.375 },
+          "availability": { "visible": true, "tier": "free" }
+        },
+        "MiniMax-M2-stable": {
+          "displayName": "MiniMax M2 Stable",
+          "pricing": { "input": 0.3, "output": 1.2, "cacheRead": 0.03, "cacheWrite": 0.375 },
+          "availability": { "visible": true, "tier": "free" }
+        }
+      }
+    },
+    "moonshot": {
+      "displayName": "Moonshot (Kimi)",
+      "apiShape": "anthropic",
+      "baseUrl": "https://api.moonshot.ai/anthropic",
+      "envKey": "MOONSHOT_API_KEY",
+      "capabilities": { "webSearch": false, "thinking": false },
+      "models": {
+        "kimi-k2.6": {
+          "displayName": "Kimi K2.6",
+          "pricing": { "input": 0.95, "output": 4.0, "cacheRead": 0.16, "cacheWrite": 0 },
+          "availability": { "visible": true, "tier": "free" }
+        },
+        "kimi-k2.5": {
+          "displayName": "Kimi K2.5",
+          "pricing": { "input": 0.60, "output": 3.0, "cacheRead": 0.10, "cacheWrite": 0 },
+          "availability": { "visible": true, "tier": "free" }
+        },
+        "kimi-k2-thinking": {
+          "displayName": "Kimi K2 Thinking",
+          "pricing": { "input": 0.60, "output": 2.5, "cacheRead": 0, "cacheWrite": 0 },
+          "availability": { "visible": true, "tier": "free" }
+        }
+      }
+    },
+    "openrouter": {
+      "displayName": "OpenRouter",
+      "apiShape": "anthropic",
+      "baseUrl": "https://openrouter.ai/api/v1",
+      "envKey": "OPENROUTER_API_KEY",
+      "capabilities": { "webSearch": false, "thinking": false },
+      "models": {
+        "minimax/minimax-m2.5": {
+          "displayName": "MiniMax M2.5 (via OpenRouter)",
+          "pricing": { "input": 0.15, "output": 1.20, "cacheRead": 0.03, "cacheWrite": 0 },
+          "availability": { "visible": true, "tier": "free" }
+        },
+        "minimax/minimax-m2.5:free": {
+          "displayName": "MiniMax M2.5 Free (via OpenRouter)",
+          "pricing": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 },
+          "availability": { "visible": true, "tier": "free" }
+        },
+        "moonshotai/kimi-k2.6": {
+          "displayName": "Kimi K2.6 (via OpenRouter)",
+          "pricing": { "input": 0.60, "output": 2.80, "cacheRead": 0.16, "cacheWrite": 0 },
+          "availability": { "visible": true, "tier": "free" }
+        },
+        "moonshotai/kimi-k2.5": {
+          "displayName": "Kimi K2.5 (via OpenRouter)",
+          "pricing": { "input": 0.44, "output": 2.00, "cacheRead": 0, "cacheWrite": 0 },
+          "availability": { "visible": true, "tier": "free" }
+        },
+        "moonshotai/kimi-k2-thinking": {
+          "displayName": "Kimi K2 Thinking (via OpenRouter)",
+          "pricing": { "input": 0.60, "output": 2.50, "cacheRead": 0, "cacheWrite": 0 },
+          "availability": { "visible": true, "tier": "free" }
+        },
+        "moonshotai/kimi-k2-0905": {
+          "displayName": "Kimi K2 0905 (via OpenRouter)",
+          "pricing": { "input": 0.40, "output": 2.00, "cacheRead": 0, "cacheWrite": 0 },
+          "availability": { "visible": true, "tier": "free" }
+        },
+        "moonshotai/kimi-k2": {
+          "displayName": "Kimi K2 (via OpenRouter)",
+          "pricing": { "input": 0.57, "output": 2.30, "cacheRead": 0, "cacheWrite": 0 },
+          "availability": { "visible": true, "tier": "free" }
+        }
+      }
+    }
+  }
+}
