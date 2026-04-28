@@ -46,6 +46,8 @@ AI moderation settings are in **Config → AI & Automation → AI Auto-Moderatio
 | Detection model | The provider/model used to score incoming messages |
 | Incident report channel | Where flagged AI moderation reports are posted |
 | Sensitivity thresholds | Per-category score required before action runs |
-| Response actions | Ignore, delete, flag, warn, timeout, kick, or ban per category |
+| Response actions | Ignore, delete, flag, warn, timeout, kick, or ban per category. `warn` creates a warning record, sends the warning DM when enabled, and checks escalation rules. |
+
+Every triggered AI moderation response is recorded in the audit log as `ai_automod.<action>`, including `ai_automod.none` when a threshold is hit but the configured action is Ignore.
 
 Changes apply instantly — no bot restart needed.

@@ -6,12 +6,21 @@
  */
 
 import { EmbedBuilder } from 'discord.js';
+import { getPool } from '../db.js';
 import { info, error as logError, warn } from '../logger.js';
 import { generate } from '../utils/aiClient.js';
 import { fetchChannelCached } from '../utils/discordCache.js';
 import { isExempt } from '../utils/modExempt.js';
 import { safeSend } from '../utils/safeSend.js';
-import { createCase } from './moderation.js';
+import { logAuditEvent } from './auditLogger.js';
+import {
+  checkEscalation,
+  createCase,
+  sendDmNotification,
+  sendModLogEmbed,
+  shouldSendDm,
+} from './moderation.js';
+import { createWarning } from './warningEngine.js';
 
 export const AI_AUTOMOD_CATEGORIES = Object.freeze([
   {
@@ -255,6 +264,61 @@ async function sendFlagEmbed(message, client, result, autoModConfig) {
   await safeSend(flagChannel, { embeds: [embed] });
 }
 
+function getAuditPool() {
+  try {
+    return getPool();
+  } catch {
+    return null;
+  }
+}
+
+async function logAiAutoModAuditEvent(
+  message,
+  result,
+  autoModConfig,
+  caseData,
+  reason,
+  botId,
+  botTag,
+) {
+  const guildId = message.guild?.id;
+  if (!guildId) return;
+
+  const targetId = message.member?.user?.id ?? message.author?.id;
+  const targetTag = message.member?.user?.tag ?? message.author?.tag ?? '';
+
+  await logAuditEvent(getAuditPool(), {
+    guildId,
+    userId: botId,
+    userTag: botTag,
+    action: `ai_automod.${result.action ?? 'none'}`,
+    targetType: targetId ? 'member' : 'message',
+    targetId: targetId ?? message.id,
+    targetTag,
+    details: {
+      source: 'ai_auto_mod',
+      action: result.action ?? 'none',
+      model: autoModConfig.model ?? DEFAULTS.model,
+      messageId: message.id,
+      channelId: message.channel?.id ?? null,
+      messageUrl: message.url ?? null,
+      categories: result.categories,
+      scores: result.scores,
+      thresholds: autoModConfig.thresholds,
+      reason,
+      caseId: caseData?.id ?? null,
+      caseNumber: caseData?.case_number ?? caseData?.caseNumber ?? null,
+      autoDelete: Boolean(autoModConfig.autoDelete),
+    },
+  }).catch((err) =>
+    logError('AI auto-mod: audit log failed', {
+      guildId,
+      action: result.action,
+      error: err?.message,
+    }),
+  );
+}
+
 /**
  * Execute the moderation action on the offending message/member.
  *
@@ -270,6 +334,7 @@ async function executeAction(message, client, result, autoModConfig, _guildConfi
   const reason = `AI Auto-Mod: ${result.categories.join(', ')} — ${result.reason}`;
   const botId = client.user?.id ?? 'bot';
   const botTag = client.user?.tag ?? 'Bot#0000';
+  let caseData = null;
 
   if (autoModConfig.autoDelete) {
     await message.delete().catch(() => {});
@@ -278,14 +343,54 @@ async function executeAction(message, client, result, autoModConfig, _guildConfi
   switch (result.action) {
     case 'warn':
       if (!member || !guild) break;
-      await createCase(guild.id, {
-        action: 'warn',
-        targetId: member.user.id,
-        targetTag: member.user.tag,
-        moderatorId: botId,
-        moderatorTag: botTag,
-        reason,
-      }).catch((err) => logError('AI auto-mod: createCase (warn) failed', { error: err?.message }));
+      if (shouldSendDm(_guildConfig, 'warn')) {
+        await sendDmNotification(member, 'warn', reason, guild.name ?? guild.id);
+      }
+      {
+        caseData = await createCase(guild.id, {
+          action: 'warn',
+          targetId: member.user.id,
+          targetTag: member.user.tag,
+          moderatorId: botId,
+          moderatorTag: botTag,
+          reason,
+        }).catch((err) => {
+          logError('AI auto-mod: createCase (warn) failed', { error: err?.message });
+          return null;
+        });
+
+        if (!caseData) break;
+
+        await createWarning(
+          guild.id,
+          {
+            userId: member.user.id,
+            moderatorId: botId,
+            moderatorTag: botTag,
+            reason,
+            severity: 'low',
+            caseId: caseData.id,
+          },
+          _guildConfig,
+        ).catch((err) =>
+          logError('AI auto-mod: createWarning failed', {
+            userId: member.user.id,
+            error: err?.message,
+          }),
+        );
+
+        await sendModLogEmbed(client, _guildConfig, caseData).catch((err) =>
+          logError('AI auto-mod: sendModLogEmbed (warn) failed', { error: err?.message }),
+        );
+
+        await checkEscalation(client, guild.id, member.user.id, botId, botTag, _guildConfig).catch(
+          (err) =>
+            logError('AI auto-mod: checkEscalation failed', {
+              userId: member.user.id,
+              error: err?.message,
+            }),
+        );
+      }
       break;
 
     case 'timeout': {
@@ -296,7 +401,7 @@ async function executeAction(message, client, result, autoModConfig, _guildConfi
         .catch((err) =>
           logError('AI auto-mod: timeout failed', { userId: member.user.id, error: err?.message }),
         );
-      await createCase(guild.id, {
+      caseData = await createCase(guild.id, {
         action: 'timeout',
         targetId: member.user.id,
         targetTag: member.user.tag,
@@ -317,7 +422,7 @@ async function executeAction(message, client, result, autoModConfig, _guildConfi
         .catch((err) =>
           logError('AI auto-mod: kick failed', { userId: member.user.id, error: err?.message }),
         );
-      await createCase(guild.id, {
+      caseData = await createCase(guild.id, {
         action: 'kick',
         targetId: member.user.id,
         targetTag: member.user.tag,
@@ -334,7 +439,7 @@ async function executeAction(message, client, result, autoModConfig, _guildConfi
         .catch((err) =>
           logError('AI auto-mod: ban failed', { userId: member.user.id, error: err?.message }),
         );
-      await createCase(guild.id, {
+      caseData = await createCase(guild.id, {
         action: 'ban',
         targetId: member.user.id,
         targetTag: member.user.tag,
@@ -355,6 +460,8 @@ async function executeAction(message, client, result, autoModConfig, _guildConfi
   await sendFlagEmbed(message, client, result, autoModConfig).catch((err) =>
     logError('AI auto-mod: sendFlagEmbed failed', { error: err?.message }),
   );
+
+  await logAiAutoModAuditEvent(message, result, autoModConfig, caseData, reason, botId, botTag);
 }
 
 /**
