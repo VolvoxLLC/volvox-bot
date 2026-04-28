@@ -501,11 +501,18 @@ function accessChainMutates(tokens, start, end) {
     }
 
     const memberName = tokens[cursor + 1].value;
-    if (mutatingArrayMethods.has(memberName) && isToken(tokens, cursor + 2, '(')) {
+    cursor += 2;
+    if (mutatingArrayMethods.has(memberName) && isToken(tokens, cursor, '(')) {
       return true;
     }
 
-    cursor += 2;
+    if (isToken(tokens, cursor, '(')) {
+      const closeIndex = findMatchingToken(tokens, cursor);
+      if (closeIndex === -1 || closeIndex >= end) {
+        break;
+      }
+      cursor = closeIndex + 1;
+    }
   }
 
   return isAssignmentOperatorAt(tokens, cursor) ||
@@ -538,12 +545,12 @@ function isLocalIdentifierAssignmentAt(tokens, cursor) {
   );
 }
 
-function findDestructuringObjectStart(tokens, closeIndex, statementStart) {
+function findDestructuringStart(tokens, closeIndex, statementStart, openToken, closeToken) {
   let depth = 0;
   for (let cursor = closeIndex; cursor >= statementStart; cursor -= 1) {
-    if (isToken(tokens, cursor, '}')) {
+    if (isToken(tokens, cursor, closeToken)) {
       depth += 1;
-    } else if (isToken(tokens, cursor, '{')) {
+    } else if (isToken(tokens, cursor, openToken)) {
       depth -= 1;
       if (depth === 0) {
         return cursor;
@@ -649,7 +656,15 @@ function collectImportedExclusionGroupAliases(tokens, start, end, exclusionGroup
     }
 
     if (isToken(tokens, cursor - 1, '}')) {
-      const destructuringStart = findDestructuringObjectStart(tokens, cursor - 1, start);
+      const destructuringStart = findDestructuringStart(tokens, cursor - 1, start, '{', '}');
+      if (destructuringStart !== -1) {
+        collectDestructuredAliases(tokens, destructuringStart, cursor - 1, exclusionGroupBindings);
+      }
+      continue;
+    }
+
+    if (isToken(tokens, cursor - 1, ']')) {
+      const destructuringStart = findDestructuringStart(tokens, cursor - 1, start, '[', ']');
       if (destructuringStart !== -1) {
         collectDestructuredAliases(tokens, destructuringStart, cursor - 1, exclusionGroupBindings);
       }

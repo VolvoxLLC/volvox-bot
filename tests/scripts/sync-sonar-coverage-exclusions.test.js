@@ -135,6 +135,13 @@ describe('verifyVitestCoverageExclusions', () => {
     `);
   });
 
+  it('rejects mutations through array-destructured Object.values aliases', () => {
+    expectMutationRejected(`
+      const [firstList] = Object.values(coverageExclusionGroups);
+      firstList.push('src/generated/**');
+    `);
+  });
+
   it('rejects delete operations on imported coverage exclusions', () => {
     expectMutationRejected('delete coverageExclusionGroups.dashboardPresentationSurfaces;');
   });
@@ -148,6 +155,12 @@ describe('verifyVitestCoverageExclusions', () => {
 
   it('rejects mutations through direct Object.values-derived exclusion arrays', () => {
     expectMutationRejected("Object.values(coverageExclusionGroups)[0].push('src/generated/**');");
+  });
+
+  it('continues mutation scans through non-mutating method calls', () => {
+    expectMutationRejected(
+      "Object.values(coverageExclusionGroups).at(0).push('src/generated/**');",
+    );
   });
 
   it('rejects logical assignments through direct Object.values-derived exclusion arrays', () => {
