@@ -469,7 +469,7 @@ function isAssignmentOperatorAt(tokens, index) {
 
 function findBracketAccessEnd(tokens, openIndex, end) {
   const closeIndex = findMatchingToken(tokens, openIndex);
-  return closeIndex !== -1 && closeIndex < end ? closeIndex + 1 : openIndex;
+  return closeIndex !== -1 && closeIndex < end ? closeIndex + 1 : openIndex + 1;
 }
 
 function importedAccessMutates(tokens, importUseIndex, end) {
@@ -498,18 +498,22 @@ function importedAccessMutates(tokens, importUseIndex, end) {
     (isToken(tokens, cursor, '-') && isToken(tokens, cursor + 1, '-'));
 }
 
-function statementMutatesImportedExclusionGroups(tokens, start, end, importName) {
-  if (
-    isIdentifierToken(tokens, start, 'Object') &&
-    isToken(tokens, start + 1, '.') &&
-    isIdentifierToken(tokens, start + 2, 'assign') &&
-    isToken(tokens, start + 3, '(') &&
-    isIdentifierToken(tokens, start + 4, importName)
-  ) {
-    return true;
-  }
+function objectAssignMutatesImportedExclusionGroups(tokens, cursor, importName) {
+  return (
+    isIdentifierToken(tokens, cursor, 'Object') &&
+    isToken(tokens, cursor + 1, '.') &&
+    isIdentifierToken(tokens, cursor + 2, 'assign') &&
+    isToken(tokens, cursor + 3, '(') &&
+    isIdentifierToken(tokens, cursor + 4, importName)
+  );
+}
 
+function statementMutatesImportedExclusionGroups(tokens, start, end, importName) {
   for (let cursor = start; cursor < end; cursor += 1) {
+    if (objectAssignMutatesImportedExclusionGroups(tokens, cursor, importName)) {
+      return true;
+    }
+
     if (isIdentifierToken(tokens, cursor, importName) && importedAccessMutates(tokens, cursor, end)) {
       return true;
     }
