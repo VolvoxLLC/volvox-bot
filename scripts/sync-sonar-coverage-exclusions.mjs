@@ -306,6 +306,37 @@ function isCoverageFlattenExpressionAt(tokens, start, importName) {
   );
 }
 
+function findVariableDeclarationStart(tokens, equalsIndex) {
+  let cursor = equalsIndex - 1;
+  while (cursor >= 0 && !isToken(tokens, cursor, ';')) {
+    if (
+      isIdentifierToken(tokens, cursor, 'const') ||
+      isIdentifierToken(tokens, cursor, 'let') ||
+      isIdentifierToken(tokens, cursor, 'var')
+    ) {
+      return cursor;
+    }
+    cursor -= 1;
+  }
+
+  return -1;
+}
+
+function findDeclaredNameBeforeEquals(tokens, equalsIndex) {
+  const declarationStart = findVariableDeclarationStart(tokens, equalsIndex);
+  if (declarationStart === -1) {
+    return null;
+  }
+
+  for (let cursor = declarationStart + 1; cursor < equalsIndex; cursor += 1) {
+    if (tokens[cursor]?.type === 'identifier') {
+      return tokens[cursor].value;
+    }
+  }
+
+  return null;
+}
+
 function findFlattenedCoverageNames(tokens, importName) {
   const flattenedNames = new Set();
 
@@ -323,19 +354,9 @@ function findFlattenedCoverageNames(tokens, importName) {
       continue;
     }
 
-    let nameIndex = equalsIndex - 1;
-    while (nameIndex >= 0 && tokens[nameIndex]?.type !== 'identifier') {
-      nameIndex -= 1;
-    }
-
-    const declarationIndex = nameIndex - 1;
-    if (
-      tokens[nameIndex]?.type === 'identifier' &&
-      (isIdentifierToken(tokens, declarationIndex, 'const') ||
-        isIdentifierToken(tokens, declarationIndex, 'let') ||
-        isIdentifierToken(tokens, declarationIndex, 'var'))
-    ) {
-      flattenedNames.add(tokens[nameIndex].value);
+    const declaredName = findDeclaredNameBeforeEquals(tokens, equalsIndex);
+    if (declaredName !== null) {
+      flattenedNames.add(declaredName);
     }
   }
 
