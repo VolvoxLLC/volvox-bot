@@ -1,4 +1,4 @@
-import { beforeEach, expect, vi } from 'vitest';
+import { afterEach, beforeEach, expect, vi } from 'vitest';
 import { NextRequest, NextResponse } from 'next/server';
 
 const mocks = vi.hoisted(() => ({
@@ -168,7 +168,10 @@ export async function expectSharedProxyFailuresForCalls(
 }
 
 export function setupProxyRouteMocks() {
+  let fetchSpy: ReturnType<typeof vi.spyOn> | undefined;
+
   beforeEach(() => {
+    fetchSpy?.mockRestore();
     vi.clearAllMocks();
     mockAuthorizeGuildAdmin.mockResolvedValue(null);
     mockAuthorizeGuildModerator.mockResolvedValue(null);
@@ -177,11 +180,16 @@ export function setupProxyRouteMocks() {
     mockGetToken.mockResolvedValue({ accessToken: 'access-token' });
     mockBuildUpstreamUrl.mockImplementation(buildTestUpstreamUrl);
     mockProxyToBotApi.mockResolvedValue(NextResponse.json({ ok: true }));
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+    fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response('id,name\n1,Ada\n', {
         status: 200,
         headers: { 'Content-Type': 'text/csv' },
       }),
     );
+  });
+
+  afterEach(() => {
+    fetchSpy?.mockRestore();
+    fetchSpy = undefined;
   });
 }
