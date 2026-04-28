@@ -61,7 +61,6 @@ function mockWindowLocation(href = '') {
   globalThis.location = { href };
 
   return () => {
-    // @ts-expect-error restore jsdom location
     globalThis.location = originalLocation;
   };
 }

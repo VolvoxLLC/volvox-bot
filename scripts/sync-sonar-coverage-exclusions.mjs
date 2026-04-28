@@ -26,7 +26,7 @@ const sonarGeneratedEnd = '# END generated coverage exclusions from web/coverage
 
 function assertCoverageExclusionPattern(groupName, pattern) {
   if (typeof pattern !== 'string' || pattern.trim().length === 0) {
-    throw new TypeError(`coverage exclusion group "${groupName}" contains a non-empty string pattern only`);
+    throw new TypeError(`coverage exclusion group "${groupName}" contains an empty or non-string pattern`);
   }
 
   const invalidCharacterChecks = [
