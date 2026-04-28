@@ -111,6 +111,25 @@ export async function expectSharedProxyFailures(
   await expect(call()).resolves.toBe(upstreamResponse);
 }
 
+export async function expectCallsReturnStatus(
+  calls: readonly (() => Promise<Response>)[],
+  status: number,
+) {
+  for (const call of calls) {
+    const response = await call();
+    expect(response.status).toBe(status);
+  }
+}
+
+export async function expectSharedProxyFailuresForCalls(
+  calls: readonly (() => Promise<Response>)[],
+  authorizeMock?: typeof mockAuthorizeGuildAdmin,
+) {
+  for (const call of calls) {
+    await expectSharedProxyFailures(call, authorizeMock);
+  }
+}
+
 export function setupProxyRouteMocks() {
   beforeEach(() => {
     vi.clearAllMocks();

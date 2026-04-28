@@ -13,16 +13,11 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('@/hooks/use-guild-selection', () => ({
-  useGuildSelection: (opts?: { onGuildChange?: () => void }) => mockGuildSelection(opts),
+  useGuildSelection: mockGuildSelection,
 }));
 
-vi.mock('@/components/dashboard/empty-state', () => ({
-  EmptyState: ({ title, description }: { title: string; description: string }) => (
-    <div data-testid="empty-state">
-      <h2>{title}</h2>
-      <p>{description}</p>
-    </div>
-  ),
+vi.mock('@/components/dashboard/empty-state', async () => ({
+  EmptyState: (await import('../helpers/client-test-mocks')).MockEmptyState,
 }));
 
 vi.mock('@/components/dashboard/case-table', () => ({

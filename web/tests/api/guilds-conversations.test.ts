@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  expectCallsReturnStatus,
   expectProxiedRoutes,
-  expectSharedProxyFailures,
+  expectSharedProxyFailuresForCalls,
   guildParams,
   mockAuthorizeGuildAdmin,
   mockProxyToBotApi,
@@ -86,10 +87,7 @@ describe('guild conversation proxy routes', () => {
       () => conversationStatsRoute.GET(request('http://localhost/api'), guildParams('')),
     ];
 
-    for (const call of missingGuildCases) {
-      const response = await call();
-      expect(response.status).toBe(400);
-    }
+    await expectCallsReturnStatus(missingGuildCases, 400);
   });
 
   it('returns auth, config, and upstream construction errors from conversation routes', async () => {
@@ -109,9 +107,7 @@ describe('guild conversation proxy routes', () => {
       () => conversationStatsRoute.GET(request('http://localhost/api'), guildParams('guild-1')),
     ];
 
-    for (const call of adminRoutes) {
-      await expectSharedProxyFailures(call, mockAuthorizeGuildAdmin);
-    }
+    await expectSharedProxyFailuresForCalls(adminRoutes, mockAuthorizeGuildAdmin);
   });
 
   it('returns early for missing conversation detail identifiers', async () => {

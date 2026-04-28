@@ -2,9 +2,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { NextResponse } from 'next/server';
 
 import {
+  expectCallsReturnStatus,
   expectJson,
   expectProxiedRoutes,
-  expectSharedProxyFailures,
+  expectSharedProxyFailuresForCalls,
   guildParams,
   mockAuthorizeGuildModerator,
   mockBuildUpstreamUrl,
@@ -93,10 +94,7 @@ describe('guild members, export, and ticket proxy routes', () => {
       () => ticketsStatsRoute.GET(request('http://localhost/api'), guildParams('')),
     ];
 
-    for (const call of missingGuildCases) {
-      const response = await call();
-      expect(response.status).toBe(400);
-    }
+    await expectCallsReturnStatus(missingGuildCases, 400);
   });
 
   it('returns auth, config, and upstream construction errors from member, export, and ticket routes', async () => {
@@ -116,9 +114,7 @@ describe('guild members, export, and ticket proxy routes', () => {
       () => ticketsStatsRoute.GET(request('http://localhost/api'), guildParams('guild-1')),
     ];
 
-    for (const call of moderatorRoutes) {
-      await expectSharedProxyFailures(call, mockAuthorizeGuildModerator);
-    }
+    await expectSharedProxyFailuresForCalls(moderatorRoutes, mockAuthorizeGuildModerator);
   });
 
   it('returns early for member and ticket shared proxy error responses', async () => {
