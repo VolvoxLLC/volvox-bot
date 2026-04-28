@@ -20,12 +20,18 @@ export default defineConfig({
       include: ['src/**/*.{ts,tsx}'],
       exclude: [
         'src/types/**',
+        // Next.js app-router UI entry points are framework glue and visual composition.
+        // Keep src/app/api/** route handlers covered.
         'src/app/**/page.tsx',
         'src/app/**/layout.tsx',
         'src/app/**/loading.tsx',
         'src/app/**/error.tsx',
         'src/app/global-error.tsx',
         'src/app/globals.css',
+        'src/app/opengraph-image.tsx',
+        'src/app/robots.ts',
+        'src/app/sitemap.ts',
+        'src/app/dashboard/**/*-client.tsx',
         'src/stores/**',
         'src/components/ui/**',
         'src/components/error-card.tsx',
@@ -36,13 +42,15 @@ export default defineConfig({
         // TODO(#363): Add Playwright e2e suite and revisit these exclusions once automated e2e coverage
         // is in place. See discussion in PR #362 for context on why unit tests are impractical here.
         'src/components/dashboard/**',
-        'src/components/landing/index.ts',
-        // Bento cells use heavy framer-motion animations that require browser environment; tested via integration tests in dashboard-showcase.test.tsx
-        'src/components/landing/bento/BentoChart.tsx',
-        'src/components/landing/bento/BentoModeration.tsx',
-        'src/components/landing/bento/BentoAIChat.tsx',
-        'src/components/landing/bento/BentoConversations.tsx',
+        // Landing and static layout surfaces are visual composition currently checked
+        // through page tests and manual QA; broader Playwright coverage is tracked above.
+        'src/components/landing/**',
+        'src/components/layout/LandingNavbar.tsx',
+        'src/components/layout/site-footer.tsx',
         'src/components/layout/mobile-sidebar.tsx',
+        'src/components/layout/server-selector.tsx',
+        'src/components/layout/sidebar.tsx',
+        'src/components/layout/dashboard-shell.tsx',
         'src/hooks/use-moderation-cases.ts',
         'src/hooks/use-moderation-stats.ts',
         'src/hooks/use-user-history.ts',

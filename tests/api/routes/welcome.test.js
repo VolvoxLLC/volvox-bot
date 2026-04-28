@@ -26,7 +26,32 @@ vi.mock('../../../src/modules/config.js', () => ({
   }),
 }));
 
+vi.mock('../../../src/modules/welcomePublishing.js', () => ({
+  WELCOME_PANEL_TYPES: new Set(['rules', 'role_menu']),
+  getWelcomePublicationStatus: vi.fn().mockResolvedValue({
+    guildId: 'guild1',
+    panels: {
+      rules: { panelType: 'rules', status: 'missing', configured: true },
+      role_menu: { panelType: 'role_menu', status: 'missing', configured: false },
+    },
+  }),
+  publishWelcomePanel: vi.fn().mockResolvedValue({
+    panelType: 'rules',
+    status: 'posted',
+    channelId: 'rules-channel',
+  }),
+  publishWelcomePanels: vi.fn().mockResolvedValue({
+    guildId: 'guild1',
+    results: [{ panelType: 'rules', status: 'posted', channelId: 'rules-channel' }],
+  }),
+}));
+
 import { createApp } from '../../../src/api/server.js';
+import {
+  getWelcomePublicationStatus,
+  publishWelcomePanel,
+  publishWelcomePanels,
+} from '../../../src/modules/welcomePublishing.js';
 
 describe('welcome routes', () => {
   let app;
@@ -35,7 +60,7 @@ describe('welcome routes', () => {
   beforeEach(() => {
     vi.stubEnv('BOT_API_SECRET', SECRET);
     const client = {
-      guilds: { cache: new Map() },
+      guilds: { cache: new Map([['guild1', { id: 'guild1' }]]) },
       ws: { status: 0, ping: 42 },
       user: { tag: 'Bot#1234' },
     };
@@ -164,6 +189,43 @@ describe('welcome routes', () => {
     it('returns 401 without auth', async () => {
       const res = await request(app).get('/api/v1/guilds/guild1/welcome/variables');
       expect(res.status).toBe(401);
+    });
+  });
+
+  describe('welcome publishing routes', () => {
+    it('returns publication status', async () => {
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1/welcome/status')
+        .set('x-api-secret', SECRET);
+
+      expect(res.status).toBe(200);
+      expect(res.body.panels.rules.status).toBe('missing');
+      expect(getWelcomePublicationStatus).toHaveBeenCalledWith('guild1');
+    });
+
+    it('publishes all panels', async () => {
+      const res = await request(app)
+        .post('/api/v1/guilds/guild1/welcome/publish')
+        .set('x-api-secret', SECRET);
+
+      expect(res.status).toBe(200);
+      expect(res.body.results[0].status).toBe('posted');
+      expect(publishWelcomePanels).toHaveBeenCalled();
+    });
+
+    it('publishes a single panel', async () => {
+      const res = await request(app)
+        .post('/api/v1/guilds/guild1/welcome/publish/rules')
+        .set('x-api-secret', SECRET);
+
+      expect(res.status).toBe(200);
+      expect(res.body.panelType).toBe('rules');
+      expect(publishWelcomePanel).toHaveBeenCalledWith(
+        expect.anything(),
+        'guild1',
+        'rules',
+        expect.objectContaining({ source: 'dashboard' }),
+      );
     });
   });
 });

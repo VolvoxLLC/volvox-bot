@@ -1,8 +1,12 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockUseConfigContext = vi.fn();
+
+vi.mock('sonner', () => ({
+  toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() },
+}));
 
 vi.mock('framer-motion', () => ({
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -15,6 +19,20 @@ vi.mock('framer-motion', () => ({
 
 vi.mock('@/components/dashboard/config-context', () => ({
   useConfigContext: () => mockUseConfigContext(),
+}));
+
+vi.mock('@/components/layout/channel-directory-context', () => ({
+  useGuildChannels: () => ({
+    channels: [
+      { id: 'rules-channel', name: 'rules', type: 0 },
+      { id: 'welcome-channel', name: 'welcome', type: 0 },
+      { id: 'new-channel', name: 'introductions', type: 0 },
+    ],
+    error: null,
+    loading: false,
+    ensureChannelsLoaded: vi.fn(),
+    refreshChannels: vi.fn(),
+  }),
 }));
 
 vi.mock('@/components/ui/channel-selector', () => ({
@@ -226,6 +244,36 @@ function mockWelcomeContext({
 }
 
 describe('OnboardingGrowthCategory', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn(async () =>
+      Response.json({
+        guildId: 'guild-1',
+        panels: {
+          rules: {
+            status: 'posted',
+            configured: true,
+            channelId: 'rules-channel',
+            configuredChannelId: 'rules-channel',
+            messageId: 'message-1',
+            stale: false,
+          },
+          role_menu: {
+            status: 'missing',
+            configured: true,
+            channelId: 'welcome-channel',
+            configuredChannelId: 'welcome-channel',
+            messageId: null,
+            stale: false,
+          },
+        },
+      }),
+    ));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it('shows the full dynamic variable guide for welcome messages', async () => {
     const user = userEvent.setup();
 
@@ -262,6 +310,14 @@ describe('OnboardingGrowthCategory', () => {
       'data-placeholder',
       'Welcome back, {{user}}! Glad to see you again.',
     );
+    expect(editors[2]).toHaveAttribute(
+      'data-placeholder',
+      'Read the server rules, then click below to verify your access.',
+    );
+    expect(editors[3]).toHaveAttribute(
+      'data-placeholder',
+      'Welcome {{user}}! Drop a quick intro so we can meet you.',
+    );
   });
 
   it('hides returning member editor when disabled', () => {
@@ -286,7 +342,7 @@ describe('OnboardingGrowthCategory', () => {
     render(<OnboardingGrowthCategory />);
 
     const editors = screen.getAllByTestId('discord-markdown-editor');
-    expect(editors).toHaveLength(1);
+    expect(editors).toHaveLength(4);
     expect(editors[0]).toHaveAttribute(
       'data-placeholder',
       'Welcome {{user}} to {{server}}!',
@@ -390,6 +446,16 @@ describe('OnboardingGrowthCategory', () => {
 
     expect(updateDraftConfig).toHaveBeenCalledTimes(1);
     expect(updateDraftConfig.mock.results[0]?.value.welcome.channelId).toBe('new-channel');
+  });
+
+  it('shows published panel channel names with copy id actions', async () => {
+    mockWelcomeContext({ draftConfig: createWelcomeDraftConfig({ dynamic: { enabled: false } }) });
+
+    render(<OnboardingGrowthCategory />);
+
+    expect(await screen.findByText('#rules')).toBeInTheDocument();
+    expect(await screen.findByText('#welcome')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Copy Rules Agreement channel ID' })).toBeInTheDocument();
   });
 
   it('mounts the level-up actions editor from the xp-level-actions tab', () => {

@@ -94,6 +94,7 @@ describe('configValidation', () => {
 
     it('should validate new welcome onboarding fields', () => {
       expect(validateSingleValue('welcome.rulesChannel', null)).toEqual([]);
+      expect(validateSingleValue('welcome.roleMenuChannel', null)).toEqual([]);
       expect(validateSingleValue('welcome.verifiedRole', '123')).toEqual([]);
       expect(validateSingleValue('welcome.roleMenu.enabled', true)).toEqual([]);
       expect(validateSingleValue('welcome.dmSequence.steps', ['hi', 'there'])).toEqual([]);

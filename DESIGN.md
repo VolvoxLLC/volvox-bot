@@ -100,6 +100,15 @@ Cards should feel tactile but quiet:
 
 Preferred dashboard card wrapper: `DashboardCard` in `web/src/components/dashboard/dashboard-card.tsx`.
 
+### Dashboard Publishing Controls
+
+Configuration pages that publish live Discord artifacts should show compact status panels with:
+
+- Current state labels such as `posted`, `stale`, `missing`, or `failed`.
+- Explicit publish/refresh buttons using lucide icons.
+- Persistent operational details such as channel, message ID, last error, and last publish time when available.
+- Muted panel styling that matches other dashboard controls: `rounded-2xl`, `border-border/40`, and restrained `primary` or `destructive` status accents.
+
 ### Accent Effects
 
 Acceptable:
@@ -303,6 +312,8 @@ Button defaults:
 
 - Keep inputs compact, bordered, and theme-aware.
 - For channels and roles, use the existing selector components.
+- Welcome setup panel destinations should use dedicated channel selectors for each published panel.
+- Published panel summaries should show readable channel names first and keep raw IDs available through a compact copy action.
 - For larger option sets, prefer searchable command/popover patterns.
 - Do not add extra guild-fetch loops in leaf components. Use `GuildDirectoryProvider` when a dashboard client needs guild data.
 

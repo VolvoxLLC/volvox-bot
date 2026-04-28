@@ -53,9 +53,16 @@ describe('welcomeOnboarding module', () => {
 
     expect(result).toEqual({
       rulesChannel: null,
+      roleMenuChannel: null,
       verifiedRole: null,
       introChannel: null,
-      roleMenu: { enabled: false, options: [] },
+      rulesMessage: 'Read the server rules, then click below to verify your access.',
+      roleMenu: {
+        enabled: false,
+        message: 'Pick your roles below. You can update them anytime.',
+        options: [],
+      },
+      introMessage: 'Welcome {{user}}! Drop a quick intro so we can meet you.',
       dmSequence: { enabled: false, steps: [] },
     });
   });
@@ -63,10 +70,14 @@ describe('welcomeOnboarding module', () => {
   it('normalizes onboarding config by trimming values and dropping junk options', () => {
     const result = normalizeWelcomeOnboardingConfig({
       rulesChannel: '  rules-1  ',
+      roleMenuChannel: ' role-menu-1 ',
       verifiedRole: ' verified-role ',
       introChannel: ' intro-1 ',
+      rulesMessage: ' Custom rules ',
+      introMessage: ' Say hi {{username}} ',
       roleMenu: {
         enabled: true,
+        message: ' Choose roles ',
         options: [
           { label: '  Gamer ', roleId: ' role-1 ', description: '  likes games  ' },
           { label: '', roleId: 'role-2' },
@@ -81,17 +92,30 @@ describe('welcomeOnboarding module', () => {
 
     expect(result).toEqual({
       rulesChannel: 'rules-1',
+      roleMenuChannel: 'role-menu-1',
       verifiedRole: 'verified-role',
       introChannel: 'intro-1',
+      rulesMessage: 'Custom rules',
       roleMenu: {
         enabled: true,
+        message: 'Choose roles',
         options: [{ label: 'Gamer', roleId: 'role-1', description: 'likes games' }],
       },
+      introMessage: 'Say hi {{username}}',
       dmSequence: {
         enabled: true,
         steps: ['welcome', 'read the rules'],
       },
     });
+  });
+
+  it('falls back to the welcome message channel for legacy role menu configs', () => {
+    const result = normalizeWelcomeOnboardingConfig({
+      channelId: ' legacy-welcome-channel ',
+      roleMenuChannel: null,
+    });
+
+    expect(result.roleMenuChannel).toBe('legacy-welcome-channel');
   });
 
   it('builds the rules agreement message with accept button', () => {
@@ -102,6 +126,21 @@ describe('welcomeOnboarding module', () => {
     expect(message.components).toHaveLength(1);
     expect(button.label).toBe('Accept Rules');
     expect(button.custom_id).toBe(RULES_ACCEPT_BUTTON_ID);
+  });
+
+  it('uses configurable rules and role menu messages', () => {
+    expect(buildRulesAgreementMessage({ rulesMessage: 'Custom rules panel' }).content).toBe(
+      'Custom rules panel',
+    );
+    expect(
+      buildRoleMenuMessage({
+        roleMenu: {
+          enabled: true,
+          message: 'Custom roles panel',
+          options: [{ label: 'Role A', roleId: 'role-a' }],
+        },
+      })?.content,
+    ).toBe('Custom roles panel');
   });
 
   it('detects returning members via the DidRejoin flag', () => {

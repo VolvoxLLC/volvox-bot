@@ -8,9 +8,15 @@ import {
 import { info } from '../logger.js';
 import { fetchChannelCached } from '../utils/discordCache.js';
 import { safeEditReply, safeSend } from '../utils/safeSend.js';
+import { renderTemplate } from '../utils/templateEngine.js';
 
 export const RULES_ACCEPT_BUTTON_ID = 'welcome_rules_accept';
 export const ROLE_MENU_SELECT_ID = 'welcome_role_select';
+export const DEFAULT_RULES_AGREEMENT_MESSAGE =
+  'Read the server rules, then click below to verify your access.';
+export const DEFAULT_ROLE_MENU_MESSAGE = 'Pick your roles below. You can update them anytime.';
+export const DEFAULT_INTRODUCTION_MESSAGE =
+  'Welcome {{user}}! Drop a quick intro so we can meet you.';
 
 const MAX_ROLE_MENU_OPTIONS = 25;
 
@@ -20,13 +26,21 @@ const MAX_ROLE_MENU_OPTIONS = 25;
  * @param {object} welcomeConfig
  * @returns {{
  *   rulesChannel: string|null,
+ *   roleMenuChannel: string|null,
  *   verifiedRole: string|null,
  *   introChannel: string|null,
- *   roleMenu: {enabled: boolean, options: Array<{label: string, roleId: string, description?: string}>},
+ *   rulesMessage: string,
+ *   roleMenu: {enabled: boolean, message: string, options: Array<{label: string, roleId: string, description?: string}>},
+ *   introMessage: string,
  *   dmSequence: {enabled: boolean, steps: string[]},
  * }}
  */
 export function normalizeWelcomeOnboardingConfig(welcomeConfig = {}) {
+  const legacyRoleMenuChannel =
+    typeof welcomeConfig?.channelId === 'string' && welcomeConfig.channelId.trim()
+      ? welcomeConfig.channelId.trim()
+      : null;
+
   const roleMenuOptions = Array.isArray(welcomeConfig?.roleMenu?.options)
     ? welcomeConfig.roleMenu.options
         .filter((opt) => opt && typeof opt === 'object')
@@ -48,6 +62,10 @@ export function normalizeWelcomeOnboardingConfig(welcomeConfig = {}) {
       typeof welcomeConfig?.rulesChannel === 'string' && welcomeConfig.rulesChannel.trim()
         ? welcomeConfig.rulesChannel.trim()
         : null,
+    roleMenuChannel:
+      typeof welcomeConfig?.roleMenuChannel === 'string' && welcomeConfig.roleMenuChannel.trim()
+        ? welcomeConfig.roleMenuChannel.trim()
+        : legacyRoleMenuChannel,
     verifiedRole:
       typeof welcomeConfig?.verifiedRole === 'string' && welcomeConfig.verifiedRole.trim()
         ? welcomeConfig.verifiedRole.trim()
@@ -56,10 +74,23 @@ export function normalizeWelcomeOnboardingConfig(welcomeConfig = {}) {
       typeof welcomeConfig?.introChannel === 'string' && welcomeConfig.introChannel.trim()
         ? welcomeConfig.introChannel.trim()
         : null,
+    rulesMessage:
+      typeof welcomeConfig?.rulesMessage === 'string' && welcomeConfig.rulesMessage.trim()
+        ? welcomeConfig.rulesMessage.trim()
+        : DEFAULT_RULES_AGREEMENT_MESSAGE,
     roleMenu: {
       enabled: welcomeConfig?.roleMenu?.enabled === true,
+      message:
+        typeof welcomeConfig?.roleMenu?.message === 'string' &&
+        welcomeConfig.roleMenu.message.trim()
+          ? welcomeConfig.roleMenu.message.trim()
+          : DEFAULT_ROLE_MENU_MESSAGE,
       options: roleMenuOptions,
     },
+    introMessage:
+      typeof welcomeConfig?.introMessage === 'string' && welcomeConfig.introMessage.trim()
+        ? welcomeConfig.introMessage.trim()
+        : DEFAULT_INTRODUCTION_MESSAGE,
     dmSequence: {
       enabled: welcomeConfig?.dmSequence?.enabled === true,
       steps: dmSteps,
@@ -77,7 +108,8 @@ export function isReturningMember(member) {
   return member?.flags?.has?.(GuildMemberFlagsBitField.Flags.DidRejoin) === true;
 }
 
-export function buildRulesAgreementMessage() {
+export function buildRulesAgreementMessage(welcomeConfig = {}) {
+  const onboarding = normalizeWelcomeOnboardingConfig(welcomeConfig);
   const button = new ButtonBuilder()
     .setCustomId(RULES_ACCEPT_BUTTON_ID)
     .setLabel('Accept Rules')
@@ -86,7 +118,7 @@ export function buildRulesAgreementMessage() {
   const row = new ActionRowBuilder().addComponents(button);
 
   return {
-    content: '✅ Read the server rules, then click below to verify your access.',
+    content: onboarding.rulesMessage,
     components: [row],
   };
 }
@@ -113,9 +145,17 @@ export function buildRoleMenuMessage(welcomeConfig) {
   const row = new ActionRowBuilder().addComponents(select);
 
   return {
-    content: '🎭 Pick your roles below. You can update them anytime.',
+    content: onboarding.roleMenu.message,
     components: [row],
   };
+}
+
+export function renderIntroductionMessage(template, member, guild) {
+  return renderTemplate(template || DEFAULT_INTRODUCTION_MESSAGE, {
+    user: `<@${member.id}>`,
+    username: member.user?.username || member.username || 'Unknown',
+    server: guild?.name ?? '',
+  });
 }
 
 async function fetchRole(guild, roleId) {
@@ -179,7 +219,7 @@ export async function handleRulesAcceptButton(interaction, config) {
     if (introChannel?.isTextBased?.()) {
       await safeSend(
         introChannel,
-        `👋 Welcome <@${member.id}>! Drop a quick intro so we can meet you.`,
+        renderIntroductionMessage(welcome.introMessage, member, interaction.guild),
       );
     }
   }
