@@ -421,7 +421,7 @@ function findExportedDefineConfigObject(tokens) {
     ) {
       const closeIndex = findMatchingToken(tokens, cursor + 4);
       if (closeIndex !== -1) {
-        return { open: cursor + 4, close: closeIndex };
+        return { start: cursor, open: cursor + 4, close: closeIndex };
       }
     }
   }
@@ -443,6 +443,80 @@ function findObjectPropertyObject(tokens, objectRange, keyName) {
 
 function coverageExcludeUsesGeneratedList(tokens, valueRange, importName) {
   return isCoverageFlattenExpressionAt(tokens, valueRange.start, importName) && valueRange.end === valueRange.start + 10;
+}
+
+const mutatingArrayMethods = new Set([
+  'copyWithin',
+  'fill',
+  'pop',
+  'push',
+  'reverse',
+  'shift',
+  'sort',
+  'splice',
+  'unshift',
+]);
+
+function statementContainsAssignmentAfter(tokens, start, end) {
+  for (let cursor = start; cursor < end; cursor += 1) {
+    if (isToken(tokens, cursor, '=')) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function statementCallsMutatingMethodAfter(tokens, start, end) {
+  for (let cursor = start; cursor < end - 2; cursor += 1) {
+    if (
+      isToken(tokens, cursor, '.') &&
+      tokens[cursor + 1]?.type === 'identifier' &&
+      mutatingArrayMethods.has(tokens[cursor + 1].value) &&
+      isToken(tokens, cursor + 2, '(')
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function statementMutatesImportedExclusionGroups(tokens, start, end, importName) {
+  const importUseIndex = findIdentifierInRange(tokens, start, end, importName);
+  if (importUseIndex === -1) {
+    return false;
+  }
+
+  if (statementContainsAssignmentAfter(tokens, importUseIndex + 1, end)) {
+    return true;
+  }
+
+  if (statementCallsMutatingMethodAfter(tokens, importUseIndex + 1, end)) {
+    return true;
+  }
+
+  return (
+    isIdentifierToken(tokens, start, 'Object') &&
+    isToken(tokens, start + 1, '.') &&
+    isIdentifierToken(tokens, start + 2, 'assign') &&
+    isToken(tokens, start + 3, '(') &&
+    isIdentifierToken(tokens, start + 4, importName)
+  );
+}
+
+function hasImportedExclusionGroupMutationBefore(tokens, importName, endIndex) {
+  let cursor = 0;
+  while (cursor < endIndex) {
+    const statementEnd = Math.min(findStatementEnd(tokens, cursor), endIndex);
+    if (statementMutatesImportedExclusionGroups(tokens, cursor, statementEnd, importName)) {
+      return true;
+    }
+
+    cursor = statementEnd + 1;
+  }
+
+  return false;
 }
 
 function verifyVitestCoverageExclusions(config) {
@@ -476,6 +550,14 @@ function verifyVitestCoverageExclusions(config) {
 
   if (coverageExcludeRange === null) {
     failures.push('web/vitest.config.ts defineConfig test.coverage object must define coverage.exclude');
+  }
+
+  if (
+    importName !== null &&
+    configObject !== null &&
+    hasImportedExclusionGroupMutationBefore(tokens, importName, configObject.start)
+  ) {
+    failures.push('web/vitest.config.ts must not mutate the imported coverage exclusions JSON');
   }
 
   if (

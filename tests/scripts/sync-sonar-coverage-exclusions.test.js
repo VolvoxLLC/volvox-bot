@@ -69,6 +69,48 @@ describe('verifyVitestCoverageExclusions', () => {
     );
   });
 
+  it('rejects mutations to the imported coverage exclusions object', () => {
+    const config = `
+      import { defineConfig } from 'vitest/config';
+      import coverageExclusionGroups from './coverage-exclusions.json';
+
+      coverageExclusionGroups.extra = ['src/generated/**'];
+
+      export default defineConfig({
+        test: {
+          coverage: {
+            exclude: Object.values(coverageExclusionGroups).flat(),
+          },
+        },
+      });
+    `;
+
+    expect(() => verifyVitestCoverageExclusions(config)).toThrow(
+      /must not mutate the imported coverage exclusions JSON/,
+    );
+  });
+
+  it('rejects mutating method calls on imported coverage exclusion groups', () => {
+    const config = `
+      import { defineConfig } from 'vitest/config';
+      import coverageExclusionGroups from './coverage-exclusions.json';
+
+      coverageExclusionGroups.framework.push('src/generated/**');
+
+      export default defineConfig({
+        test: {
+          coverage: {
+            exclude: Object.values(coverageExclusionGroups).flat(),
+          },
+        },
+      });
+    `;
+
+    expect(() => verifyVitestCoverageExclusions(config)).toThrow(
+      /must not mutate the imported coverage exclusions JSON/,
+    );
+  });
+
   it('rejects mutable intermediate flattened coverage exclusion variables', () => {
     const config = `
       import { defineConfig } from 'vitest/config';
