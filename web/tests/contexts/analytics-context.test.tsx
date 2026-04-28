@@ -124,6 +124,8 @@ describe('AnalyticsProvider', () => {
   });
 
   it('rebuilds the query for custom dates, channel filters, and compare mode', async () => {
+    const originalTimezone = process.env.TZ;
+    process.env.TZ = 'UTC';
     const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue({
       ok: true,
       status: 200,
@@ -131,28 +133,36 @@ describe('AnalyticsProvider', () => {
     } as Response);
     const user = userEvent.setup();
 
-    renderProvider();
-    await waitForLoaded(fetchSpy);
+    try {
+      renderProvider();
+      await waitForLoaded(fetchSpy);
 
-    await user.click(screen.getByRole('button', { name: 'Custom' }));
-    await user.click(screen.getByRole('button', { name: 'Channel' }));
-    await user.click(screen.getByRole('button', { name: 'Compare' }));
+      await user.click(screen.getByRole('button', { name: 'Custom' }));
+      await user.click(screen.getByRole('button', { name: 'Channel' }));
+      await user.click(screen.getByRole('button', { name: 'Compare' }));
 
-    await waitFor(() => {
-      expect(
-        fetchSpy.mock.calls.some(([url]) => {
-          const parsed = new URL(String(url), 'http://localhost');
-          return (
-            parsed.searchParams.get('range') === 'custom' &&
-            parsed.searchParams.get('from') === new Date(2026, 3, 10, 0, 0, 0, 0).toISOString() &&
-            parsed.searchParams.get('to') === new Date(2026, 3, 12, 23, 59, 59, 999).toISOString() &&
-            parsed.searchParams.get('channelId') === 'channel 1' &&
-            parsed.searchParams.get('compare') === '1' &&
-            !parsed.searchParams.has('interval')
-          );
-        }),
-      ).toBe(true);
-    });
+      await waitFor(() => {
+        expect(
+          fetchSpy.mock.calls.some(([url]) => {
+            const parsed = new URL(String(url), 'http://localhost');
+            return (
+              parsed.searchParams.get('range') === 'custom' &&
+              parsed.searchParams.get('from') === '2026-04-10T00:00:00.000Z' &&
+              parsed.searchParams.get('to') === '2026-04-12T23:59:59.999Z' &&
+              parsed.searchParams.get('channelId') === 'channel 1' &&
+              parsed.searchParams.get('compare') === '1' &&
+              !parsed.searchParams.has('interval')
+            );
+          }),
+        ).toBe(true);
+      });
+    } finally {
+      if (originalTimezone === undefined) {
+        delete process.env.TZ;
+      } else {
+        process.env.TZ = originalTimezone;
+      }
+    }
   });
 
   it('redirects to login on unauthorized responses before reading payloads', async () => {

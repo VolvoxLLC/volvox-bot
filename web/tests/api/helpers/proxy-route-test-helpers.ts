@@ -49,8 +49,14 @@ export const apiConfig = {
   secret: 'bot-secret',
 };
 
+/**
+ * Build a NextRequest for route tests.
+ *
+ * Relative test paths are resolved against http://localhost so callers can pass
+ * either `/api/...` paths or fully-qualified absolute URLs.
+ */
 export function request(url: string, init?: ConstructorParameters<typeof NextRequest>[1]) {
-  return new NextRequest(new URL(url), init);
+  return new NextRequest(new URL(url, 'http://localhost'), init);
 }
 
 export function guildParams(guildId = 'guild 1') {

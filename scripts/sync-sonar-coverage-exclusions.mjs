@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 import { readFile, writeFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = resolve(import.meta.dirname, '..');
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const coverageExclusionsPath = resolve(root, 'web/coverage-exclusions.json');
 const sonarPropertiesPath = resolve(root, 'sonar-project.properties');
 const checkOnly = process.argv.includes('--check');
