@@ -487,10 +487,56 @@ function findBracketAccessEnd(tokens, openIndex, end) {
   return closeIndex !== -1 && closeIndex < end ? closeIndex + 1 : openIndex + 1;
 }
 
+function skipOptionalChainMarker(tokens, cursor) {
+  return isToken(tokens, cursor, '?') && (isToken(tokens, cursor + 1, '.') || isToken(tokens, cursor + 1, '['))
+    ? cursor + 1
+    : cursor;
+}
+
+function accessChainEnd(tokens, start, end) {
+  let cursor = start;
+
+  while (cursor < end) {
+    cursor = skipOptionalChainMarker(tokens, cursor);
+
+    if (isToken(tokens, cursor, '[')) {
+      cursor = findBracketAccessEnd(tokens, cursor, end);
+      continue;
+    }
+
+    if (!isToken(tokens, cursor, '.') || tokens[cursor + 1]?.type !== 'identifier') {
+      break;
+    }
+
+    cursor += 2;
+    if (isToken(tokens, cursor, '(')) {
+      const closeIndex = findMatchingToken(tokens, cursor);
+      if (closeIndex === -1 || closeIndex >= end) {
+        break;
+      }
+      cursor = closeIndex + 1;
+    }
+  }
+
+  return cursor;
+}
+
+function importedReferenceExpressionEnd(tokens, expressionStart, end, exclusionGroupBindings) {
+  return exclusionGroupBindings.has(tokens[expressionStart]?.value)
+    ? accessChainEnd(tokens, expressionStart + 1, end)
+    : -1;
+}
+
+function expressionIsImportedReference(tokens, expressionStart, end, exclusionGroupBindings) {
+  return importedReferenceExpressionEnd(tokens, expressionStart, end, exclusionGroupBindings) === end;
+}
+
 function accessChainMutates(tokens, start, end) {
   let cursor = start;
 
   while (cursor < end) {
+    cursor = skipOptionalChainMarker(tokens, cursor);
+
     if (isToken(tokens, cursor, '[')) {
       cursor = findBracketAccessEnd(tokens, cursor, end);
       continue;
@@ -526,12 +572,36 @@ function importedAccessMutates(tokens, importUseIndex, end) {
 }
 
 function objectAssignMutatesImportedExclusionGroups(tokens, cursor, exclusionGroupBindings) {
-  return (
-    isIdentifierToken(tokens, cursor, 'Object') &&
-    isToken(tokens, cursor + 1, '.') &&
-    isIdentifierToken(tokens, cursor + 2, 'assign') &&
-    isToken(tokens, cursor + 3, '(') &&
-    exclusionGroupBindings.has(tokens[cursor + 4]?.value)
+  if (
+    !isIdentifierToken(tokens, cursor, 'Object') ||
+    !isToken(tokens, cursor + 1, '.') ||
+    !isIdentifierToken(tokens, cursor + 2, 'assign') ||
+    !isToken(tokens, cursor + 3, '(')
+  ) {
+    return false;
+  }
+
+  const closeIndex = findMatchingToken(tokens, cursor + 3);
+  if (closeIndex === -1) {
+    return false;
+  }
+
+  let depth = 0;
+  let firstArgumentEnd = closeIndex;
+  for (let argumentCursor = cursor + 4; argumentCursor < closeIndex; argumentCursor += 1) {
+    const token = tokens[argumentCursor];
+    if (token?.value === ',' && depth === 0) {
+      firstArgumentEnd = argumentCursor;
+      break;
+    }
+    depth += nestingDelta(token);
+  }
+
+  return expressionResolvesToImportedExclusionGroups(
+    tokens,
+    cursor + 4,
+    firstArgumentEnd,
+    exclusionGroupBindings,
   );
 }
 
@@ -597,7 +667,7 @@ function objectSpreadAliasesImportedExclusionGroups(tokens, expressionStart, end
 }
 
 function expressionAliasesImportedExclusionGroups(tokens, expressionStart, end, exclusionGroupBindings) {
-  if (exclusionGroupBindings.has(tokens[expressionStart]?.value)) {
+  if (expressionIsImportedReference(tokens, expressionStart, end, exclusionGroupBindings)) {
     return true;
   }
 
@@ -629,6 +699,29 @@ function objectValuesExpressionEnd(tokens, expressionStart, exclusionGroupBindin
   }
 
   return -1;
+}
+
+function expressionResolvesToImportedExclusionGroups(tokens, expressionStart, end, exclusionGroupBindings) {
+  if (expressionStart >= end) {
+    return false;
+  }
+
+  const directReferenceEnd = importedReferenceExpressionEnd(
+    tokens,
+    expressionStart,
+    end,
+    exclusionGroupBindings,
+  );
+  if (directReferenceEnd === end) {
+    return true;
+  }
+
+  const objectValuesEnd = objectValuesExpressionEnd(tokens, expressionStart, exclusionGroupBindings);
+  if (objectValuesEnd === -1) {
+    return false;
+  }
+
+  return objectValuesEnd === end || accessChainEnd(tokens, objectValuesEnd, end) === end;
 }
 
 function objectValuesDerivedAccessMutates(tokens, expressionStart, end, exclusionGroupBindings) {

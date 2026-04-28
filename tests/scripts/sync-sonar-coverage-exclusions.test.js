@@ -84,6 +84,12 @@ describe('verifyVitestCoverageExclusions', () => {
     expectMutationRejected("coverageExclusionGroups.framework.push('src/generated/**');");
   });
 
+  it('rejects optional-chained mutating method calls on imported coverage exclusion groups', () => {
+    expectMutationRejected(
+      "coverageExclusionGroups.dashboardPresentationSurfaces?.push('src/generated/**');",
+    );
+  });
+
   it('rejects compound assignments to imported coverage exclusions', () => {
     expectMutationRejected("coverageExclusionGroups.extra += ['src/generated/**'];");
   });
@@ -163,6 +169,18 @@ describe('verifyVitestCoverageExclusions', () => {
     );
   });
 
+  it('continues mutation scans through optional-chained derived accesses', () => {
+    expectMutationRejected(
+      "Object.values(coverageExclusionGroups).at(0)?.push('src/generated/**');",
+    );
+  });
+
+  it('rejects Object.assign mutations through direct Object.values-derived exclusion arrays', () => {
+    expectMutationRejected(
+      'Object.assign(Object.values(coverageExclusionGroups)[0], { length: 0 });',
+    );
+  });
+
   it('rejects logical assignments through direct Object.values-derived exclusion arrays', () => {
     expectMutationRejected('Object.values(coverageExclusionGroups)[0] ??= [];');
   });
@@ -175,6 +193,19 @@ describe('verifyVitestCoverageExclusions', () => {
     expect(() =>
       verifyVitestCoverageExclusions(
         vitestConfig({ setup: 'const hasCoverageGroups = coverageExclusionGroups !== null;' }),
+      ),
+    ).not.toThrow();
+  });
+
+  it('does not treat read-only comparison results as imported coverage exclusion aliases', () => {
+    expect(() =>
+      verifyVitestCoverageExclusions(
+        vitestConfig({
+          setup: `
+            let hasCoverageGroups = coverageExclusionGroups !== null;
+            hasCoverageGroups = true;
+          `,
+        }),
       ),
     ).not.toThrow();
   });
