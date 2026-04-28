@@ -103,8 +103,9 @@ describe('TicketsClient', () => {
     mockTicketsState.loading = true;
     mockTicketsState.stats = { openCount: 0, avgResolutionSeconds: 0, ticketsThisWeek: 0 };
     const { rerender } = render(<TicketsClient />);
-    expect(screen.getByText('N/A')).toBeInTheDocument();
-    expect(screen.getByText('N/A')).toBeInTheDocument();
+    const unavailableStats = screen.getAllByText('N/A');
+    expect(unavailableStats).toHaveLength(1);
+    expect(unavailableStats[0]?.closest('.group')).toHaveTextContent('Avg Resolution');
     expect(screen.getAllByText('ID')[0]).toBeInTheDocument();
 
     mockTicketsState.loading = false;

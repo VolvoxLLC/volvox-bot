@@ -63,10 +63,10 @@ function mockWindowLocation(href = '') {
 describe('ConfigProvider', () => {
   beforeEach(() => {
     vi.resetModules();
+    vi.clearAllMocks();
     localStorage.clear();
     localStorage.setItem('volvox-bot-selected-guild', 'guild-123');
     mockPathname.mockReturnValue('/dashboard/settings');
-    mockPush.mockClear();
   });
 
   afterEach(() => {

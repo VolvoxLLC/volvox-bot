@@ -37,13 +37,8 @@ vi.mock('@/components/layout/channel-directory-context', () => ({
   useGuildChannels: (guildId: string | null) => mockUseGuildChannels(guildId),
 }));
 
-vi.mock('@/components/dashboard/empty-state', () => ({
-  EmptyState: ({ title, description }: { title: string; description: string }) => (
-    <div data-testid="empty-state">
-      <h2>{title}</h2>
-      <p>{description}</p>
-    </div>
-  ),
+vi.mock('@/components/dashboard/empty-state', async () => ({
+  EmptyState: (await import('../helpers/client-test-mocks')).MockEmptyState,
 }));
 
 vi.mock('@/stores/conversations-store', () => {

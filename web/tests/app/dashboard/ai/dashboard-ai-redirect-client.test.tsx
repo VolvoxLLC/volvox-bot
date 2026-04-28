@@ -58,11 +58,21 @@ describe('DashboardAiRedirectClient', () => {
     vi.useFakeTimers();
     try {
       render(<DashboardAiRedirectClient />);
-      for (let i = 0; i < 6; i += 1) {
+      for (let seconds = 0; seconds < 4; seconds += 1) {
         await act(async () => {
           vi.advanceTimersByTime(1_000);
         });
       }
+      await act(async () => {
+        vi.advanceTimersByTime(999);
+      });
+      expect(mockPush).not.toHaveBeenCalled();
+
+      await act(async () => {
+        vi.advanceTimersByTime(1);
+      });
+
+      expect(mockPush).toHaveBeenCalledTimes(1);
       expect(mockPush).toHaveBeenCalledWith('/dashboard/conversations');
     } finally {
       vi.useRealTimers();

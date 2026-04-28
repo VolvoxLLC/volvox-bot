@@ -15,7 +15,7 @@ function GuildDirectoryConsumer() {
         {loading ? 'loading' : 'idle'}:{error ? 'error' : 'ok'}:
         {guilds.map((guild) => guild.name).join(', ') || 'none'}
       </div>
-      <button type="button" onClick={() => void refreshGuilds()}>
+      <button type="button" onClick={() => refreshGuilds()}>
         Refresh guilds
       </button>
     </div>
@@ -112,7 +112,10 @@ describe('GuildDirectoryProvider', () => {
 
       renderProvider();
 
-      await waitFor(() => expect(window.location.href).toBe('/login'));
+      await waitFor(() => {
+        expect(window.location.href).toBe('/login');
+        expect(screen.getByTestId('guild-directory-status')).toHaveTextContent('idle:ok:none');
+      });
     } finally {
       // @ts-expect-error restore jsdom location
       window.location = originalLocation;

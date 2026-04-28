@@ -32,7 +32,9 @@ describe('guild config, roles, and audit proxy routes', () => {
   });
 
   it('covers config read and write validation before proxying', async () => {
-    await configRoute.GET(request('http://localhost/api'), guildParams());
+    const getResponse = await configRoute.GET(request('http://localhost/api'), guildParams());
+    expect(getResponse.status).toBe(200);
+    await expectJson(getResponse, { ok: true });
 
     const patchResponse = await configRoute.PATCH(
       request('http://localhost/api', {

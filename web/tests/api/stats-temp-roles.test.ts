@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
-  expectJson,
   expectSearchParams,
   expectUpstreamPath,
   expectSharedProxyFailures,
@@ -50,7 +49,7 @@ describe('stats and temp role proxy routes', () => {
     expect(list.status).toBe(200);
     let upstream = mockProxyToBotApi.mock.calls.at(-1)?.[0] as URL;
     expectUpstreamPath(upstream, '/temp-roles');
-    expectSearchParams(upstream, { guildId: 'guild-1', userId: 'user-1' });
+    expectSearchParams(upstream, { guildId: 'guild-1', userId: 'user-1', page: '2' });
 
     const assign = await tempRolesRoute.POST(
       request('http://localhost/api', {

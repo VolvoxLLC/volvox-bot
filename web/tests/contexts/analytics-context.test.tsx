@@ -173,15 +173,18 @@ describe('AnalyticsProvider', () => {
     window.location = { href: '' };
 
     try {
+      const unauthorizedJsonSpy = vi.fn().mockResolvedValue({ error: 'Unauthorized' });
       vi.spyOn(global, 'fetch').mockResolvedValue({
         ok: false,
         status: 401,
-        json: vi.fn(),
+        json: unauthorizedJsonSpy,
       } as unknown as Response);
 
       renderProvider();
+      expect(unauthorizedJsonSpy).not.toHaveBeenCalled();
 
       await waitFor(() => expect(window.location.href).toBe('/login'));
+      expect(unauthorizedJsonSpy).not.toHaveBeenCalled();
     } finally {
       // @ts-expect-error restore jsdom location
       window.location = originalLocation;
