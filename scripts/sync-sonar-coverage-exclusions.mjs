@@ -473,6 +473,10 @@ function findBracketAccessEnd(tokens, openIndex, end) {
 }
 
 function importedAccessMutates(tokens, importUseIndex, end) {
+  if (isIdentifierToken(tokens, importUseIndex - 1, 'delete')) {
+    return true;
+  }
+
   let cursor = importUseIndex + 1;
 
   while (cursor < end) {
@@ -545,9 +549,27 @@ function collectDestructuredAliases(tokens, start, end, exclusionGroupBindings) 
   }
 }
 
+function expressionAliasesImportedExclusionGroups(tokens, expressionStart, exclusionGroupBindings) {
+  if (exclusionGroupBindings.has(tokens[expressionStart]?.value)) {
+    return true;
+  }
+
+  return (
+    isIdentifierToken(tokens, expressionStart, 'Object') &&
+    isToken(tokens, expressionStart + 1, '.') &&
+    (isIdentifierToken(tokens, expressionStart + 2, 'values') ||
+      isIdentifierToken(tokens, expressionStart + 2, 'entries')) &&
+    isToken(tokens, expressionStart + 3, '(') &&
+    exclusionGroupBindings.has(tokens[expressionStart + 4]?.value)
+  );
+}
+
 function collectImportedExclusionGroupAliases(tokens, start, end, exclusionGroupBindings) {
   for (let cursor = start; cursor < end - 1; cursor += 1) {
-    if (!isAssignmentOperatorAt(tokens, cursor) || !exclusionGroupBindings.has(tokens[cursor + 1]?.value)) {
+    if (
+      !isAssignmentOperatorAt(tokens, cursor) ||
+      !expressionAliasesImportedExclusionGroups(tokens, cursor + 1, exclusionGroupBindings)
+    ) {
       continue;
     }
 

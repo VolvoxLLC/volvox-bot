@@ -44,10 +44,10 @@ vi.mock('@/lib/logger', () => ({
   },
 }));
 
-export const apiConfig = {
+export const apiConfig = Object.freeze({
   baseUrl: 'https://bot.internal:3001/api/v1',
   secret: 'bot-secret',
-};
+});
 
 function trimTrailingSlashes(value: string) {
   let end = value.length;
@@ -177,10 +177,10 @@ export function setupProxyRouteMocks() {
 
   beforeEach(() => {
     fetchSpy?.mockRestore();
-    vi.clearAllMocks();
+    vi.resetAllMocks();
     mockAuthorizeGuildAdmin.mockResolvedValue(null);
     mockAuthorizeGuildModerator.mockResolvedValue(null);
-    mockGetBotApiConfig.mockReturnValue(apiConfig);
+    mockGetBotApiConfig.mockImplementation(() => ({ ...apiConfig }));
     mockGetBotApiBaseUrl.mockReturnValue(apiConfig.baseUrl);
     mockGetToken.mockResolvedValue({ accessToken: 'access-token' });
     mockBuildUpstreamUrl.mockImplementation(buildTestUpstreamUrl);

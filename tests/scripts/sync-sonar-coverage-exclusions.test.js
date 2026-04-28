@@ -120,6 +120,17 @@ describe('verifyVitestCoverageExclusions', () => {
     `);
   });
 
+  it('rejects mutations through Object.values coverage exclusion aliases', () => {
+    expectMutationRejected(`
+      const exclusionLists = Object.values(coverageExclusionGroups);
+      exclusionLists[0].push('src/generated/**');
+    `);
+  });
+
+  it('rejects delete operations on imported coverage exclusions', () => {
+    expectMutationRejected('delete coverageExclusionGroups.dashboardPresentationSurfaces;');
+  });
+
   it('rejects mutations inside the exported defineConfig object', () => {
     expectMutationRejected('', "(coverageExclusionGroups.extra = ['src/generated/**'])");
   });

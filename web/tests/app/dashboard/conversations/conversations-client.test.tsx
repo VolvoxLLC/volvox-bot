@@ -167,9 +167,12 @@ describe('ConversationsClient', () => {
       );
     });
 
+    const fetchConversations = mockConversationsState.fetch as ReturnType<typeof vi.fn>;
+    fetchConversations.mockClear();
     await userEvent.click(screen.getByRole('button', { name: /next/i }));
     await waitFor(() => {
-      expect(mockConversationsState.fetch).toHaveBeenCalledWith(
+      expect(fetchConversations).toHaveBeenCalledTimes(1);
+      expect(fetchConversations).toHaveBeenCalledWith(
         'guild-1',
         expect.objectContaining({ page: 2 }),
       );
