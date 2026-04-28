@@ -18,6 +18,43 @@ import { SystemPromptEditor } from '../system-prompt-editor';
 import { ToggleSwitch } from '../toggle-switch';
 import { ConfigCategoryLayout } from './config-category-layout';
 
+const AI_AUTOMOD_MODEL_OPTIONS = [
+  { value: 'minimax:MiniMax-M2.7', label: 'MiniMax M2.7' },
+  { value: 'minimax:MiniMax-M2.7-highspeed', label: 'MiniMax M2.7 Highspeed' },
+  { value: 'minimax:MiniMax-M2.5', label: 'MiniMax M2.5' },
+  { value: 'minimax:MiniMax-M2.5-highspeed', label: 'MiniMax M2.5 Highspeed' },
+  { value: 'moonshot:kimi-k2.6', label: 'Kimi K2.6' },
+  { value: 'moonshot:kimi-k2.5', label: 'Kimi K2.5' },
+  { value: 'moonshot:kimi-k2-thinking', label: 'Kimi K2 Thinking' },
+  { value: 'openrouter:minimax/minimax-m2.5', label: 'MiniMax M2.5 via OpenRouter' },
+  { value: 'openrouter:moonshotai/kimi-k2.6', label: 'Kimi K2.6 via OpenRouter' },
+] as const;
+
+const AI_AUTOMOD_CATEGORIES = [
+  { key: 'toxicity', label: 'Toxicity', defaultThreshold: 0.7, defaultAction: 'flag' },
+  { key: 'spam', label: 'Spam', defaultThreshold: 0.8, defaultAction: 'delete' },
+  { key: 'harassment', label: 'Harassment', defaultThreshold: 0.7, defaultAction: 'warn' },
+  { key: 'hateSpeech', label: 'Hate Speech', defaultThreshold: 0.8, defaultAction: 'timeout' },
+  {
+    key: 'sexualContent',
+    label: 'Sexual Content',
+    defaultThreshold: 0.8,
+    defaultAction: 'delete',
+  },
+  { key: 'violence', label: 'Violence', defaultThreshold: 0.85, defaultAction: 'ban' },
+  { key: 'selfHarm', label: 'Self-Harm', defaultThreshold: 0.7, defaultAction: 'flag' },
+] as const;
+
+const AI_AUTOMOD_ACTION_OPTIONS = [
+  { value: 'none', label: 'Ignore' },
+  { value: 'delete', label: 'Hard Delete' },
+  { value: 'flag', label: 'Flag & Log' },
+  { value: 'warn', label: 'Issue Warning' },
+  { value: 'timeout', label: 'Temporary Timeout' },
+  { value: 'kick', label: 'Server Kick' },
+  { value: 'ban', label: 'Permanent Ban' },
+] as const;
+
 const hasVisibleModelOptions = VISIBLE_PROVIDER_MODEL_OPTIONS.length > 0;
 
 /**
@@ -186,6 +223,16 @@ export function AiAutomationCategory() {
     handleToggleCurrentFeature = (v) => updateMemoryField('enabled', v);
   }
 
+  const selectedAiAutoModModel = draftConfig.aiAutoMod?.model ?? 'minimax:MiniMax-M2.7';
+  const aiAutoModModelOptions = AI_AUTOMOD_MODEL_OPTIONS.some(
+    (option) => option.value === selectedAiAutoModModel,
+  )
+    ? AI_AUTOMOD_MODEL_OPTIONS
+    : [
+        { value: selectedAiAutoModModel, label: `Custom: ${selectedAiAutoModModel}` },
+        ...AI_AUTOMOD_MODEL_OPTIONS,
+      ];
+
   return (
     <ConfigCategoryLayout
       featureId={activeTab}
@@ -257,6 +304,28 @@ export function AiAutomationCategory() {
             <div className="space-y-6">
               <div className="space-y-3">
                 <label
+                  htmlFor="ai-automod-model"
+                  className="text-sm font-bold tracking-tight text-foreground/80"
+                >
+                  Detection Model
+                </label>
+                <select
+                  id="ai-automod-model"
+                  value={selectedAiAutoModModel}
+                  onChange={(e) => updateAiAutoModField('model', e.target.value)}
+                  disabled={saving}
+                  className={cn(inputClasses, 'w-full font-semibold')}
+                >
+                  {aiAutoModModelOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-3">
+                <label
                   htmlFor="ai-automod-flag-channel"
                   className="text-sm font-bold tracking-tight text-foreground/80"
                 >
@@ -316,19 +385,21 @@ export function AiAutomationCategory() {
                   </span>
                 </div>
                 <div className="grid gap-4">
-                  {(['toxicity', 'spam', 'harassment'] as const).map((cat) => (
-                    <div key={cat} className="flex items-center justify-between gap-6">
-                      <span className="text-sm font-bold text-foreground/80 capitalize">{cat}</span>
+                  {AI_AUTOMOD_CATEGORIES.map((category) => (
+                    <div key={category.key} className="flex items-center justify-between gap-6">
+                      <span className="text-sm font-bold text-foreground/80">{category.label}</span>
                       <div className="relative">
                         <input
-                          id={`ai-threshold-${cat}`}
+                          id={`ai-threshold-${category.key}`}
+                          aria-label={`${category.label} Threshold`}
                           type="number"
                           min={0}
                           max={100}
                           step={5}
                           value={Math.round(
-                            ((draftConfig.aiAutoMod?.thresholds as Record<string, number>)?.[cat] ??
-                              0.7) * 100,
+                            ((draftConfig.aiAutoMod?.thresholds as Record<string, number>)?.[
+                              category.key
+                            ] ?? category.defaultThreshold) * 100,
                           )}
                           onChange={(e) => {
                             const raw = Number(e.target.value);
@@ -336,7 +407,7 @@ export function AiAutomationCategory() {
                             updateAiAutoModField('thresholds', {
                               ...((draftConfig.aiAutoMod?.thresholds as Record<string, number>) ??
                                 {}),
-                              [cat]: v,
+                              [category.key]: v,
                             });
                           }}
                           onFocus={(e) => e.target.select()}
@@ -363,33 +434,31 @@ export function AiAutomationCategory() {
                   </span>
                 </div>
                 <div className="grid gap-4">
-                  {(['toxicity', 'spam', 'harassment'] as const).map((cat) => (
-                    <div key={cat} className="flex items-center justify-between gap-4">
-                      <span className="text-sm font-bold text-foreground/80 capitalize lg:hidden">
-                        {cat}
-                      </span>
+                  {AI_AUTOMOD_CATEGORIES.map((category) => (
+                    <div key={category.key} className="flex items-center justify-between gap-4">
+                      <span className="text-sm font-bold text-foreground/80">{category.label}</span>
                       <select
-                        id={`ai-action-${cat}`}
+                        id={`ai-action-${category.key}`}
+                        aria-label={`${category.label} Action`}
                         value={
-                          (draftConfig.aiAutoMod?.actions as Record<string, string>)?.[cat] ??
-                          'flag'
+                          (draftConfig.aiAutoMod?.actions as Record<string, string>)?.[
+                            category.key
+                          ] ?? category.defaultAction
                         }
                         onChange={(e) => {
                           updateAiAutoModField('actions', {
                             ...((draftConfig.aiAutoMod?.actions as Record<string, string>) ?? {}),
-                            [cat]: e.target.value,
+                            [category.key]: e.target.value,
                           });
                         }}
                         disabled={saving}
                         className={cn(inputClasses, 'w-full min-w-[140px] font-semibold')}
                       >
-                        <option value="none">Ignore</option>
-                        <option value="delete">Hard Delete</option>
-                        <option value="flag">Flag & Log</option>
-                        <option value="warn">Issue Warning</option>
-                        <option value="timeout">Temporary Timeout</option>
-                        <option value="kick">Server Kick</option>
-                        <option value="ban">Permanent Ban</option>
+                        {AI_AUTOMOD_ACTION_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
                       </select>
                     </div>
                   ))}

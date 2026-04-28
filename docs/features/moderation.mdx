@@ -10,6 +10,7 @@ Active Sentry is Volvox.Bot's moderation engine. It runs automatically and can b
 ## What it does
 
 - **Auto-moderation** — Automatically detect and act on spam, slurs, invite links, and more
+- **AI Auto-Moderation** — Score incoming messages for toxicity, spam, harassment, hate speech, sexual content, violence, and self-harm, then run the configured action when a score meets its threshold
 - **Warnings** — Issue warnings that accumulate and trigger escalating actions
 - **Bans & Kicks** — Full ban and kick support with reason tracking
 - **Timeouts** — Discord native timeouts with configurable durations
@@ -19,7 +20,8 @@ Active Sentry is Volvox.Bot's moderation engine. It runs automatically and can b
 
 1. Open the dashboard → **Moderation** for your server
 2. Review active cases, filter by type or member
-3. Use **Config → Moderation** to set up auto-mod rules and thresholds
+3. Use **Config → Moderation** to set up classic auto-mod rules
+4. Use **Config → AI & Automation → AI Auto-Moderation** to choose the detection model, thresholds, and actions
 
 <Callout type="tip">
 Configure escalation rules so that repeated warnings automatically escalate to timeouts or bans.
@@ -36,5 +38,14 @@ All moderation settings are in **Config → Moderation**:
 | Word filter | Custom list of blocked words |
 | Invite blocking | Block Discord invite links |
 | Log channel | Where moderation actions are posted |
+
+AI moderation settings are in **Config → AI & Automation → AI Auto-Moderation**:
+
+| Setting | Description |
+|---------|-------------|
+| Detection model | The provider/model used to score incoming messages |
+| Incident report channel | Where flagged AI moderation reports are posted |
+| Sensitivity thresholds | Per-category score required before action runs |
+| Response actions | Ignore, delete, flag, warn, timeout, kick, or ban per category |
 
 Changes apply instantly — no bot restart needed.

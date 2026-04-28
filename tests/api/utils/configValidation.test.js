@@ -92,6 +92,25 @@ describe('configValidation', () => {
       expect(errors[0]).toContain('expected finite number');
     });
 
+    it('should validate aiAutoMod model, thresholds, and actions', () => {
+      expect(validateSingleValue('aiAutoMod.model', 'minimax:MiniMax-M2.7')).toEqual([]);
+      expect(validateSingleValue('aiAutoMod.thresholds.hateSpeech', 0.85)).toEqual([]);
+      expect(validateSingleValue('aiAutoMod.actions.hateSpeech', 'timeout')).toEqual([]);
+      expect(validateSingleValue('aiAutoMod.exemptRoleIds', ['role-1'])).toEqual([]);
+    });
+
+    it('should reject invalid aiAutoMod model, threshold, and action values', () => {
+      expect(validateSingleValue('aiAutoMod.model', 'MiniMax-M2.7')).toEqual(
+        expect.arrayContaining([expect.stringContaining('does not match required pattern')]),
+      );
+      expect(validateSingleValue('aiAutoMod.thresholds.toxicity', 1.1)).toEqual(
+        expect.arrayContaining([expect.stringContaining('<= 1')]),
+      );
+      expect(validateSingleValue('aiAutoMod.actions.spam', 'obliterate')).toEqual(
+        expect.arrayContaining([expect.stringContaining('must be one of')]),
+      );
+    });
+
     it('should validate new welcome onboarding fields', () => {
       expect(validateSingleValue('welcome.rulesChannel', null)).toEqual([]);
       expect(validateSingleValue('welcome.verifiedRole', '123')).toEqual([]);
@@ -142,6 +161,7 @@ describe('configValidation', () => {
           'spam',
           'moderation',
           'triage',
+          'aiAutoMod',
           'auditLog',
           'botStatus',
           'xp',

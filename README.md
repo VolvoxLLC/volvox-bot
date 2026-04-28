@@ -18,7 +18,7 @@ AI-powered Discord bot and dashboard — built by the [Volvox](https://volvox.de
 - **🧠 AI Chat** — Mention the bot to chat with the configured AI provider. Per-channel conversation history with context management.
 - **📋 TLDR** — AI-powered conversation summaries. Use `/tldr` to get key topics, decisions, and action items from any channel. Never miss what you missed.
 - **🎯 Smart Triage** — Two-step evaluation (fast classifier + responder) for chime-ins and rule enforcement.
-- **🤖 AI Auto-Moderation** — Automated toxicity, spam, and harassment detection with configurable thresholds.
+- **🤖 AI Auto-Moderation** — Model-selectable safety scoring for toxicity, spam, harassment, hate speech, sexual content, violence, and self-harm with configurable actions.
 - **👍👎 AI Feedback** — Thumbs up/down reactions on AI responses, tracked in dashboard analytics.
 - **🧠 User Memory** — Long-term memory per user via [mem0](https://mem0.ai) for personalized interactions.
 

@@ -1,6 +1,6 @@
 /**
  * AI Auto-Moderation Module
- * Uses the Vercel AI SDK to analyze messages for toxicity, spam, and harassment.
+ * Uses the Vercel AI SDK to analyze messages for toxicity, spam, harassment, and related safety categories.
  * Supports configurable thresholds, per-guild settings, and multiple actions:
  * warn, timeout, kick, ban, or flag for review.
  */
@@ -13,6 +13,50 @@ import { isExempt } from '../utils/modExempt.js';
 import { safeSend } from '../utils/safeSend.js';
 import { createCase } from './moderation.js';
 
+export const AI_AUTOMOD_CATEGORIES = Object.freeze([
+  {
+    key: 'toxicity',
+    label: 'Toxicity',
+    description: 'Insults, aggressive abuse, or severe negativity targeting people.',
+  },
+  {
+    key: 'spam',
+    label: 'Spam',
+    description: 'Repeated content, flooding, unsolicited ads, scam links, or obvious bot noise.',
+  },
+  {
+    key: 'harassment',
+    label: 'Harassment',
+    description: 'Targeted attacks, bullying, threats, doxxing, or intimidation.',
+  },
+  {
+    key: 'hateSpeech',
+    label: 'Hate speech',
+    description: 'Slurs, dehumanization, or attacks against protected classes.',
+  },
+  {
+    key: 'sexualContent',
+    label: 'Sexual content',
+    description: 'Explicit sexual content, sexual solicitation, or grooming concerns.',
+  },
+  {
+    key: 'violence',
+    label: 'Violence',
+    description: 'Threats, incitement, instructions, or celebration of physical harm.',
+  },
+  {
+    key: 'selfHarm',
+    label: 'Self-harm',
+    description: 'Suicide, self-injury, or credible self-harm risk.',
+  },
+]);
+
+const SCORE_ALIASES = Object.freeze({
+  hateSpeech: ['hate_speech', 'hate'],
+  sexualContent: ['sexual_content', 'sexual'],
+  selfHarm: ['self_harm', 'self-harm'],
+});
+
 /** Default config when none is provided */
 const DEFAULTS = {
   enabled: false,
@@ -21,11 +65,19 @@ const DEFAULTS = {
     toxicity: 0.7,
     spam: 0.8,
     harassment: 0.7,
+    hateSpeech: 0.8,
+    sexualContent: 0.8,
+    violence: 0.85,
+    selfHarm: 0.7,
   },
   actions: {
     toxicity: 'flag',
     spam: 'delete',
     harassment: 'warn',
+    hateSpeech: 'timeout',
+    sexualContent: 'delete',
+    violence: 'ban',
+    selfHarm: 'flag',
   },
   timeoutDurationMs: 5 * 60 * 1000,
   flagChannelId: null,
@@ -48,6 +100,18 @@ export function getAiAutoModConfig(config) {
   };
 }
 
+function buildScoreObject(value = 0) {
+  return Object.fromEntries(AI_AUTOMOD_CATEGORIES.map(({ key }) => [key, value]));
+}
+
+function normalizeScore(parsed, categoryKey) {
+  const candidateKeys = [categoryKey, ...(SCORE_ALIASES[categoryKey] ?? [])];
+  const rawValue = candidateKeys.map((key) => parsed?.[key]).find((value) => value != null);
+  const score = Number(rawValue);
+  if (!Number.isFinite(score)) return 0;
+  return Math.min(1, Math.max(0, score));
+}
+
 /**
  * Analyze a message using the configured AI provider.
  * Returns scores and recommendations for moderation actions.
@@ -62,14 +126,19 @@ export async function analyzeMessage(content, autoModConfig) {
   if (!content || content.trim().length < 3) {
     return {
       flagged: false,
-      scores: { toxicity: 0, spam: 0, harassment: 0 },
+      scores: buildScoreObject(0),
       categories: [],
       reason: 'Message too short',
       action: 'none',
     };
   }
 
-  const prompt = `You are a content moderation assistant. Analyze the following Discord message and rate it on three dimensions.
+  const categoryPrompt = AI_AUTOMOD_CATEGORIES.map(
+    ({ key, label, description }) => `- ${key}: ${label}. ${description}`,
+  ).join('\n');
+  const responseShape = AI_AUTOMOD_CATEGORIES.map(({ key }) => `  "${key}": 0.0,`).join('\n');
+
+  const prompt = `You are a content moderation assistant. Analyze the following Discord message and rate it against each moderation category.
 
 Message to analyze:
 <message>
@@ -77,15 +146,11 @@ ${content.slice(0, 2000)}
 </message>
 
 Rate the message on a scale of 0.0 to 1.0 for each category:
-- toxicity: Hateful language, slurs, extreme negativity targeting groups or individuals
-- spam: Repetitive content, advertisements, scam links, flooding
-- harassment: Targeted attacks on specific individuals, threats, bullying, doxxing
+${categoryPrompt}
 
 Respond ONLY with valid JSON in this exact format:
 {
-  "toxicity": 0.0,
-  "spam": 0.0,
-  "harassment": 0.0,
+${responseShape}
   "reason": "brief explanation of main concern or 'clean' if none"
 }`;
 
@@ -108,25 +173,21 @@ Respond ONLY with valid JSON in this exact format:
     });
     return {
       flagged: false,
-      scores: { toxicity: 0, spam: 0, harassment: 0 },
+      scores: buildScoreObject(0),
       categories: [],
       reason: 'Parse error',
       action: 'none',
     };
   }
 
-  const scores = {
-    toxicity: Math.min(1, Math.max(0, Number(parsed.toxicity) || 0)),
-    spam: Math.min(1, Math.max(0, Number(parsed.spam) || 0)),
-    harassment: Math.min(1, Math.max(0, Number(parsed.harassment) || 0)),
-  };
+  const scores = Object.fromEntries(
+    AI_AUTOMOD_CATEGORIES.map(({ key }) => [key, normalizeScore(parsed, key)]),
+  );
 
   const thresholds = mergedConfig.thresholds;
-  const triggeredCategories = [];
-
-  if (scores.toxicity >= thresholds.toxicity) triggeredCategories.push('toxicity');
-  if (scores.spam >= thresholds.spam) triggeredCategories.push('spam');
-  if (scores.harassment >= thresholds.harassment) triggeredCategories.push('harassment');
+  const triggeredCategories = AI_AUTOMOD_CATEGORIES.flatMap(({ key }) =>
+    scores[key] >= thresholds[key] ? [key] : [],
+  );
 
   const flagged = triggeredCategories.length > 0;
 
@@ -181,11 +242,9 @@ async function sendFlagEmbed(message, client, result, autoModConfig) {
       { name: 'Message', value: (message.content || '*[no text]*').slice(0, 1024) },
       {
         name: 'AI Scores',
-        value: [
-          `Toxicity:   ${scoreBar(result.scores.toxicity)}`,
-          `Spam:       ${scoreBar(result.scores.spam)}`,
-          `Harassment: ${scoreBar(result.scores.harassment)}`,
-        ].join('\n'),
+        value: AI_AUTOMOD_CATEGORIES.map(
+          ({ key, label }) => `${label.padEnd(15)} ${scoreBar(result.scores[key] ?? 0)}`,
+        ).join('\n'),
       },
       { name: 'Reason', value: result.reason.slice(0, 512) },
       { name: 'Jump Link', value: `[View Message](${message.url})` },

@@ -323,12 +323,20 @@
     "thresholds": {
       "toxicity": 0.7,
       "spam": 0.8,
-      "harassment": 0.7
+      "harassment": 0.7,
+      "hateSpeech": 0.8,
+      "sexualContent": 0.8,
+      "violence": 0.85,
+      "selfHarm": 0.7
     },
     "actions": {
       "toxicity": "flag",
       "spam": "delete",
-      "harassment": "warn"
+      "harassment": "warn",
+      "hateSpeech": "timeout",
+      "sexualContent": "delete",
+      "violence": "ban",
+      "selfHarm": "flag"
     },
     "timeoutDurationMs": 300000,
     "flagChannelId": null,
