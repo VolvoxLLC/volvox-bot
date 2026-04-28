@@ -452,27 +452,47 @@ function findObjectPropertyValue(tokens, openIndex, closeIndex, keyName) {
   return { start: valueStart, end: findPropertyValueEnd(tokens, valueStart, closeIndex) };
 }
 
-function findCoverageBlocks(tokens) {
-  const blocks = [];
+function isObjectProperty(tokens, index, keyName) {
+  return (
+    (isIdentifierToken(tokens, index, keyName) ||
+      (tokens[index]?.type === 'string' && tokens[index].value === keyName)) &&
+    isToken(tokens, index + 1, ':') &&
+    isToken(tokens, index + 2, '{')
+  );
+}
 
+function findVitestTestObject(tokens) {
   for (let cursor = 0; cursor < tokens.length - 2; cursor += 1) {
-    const isCoverageKey =
-      (isIdentifierToken(tokens, cursor, 'coverage') ||
-        (tokens[cursor]?.type === 'string' && tokens[cursor].value === 'coverage')) &&
-      isToken(tokens, cursor + 1, ':') &&
-      isToken(tokens, cursor + 2, '{');
-
-    if (!isCoverageKey) {
+    if (!isObjectProperty(tokens, cursor, 'test')) {
       continue;
     }
 
     const closeIndex = findMatchingToken(tokens, cursor + 2);
     if (closeIndex !== -1) {
-      blocks.push({ open: cursor + 2, close: closeIndex });
+      return { open: cursor + 2, close: closeIndex };
     }
   }
 
-  return blocks;
+  return null;
+}
+
+function findVitestCoverageBlock(tokens) {
+  const testObject = findVitestTestObject(tokens);
+  if (testObject === null) {
+    return null;
+  }
+
+  const coverageValue = findObjectPropertyValue(tokens, testObject.open, testObject.close, 'coverage');
+  if (coverageValue === null || !isToken(tokens, coverageValue.start, '{')) {
+    return null;
+  }
+
+  const closeIndex = findMatchingToken(tokens, coverageValue.start);
+  if (closeIndex === -1 || closeIndex > coverageValue.end) {
+    return null;
+  }
+
+  return { open: coverageValue.start, close: closeIndex };
 }
 
 function coverageExcludeUsesGeneratedList(tokens, valueRange, importName, flattenedNames) {
@@ -493,28 +513,25 @@ function verifyVitestCoverageExclusions(config) {
   }
 
   const flattenedNames = importName === null ? new Set() : findFlattenedCoverageNames(tokens, importName);
-  const coverageBlocks = findCoverageBlocks(tokens);
-  const coverageExcludeRanges = coverageBlocks
-    .map((block) => findObjectPropertyValue(tokens, block.open, block.close, 'exclude'))
-    .filter(Boolean);
+  const coverageBlock = findVitestCoverageBlock(tokens);
+  const coverageExcludeRange =
+    coverageBlock === null ? null : findObjectPropertyValue(tokens, coverageBlock.open, coverageBlock.close, 'exclude');
 
-  if (coverageBlocks.length === 0) {
-    failures.push('web/vitest.config.ts must define a coverage block');
+  if (coverageBlock === null) {
+    failures.push('web/vitest.config.ts must define test.coverage');
   }
 
-  if (coverageExcludeRanges.length === 0) {
-    failures.push('web/vitest.config.ts coverage block must define coverage.exclude');
+  if (coverageExcludeRange === null) {
+    failures.push('web/vitest.config.ts test.coverage must define coverage.exclude');
   }
 
   if (
     importName !== null &&
-    coverageExcludeRanges.length > 0 &&
-    !coverageExcludeRanges.some((range) =>
-      coverageExcludeUsesGeneratedList(tokens, range, importName, flattenedNames),
-    )
+    coverageExcludeRange !== null &&
+    !coverageExcludeUsesGeneratedList(tokens, coverageExcludeRange, importName, flattenedNames)
   ) {
     failures.push(
-      'web/vitest.config.ts coverage.exclude must use the flattened ./coverage-exclusions.json import',
+      'web/vitest.config.ts test.coverage.exclude must use the flattened ./coverage-exclusions.json import',
     );
   }
 
