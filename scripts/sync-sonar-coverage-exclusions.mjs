@@ -457,52 +457,65 @@ const mutatingArrayMethods = new Set([
   'unshift',
 ]);
 
-function statementContainsAssignmentAfter(tokens, start, end) {
-  for (let cursor = start; cursor < end; cursor += 1) {
-    if (isToken(tokens, cursor, '=')) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-function statementCallsMutatingMethodAfter(tokens, start, end) {
-  for (let cursor = start; cursor < end - 2; cursor += 1) {
-    if (
-      isToken(tokens, cursor, '.') &&
-      tokens[cursor + 1]?.type === 'identifier' &&
-      mutatingArrayMethods.has(tokens[cursor + 1].value) &&
-      isToken(tokens, cursor + 2, '(')
-    ) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-function statementMutatesImportedExclusionGroups(tokens, start, end, importName) {
-  const importUseIndex = findIdentifierInRange(tokens, start, end, importName);
-  if (importUseIndex === -1) {
+function isAssignmentOperatorAt(tokens, index) {
+  if (!isToken(tokens, index, '=')) {
     return false;
   }
 
-  if (statementContainsAssignmentAfter(tokens, importUseIndex + 1, end)) {
-    return true;
+  const previous = tokens[index - 1]?.value;
+  const next = tokens[index + 1]?.value;
+  return previous !== '=' && previous !== '!' && previous !== '<' && previous !== '>' && next !== '=' && next !== '>';
+}
+
+function findBracketAccessEnd(tokens, openIndex, end) {
+  const closeIndex = findMatchingToken(tokens, openIndex);
+  return closeIndex !== -1 && closeIndex < end ? closeIndex + 1 : openIndex;
+}
+
+function importedAccessMutates(tokens, importUseIndex, end) {
+  let cursor = importUseIndex + 1;
+
+  while (cursor < end) {
+    if (isToken(tokens, cursor, '[')) {
+      cursor = findBracketAccessEnd(tokens, cursor, end);
+      continue;
+    }
+
+    if (!isToken(tokens, cursor, '.') || tokens[cursor + 1]?.type !== 'identifier') {
+      break;
+    }
+
+    const memberName = tokens[cursor + 1].value;
+    if (mutatingArrayMethods.has(memberName) && isToken(tokens, cursor + 2, '(')) {
+      return true;
+    }
+
+    cursor += 2;
   }
 
-  if (statementCallsMutatingMethodAfter(tokens, importUseIndex + 1, end)) {
-    return true;
-  }
+  return isAssignmentOperatorAt(tokens, cursor) ||
+    (isToken(tokens, cursor, '+') && isToken(tokens, cursor + 1, '+')) ||
+    (isToken(tokens, cursor, '-') && isToken(tokens, cursor + 1, '-'));
+}
 
-  return (
+function statementMutatesImportedExclusionGroups(tokens, start, end, importName) {
+  if (
     isIdentifierToken(tokens, start, 'Object') &&
     isToken(tokens, start + 1, '.') &&
     isIdentifierToken(tokens, start + 2, 'assign') &&
     isToken(tokens, start + 3, '(') &&
     isIdentifierToken(tokens, start + 4, importName)
-  );
+  ) {
+    return true;
+  }
+
+  for (let cursor = start; cursor < end; cursor += 1) {
+    if (isIdentifierToken(tokens, cursor, importName) && importedAccessMutates(tokens, cursor, end)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 function hasImportedExclusionGroupMutationBefore(tokens, importName, endIndex) {
