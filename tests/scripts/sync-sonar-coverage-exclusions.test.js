@@ -210,6 +210,19 @@ describe('verifyVitestCoverageExclusions', () => {
     ).not.toThrow();
   });
 
+  it('does not treat transformed Object.values results as imported coverage exclusion aliases', () => {
+    expect(() =>
+      verifyVitestCoverageExclusions(
+        vitestConfig({
+          setup: `
+            let lengths = Object.values(coverageExclusionGroups).map((group) => group.length);
+            lengths = [];
+          `,
+        }),
+      ),
+    ).not.toThrow();
+  });
+
   it('allows mutating methods on values derived from the imported coverage exclusions object', () => {
     expect(() =>
       verifyVitestCoverageExclusions(

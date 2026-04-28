@@ -675,14 +675,7 @@ function expressionAliasesImportedExclusionGroups(tokens, expressionStart, end, 
     return true;
   }
 
-  return (
-    isIdentifierToken(tokens, expressionStart, 'Object') &&
-    isToken(tokens, expressionStart + 1, '.') &&
-    (isIdentifierToken(tokens, expressionStart + 2, 'values') ||
-      isIdentifierToken(tokens, expressionStart + 2, 'entries')) &&
-    isToken(tokens, expressionStart + 3, '(') &&
-    exclusionGroupBindings.has(tokens[expressionStart + 4]?.value)
-  );
+  return objectValuesAliasExpressionEnd(tokens, expressionStart, end, exclusionGroupBindings) === end;
 }
 
 function objectValuesExpressionEnd(tokens, expressionStart, exclusionGroupBindings) {
@@ -696,6 +689,33 @@ function objectValuesExpressionEnd(tokens, expressionStart, exclusionGroupBindin
   ) {
     const closeIndex = findMatchingToken(tokens, expressionStart + 3);
     return closeIndex === -1 ? -1 : closeIndex + 1;
+  }
+
+  return -1;
+}
+
+function objectValuesAliasExpressionEnd(tokens, expressionStart, end, exclusionGroupBindings) {
+  const objectValuesEnd = objectValuesExpressionEnd(tokens, expressionStart, exclusionGroupBindings);
+  if (objectValuesEnd === -1) {
+    return -1;
+  }
+
+  if (objectValuesEnd === end) {
+    return objectValuesEnd;
+  }
+
+  let cursor = skipOptionalChainMarker(tokens, objectValuesEnd);
+  if (isToken(tokens, cursor, '[')) {
+    return accessChainEnd(tokens, findBracketAccessEnd(tokens, cursor, end), end);
+  }
+
+  if (
+    isToken(tokens, cursor, '.') &&
+    isIdentifierToken(tokens, cursor + 1, 'at') &&
+    isToken(tokens, cursor + 2, '(')
+  ) {
+    const closeIndex = findMatchingToken(tokens, cursor + 2);
+    return closeIndex === -1 || closeIndex >= end ? -1 : accessChainEnd(tokens, closeIndex + 1, end);
   }
 
   return -1;
@@ -717,11 +737,11 @@ function expressionResolvesToImportedExclusionGroups(tokens, expressionStart, en
   }
 
   const objectValuesEnd = objectValuesExpressionEnd(tokens, expressionStart, exclusionGroupBindings);
-  if (objectValuesEnd === -1) {
-    return false;
-  }
-
-  return objectValuesEnd === end || accessChainEnd(tokens, objectValuesEnd, end) === end;
+  return (
+    objectValuesEnd !== -1 &&
+    objectValuesEnd < end &&
+    objectValuesAliasExpressionEnd(tokens, expressionStart, end, exclusionGroupBindings) === end
+  );
 }
 
 function objectValuesDerivedAccessMutates(tokens, expressionStart, end, exclusionGroupBindings) {

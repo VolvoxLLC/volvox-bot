@@ -19,7 +19,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Client, Collection, GatewayIntentBits, Partials } from 'discord.js';
 import { config as dotenvConfig } from 'dotenv';
-import { startServer, stopServer } from './api/server.js';
+import { startServer, stopServer, updateServerDbPool } from './api/server.js';
 import {
   registerConfigListeners,
   removeLoggingTransport,
@@ -277,10 +277,28 @@ async function startup() {
   // Pre-warm AI SDK in background (non-blocking) — avoids 6s import delay on first AI request
   preloadSDK();
 
+  // Start REST API server immediately so Railway health checks can pass while
+  // heavier startup work (DB migrations, config loading, Discord login) runs.
+  {
+    let wsTransport = null;
+    try {
+      wsTransport = addWebSocketTransport();
+      await startServer(client, null, { wsTransport });
+    } catch (err) {
+      // Clean up orphaned transport if startServer failed after it was created
+      if (wsTransport) {
+        removeWebSocketTransport(wsTransport);
+      }
+      error('REST API server failed to start — continuing without API', { error: err.message });
+    }
+  }
+
   // Initialize database
   let dbPool = null;
   if (process.env.DATABASE_URL) {
     dbPool = await initDb();
+
+    updateServerDbPool(dbPool);
 
     // Initialize Redis (gracefully degrades if REDIS_URL not set)
     initRedis();
@@ -377,23 +395,6 @@ async function startup() {
     startScheduler(client);
     startGithubFeed(client);
     startEngagementFlushInterval();
-  }
-
-  // Start REST API server before Discord login so Railway health checks can pass
-  // while the bot is still connecting. The health route reports a connecting
-  // Discord state until client.ws is available.
-  {
-    let wsTransport = null;
-    try {
-      wsTransport = addWebSocketTransport();
-      await startServer(client, dbPool, { wsTransport });
-    } catch (err) {
-      // Clean up orphaned transport if startServer failed after it was created
-      if (wsTransport) {
-        removeWebSocketTransport(wsTransport);
-      }
-      error('REST API server failed to start — continuing without API', { error: err.message });
-    }
   }
 
   // Load commands and login

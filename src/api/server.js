@@ -17,6 +17,9 @@ import { setupLogStream, stopLogStream } from './ws/logStream.js';
 /** @type {import('node:http').Server | null} */
 let server = null;
 
+/** @type {import('express').Application | null} */
+let app = null;
+
 /** @type {ReturnType<typeof redisRateLimit> | null} */
 let rateLimiter = null;
 
@@ -28,21 +31,21 @@ let rateLimiter = null;
  * @returns {import('express').Application} Configured Express app
  */
 export function createApp(client, dbPool) {
-  const app = express();
+  const expressApp = express();
 
   // Trust one proxy hop (e.g. Railway, Docker) so req.ip reflects the real client IP
-  app.set('trust proxy', 1);
+  expressApp.set('trust proxy', 1);
 
   // Store references for route handlers
-  app.locals.client = client;
-  app.locals.dbPool = dbPool;
+  expressApp.locals.client = client;
+  expressApp.locals.dbPool = dbPool;
 
   // CORS - must come BEFORE body parser so error responses include CORS headers
   const dashboardUrl = process.env.DASHBOARD_URL;
   if (dashboardUrl === '*') {
     warn('DASHBOARD_URL is set to wildcard "*" — this is insecure; set a specific origin');
   }
-  app.use((req, res, next) => {
+  expressApp.use((req, res, next) => {
     if (!dashboardUrl) return next();
     res.set('Access-Control-Allow-Origin', dashboardUrl);
     res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, OPTIONS');
@@ -57,7 +60,7 @@ export function createApp(client, dbPool) {
 
   // Body parsing
   const bodyLimit = process.env.API_BODY_LIMIT || '100kb';
-  app.use(express.json({ limit: bodyLimit }));
+  expressApp.use(express.json({ limit: bodyLimit }));
 
   // Rate limiting — destroy any leaked limiter from a prior createApp call
   if (rateLimiter) {
@@ -65,16 +68,16 @@ export function createApp(client, dbPool) {
     rateLimiter = null;
   }
   rateLimiter = redisRateLimit();
-  app.use((req, res, next) => {
+  expressApp.use((req, res, next) => {
     if (req.path === '/api/v1/health') return next();
     return rateLimiter(req, res, next);
   });
 
   // Raw OpenAPI spec (JSON) — public for Mintlify
-  app.get('/api/docs.json', (_req, res) => res.json(swaggerSpec));
+  expressApp.get('/api/docs.json', (_req, res) => res.json(swaggerSpec));
 
   // Response time tracking for performance monitoring
-  app.use('/api/v1', (req, res, next) => {
+  expressApp.use('/api/v1', (req, res, next) => {
     const start = Date.now();
     res.on('finish', () => {
       const duration = Date.now() - start;
@@ -85,10 +88,10 @@ export function createApp(client, dbPool) {
   });
 
   // Mount API routes under /api/v1
-  app.use('/api/v1', apiRouter);
+  expressApp.use('/api/v1', apiRouter);
 
   // Error handling middleware
-  app.use((err, _req, res, _next) => {
+  expressApp.use((err, _req, res, _next) => {
     // Pass through status code from body-parser or other middleware (e.g., 400 for malformed JSON)
     // Only use err.status/err.statusCode if it's a valid 4xx client error code
     // Otherwise default to 500 for server errors
@@ -103,7 +106,19 @@ export function createApp(client, dbPool) {
     res.status(status).json({ error: status < 500 ? err.message : 'Internal server error' });
   });
 
-  return app;
+  app = expressApp;
+  return expressApp;
+}
+
+/**
+ * Updates the database pool reference used by API route handlers after an early server start.
+ *
+ * @param {import('pg').Pool | null} dbPool - PostgreSQL connection pool
+ */
+export function updateServerDbPool(dbPool) {
+  if (app) {
+    app.locals.dbPool = dbPool;
+  }
 }
 
 /**
@@ -121,7 +136,7 @@ export async function startServer(client, dbPool, options = {}) {
     await stopServer();
   }
 
-  const app = createApp(client, dbPool);
+  const expressApp = createApp(client, dbPool);
   // Railway injects PORT at runtime; keep BOT_API_PORT as local/dev fallback.
   const portEnv = process.env.PORT ?? process.env.BOT_API_PORT;
   const parsed = portEnv != null ? Number.parseInt(portEnv, 10) : NaN;
@@ -136,7 +151,7 @@ export async function startServer(client, dbPool, options = {}) {
   const port = isValidPort ? parsed : 3001;
 
   return new Promise((resolve, reject) => {
-    server = app.listen(port, () => {
+    server = expressApp.listen(port, () => {
       info('API server started', { port });
 
       // Attach WebSocket log stream if transport provided
@@ -162,6 +177,7 @@ export async function startServer(client, dbPool, options = {}) {
     server.once('error', (err) => {
       error('API server failed to start', { error: err.message });
       server = null;
+      app = null;
       reject(err);
     });
   });
@@ -206,6 +222,7 @@ export async function stopServer() {
         closing.closeAllConnections();
       }
       server = null;
+      app = null;
       resolve();
     }, SHUTDOWN_TIMEOUT_MS);
 
@@ -214,6 +231,7 @@ export async function stopServer() {
       if (settled) return;
       settled = true;
       server = null;
+      app = null;
       if (err) {
         error('Error closing API server', { error: err.message });
         reject(err);
