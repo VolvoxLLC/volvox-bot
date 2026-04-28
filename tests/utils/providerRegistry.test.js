@@ -120,6 +120,14 @@ describe('getModelConfig', () => {
     expect(model).not.toBeNull();
     expect(model.id).toBe('moonshotai/kimi-k2.6');
   });
+
+  it('resolves OpenRouter free variant IDs with colons', () => {
+    const model = getModelConfig('openrouter', 'minimax/minimax-m2.5:free');
+    expect(model).not.toBeNull();
+    expect(model.id).toBe('minimax/minimax-m2.5:free');
+    expect(model.pricing.input).toBe(0);
+    expect(model.pricing.output).toBe(0);
+  });
 });
 
 describe('getCapabilities', () => {
@@ -346,6 +354,24 @@ describe('_validateRegistryPayload — top-level guards (regression for macrosco
     const result = _validateRegistryPayload(payload);
     expect(result.size).toBe(1);
     expect(result.get('acme').name).toBe('acme');
+  });
+
+  it('rejects non-boolean model availability.visible values', () => {
+    const payload = buildPayload({
+      acme: {
+        ...validProviderEntry(),
+        models: {
+          'test-model': {
+            availability: { visible: 'yes' },
+            pricing: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 },
+          },
+        },
+      },
+    });
+
+    expect(() => _validateRegistryPayload(payload)).toThrow(
+      /availability\.visible must be boolean/,
+    );
   });
 
   it('rejects a missing top-level providers key', () => {

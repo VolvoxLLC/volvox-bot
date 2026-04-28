@@ -1,17 +1,24 @@
 'use client';
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useConfigContext } from '@/components/dashboard/config-context';
 import { inputClasses, parseNumberInput } from '@/components/dashboard/config-editor-utils';
 import { ChannelModeSection } from '@/components/dashboard/config-sections/ChannelModeSection';
 import type { ConfigFeatureId } from '@/components/dashboard/config-workspace/types';
 import { ChannelSelector } from '@/components/ui/channel-selector';
 import { RoleSelector } from '@/components/ui/role-selector';
+import {
+  getVisibleProviderModelValue,
+  VISIBLE_PROVIDER_MODEL_OPTION_GROUPS,
+  VISIBLE_PROVIDER_MODEL_OPTIONS,
+} from '@/lib/provider-model-options';
 import { cn } from '@/lib/utils';
 import type { ChannelMode } from '@/types/config';
 import { SYSTEM_PROMPT_MAX_LENGTH } from '@/types/config';
 import { SystemPromptEditor } from '../system-prompt-editor';
 import { ToggleSwitch } from '../toggle-switch';
 import { ConfigCategoryLayout } from './config-category-layout';
+
+const hasVisibleModelOptions = VISIBLE_PROVIDER_MODEL_OPTIONS.length > 0;
 
 /**
  * Render the AI & Automation configuration UI for the chat, automod, triage, and memory feature tabs.
@@ -128,6 +135,36 @@ export function AiAutomationCategory() {
     },
     [updateDraftConfig],
   );
+
+  const hasDraftConfig = draftConfig !== null;
+  const currentClassifyModel = draftConfig?.triage?.classifyModel;
+  const currentRespondModel = draftConfig?.triage?.respondModel;
+  const classifyModelValue = getVisibleProviderModelValue(currentClassifyModel);
+  const respondModelValue = getVisibleProviderModelValue(currentRespondModel);
+
+  useEffect(() => {
+    if (!hasDraftConfig || activeTab !== 'triage' || !hasVisibleModelOptions) return;
+    if (classifyModelValue === currentClassifyModel && respondModelValue === currentRespondModel) {
+      return;
+    }
+
+    updateDraftConfig((prev) => ({
+      ...prev,
+      triage: {
+        ...prev.triage,
+        classifyModel: getVisibleProviderModelValue(prev.triage?.classifyModel),
+        respondModel: getVisibleProviderModelValue(prev.triage?.respondModel),
+      },
+    }));
+  }, [
+    activeTab,
+    classifyModelValue,
+    currentClassifyModel,
+    currentRespondModel,
+    hasDraftConfig,
+    respondModelValue,
+    updateDraftConfig,
+  ]);
 
   if (!draftConfig) return null;
   if (!activeTab) return null;
@@ -384,16 +421,27 @@ export function AiAutomationCategory() {
                   >
                     Classifier Engine
                   </label>
-                  <input
+                  <select
                     id="classify-model"
-                    type="text"
-                    value={draftConfig.triage?.classifyModel ?? ''}
+                    value={classifyModelValue}
                     onChange={(e) => updateTriageField('classifyModel', e.target.value)}
-                    onFocus={(e) => e.target.select()}
-                    disabled={saving}
+                    disabled={saving || !hasVisibleModelOptions}
                     className={inputClasses}
-                    placeholder="e.g. gpt-4o-mini"
-                  />
+                  >
+                    {hasVisibleModelOptions ? (
+                      VISIBLE_PROVIDER_MODEL_OPTION_GROUPS.map((group) => (
+                        <optgroup key={group.providerName} label={group.providerDisplayName}>
+                          {group.options.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))
+                    ) : (
+                      <option value="">No visible models configured</option>
+                    )}
+                  </select>
                 </div>
                 <div className="space-y-2">
                   <label
@@ -402,16 +450,27 @@ export function AiAutomationCategory() {
                   >
                     Response Engine
                   </label>
-                  <input
+                  <select
                     id="respond-model"
-                    type="text"
-                    value={draftConfig.triage?.respondModel ?? ''}
+                    value={respondModelValue}
                     onChange={(e) => updateTriageField('respondModel', e.target.value)}
-                    onFocus={(e) => e.target.select()}
-                    disabled={saving}
+                    disabled={saving || !hasVisibleModelOptions}
                     className={inputClasses}
-                    placeholder="e.g. claude-3-5-sonnet"
-                  />
+                  >
+                    {hasVisibleModelOptions ? (
+                      VISIBLE_PROVIDER_MODEL_OPTION_GROUPS.map((group) => (
+                        <optgroup key={group.providerName} label={group.providerDisplayName}>
+                          {group.options.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))
+                    ) : (
+                      <option value="">No visible models configured</option>
+                    )}
+                  </select>
                 </div>
               </div>
 

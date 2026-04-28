@@ -208,6 +208,48 @@ describe('modules/config', () => {
       expect(config.ai.model).toBe('db-model');
     });
 
+    it('should log guild triage model overrides loaded from DB', async () => {
+      const mockPool = {
+        query: vi.fn().mockResolvedValue({
+          rows: [
+            {
+              guild_id: 'global',
+              key: 'triage',
+              value: {
+                classifyModel: 'minimax:MiniMax-M2.7',
+                respondModel: 'minimax:MiniMax-M2.7',
+              },
+            },
+            {
+              guild_id: 'guild-1',
+              key: 'triage',
+              value: {
+                classifyModel: 'minimax:MiniMax-M2.7-highspeed',
+                respondModel: 'minimax:MiniMax-M2.7-highspeed',
+              },
+            },
+          ],
+        }),
+      };
+      const { getPool: mockGetPool } = await import('../../src/db.js');
+      const { info } = await import('../../src/logger.js');
+      mockGetPool.mockReturnValue(mockPool);
+
+      await configModule.loadConfig();
+
+      expect(info).toHaveBeenCalledWith('Guild triage model overrides loaded', {
+        guildCount: 1,
+        overrides: [
+          {
+            guildId: 'guild-1',
+            classifyModel: 'minimax:MiniMax-M2.7-highspeed',
+            respondModel: 'minimax:MiniMax-M2.7-highspeed',
+          },
+        ],
+        omittedCount: 0,
+      });
+    });
+
     it('should preserve new config.json defaults when existing DB sections omit them', async () => {
       const { readFileSync: mockRead } = await import('node:fs');
       mockRead.mockReturnValue(
