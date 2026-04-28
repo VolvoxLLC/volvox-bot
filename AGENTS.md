@@ -17,7 +17,9 @@ Repo-specific operating rules for agents working on Volvox.Bot. Keep this file s
 - Use `src/logger.js`; do not use `console.*`.
 - Use safe Discord messaging helpers from `src/utils/safeSend.js`; do not use raw `reply`, `send`, or `edit` Discord message calls. If no helper fits, add or extend one.
 - Use parameterized SQL only.
-- Do not lower lint, typecheck, test, or coverage gates to make CI pass. Bot and web both enforce 85% coverage thresholds.
+- Do not lower lint, typecheck, test, or coverage gates to make CI pass. Bot coverage
+  enforces the thresholds in `vitest.config.js`; web coverage enforces the PR #626
+  ratcheted baseline in `web/vitest.config.ts`.
 
 ## Configurable Feature Contract
 

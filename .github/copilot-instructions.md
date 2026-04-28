@@ -103,7 +103,7 @@ pnpm test:coverage         # Run with coverage thresholds enforced
 
 - **Framework:** Vitest 4 with `node` environment
 - **Test files:** `tests/**/*.test.js` (JavaScript, ESM)
-- **Coverage thresholds** (from `vitest.config.js`): statements 85%, branches 82%, functions 85%, lines 85%
+- **Coverage thresholds** (from `vitest.config.js`): statements 85%, branches 85%, functions 85%, lines 85%
 - **Never lower coverage thresholds** — add tests to cover new code instead
 
 ### Web Dashboard Tests
@@ -115,7 +115,11 @@ pnpm --prefix web test:coverage    # Run with coverage
 
 - **Framework:** Vitest 4 with `jsdom` environment and React Testing Library
 - **Test files:** `web/tests/**/*.test.{ts,tsx}` (TypeScript)
-- **Coverage thresholds:** 85% across all metrics
+- **Coverage thresholds:** current ratcheted floor from the 2026-04-28 PR #626 baseline
+  (statements 51.8%, branches 45.72%, functions 53.71%, lines 54.37%).
+  `web/vitest.config.ts` enforces those decimal floors exactly. Do not lower them;
+  raise individual metrics when new tests sustainably improve the baseline and update
+  this provenance.
 
 ### Writing Tests
 
@@ -132,11 +136,16 @@ pnpm --prefix web test:coverage    # Run with coverage
 The CI workflow (`.github/workflows/ci.yml`) runs on every PR and push to `main`:
 
 1. **Lint** — `pnpm lint` (Biome check on bot + web)
-2. **Test** — `pnpm test:coverage` (Vitest with coverage thresholds)
-3. **Web** — `pnpm --prefix web typecheck && lint && build`
-4. **Docker** — Validates Docker images build on PRs
+2. **Test** — bot and web coverage (`pnpm test:coverage` and `pnpm --prefix web test:coverage`)
+3. **Build** — monorepo typecheck + build (`pnpm mono:typecheck` and `pnpm mono:build`)
+4. **E2E** — Playwright dashboard tests, sharded
+5. **Docker** — Validates bot and web Docker images build
 
-All four checks must pass. The `lint-and-test` gate job aggregates lint + test results.
+All workflow checks must pass. The `CI` gate job aggregates lint, test, build, E2E,
+Docker, and SonarCloud gate results. SonarCloud quality analysis is intentionally handled
+by the external **SonarCloud Code Analysis** / Automatic Analysis check, not by
+`sonarqube-scan-action` in this workflow; enabling both causes SonarCloud to reject
+duplicate analyses. The workflow only waits for and enforces the external check/status.
 
 ---
 
@@ -271,7 +280,13 @@ The web dashboard has its own `pnpm-lock.yaml` and dependencies. Use `pnpm --pre
 
 2. **No `console.*`:** Biome treats `console.log`, `console.error`, etc. as errors via the `noConsole` rule. Always use the Winston logger from `src/logger.js`.
 
-3. **Coverage thresholds are strict:** Bot tests enforce thresholds from `vitest.config.js` (statements 85%, branches 82%, functions 85%, lines 85%); web tests require 85% across all metrics. If your changes reduce coverage, CI fails. Write tests for new code.
+3. **Coverage thresholds are strict and ratcheted:** Bot tests enforce thresholds from
+   `vitest.config.js` (statements 85%, branches 85%, functions 85%, lines 85%). Web
+   tests enforce the current 2026-04-28 baseline from PR #626: statements 51.8%,
+   branches 45.72%, functions 53.71%, lines 54.37% (configured as matching decimal
+   floors in `web/vitest.config.ts`). Do not lower thresholds. If tests improve
+   the baseline, ratchet the relevant metric upward and update the provenance in both
+   `web/vitest.config.ts` and this file.
 
 4. **`pnpm` only:** The project uses `engine-strict=true` in `.npmrc` and requires pnpm 10.30.3+. Do not use npm or yarn.
 

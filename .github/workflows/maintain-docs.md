@@ -87,7 +87,8 @@ Maintain the docs that match the change:
    - Verify all links and references are accurate
    - Check that code examples and commands match current patterns
    - Ensure sections remain organized and readable
-   - Preserve the current 85% coverage expectation for bot and web unless the real gates change
+   - Preserve the current bot coverage thresholds and web PR #626 ratcheted baseline
+     unless the real gates change
 
 7. **If No Changes Needed**: Close silently or note in logs that repository docs are current.
 
