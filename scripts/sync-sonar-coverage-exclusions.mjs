@@ -36,6 +36,60 @@ function formatSonarCoverageExclusions(groups) {
   return lines.join('\n');
 }
 
+function trimEndToNewline(value) {
+  let end = value.length;
+  while (end > 0) {
+    const code = value.charCodeAt(end - 1);
+    const isWhitespace = code === 9 || code === 10 || code === 13 || code === 32;
+    if (!isWhitespace) {
+      break;
+    }
+    end -= 1;
+  }
+
+  return `${value.slice(0, end)}\n`;
+}
+
+function normalizeLeadingNewline(value) {
+  if (value.length === 0) {
+    return '';
+  }
+
+  let start = 0;
+  while (start < value.length) {
+    const code = value.charCodeAt(start);
+    const isNewline = code === 10 || code === 13;
+    if (!isNewline) {
+      break;
+    }
+    start += 1;
+  }
+
+  return `\n${value.slice(start)}`;
+}
+
+function findCoverageExclusionsEnd(properties, start) {
+  let cursor = start;
+
+  while (cursor < properties.length) {
+    const nextNewline = properties.indexOf('\n', cursor);
+    const lineEnd = nextNewline === -1 ? properties.length : nextNewline;
+    const line = properties.slice(cursor, lineEnd).trimEnd();
+
+    if (!line.endsWith('\\')) {
+      return lineEnd;
+    }
+
+    if (nextNewline === -1) {
+      return properties.length;
+    }
+
+    cursor = nextNewline + 1;
+  }
+
+  return properties.length;
+}
+
 function replaceSonarCoverageExclusions(properties, replacement) {
   const start = properties.indexOf('sonar.coverage.exclusions=');
   if (start === -1) {
@@ -47,11 +101,10 @@ function replaceSonarCoverageExclusions(properties, replacement) {
     '# Generated from web/coverage-exclusions.json by scripts/sync-sonar-coverage-exclusions.mjs.',
   );
   const replacementStart = commentStart === -1 ? start : commentStart;
-  const nextProperty = properties.slice(start + 1).search(/\n[A-Za-z0-9_.-]+=|\n# [A-Z]/);
-  const replacementEnd = nextProperty === -1 ? properties.length : start + 1 + nextProperty;
-  const trailing = properties.slice(replacementEnd).replace(/^\n*/, '\n');
+  const replacementEnd = findCoverageExclusionsEnd(properties, start);
+  const trailing = normalizeLeadingNewline(properties.slice(replacementEnd));
 
-  return `${properties.slice(0, replacementStart).replace(/\s*$/, '\n')}${replacement}${trailing}`;
+  return `${trimEndToNewline(properties.slice(0, replacementStart))}${replacement}${trailing}`;
 }
 
 const groups = JSON.parse(await readFile(coverageExclusionsPath, 'utf8'));
