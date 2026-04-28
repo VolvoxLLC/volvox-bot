@@ -1,61 +1,60 @@
 import { describe, expect, it } from 'vitest';
 import { verifyVitestCoverageExclusions } from '../../scripts/sync-sonar-coverage-exclusions.mjs';
 
-const validConfig = `
-  import { defineConfig } from 'vitest/config';
-  import coverageExclusionGroups from './coverage-exclusions.json';
+const generatedExcludeExpression = 'Object.values(coverageExclusionGroups).flat()';
+const mutationError = /must not mutate the imported coverage exclusions JSON/;
 
-  export default defineConfig({
-    test: {
-      coverage: {
-        exclude: Object.values(coverageExclusionGroups).flat(),
+function vitestConfig({
+  importCoverageExclusions = true,
+  setup = '',
+  exclude = generatedExcludeExpression,
+  testConfig = `coverage: { exclude: ${exclude} }`,
+} = {}) {
+  return `
+    import { defineConfig } from 'vitest/config';
+    ${importCoverageExclusions ? "import coverageExclusionGroups from './coverage-exclusions.json';" : ''}
+
+    ${setup}
+
+    export default defineConfig({
+      test: {
+        ${testConfig},
       },
-    },
-  });
-`;
+    });
+  `;
+}
+
+function expectMutationRejected(setup, exclude = generatedExcludeExpression) {
+  expect(() => verifyVitestCoverageExclusions(vitestConfig({ setup, exclude }))).toThrow(
+    mutationError,
+  );
+}
 
 describe('verifyVitestCoverageExclusions', () => {
   it('accepts a direct flattened coverage exclusions JSON import in exported defineConfig', () => {
-    expect(() => verifyVitestCoverageExclusions(validConfig)).not.toThrow();
+    expect(() => verifyVitestCoverageExclusions(vitestConfig())).not.toThrow();
   });
 
   it('rejects configs missing the generated coverage exclusions import', () => {
-    const config = `
-      import { defineConfig } from 'vitest/config';
-
-      export default defineConfig({
-        test: {
-          coverage: {
-            exclude: ['src/generated/**'],
-          },
-        },
-      });
-    `;
-
-    expect(() => verifyVitestCoverageExclusions(config)).toThrow(
-      /must import \.\/coverage-exclusions\.json with a default binding/,
-    );
+    expect(() =>
+      verifyVitestCoverageExclusions(
+        vitestConfig({
+          importCoverageExclusions: false,
+          exclude: "['src/generated/**']",
+        }),
+      ),
+    ).toThrow(/must import \.\/coverage-exclusions\.json with a default binding/);
   });
 
   it('ignores unrelated helper objects when validating exported defineConfig', () => {
-    const config = `
-      import { defineConfig } from 'vitest/config';
-      import coverageExclusionGroups from './coverage-exclusions.json';
-
-      const helper = {
-        test: {
-          coverage: {
-            exclude: Object.values(coverageExclusionGroups).flat(),
-          },
-        },
-      };
-
-      export default defineConfig({
-        test: {
-          environment: 'jsdom',
-        },
-      });
-    `;
+    const config = vitestConfig({
+      setup: `
+        const helper = {
+          test: { coverage: { exclude: ${generatedExcludeExpression} } },
+        };
+      `,
+      testConfig: "environment: 'jsdom'",
+    });
 
     expect(() => verifyVitestCoverageExclusions(config)).toThrow(
       /defineConfig test object must define a coverage object/,
@@ -63,24 +62,14 @@ describe('verifyVitestCoverageExclusions', () => {
   });
 
   it('rejects earlier non-exported defineConfig calls as coverage evidence', () => {
-    const config = `
-      import { defineConfig } from 'vitest/config';
-      import coverageExclusionGroups from './coverage-exclusions.json';
-
-      const helper = defineConfig({
-        test: {
-          coverage: {
-            exclude: Object.values(coverageExclusionGroups).flat(),
-          },
-        },
-      });
-
-      export default defineConfig({
-        test: {
-          environment: 'jsdom',
-        },
-      });
-    `;
+    const config = vitestConfig({
+      setup: `
+        const helper = defineConfig({
+          test: { coverage: { exclude: ${generatedExcludeExpression} } },
+        });
+      `,
+      testConfig: "environment: 'jsdom'",
+    });
 
     expect(() => verifyVitestCoverageExclusions(config)).toThrow(
       /defineConfig test object must define a coverage object/,
@@ -88,226 +77,79 @@ describe('verifyVitestCoverageExclusions', () => {
   });
 
   it('rejects mutations to the imported coverage exclusions object', () => {
-    const config = `
-      import { defineConfig } from 'vitest/config';
-      import coverageExclusionGroups from './coverage-exclusions.json';
-
-      coverageExclusionGroups.extra = ['src/generated/**'];
-
-      export default defineConfig({
-        test: {
-          coverage: {
-            exclude: Object.values(coverageExclusionGroups).flat(),
-          },
-        },
-      });
-    `;
-
-    expect(() => verifyVitestCoverageExclusions(config)).toThrow(
-      /must not mutate the imported coverage exclusions JSON/,
-    );
+    expectMutationRejected("coverageExclusionGroups.extra = ['src/generated/**'];");
   });
 
   it('rejects mutating method calls on imported coverage exclusion groups', () => {
-    const config = `
-      import { defineConfig } from 'vitest/config';
-      import coverageExclusionGroups from './coverage-exclusions.json';
-
-      coverageExclusionGroups.framework.push('src/generated/**');
-
-      export default defineConfig({
-        test: {
-          coverage: {
-            exclude: Object.values(coverageExclusionGroups).flat(),
-          },
-        },
-      });
-    `;
-
-    expect(() => verifyVitestCoverageExclusions(config)).toThrow(
-      /must not mutate the imported coverage exclusions JSON/,
-    );
+    expectMutationRejected("coverageExclusionGroups.framework.push('src/generated/**');");
   });
 
   it('rejects Object.assign mutations of the imported coverage exclusions object inside expressions', () => {
-    const config = `
-      import { defineConfig } from 'vitest/config';
-      import coverageExclusionGroups from './coverage-exclusions.json';
-
-      const mergedGroups = Object.assign(coverageExclusionGroups, { extra: ['src/generated/**'] });
-
-      export default defineConfig({
-        test: {
-          coverage: {
-            exclude: Object.values(mergedGroups).flat(),
-          },
-        },
-      });
-    `;
-
-    expect(() => verifyVitestCoverageExclusions(config)).toThrow(
-      /must not mutate the imported coverage exclusions JSON/,
+    expectMutationRejected(
+      "const mergedGroups = Object.assign(coverageExclusionGroups, { extra: ['src/generated/**'] });",
+      'Object.values(mergedGroups).flat()',
     );
   });
 
   it('allows Object.assign reads that do not target the imported coverage exclusions object', () => {
-    const config = `
-      import { defineConfig } from 'vitest/config';
-      import coverageExclusionGroups from './coverage-exclusions.json';
-
-      const copiedGroups = Object.assign({}, coverageExclusionGroups);
-
-      export default defineConfig({
-        test: {
-          coverage: {
-            exclude: Object.values(coverageExclusionGroups).flat(),
-          },
-        },
-      });
-    `;
-
-    expect(() => verifyVitestCoverageExclusions(config)).not.toThrow();
+    expect(() =>
+      verifyVitestCoverageExclusions(
+        vitestConfig({ setup: 'const copiedGroups = Object.assign({}, coverageExclusionGroups);' }),
+      ),
+    ).not.toThrow();
   });
 
   it('rejects alias mutations of the imported coverage exclusions object', () => {
-    const config = `
-      import { defineConfig } from 'vitest/config';
-      import coverageExclusionGroups from './coverage-exclusions.json';
-
+    expectMutationRejected(`
       const groupsAlias = coverageExclusionGroups;
       groupsAlias.extra = ['src/generated/**'];
-
-      export default defineConfig({
-        test: {
-          coverage: {
-            exclude: Object.values(coverageExclusionGroups).flat(),
-          },
-        },
-      });
-    `;
-
-    expect(() => verifyVitestCoverageExclusions(config)).toThrow(
-      /must not mutate the imported coverage exclusions JSON/,
-    );
+    `);
   });
 
   it('rejects mutations through aliases to nested coverage exclusion arrays', () => {
-    const config = `
-      import { defineConfig } from 'vitest/config';
-      import coverageExclusionGroups from './coverage-exclusions.json';
-
+    expectMutationRejected(`
       const dashboardExclusions = coverageExclusionGroups.dashboardPresentationSurfaces;
       dashboardExclusions.push('src/generated/**');
-
-      export default defineConfig({
-        test: {
-          coverage: {
-            exclude: Object.values(coverageExclusionGroups).flat(),
-          },
-        },
-      });
-    `;
-
-    expect(() => verifyVitestCoverageExclusions(config)).toThrow(
-      /must not mutate the imported coverage exclusions JSON/,
-    );
+    `);
   });
 
   it('rejects mutations through destructured coverage exclusion aliases', () => {
-    const config = `
-      import { defineConfig } from 'vitest/config';
-      import coverageExclusionGroups from './coverage-exclusions.json';
-
+    expectMutationRejected(`
       const { dashboardPresentationSurfaces } = coverageExclusionGroups;
       dashboardPresentationSurfaces.push('src/generated/**');
-
-      export default defineConfig({
-        test: {
-          coverage: {
-            exclude: Object.values(coverageExclusionGroups).flat(),
-          },
-        },
-      });
-    `;
-
-    expect(() => verifyVitestCoverageExclusions(config)).toThrow(
-      /must not mutate the imported coverage exclusions JSON/,
-    );
+    `);
   });
 
   it('rejects mutations inside the exported defineConfig object', () => {
-    const config = `
-      import { defineConfig } from 'vitest/config';
-      import coverageExclusionGroups from './coverage-exclusions.json';
-
-      export default defineConfig({
-        test: {
-          coverage: {
-            exclude: (coverageExclusionGroups.extra = ['src/generated/**']),
-          },
-        },
-      });
-    `;
-
-    expect(() => verifyVitestCoverageExclusions(config)).toThrow(
-      /must not mutate the imported coverage exclusions JSON/,
-    );
+    expectMutationRejected('', "(coverageExclusionGroups.extra = ['src/generated/**'])");
   });
 
   it('allows read-only comparisons of the imported coverage exclusions object', () => {
-    const config = `
-      import { defineConfig } from 'vitest/config';
-      import coverageExclusionGroups from './coverage-exclusions.json';
-
-      const hasCoverageGroups = coverageExclusionGroups !== null;
-
-      export default defineConfig({
-        test: {
-          coverage: {
-            exclude: Object.values(coverageExclusionGroups).flat(),
-          },
-        },
-      });
-    `;
-
-    expect(() => verifyVitestCoverageExclusions(config)).not.toThrow();
+    expect(() =>
+      verifyVitestCoverageExclusions(
+        vitestConfig({ setup: 'const hasCoverageGroups = coverageExclusionGroups !== null;' }),
+      ),
+    ).not.toThrow();
   });
 
   it('allows mutating methods on values derived from the imported coverage exclusions object', () => {
-    const config = `
-      import { defineConfig } from 'vitest/config';
-      import coverageExclusionGroups from './coverage-exclusions.json';
-
-      const sortedGroupNames = Object.keys(coverageExclusionGroups).sort();
-
-      export default defineConfig({
-        test: {
-          coverage: {
-            exclude: Object.values(coverageExclusionGroups).flat(),
-          },
-        },
-      });
-    `;
-
-    expect(() => verifyVitestCoverageExclusions(config)).not.toThrow();
+    expect(() =>
+      verifyVitestCoverageExclusions(
+        vitestConfig({
+          setup: 'const sortedGroupNames = Object.keys(coverageExclusionGroups).sort();',
+        }),
+      ),
+    ).not.toThrow();
   });
 
   it('rejects mutable intermediate flattened coverage exclusion variables', () => {
-    const config = `
-      import { defineConfig } from 'vitest/config';
-      import coverageExclusionGroups from './coverage-exclusions.json';
-
-      const coverageExclusions = Object.values(coverageExclusionGroups).flat();
-      coverageExclusions.push('src/generated/**');
-
-      export default defineConfig({
-        test: {
-          coverage: {
-            exclude: coverageExclusions,
-          },
-        },
-      });
-    `;
+    const config = vitestConfig({
+      setup: `
+        const coverageExclusions = ${generatedExcludeExpression};
+        coverageExclusions.push('src/generated/**');
+      `,
+      exclude: 'coverageExclusions',
+    });
 
     expect(() => verifyVitestCoverageExclusions(config)).toThrow(
       /coverage\.exclude must directly use Object\.values\(coverageExclusionGroups\)\.flat\(\)/,
