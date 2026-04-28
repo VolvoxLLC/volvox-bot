@@ -13,8 +13,8 @@ const { calculateCost, _normaliseModelId, _getPricingMap } = await import(
 
 describe('pricingMap', () => {
   it('should load models from the provider registry', () => {
-    // minimax (8 — including M2-stable) + moonshot (3) + openrouter (6) = 17 minimum
-    expect(_getPricingMap().size).toBeGreaterThanOrEqual(17);
+    // minimax (8 — including M2-stable) + moonshot (3) + openrouter (7) = 18 minimum
+    expect(_getPricingMap().size).toBeGreaterThanOrEqual(18);
   });
 
   it('should have all keys lowercase', () => {
@@ -91,6 +91,16 @@ describe('calculateCost', () => {
     });
     // 2M * $0.15/M + 100k/1M * $1.20/M = 0.3 + 0.12 = 0.42
     expect(cost).toBeCloseTo(0.42);
+  });
+
+  it('should calculate zero cost for an OpenRouter free model variant', () => {
+    const cost = calculateCost('openrouter', 'minimax/minimax-m2.5:free', {
+      inputTokens: 2_000_000,
+      outputTokens: 100_000,
+      cachedInputTokens: 50_000,
+      cacheCreationInputTokens: 25_000,
+    });
+    expect(cost).toBe(0);
   });
 
   it('should handle zero cacheWrite correctly (Moonshot K2.5)', () => {

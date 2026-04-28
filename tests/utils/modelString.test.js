@@ -30,6 +30,10 @@ describe('parseProviderModel', () => {
       providerName: 'openrouter',
       modelId: 'model:with:colons',
     });
+    expect(parseProviderModel('openrouter:minimax/minimax-m2.5:free')).toEqual({
+      providerName: 'openrouter',
+      modelId: 'minimax/minimax-m2.5:free',
+    });
   });
 
   // ── D1: throw on bare / malformed strings ────────────────────────────────

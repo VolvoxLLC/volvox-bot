@@ -786,6 +786,7 @@ export async function startTriage(discordClient, botConfig, monitor) {
   const resolved = resolveTriageConfig(triageConfig);
 
   info('Triage configured', {
+    scope: 'global-defaults',
     classifyModel: resolved.classifyModel,
     classifyBaseUrl: resolved.classifyBaseUrl || 'direct',
     respondModel: resolved.respondModel,

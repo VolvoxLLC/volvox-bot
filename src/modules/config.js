@@ -17,6 +17,7 @@ const configPath = join(__dirname, '..', '..', 'config.json');
 
 /** Maximum number of guild entries (excluding 'global') kept in configCache */
 const MAX_GUILD_CACHE_SIZE = 500;
+const TRIAGE_OVERRIDE_LOG_LIMIT = 10;
 
 /** @type {Array<{path: string, callback: Function}>} Registered change listeners */
 const listeners = [];
@@ -99,6 +100,29 @@ function mergeDbValueWithDefaults(defaultValue, dbValue) {
   }
 
   return structuredClone(dbValue);
+}
+
+function getGuildTriageModelOverrides(guildRows) {
+  return guildRows
+    .filter((row) => row.key === 'triage' && isPlainObject(row.value))
+    .map((row) => ({
+      guildId: row.guild_id,
+      classifyModel:
+        typeof row.value.classifyModel === 'string' ? row.value.classifyModel : undefined,
+      respondModel: typeof row.value.respondModel === 'string' ? row.value.respondModel : undefined,
+    }))
+    .filter((row) => row.classifyModel || row.respondModel);
+}
+
+function logGuildTriageModelOverrides(guildRows) {
+  const overrides = getGuildTriageModelOverrides(guildRows);
+  if (overrides.length === 0) return;
+
+  info('Guild triage model overrides loaded', {
+    guildCount: overrides.length,
+    overrides: overrides.slice(0, TRIAGE_OVERRIDE_LOG_LIMIT),
+    omittedCount: Math.max(0, overrides.length - TRIAGE_OVERRIDE_LOG_LIMIT),
+  });
 }
 
 /**
@@ -216,6 +240,7 @@ export async function loadConfig() {
           info('Loaded guild overrides during seed', {
             guildCount: new Set(guildRows.map((r) => r.guild_id)).size,
           });
+          logGuildTriageModelOverrides(guildRows);
         }
       } catch (txErr) {
         try {
@@ -266,6 +291,7 @@ export async function loadConfig() {
         globalKeys: globalRows.length,
         guildCount: new Set(guildRows.map((r) => r.guild_id)).size,
       });
+      logGuildTriageModelOverrides(guildRows);
     }
   } catch (err) {
     if (!fileConfig) {

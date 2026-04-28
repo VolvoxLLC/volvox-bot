@@ -38,6 +38,7 @@ Community-facing features must be gated behind `config.<feature>.enabled`. Moder
 - Dashboard clients that need the guild list must consume `GuildDirectoryProvider`; do not add extra `/api/guilds` fetch loops in leaf components.
 - Recharts dashboard views must use `web/src/components/ui/stable-responsive-container.tsx`; raw `ResponsiveContainer` mounts can spam `width(-1)/height(-1)` warnings when panels render before layout settles.
 - Welcome-message variables use double braces only, like `{{user}}`. Single braces are plain text and should not be documented, inserted, or parsed as variables.
+- Triage startup logging reports global defaults. Dashboard model changes are per-guild overrides, loaded from DB and applied at message time via `getConfig(guildId)`.
 
 ## DESIGN.md Is the Visual Source of Truth
 
