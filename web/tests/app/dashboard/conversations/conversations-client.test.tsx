@@ -43,7 +43,7 @@ vi.mock('@/components/dashboard/empty-state', async () => ({
 
 vi.mock('@/stores/conversations-store', () => {
   const useConversationsStore = Object.assign(() => mockConversationsState, {
-    getState: () => ({ reset: mockConversationsReset }),
+    getState: () => mockConversationsState,
   });
   return { useConversationsStore };
 });
@@ -80,6 +80,7 @@ function resetState() {
     error: null,
     currentOpts: { search: '', channel: '', page: 1 },
     fetch: vi.fn().mockResolvedValue(undefined),
+    reset: mockConversationsReset,
   });
 }
 
@@ -103,7 +104,12 @@ describe('ConversationsClient', () => {
       });
     });
 
-    fireEvent.click(screen.getByText(/Hello bot/).closest('tr') as HTMLElement);
+    const conversationRow = screen.getByText(/Hello bot/).closest('tr');
+    if (!conversationRow) {
+      throw new Error('Expected conversation preview to render inside a table row');
+    }
+
+    fireEvent.click(conversationRow);
     expect(mockPush).toHaveBeenCalledWith('/dashboard/conversations/conversation-1?guildId=guild-1');
   });
 
@@ -149,9 +155,25 @@ describe('ConversationsClient', () => {
 
     expect(screen.getByText('+1')).toBeInTheDocument();
     expect(screen.getByText('2h 15m')).toBeInTheDocument();
+
     fireEvent.error(screen.getByAltText('Ada'));
+    expect(screen.getByText('AD')).toBeInTheDocument();
+
     await userEvent.click(screen.getByRole('button', { name: /previous/i }));
+    await waitFor(() => {
+      expect(mockConversationsState.fetch).toHaveBeenCalledWith(
+        'guild-1',
+        expect.objectContaining({ page: 1 }),
+      );
+    });
+
     await userEvent.click(screen.getByRole('button', { name: /next/i }));
+    await waitFor(() => {
+      expect(mockConversationsState.fetch).toHaveBeenCalledWith(
+        'guild-1',
+        expect.objectContaining({ page: 2 }),
+      );
+    });
   });
 
   it('renders the conversations empty prompt when no guild is selected', () => {

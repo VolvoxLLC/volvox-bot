@@ -118,7 +118,8 @@ export async function expectProxiedRoute(routeCase: ProxyRouteCase) {
   mockProxyToBotApi.mockClear();
   const response = await routeCase.call();
   expect(response.status).toBe(200);
-  const upstream = mockProxyToBotApi.mock.calls.at(-1)?.[0] as URL;
+  expect(mockProxyToBotApi).toHaveBeenCalledTimes(1);
+  const upstream = mockProxyToBotApi.mock.calls[0]?.[0] as URL;
   expectUpstreamPath(upstream, routeCase.path);
   expectSearchParams(upstream, routeCase.query ?? {});
 }

@@ -299,26 +299,34 @@ describe('Header', () => {
     expect(screen.getByRole('button', { name: buttonName })).toBeDisabled();
   });
 
-  it('redirects to login when moderation, members, or tickets refreshes are unauthorized', async () => {
+  it.each([
+    [
+      '/dashboard/moderation',
+      /Refresh Mod Data/i,
+      () => {
+        mockFetchStats.mockResolvedValueOnce('unauthorized');
+        mockFetchCases.mockResolvedValueOnce('ok');
+      },
+    ],
+    [
+      '/dashboard/members',
+      /Refresh Members/i,
+      () => mockRefreshMembers.mockResolvedValueOnce('unauthorized'),
+    ],
+    [
+      '/dashboard/tickets',
+      /Refresh Tickets/i,
+      () => mockRefreshTickets.mockResolvedValueOnce('unauthorized'),
+    ],
+  ] as const)('redirects to login when %s refresh is unauthorized', async (pathname, buttonName, setupUnauthorized) => {
+    mockUsePathname.mockReturnValue(pathname);
+    setupUnauthorized();
     const user = userEvent.setup();
 
-    mockUsePathname.mockReturnValue('/dashboard/moderation');
-    mockFetchStats.mockResolvedValueOnce('unauthorized');
-    mockFetchCases.mockResolvedValueOnce('ok');
-    const { rerender } = render(<Header />);
-    await user.click(screen.getByRole('button', { name: /Refresh Mod Data/i }));
-    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/login'));
+    render(<Header />);
+    await user.click(screen.getByRole('button', { name: buttonName }));
 
-    mockUsePathname.mockReturnValue('/dashboard/members');
-    mockRefreshMembers.mockResolvedValueOnce('unauthorized');
-    rerender(<Header />);
-    await user.click(screen.getByRole('button', { name: /Refresh Members/i }));
-    await waitFor(() => expect(mockReplace).toHaveBeenCalledTimes(2));
-
-    mockUsePathname.mockReturnValue('/dashboard/tickets');
-    mockRefreshTickets.mockResolvedValueOnce('unauthorized');
-    rerender(<Header />);
-    await user.click(screen.getByRole('button', { name: /Refresh Tickets/i }));
-    await waitFor(() => expect(mockReplace).toHaveBeenCalledTimes(3));
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledTimes(1));
+    expect(mockReplace).toHaveBeenCalledWith('/login');
   });
 });

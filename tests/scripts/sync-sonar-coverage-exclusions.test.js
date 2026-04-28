@@ -19,6 +19,24 @@ describe('verifyVitestCoverageExclusions', () => {
     expect(() => verifyVitestCoverageExclusions(validConfig)).not.toThrow();
   });
 
+  it('rejects configs missing the generated coverage exclusions import', () => {
+    const config = `
+      import { defineConfig } from 'vitest/config';
+
+      export default defineConfig({
+        test: {
+          coverage: {
+            exclude: ['src/generated/**'],
+          },
+        },
+      });
+    `;
+
+    expect(() => verifyVitestCoverageExclusions(config)).toThrow(
+      /must import \.\/coverage-exclusions\.json with a default binding/,
+    );
+  });
+
   it('ignores unrelated helper objects when validating exported defineConfig', () => {
     const config = `
       import { defineConfig } from 'vitest/config';
