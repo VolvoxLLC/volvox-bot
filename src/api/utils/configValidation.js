@@ -184,6 +184,13 @@ const AI_AUTOMOD_CATEGORY_KEYS = [
 
 const AI_AUTOMOD_ACTION_TYPES = ['none', 'flag', 'delete', 'warn', 'timeout', 'kick', 'ban'];
 
+const AI_AUTOMOD_ACTION_VALUE_SCHEMA = {
+  anyOf: [
+    { type: 'string', enum: AI_AUTOMOD_ACTION_TYPES },
+    { type: 'array', items: { type: 'string', enum: AI_AUTOMOD_ACTION_TYPES } },
+  ],
+};
+
 const AI_AUTOMOD_THRESHOLD_SCHEMA = {
   type: 'object',
   properties: Object.fromEntries(
@@ -194,10 +201,7 @@ const AI_AUTOMOD_THRESHOLD_SCHEMA = {
 const AI_AUTOMOD_ACTION_SCHEMA = {
   type: 'object',
   properties: Object.fromEntries(
-    AI_AUTOMOD_CATEGORY_KEYS.map((category) => [
-      category,
-      { type: 'string', enum: AI_AUTOMOD_ACTION_TYPES },
-    ]),
+    AI_AUTOMOD_CATEGORY_KEYS.map((category) => [category, AI_AUTOMOD_ACTION_VALUE_SCHEMA]),
   ),
 };
 

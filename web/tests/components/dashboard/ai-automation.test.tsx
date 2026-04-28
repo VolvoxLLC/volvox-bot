@@ -97,13 +97,13 @@ function createDraftConfig() {
         selfHarm: 0.7,
       },
       actions: {
-        toxicity: 'flag',
-        spam: 'delete',
-        harassment: 'warn',
-        hateSpeech: 'timeout',
-        sexualContent: 'delete',
-        violence: 'ban',
-        selfHarm: 'flag',
+        toxicity: ['flag'],
+        spam: ['delete'],
+        harassment: ['warn'],
+        hateSpeech: ['timeout'],
+        sexualContent: ['delete'],
+        violence: ['ban'],
+        selfHarm: ['flag'],
       },
       flagChannelId: null,
       autoDelete: true,
@@ -133,8 +133,12 @@ describe('AiAutomationCategory', () => {
 
     expect(screen.getByLabelText('Detection Model')).toHaveValue('minimax:MiniMax-M2.7');
     expect(screen.getByLabelText('Hate Speech Threshold')).toHaveValue(80);
-    expect(screen.getByLabelText('Violence Action')).toHaveValue('ban');
-    expect(screen.getByLabelText('Self-Harm Action')).toHaveValue('flag');
+    expect(screen.getByLabelText('Violence Permanent Ban')).toBeChecked();
+    expect(screen.getByLabelText('Self-Harm Flag & Log')).toBeChecked();
+    expect(screen.getByLabelText('Self-Harm Issue Warning')).not.toBeChecked();
+    expect(screen.getAllByText('Toxicity')).toHaveLength(1);
+    expect(screen.getAllByText('Spam')).toHaveLength(1);
+    expect(screen.getAllByText('Harassment')).toHaveLength(1);
   });
 
   it('updates the selected AI auto-moderation model in draft config', () => {
@@ -148,5 +152,19 @@ describe('AiAutomationCategory', () => {
 
     expect(updateDraftConfig).toHaveBeenCalledTimes(1);
     expect(updateDraftConfig.mock.results[0]?.value.aiAutoMod.model).toBe('moonshot:kimi-k2.6');
+  });
+
+  it('lets each violation keep multiple response actions', () => {
+    const updateDraftConfig = mockAiAutoModContext();
+
+    render(<AiAutomationCategory />);
+
+    fireEvent.click(screen.getByLabelText('Toxicity Issue Warning'));
+
+    expect(updateDraftConfig).toHaveBeenCalledTimes(1);
+    expect(updateDraftConfig.mock.results[0]?.value.aiAutoMod.actions.toxicity).toEqual([
+      'flag',
+      'warn',
+    ]);
   });
 });

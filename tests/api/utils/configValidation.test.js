@@ -96,6 +96,8 @@ describe('configValidation', () => {
       expect(validateSingleValue('aiAutoMod.model', 'minimax:MiniMax-M2.7')).toEqual([]);
       expect(validateSingleValue('aiAutoMod.thresholds.hateSpeech', 0.85)).toEqual([]);
       expect(validateSingleValue('aiAutoMod.actions.hateSpeech', 'timeout')).toEqual([]);
+      expect(validateSingleValue('aiAutoMod.actions.hateSpeech', ['flag', 'timeout'])).toEqual([]);
+      expect(validateSingleValue('aiAutoMod.actions.hateSpeech', [])).toEqual([]);
       expect(validateSingleValue('aiAutoMod.exemptRoleIds', ['role-1'])).toEqual([]);
     });
 
@@ -107,6 +109,9 @@ describe('configValidation', () => {
         expect.arrayContaining([expect.stringContaining('<= 1')]),
       );
       expect(validateSingleValue('aiAutoMod.actions.spam', 'obliterate')).toEqual(
+        expect.arrayContaining([expect.stringContaining('must be one of')]),
+      );
+      expect(validateSingleValue('aiAutoMod.actions.spam', ['delete', 'obliterate'])).toEqual(
         expect.arrayContaining([expect.stringContaining('must be one of')]),
       );
     });

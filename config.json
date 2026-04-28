@@ -330,13 +330,27 @@
       "selfHarm": 0.7
     },
     "actions": {
-      "toxicity": "flag",
-      "spam": "delete",
-      "harassment": "warn",
-      "hateSpeech": "timeout",
-      "sexualContent": "delete",
-      "violence": "ban",
-      "selfHarm": "flag"
+      "toxicity": [
+        "flag"
+      ],
+      "spam": [
+        "delete"
+      ],
+      "harassment": [
+        "warn"
+      ],
+      "hateSpeech": [
+        "timeout"
+      ],
+      "sexualContent": [
+        "delete"
+      ],
+      "violence": [
+        "ban"
+      ],
+      "selfHarm": [
+        "flag"
+      ]
     },
     "timeoutDurationMs": 300000,
     "flagChannelId": null,
