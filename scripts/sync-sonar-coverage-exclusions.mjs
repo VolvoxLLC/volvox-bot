@@ -472,12 +472,8 @@ function findBracketAccessEnd(tokens, openIndex, end) {
   return closeIndex !== -1 && closeIndex < end ? closeIndex + 1 : openIndex + 1;
 }
 
-function importedAccessMutates(tokens, importUseIndex, end) {
-  if (isIdentifierToken(tokens, importUseIndex - 1, 'delete')) {
-    return true;
-  }
-
-  let cursor = importUseIndex + 1;
+function accessChainMutates(tokens, start, end) {
+  let cursor = start;
 
   while (cursor < end) {
     if (isToken(tokens, cursor, '[')) {
@@ -500,6 +496,11 @@ function importedAccessMutates(tokens, importUseIndex, end) {
   return isAssignmentOperatorAt(tokens, cursor) ||
     (isToken(tokens, cursor, '+') && isToken(tokens, cursor + 1, '+')) ||
     (isToken(tokens, cursor, '-') && isToken(tokens, cursor + 1, '-'));
+}
+
+function importedAccessMutates(tokens, importUseIndex, end) {
+  return isIdentifierToken(tokens, importUseIndex - 1, 'delete') ||
+    accessChainMutates(tokens, importUseIndex + 1, end);
 }
 
 function objectAssignMutatesImportedExclusionGroups(tokens, cursor, exclusionGroupBindings) {
@@ -592,6 +593,32 @@ function expressionAliasesImportedExclusionGroups(tokens, expressionStart, end, 
   );
 }
 
+function objectValuesExpressionEnd(tokens, expressionStart, exclusionGroupBindings) {
+  if (
+    isIdentifierToken(tokens, expressionStart, 'Object') &&
+    isToken(tokens, expressionStart + 1, '.') &&
+    (isIdentifierToken(tokens, expressionStart + 2, 'values') ||
+      isIdentifierToken(tokens, expressionStart + 2, 'entries')) &&
+    isToken(tokens, expressionStart + 3, '(') &&
+    exclusionGroupBindings.has(tokens[expressionStart + 4]?.value)
+  ) {
+    const closeIndex = findMatchingToken(tokens, expressionStart + 3);
+    return closeIndex === -1 ? -1 : closeIndex + 1;
+  }
+
+  return -1;
+}
+
+function objectValuesDerivedAccessMutates(tokens, expressionStart, end, exclusionGroupBindings) {
+  const expressionEnd = objectValuesExpressionEnd(tokens, expressionStart, exclusionGroupBindings);
+  if (expressionEnd === -1 || expressionEnd >= end) {
+    return false;
+  }
+
+  return isIdentifierToken(tokens, expressionStart - 1, 'delete') ||
+    accessChainMutates(tokens, expressionEnd, end);
+}
+
 function collectImportedExclusionGroupAliases(tokens, start, end, exclusionGroupBindings) {
   for (let cursor = start; cursor < end - 1; cursor += 1) {
     if (
@@ -618,6 +645,10 @@ function collectImportedExclusionGroupAliases(tokens, start, end, exclusionGroup
 function statementMutatesImportedExclusionGroups(tokens, start, end, exclusionGroupBindings) {
   for (let cursor = start; cursor < end; cursor += 1) {
     if (objectAssignMutatesImportedExclusionGroups(tokens, cursor, exclusionGroupBindings)) {
+      return true;
+    }
+
+    if (objectValuesDerivedAccessMutates(tokens, cursor, end, exclusionGroupBindings)) {
       return true;
     }
 

@@ -138,6 +138,10 @@ describe('verifyVitestCoverageExclusions', () => {
     `);
   });
 
+  it('rejects mutations through direct Object.values-derived exclusion arrays', () => {
+    expectMutationRejected("Object.values(coverageExclusionGroups)[0].push('src/generated/**');");
+  });
+
   it('rejects mutations inside the exported defineConfig object', () => {
     expectMutationRejected('', "(coverageExclusionGroups.extra = ['src/generated/**'])");
   });
