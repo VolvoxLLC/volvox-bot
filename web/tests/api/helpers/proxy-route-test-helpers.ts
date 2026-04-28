@@ -99,9 +99,13 @@ export type ProxyRouteCase = {
 };
 
 export function expectSearchParams(url: URL, expected: Record<string, string>) {
-  const actualKeys = Array.from(url.searchParams.keys()).sort();
+  const actualKeys = Array.from(url.searchParams.keys()).sort((left, right) =>
+    left.localeCompare(right),
+  );
   const expectedEntries = Object.entries(expected);
-  const expectedKeys = expectedEntries.map(([key]) => key).sort();
+  const expectedKeys = expectedEntries
+    .map(([key]) => key)
+    .sort((left, right) => left.localeCompare(right));
 
   expect(actualKeys).toEqual(expectedKeys);
 
