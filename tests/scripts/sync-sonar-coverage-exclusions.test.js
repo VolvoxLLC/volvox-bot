@@ -131,6 +131,13 @@ describe('verifyVitestCoverageExclusions', () => {
     expectMutationRejected('delete coverageExclusionGroups.dashboardPresentationSurfaces;');
   });
 
+  it('rejects mutations through shallow spread clones of imported coverage exclusions', () => {
+    expectMutationRejected(`
+      const clonedGroups = { ...coverageExclusionGroups };
+      clonedGroups.dashboardPresentationSurfaces.push('src/generated/**');
+    `);
+  });
+
   it('rejects mutations inside the exported defineConfig object', () => {
     expectMutationRejected('', "(coverageExclusionGroups.extra = ['src/generated/**'])");
   });

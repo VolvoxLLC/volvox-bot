@@ -549,8 +549,36 @@ function collectDestructuredAliases(tokens, start, end, exclusionGroupBindings) 
   }
 }
 
-function expressionAliasesImportedExclusionGroups(tokens, expressionStart, exclusionGroupBindings) {
+function objectSpreadAliasesImportedExclusionGroups(tokens, expressionStart, end, exclusionGroupBindings) {
+  if (!isToken(tokens, expressionStart, '{')) {
+    return false;
+  }
+
+  const expressionEnd = findMatchingToken(tokens, expressionStart);
+  if (expressionEnd === -1 || expressionEnd > end) {
+    return false;
+  }
+
+  for (let cursor = expressionStart + 1; cursor < expressionEnd - 3; cursor += 1) {
+    if (
+      isToken(tokens, cursor, '.') &&
+      isToken(tokens, cursor + 1, '.') &&
+      isToken(tokens, cursor + 2, '.') &&
+      exclusionGroupBindings.has(tokens[cursor + 3]?.value)
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function expressionAliasesImportedExclusionGroups(tokens, expressionStart, end, exclusionGroupBindings) {
   if (exclusionGroupBindings.has(tokens[expressionStart]?.value)) {
+    return true;
+  }
+
+  if (objectSpreadAliasesImportedExclusionGroups(tokens, expressionStart, end, exclusionGroupBindings)) {
     return true;
   }
 
@@ -568,7 +596,7 @@ function collectImportedExclusionGroupAliases(tokens, start, end, exclusionGroup
   for (let cursor = start; cursor < end - 1; cursor += 1) {
     if (
       !isAssignmentOperatorAt(tokens, cursor) ||
-      !expressionAliasesImportedExclusionGroups(tokens, cursor + 1, exclusionGroupBindings)
+      !expressionAliasesImportedExclusionGroups(tokens, cursor + 1, end, exclusionGroupBindings)
     ) {
       continue;
     }
