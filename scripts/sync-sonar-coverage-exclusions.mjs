@@ -43,7 +43,7 @@ function formatSonarCoverageExclusions(groups) {
     '# DO NOT EDIT THIS BLOCK. Edit only web/coverage-exclusions.json, then run:',
     '#   pnpm sonar:sync-coverage-exclusions',
     '# Vitest imports that JSON directly; pnpm sonar:check-coverage-exclusions checks this block and the Vitest wiring.',
-    'sonar.coverage.exclusions=\\',
+    patterns.length === 0 ? 'sonar.coverage.exclusions=' : 'sonar.coverage.exclusions=\\',
   ];
 
   patterns.forEach((pattern, index) => {

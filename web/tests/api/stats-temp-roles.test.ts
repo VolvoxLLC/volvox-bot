@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   expectJson,
   expectSearchParams,
+  expectUpstreamPath,
   expectSharedProxyFailures,
   mockAuthorizeGuildAdmin,
   mockGetBotApiBaseUrl,
@@ -48,7 +49,7 @@ describe('stats and temp role proxy routes', () => {
     );
     expect(list.status).toBe(200);
     let upstream = mockProxyToBotApi.mock.calls.at(-1)?.[0] as URL;
-    expect(upstream.pathname).toBe('/temp-roles');
+    expectUpstreamPath(upstream, '/temp-roles');
     expectSearchParams(upstream, { guildId: 'guild-1', userId: 'user-1' });
 
     const assign = await tempRolesRoute.POST(
@@ -71,7 +72,7 @@ describe('stats and temp role proxy routes', () => {
     );
     expect(revoke.status).toBe(200);
     upstream = mockProxyToBotApi.mock.calls.at(-1)?.[0] as URL;
-    expect(upstream.pathname).toBe('/temp-roles/temp%20role%201');
+    expectUpstreamPath(upstream, '/temp-roles/temp%20role%201');
     expectSearchParams(upstream, { guildId: 'guild-1' });
     expect(mockProxyToBotApi.mock.calls.at(-1)?.[4]).toMatchObject({ method: 'DELETE' });
   });

@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { handleAsyncClick } from '../../helpers/async-events';
 import {
   ChannelDirectoryProvider,
   useGuildChannels,
@@ -22,14 +23,6 @@ function createDeferred<T>() {
     reject = rej;
   });
   return { promise, resolve, reject };
-}
-
-function handleAsyncClick(action: () => Promise<void>) {
-  return () => {
-    action().catch((error: unknown) => {
-      throw error;
-    });
-  };
 }
 
 function ChannelConsumer({ guildId }: { guildId: string | null }) {

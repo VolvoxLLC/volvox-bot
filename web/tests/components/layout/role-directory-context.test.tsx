@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { handleAsyncClick } from '../../helpers/async-events';
 import { RoleDirectoryProvider, useGuildRoles } from '@/components/layout/role-directory-context';
 
 const { mockUsePathname } = vi.hoisted(() => ({
@@ -10,14 +11,6 @@ const { mockUsePathname } = vi.hoisted(() => ({
 vi.mock('next/navigation', () => ({
   usePathname: () => mockUsePathname(),
 }));
-
-function handleAsyncClick(action: () => Promise<void>) {
-  return () => {
-    action().catch((error: unknown) => {
-      throw error;
-    });
-  };
-}
 
 function RoleConsumer({ guildId }: { guildId: string | null }) {
   const { roles, loading, error } = useGuildRoles(guildId);

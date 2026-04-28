@@ -62,6 +62,12 @@ function expectSocketSent(ws: MockWebSocket, payload: unknown) {
   expect(ws.sent).toContain(JSON.stringify(payload));
 }
 
+async function flushMicrotasks(times = 2) {
+  for (let index = 0; index < times; index += 1) {
+    await Promise.resolve();
+  }
+}
+
 async function renderLogStream(options: Parameters<typeof useLogStream>[0] = { guildId: 'guild-1' }) {
   const hook = renderHook(() => useLogStream(options));
   await waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
@@ -162,15 +168,18 @@ describe('useLogStream', () => {
 
     const { result } = renderHook(() => useLogStream({ guildId: 'guild-1' }));
 
-    await vi.waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
-    await vi.waitFor(() => expect(result.current.status).toBe('reconnecting'));
+    await act(async () => {
+      await flushMicrotasks();
+    });
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(result.current.status).toBe('reconnecting');
 
     await act(async () => {
-      vi.advanceTimersByTime(1_000);
+      await vi.advanceTimersByTimeAsync(1_000);
     });
 
-    await vi.waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(2));
-    await vi.waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    expect(MockWebSocket.instances).toHaveLength(1);
     expect(MockWebSocket.instances[0]?.url).toBe('wss://bot.example/ws/logs');
   });
 
@@ -210,20 +219,23 @@ describe('useLogStream', () => {
 
     const { result, unmount } = renderHook(() => useLogStream({ guildId: 'guild-1' }));
 
-    await vi.waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
-    await vi.waitFor(() => expect(result.current.status).toBe('reconnecting'));
+    await act(async () => {
+      await flushMicrotasks();
+    });
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(result.current.status).toBe('reconnecting');
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1_000);
     });
-    await vi.waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(2));
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(2_000);
     });
 
-    await vi.waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(3));
-    await vi.waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+    expect(fetchSpy).toHaveBeenCalledTimes(3);
+    expect(MockWebSocket.instances).toHaveLength(1);
     const first = MockWebSocket.instances[0]!;
 
     act(() => {
@@ -247,7 +259,7 @@ describe('useLogStream', () => {
       await vi.advanceTimersByTimeAsync(1_000);
     });
 
-    await vi.waitFor(() => expect(MockWebSocket.instances).toHaveLength(2));
+    expect(MockWebSocket.instances).toHaveLength(2);
     const second = MockWebSocket.instances[1]!;
     act(() => {
       second.open();

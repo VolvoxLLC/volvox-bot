@@ -49,6 +49,31 @@ export const apiConfig = {
   secret: 'bot-secret',
 };
 
+function trimTrailingSlashes(value: string) {
+  let end = value.length;
+  while (end > 0 && value.charCodeAt(end - 1) === 47) {
+    end -= 1;
+  }
+  return value.slice(0, end);
+}
+
+function normalizePath(path: string) {
+  return path.startsWith('/') ? path : `/${path}`;
+}
+
+function buildTestUpstreamUrl(baseUrl: string, path: string) {
+  return new URL(`${trimTrailingSlashes(baseUrl)}${normalizePath(path)}`);
+}
+
+function basePathPrefix() {
+  const pathname = new URL(apiConfig.baseUrl).pathname;
+  return pathname === '/' ? '' : trimTrailingSlashes(pathname);
+}
+
+export function expectUpstreamPath(upstream: URL, expectedPath: string) {
+  expect(upstream.pathname).toBe(`${basePathPrefix()}${normalizePath(expectedPath)}`);
+}
+
 /**
  * Build a NextRequest for route tests.
  *
@@ -84,7 +109,7 @@ export async function expectProxiedRoute(routeCase: ProxyRouteCase) {
   const response = await routeCase.call();
   expect(response.status).toBe(200);
   const upstream = mockProxyToBotApi.mock.calls.at(-1)?.[0] as URL;
-  expect(upstream.pathname).toBe(routeCase.path);
+  expectUpstreamPath(upstream, routeCase.path);
   expectSearchParams(upstream, routeCase.query ?? {});
 }
 
@@ -142,9 +167,9 @@ export function setupProxyRouteMocks() {
     mockAuthorizeGuildAdmin.mockResolvedValue(null);
     mockAuthorizeGuildModerator.mockResolvedValue(null);
     mockGetBotApiConfig.mockReturnValue(apiConfig);
-    mockGetBotApiBaseUrl.mockReturnValue('https://bot.internal:3001');
+    mockGetBotApiBaseUrl.mockReturnValue(apiConfig.baseUrl);
     mockGetToken.mockResolvedValue({ accessToken: 'access-token' });
-    mockBuildUpstreamUrl.mockImplementation((baseUrl: string, path: string) => new URL(path, baseUrl));
+    mockBuildUpstreamUrl.mockImplementation(buildTestUpstreamUrl);
     mockProxyToBotApi.mockResolvedValue(NextResponse.json({ ok: true }));
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response('id,name\n1,Ada\n', {

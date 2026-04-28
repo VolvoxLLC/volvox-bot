@@ -53,6 +53,13 @@ async function renderConfigContext() {
   return renderHook(() => useConfigContext(), { wrapper });
 }
 
+function mockWindowLocation(href = '') {
+  const location = { href } as Location;
+  const spy = vi.spyOn(globalThis, 'location', 'get').mockReturnValue(location);
+
+  return () => spy.mockRestore();
+}
+
 describe('ConfigProvider', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -347,11 +354,7 @@ describe('ConfigProvider', () => {
       .mockResolvedValueOnce(configResponse({ error: 'Bad config', details: ['bad path'] }, { ok: false, status: 400 }))
       .mockResolvedValueOnce(configResponse({}, { ok: false, status: 401 }));
     vi.stubGlobal('fetch', fetchMock);
-    const originalLocation = window.location;
-    // @ts-expect-error jsdom location replacement for redirect assertion
-    delete window.location;
-    // @ts-expect-error minimal location mock for href assignment
-    window.location = { href: '' };
+    const restoreLocation = mockWindowLocation();
 
     try {
       const { result } = await renderConfigContext();
@@ -375,8 +378,7 @@ describe('ConfigProvider', () => {
       });
       expect(window.location.href).toBe('/login');
     } finally {
-      // @ts-expect-error restore jsdom location
-      window.location = originalLocation;
+      restoreLocation();
     }
   });
 
@@ -448,11 +450,7 @@ describe('ConfigProvider', () => {
       });
     vi.stubGlobal('fetch', fetchMock);
 
-    const originalLocation = window.location;
-    // @ts-expect-error jsdom location replacement for redirect assertion
-    delete window.location;
-    // @ts-expect-error minimal location mock for href assignment
-    window.location = { href: '' };
+    const restoreLocation = mockWindowLocation();
 
     try {
       const { result } = await renderConfigContext();
@@ -472,8 +470,7 @@ describe('ConfigProvider', () => {
       await act(async () => result.current.fetchConfig('guild-ok'));
       await waitFor(() => expect(result.current.draftConfig?.welcome?.roleMenu?.options?.[0]?.id).toBeTruthy());
     } finally {
-      // @ts-expect-error restore jsdom location
-      window.location = originalLocation;
+      restoreLocation();
     }
   });
 
@@ -610,11 +607,7 @@ describe('ConfigProvider', () => {
       .mockResolvedValueOnce(configResponse({}, { ok: false, status: 401 }));
     vi.stubGlobal('fetch', fetchMock);
 
-    const originalLocation = window.location;
-    // @ts-expect-error jsdom location replacement for redirect assertion
-    delete window.location;
-    // @ts-expect-error minimal location mock for href assignment
-    window.location = { href: '' };
+    const restoreLocation = mockWindowLocation();
 
     try {
       const { result } = await renderConfigContext();
@@ -654,8 +647,7 @@ describe('ConfigProvider', () => {
       await act(async () => result.current.executeSave());
       expect(window.location.href).toBe('/login');
     } finally {
-      // @ts-expect-error restore jsdom location
-      window.location = originalLocation;
+      restoreLocation();
     }
   });
 
