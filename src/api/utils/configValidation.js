@@ -172,6 +172,35 @@ const XP_LEVEL_ACTION_ENTRY_SCHEMA = {
  */
 const PROVIDER_MODEL_PATTERN = String.raw`^[^:\s]+:[^\s]+$`;
 
+const AI_AUTOMOD_CATEGORY_KEYS = [
+  'toxicity',
+  'spam',
+  'harassment',
+  'hateSpeech',
+  'sexualContent',
+  'violence',
+  'selfHarm',
+];
+
+const AI_AUTOMOD_ACTION_TYPES = ['none', 'flag', 'delete', 'warn', 'timeout', 'kick', 'ban'];
+
+const AI_AUTOMOD_THRESHOLD_SCHEMA = {
+  type: 'object',
+  properties: Object.fromEntries(
+    AI_AUTOMOD_CATEGORY_KEYS.map((category) => [category, { type: 'number', min: 0, max: 1 }]),
+  ),
+};
+
+const AI_AUTOMOD_ACTION_SCHEMA = {
+  type: 'object',
+  properties: Object.fromEntries(
+    AI_AUTOMOD_CATEGORY_KEYS.map((category) => [
+      category,
+      { type: 'string', enum: AI_AUTOMOD_ACTION_TYPES },
+    ]),
+  ),
+};
+
 /**
  * Schema definitions for writable config sections.
  * Used to validate types before persisting changes.
@@ -363,6 +392,19 @@ export const CONFIG_SCHEMA = {
       dailyBudgetUsd: { type: 'number', min: 0, nullable: true },
       confidenceThreshold: { type: 'number', min: 0, max: 1, nullable: true },
       responseCooldownMs: { type: 'number', min: 0, nullable: true },
+    },
+  },
+  aiAutoMod: {
+    type: 'object',
+    properties: {
+      enabled: { type: 'boolean' },
+      model: { type: 'string', pattern: PROVIDER_MODEL_PATTERN },
+      thresholds: AI_AUTOMOD_THRESHOLD_SCHEMA,
+      actions: AI_AUTOMOD_ACTION_SCHEMA,
+      timeoutDurationMs: { type: 'number', min: 1000, max: 2419200000 },
+      flagChannelId: { type: 'string', nullable: true },
+      autoDelete: { type: 'boolean' },
+      exemptRoleIds: { type: 'array', items: { type: 'string' } },
     },
   },
   auditLog: {

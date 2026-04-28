@@ -181,6 +181,59 @@ describe('analyzeMessage', () => {
     expect(result.action).toBe('kick');
   });
 
+  it('uses the configured model for moderation scoring', async () => {
+    mockGenerate.mockResolvedValue(
+      makeClaudeResponse({ toxicity: 0.1, spam: 0.2, harassment: 0.1 }),
+    );
+    const cfg = getAiAutoModConfig({
+      aiAutoMod: {
+        model: 'moonshot:kimi-k2.6',
+      },
+    });
+
+    await analyzeMessage('normal message with enough content', cfg);
+
+    expect(mockGenerate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: 'moonshot:kimi-k2.6',
+      }),
+    );
+  });
+
+  it('flags expanded policy categories when scores meet configured thresholds', async () => {
+    mockGenerate.mockResolvedValue({
+      text: JSON.stringify({
+        toxicity: 0.1,
+        spam: 0.1,
+        harassment: 0.1,
+        hateSpeech: 0.92,
+        sexualContent: 0.2,
+        violence: 0.1,
+        selfHarm: 0.1,
+        reason: 'hate speech',
+      }),
+      costUsd: 0,
+      usage: { inputTokens: 0, outputTokens: 0 },
+      durationMs: 0,
+      finishReason: 'stop',
+      sources: [],
+      providerMetadata: {},
+    });
+    const cfg = getAiAutoModConfig({
+      aiAutoMod: {
+        thresholds: { hateSpeech: 0.9 },
+        actions: { hateSpeech: 'ban' },
+      },
+    });
+
+    const result = await analyzeMessage('targeted hateful message content here', cfg);
+
+    expect(result.flagged).toBe(true);
+    expect(result.categories).toEqual(['hateSpeech']);
+    expect(result.scores.hateSpeech).toBe(0.92);
+    expect(result.action).toBe('ban');
+  });
+
   it('handles malformed JSON from Claude gracefully', async () => {
     mockGenerate.mockResolvedValue({
       text: 'oops not json at all',

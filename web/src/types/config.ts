@@ -22,19 +22,22 @@ export interface AiConfig {
 }
 
 /** AI Auto-Moderation configuration. */
+export type AiAutoModCategory =
+  | 'toxicity'
+  | 'spam'
+  | 'harassment'
+  | 'hateSpeech'
+  | 'sexualContent'
+  | 'violence'
+  | 'selfHarm';
+
+export type AiAutoModAction = 'none' | 'flag' | 'delete' | 'warn' | 'timeout' | 'kick' | 'ban';
+
 export interface AiAutoModConfig {
   enabled: boolean;
   model: string;
-  thresholds: {
-    toxicity: number;
-    spam: number;
-    harassment: number;
-  };
-  actions: {
-    toxicity: string;
-    spam: string;
-    harassment: string;
-  };
+  thresholds: Record<AiAutoModCategory, number>;
+  actions: Record<AiAutoModCategory, AiAutoModAction>;
   timeoutDurationMs: number;
   flagChannelId: string | null;
   autoDelete: boolean;
