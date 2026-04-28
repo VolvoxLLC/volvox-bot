@@ -13,6 +13,13 @@ const checkOnly = process.argv.includes('--check');
 const sonarGeneratedStart = '# BEGIN generated coverage exclusions from web/coverage-exclusions.json';
 const sonarGeneratedEnd = '# END generated coverage exclusions from web/coverage-exclusions.json';
 
+/**
+ * Convert a mapping of named exclusion groups into a single flat array of glob patterns.
+ *
+ * @param {Object<string, string[]>} groups - An object whose keys are group names and values are arrays of non-empty glob pattern strings.
+ * @returns {string[]} A flat array containing all glob patterns from every group in declaration order.
+ * @throws {TypeError} If `groups` is not an object, if any group value is not an array, or if any pattern is not a non-empty string.
+ */
 function flattenExclusions(groups) {
   if (groups === null || typeof groups !== 'object' || Array.isArray(groups)) {
     throw new TypeError('coverage exclusions must be an object of named pattern arrays');
@@ -33,10 +40,21 @@ function flattenExclusions(groups) {
   });
 }
 
+/**
+ * Ensure a glob pattern is rooted under the `web/` directory.
+ * @param {string} pattern - A file glob or path pattern.
+ * @returns {string} The same pattern prefixed with `web/` if it did not already start with `web/`.
+ */
 function toSonarWebPath(pattern) {
   return pattern.startsWith('web/') ? pattern : `web/${pattern}`;
 }
 
+/**
+ * Build the generated sonar.coverage.exclusions block from grouped glob patterns.
+ *
+ * @param {Object<string, string[]>} groups - An object whose keys are group names and values are arrays of glob pattern strings; each pattern will be normalized to the repository's web/ path prefix.
+ * @returns {string} A multi-line string containing the generated-start marker, instructional comments, a `sonar.coverage.exclusions` entry (empty or line-continuated list), the normalized patterns, and the generated-end marker.
+ */
 function formatSonarCoverageExclusions(groups) {
   const patterns = flattenExclusions(groups).map(toSonarWebPath);
   const lines = [
@@ -57,6 +75,13 @@ function formatSonarCoverageExclusions(groups) {
   return lines.join('\n');
 }
 
+/**
+ * Count occurrences of a substring within a string.
+ * @param {string} value - The string to search.
+ * @param {string} needle - The substring to count.
+ * @returns {number} The number of non-overlapping occurrences of `needle` in `value`.
+ * If `needle` is an empty string, the function will not terminate.
+ */
 function countOccurrences(value, needle) {
   let count = 0;
   let cursor = 0;
@@ -74,6 +99,11 @@ function countOccurrences(value, needle) {
   return count;
 }
 
+/**
+ * Remove trailing spaces, tabs, carriage returns, and newlines, then ensure the string ends with a single `\n`.
+ * @param {string} value - Input string to normalize.
+ * @returns {string} The resulting string with trailing whitespace removed and exactly one newline appended.
+ */
 function trimEndToNewline(value) {
   let end = value.length;
   while (end > 0) {
@@ -88,6 +118,12 @@ function trimEndToNewline(value) {
   return `${value.slice(0, end)}\n`;
 }
 
+/**
+ * Normalize leading newline characters so the result begins with exactly one `\n`.
+ *
+ * @param {string} value - The input string to normalize.
+ * @returns {string} `''` if `value` is empty, otherwise `value` with all leading `\n` and `\r` characters removed and a single leading `\n` prepended.
+ */
 function normalizeLeadingNewline(value) {
   if (value.length === 0) {
     return '';
@@ -106,6 +142,19 @@ function normalizeLeadingNewline(value) {
   return `\n${value.slice(start)}`;
 }
 
+/**
+ * Replace the generated sonar.coverage.exclusions block inside a sonar-project.properties file.
+ *
+ * Locates the single generated block delimited by the script's start and end markers, verifies that
+ * the block contains `sonar.coverage.exclusions=`, and returns a new file string where that entire
+ * generated block is replaced with `replacement`. The prefix before the start marker is trimmed to
+ * end with exactly one newline; the suffix after the end marker is normalized to begin with a single newline.
+ *
+ * @param {string} properties - The full contents of a sonar-project.properties file.
+ * @param {string} replacement - The replacement text that will substitute the entire generated block (including markers).
+ * @returns {string} The updated sonar-project.properties content with the generated block replaced.
+ * @throws {Error} If the file does not contain exactly one start marker and one end marker, or if the located generated block does not include `sonar.coverage.exclusions=`.
+ */
 function replaceSonarCoverageExclusions(properties, replacement) {
   const startMarkerCount = countOccurrences(properties, sonarGeneratedStart);
   const endMarkerCount = countOccurrences(properties, sonarGeneratedEnd);
@@ -128,14 +177,34 @@ function replaceSonarCoverageExclusions(properties, replacement) {
   return `${trimEndToNewline(properties.slice(0, replacementStart))}${replacement}${trailing}`;
 }
 
+/**
+ * Determine whether a numeric character code is a valid JavaScript identifier start.
+ * @param {number} code - The character code to test.
+ * @returns {boolean} `true` if the code is `A–Z`, `a–z`, `$` (36), or `_` (95); `false` otherwise.
+ */
 function isIdentifierStart(code) {
   return (code >= 65 && code <= 90) || (code >= 97 && code <= 122) || code === 36 || code === 95;
 }
 
+/**
+ * Determines whether a Unicode code point may appear after the first character of an identifier.
+ * @param {number} code - The Unicode code point (character code) to test.
+ * @returns {boolean} `true` if the code point is a valid identifier part (an identifier start or an ASCII digit 0–9), `false` otherwise.
+ */
 function isIdentifierPart(code) {
   return isIdentifierStart(code) || (code >= 48 && code <= 57);
 }
 
+/**
+ * Tokenizes TypeScript source text into a simple stream of syntactic tokens.
+ *
+ * Skips whitespace and comments, recognizes identifiers, string literals, and single-character punctuators.
+ * String token `value` contains the unescaped contents of the literal (without surrounding quotes).
+ * `start` and `end` are indices into the original `config` string that bound the token (end is one past the last character).
+ *
+ * @param {string} config - The TypeScript source text to tokenize.
+ * @returns {Array<{type: 'identifier'|'string'|'punctuator', value: string, start: number, end: number}>} An ordered list of tokens extracted from `config`.
+ */
 function tokenizeTypeScript(config) {
   const tokens = [];
   let cursor = 0;
@@ -210,15 +279,36 @@ function tokenizeTypeScript(config) {
   return tokens;
 }
 
+/**
+ * Checks whether the token at the given index has the specified value.
+ * @param {Array<{type:string,value:string,start:number,end:number}>} tokens - Token list to inspect; each token must have a `value` property.
+ * @param {number} index - Index of the token to check.
+ * @param {string} value - Expected token value.
+ * @returns {boolean} `true` if a token exists at `index` and its `value` equals `value`, `false` otherwise.
+ */
 function isToken(tokens, index, value) {
   return tokens[index]?.value === value;
 }
 
+/**
+ * Determines whether the token at the given index is an identifier with the specified value.
+ * @param {Array<{type:string,value:string}>} tokens - Array of tokens produced by the tokenizer.
+ * @param {number} index - Index of the token to inspect.
+ * @param {string} value - Expected identifier value.
+ * @returns {boolean} `true` if the token at `index` is an identifier with `value`, `false` otherwise.
+ */
 function isIdentifierToken(tokens, index, value) {
   const token = tokens[index];
   return token?.type === 'identifier' && token.value === value;
 }
 
+/**
+ * Locate the semicolon that ends a statement starting at the given token index.
+ *
+ * @param {Array<{type:string,value:string,start:number,end:number}>} tokens - Array of tokens to search.
+ * @param {number} start - Index in `tokens` to begin searching from.
+ * @returns {number} The index of the terminating semicolon token, or `tokens.length` if no semicolon is found.
+ */
 function findStatementEnd(tokens, start) {
   let cursor = start;
   while (cursor < tokens.length && !isToken(tokens, cursor, ';')) {
@@ -228,6 +318,13 @@ function findStatementEnd(tokens, start) {
   return cursor;
 }
 
+/**
+ * Finds the default import binding name for the module "./coverage-exclusions.json" in a token list.
+ *
+ * Recognizes ES module `import` statements and ignores an optional `type` token (i.e., `import type Name from ...`).
+ * @param {Array<{type: string, value: string, start?: number, end?: number}>} tokens - Token stream produced from TypeScript source.
+ * @returns {string|null} The identifier used as the default import binding for "./coverage-exclusions.json", or `null` if no matching default import is present.
+ */
 function findCoverageJsonImportName(tokens) {
   for (let cursor = 0; cursor < tokens.length; cursor += 1) {
     if (!isIdentifierToken(tokens, cursor, 'import')) {
@@ -264,6 +361,14 @@ function findCoverageJsonImportName(tokens) {
   return null;
 }
 
+/**
+ * Checks whether tokens at a given index form the expression `Object.values(<importName>).flat()`.
+ *
+ * @param {Array} tokens - Token list produced by tokenizeTypeScript.
+ * @param {number} start - Index in `tokens` to test.
+ * @param {string} importName - The identifier name expected inside `Object.values(...)`.
+ * @returns {boolean} `true` if the token sequence at `start` exactly matches `Object.values(importName).flat()`, `false` otherwise.
+ */
 function isCoverageFlattenExpressionAt(tokens, start, importName) {
   return (
     isIdentifierToken(tokens, start, 'Object') &&
@@ -279,6 +384,17 @@ function isCoverageFlattenExpressionAt(tokens, start, importName) {
   );
 }
 
+/**
+ * Collects variable names that are declared and initialized from `Object.values(<importName>).flat()`.
+ *
+ * Scans the token list for expressions matching `Object.values(importName).flat()` and, when such an expression
+ * appears on the right-hand side of an assignment whose left-hand side is an identifier declared with
+ * `const`, `let`, or `var`, adds that identifier name to the result set.
+ *
+ * @param {{type: string, value: string, start: number, end: number}[]} tokens - Tokenized TypeScript source.
+ * @param {string} importName - The identifier name used for the default import from "./coverage-exclusions.json".
+ * @returns {Set<string>} A set of identifier names that are assigned the flattened import values; empty if none found.
+ */
 function findFlattenedCoverageNames(tokens, importName) {
   const flattenedNames = new Set();
 
@@ -315,6 +431,15 @@ function findFlattenedCoverageNames(tokens, importName) {
   return flattenedNames;
 }
 
+/**
+ * Find the index of the matching closing punctuator for a given opening punctuator token.
+ *
+ * Scans forward from openIndex and tracks nesting of `{ }`, `[ ]`, or `( )` to locate the corresponding closing token.
+ *
+ * @param {{type: string, value: string, start?: number, end?: number}[]} tokens - Token list produced from source text.
+ * @param {number} openIndex - Index of the opening punctuator token (`{`, `[`, or `(`).
+ * @returns {number} The index of the matching closing token, or `-1` if no match is found or the token at openIndex is not a supported opening punctuator.
+ */
 function findMatchingToken(tokens, openIndex) {
   const openValue = tokens[openIndex]?.value;
   const closeValue = openValue === '{' ? '}' : openValue === '[' ? ']' : openValue === '(' ? ')' : null;
@@ -337,6 +462,19 @@ function findMatchingToken(tokens, openIndex) {
   return -1;
 }
 
+/**
+ * Find the token range that represents the value of a property with the given key inside an object literal.
+ *
+ * Searches tokens between openIndex and closeIndex for a top-level property whose key is either the identifier keyName
+ * or the string literal keyName followed immediately by a colon, then returns the start and end token indices that
+ * delimit the property's value expression. The value range ends at the first top-level comma or the provided closeIndex.
+ *
+ * @param {Array<{type:string,value:string,start:number,end:number}>} tokens - Token list for the source text.
+ * @param {number} openIndex - Index of the object literal's opening `{` token.
+ * @param {number} closeIndex - Index of the object literal's closing `}` token (exclusive bound for the search).
+ * @param {string} keyName - Property key to find (matched as an identifier or a string literal).
+ * @returns {{start:number,end:number}|null} An object with `start` and `end` token indices for the property's value, or `null` if the property is not found.
+ */
 function findObjectPropertyValue(tokens, openIndex, closeIndex, keyName) {
   let depth = 0;
 
@@ -388,6 +526,11 @@ function findObjectPropertyValue(tokens, openIndex, closeIndex, keyName) {
   return null;
 }
 
+/**
+ * Locate object literal ranges for properties named `coverage` within a token list.
+ * @param {Array} tokens - Token array produced by tokenizeTypeScript.
+ * @returns {Array<{open: number, close: number}>} An array of ranges where `open` is the token index of the `{` that starts the coverage object and `close` is the index of its matching `}`.
+ */
 function findCoverageBlocks(tokens) {
   const blocks = [];
 
@@ -411,6 +554,15 @@ function findCoverageBlocks(tokens) {
   return blocks;
 }
 
+/**
+ * Determines whether a coverage.exclude value references the generated flattened exclusions.
+ *
+ * @param {Array<{type:string,value:string,start:number,end:number}>} tokens - Token list for the TypeScript source.
+ * @param {{start:number,end:number}} valueRange - Token index range (start inclusive, end exclusive) of the value expression to inspect.
+ * @param {string} importName - The default import binding name for "./coverage-exclusions.json".
+ * @param {Set<string>} flattenedNames - Set of identifier names that hold the flattened generated exclusions.
+ * @returns {boolean} `true` if the value is either a single identifier present in `flattenedNames` or the exact `Object.values(importName).flat()` expression, `false` otherwise.
+ */
 function coverageExcludeUsesGeneratedList(tokens, valueRange, importName, flattenedNames) {
   if (valueRange.end === valueRange.start + 1 && flattenedNames.has(tokens[valueRange.start]?.value)) {
     return true;
@@ -419,6 +571,20 @@ function coverageExcludeUsesGeneratedList(tokens, valueRange, importName, flatte
   return isCoverageFlattenExpressionAt(tokens, valueRange.start, importName) && valueRange.end === valueRange.start + 10;
 }
 
+/**
+ * Validate that web/vitest.config.ts imports and uses the generated coverage exclusions.
+ *
+ * Tokenizes the provided TypeScript source, checks for a default import from
+ * "./coverage-exclusions.json", ensures at least one `coverage` block exists with a
+ * `coverage.exclude` property, and verifies that at least one `coverage.exclude` uses
+ * the flattened imported exclusions.
+ *
+ * @param {string} config - The contents of web/vitest.config.ts.
+ * @throws {Error} If the config is missing the required import, missing any coverage block,
+ *                  missing any `coverage.exclude`, or if no `coverage.exclude` is wired to
+ *                  use the flattened ./coverage-exclusions.json import. The thrown error
+ *                  lists all detected failures.
+ */
 function verifyVitestCoverageExclusions(config) {
   const failures = [];
   const tokens = tokenizeTypeScript(config);
@@ -459,6 +625,11 @@ function verifyVitestCoverageExclusions(config) {
   }
 }
 
+/**
+ * Synchronizes the generated sonar.coverage.exclusions block in sonar-project.properties with web/coverage-exclusions.json and validates that web/vitest.config.ts is wired to consume the generated list.
+ *
+ * Reads the coverage exclusions JSON, the Sonar properties file, and the Vitest config; validates Vitest imports and usage; computes the updated generated block and replaces the existing marked block in sonar-project.properties. If the files are already in sync the process exits with code 0. If differences are found and the script was invoked with --check, the process logs an error and exits with code 1. Otherwise the updated properties file is written and a success message is logged.
+ */
 async function main() {
   const groups = JSON.parse(await readFile(coverageExclusionsPath, 'utf8'));
   const sonarProperties = await readFile(sonarPropertiesPath, 'utf8');
