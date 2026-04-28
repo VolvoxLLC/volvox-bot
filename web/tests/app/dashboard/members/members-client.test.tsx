@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { SortColumn } from '@/components/dashboard/member-table';
 
 const { mockPush, mockReplace, mockGuildSelection, mockMembersState } = vi.hoisted(() => ({
   mockPush: vi.fn(),
@@ -29,7 +30,7 @@ vi.mock('@/components/dashboard/member-table', () => ({
     onRowClick,
   }: {
     members: Array<{ id: string; username: string }>;
-    onSort: (column: 'xp') => void;
+    onSort: (column: SortColumn) => void;
     onLoadMore: () => void;
     onRowClick: (id: string) => void;
   }) => (
@@ -37,7 +38,7 @@ vi.mock('@/components/dashboard/member-table', () => ({
       <button type="button" onClick={() => onSort('xp')}>
         Sort XP
       </button>
-      <button type="button" onClick={() => onSort('messages' as 'xp')}>
+      <button type="button" onClick={() => onSort('messages')}>
         Sort messages
       </button>
       <button type="button" onClick={onLoadMore}>
