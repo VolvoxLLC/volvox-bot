@@ -162,18 +162,20 @@ describe('AnalyticsProvider', () => {
     // @ts-expect-error minimal location mock for href assignment
     window.location = { href: '' };
 
-    vi.spyOn(global, 'fetch').mockResolvedValue({
-      ok: false,
-      status: 401,
-      json: vi.fn(),
-    } as unknown as Response);
+    try {
+      vi.spyOn(global, 'fetch').mockResolvedValue({
+        ok: false,
+        status: 401,
+        json: vi.fn(),
+      } as unknown as Response);
 
-    renderProvider();
+      renderProvider();
 
-    await waitFor(() => expect(window.location.href).toBe('/login'));
-
-    // @ts-expect-error restore jsdom location
-    window.location = originalLocation;
+      await waitFor(() => expect(window.location.href).toBe('/login'));
+    } finally {
+      // @ts-expect-error restore jsdom location
+      window.location = originalLocation;
+    }
   });
 
   it('rejects invalid analytics payloads with an error state', async () => {
