@@ -241,15 +241,20 @@ describe('Header', () => {
     expect(mockSetCustomRange).toHaveBeenCalledWith('2026-04-02', '2026-04-09');
   });
 
-  it('dispatches the performance refresh event and reflects loading events', async () => {
+  it('dispatches the performance refresh event', async () => {
     mockUsePathname.mockReturnValue('/dashboard/performance');
     const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
     const user = userEvent.setup();
-    render(<Header />);
 
-    await user.click(screen.getByRole('button', { name: /Refresh Metrics/i }));
+    try {
+      render(<Header />);
 
-    expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'refresh-performance' }));
+      await user.click(screen.getByRole('button', { name: /Refresh Metrics/i }));
+
+      expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'refresh-performance' }));
+    } finally {
+      dispatchSpy.mockRestore();
+    }
   });
 
   it.each([

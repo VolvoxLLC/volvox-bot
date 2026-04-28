@@ -1,14 +1,25 @@
 #!/usr/bin/env node
 import { readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { error as logError, info as logInfo } from '../src/logger.js';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const coverageExclusionsPath = resolve(root, 'web/coverage-exclusions.json');
 const sonarPropertiesPath = resolve(root, 'sonar-project.properties');
 const vitestConfigPath = resolve(root, 'web/vitest.config.ts');
 const checkOnly = process.argv.includes('--check');
+
+function writeLine(stream, message) {
+  stream.write(`${message}\n`);
+}
+
+function logInfo(message) {
+  writeLine(process.stdout, message);
+}
+
+function logError(message) {
+  writeLine(process.stderr, message);
+}
 
 const sonarGeneratedStart = '# BEGIN generated coverage exclusions from web/coverage-exclusions.json';
 const sonarGeneratedEnd = '# END generated coverage exclusions from web/coverage-exclusions.json';
@@ -306,63 +317,6 @@ function isCoverageFlattenExpressionAt(tokens, start, importName) {
   );
 }
 
-function findVariableDeclarationStart(tokens, equalsIndex) {
-  let cursor = equalsIndex - 1;
-  while (cursor >= 0 && !isToken(tokens, cursor, ';')) {
-    if (
-      isIdentifierToken(tokens, cursor, 'const') ||
-      isIdentifierToken(tokens, cursor, 'let') ||
-      isIdentifierToken(tokens, cursor, 'var')
-    ) {
-      return cursor;
-    }
-    cursor -= 1;
-  }
-
-  return -1;
-}
-
-function findDeclaredNameBeforeEquals(tokens, equalsIndex) {
-  const declarationStart = findVariableDeclarationStart(tokens, equalsIndex);
-  if (declarationStart === -1) {
-    return null;
-  }
-
-  for (let cursor = declarationStart + 1; cursor < equalsIndex; cursor += 1) {
-    if (tokens[cursor]?.type === 'identifier') {
-      return tokens[cursor].value;
-    }
-  }
-
-  return null;
-}
-
-function findFlattenedCoverageNames(tokens, importName) {
-  const flattenedNames = new Set();
-
-  for (let cursor = 0; cursor < tokens.length; cursor += 1) {
-    if (!isCoverageFlattenExpressionAt(tokens, cursor, importName)) {
-      continue;
-    }
-
-    let equalsIndex = cursor - 1;
-    while (equalsIndex >= 0 && !isToken(tokens, equalsIndex, '=') && !isToken(tokens, equalsIndex, ';')) {
-      equalsIndex -= 1;
-    }
-
-    if (!isToken(tokens, equalsIndex, '=')) {
-      continue;
-    }
-
-    const declaredName = findDeclaredNameBeforeEquals(tokens, equalsIndex);
-    if (declaredName !== null) {
-      flattenedNames.add(declaredName);
-    }
-  }
-
-  return flattenedNames;
-}
-
 function findMatchingToken(tokens, openIndex) {
   const openValue = tokens[openIndex]?.value;
   const closeValue = openValue === '{' ? '}' : openValue === '[' ? ']' : openValue === '(' ? ')' : null;
@@ -452,54 +406,38 @@ function findObjectPropertyValue(tokens, openIndex, closeIndex, keyName) {
   return { start: valueStart, end: findPropertyValueEnd(tokens, valueStart, closeIndex) };
 }
 
-function isObjectProperty(tokens, index, keyName) {
-  return (
-    (isIdentifierToken(tokens, index, keyName) ||
-      (tokens[index]?.type === 'string' && tokens[index].value === keyName)) &&
-    isToken(tokens, index + 1, ':') &&
-    isToken(tokens, index + 2, '{')
-  );
-}
-
-function findVitestTestObject(tokens) {
-  for (let cursor = 0; cursor < tokens.length - 2; cursor += 1) {
-    if (!isObjectProperty(tokens, cursor, 'test')) {
-      continue;
-    }
-
-    const closeIndex = findMatchingToken(tokens, cursor + 2);
-    if (closeIndex !== -1) {
-      return { open: cursor + 2, close: closeIndex };
+function findExportedDefineConfigObject(tokens) {
+  for (let cursor = 0; cursor < tokens.length - 4; cursor += 1) {
+    if (
+      isIdentifierToken(tokens, cursor, 'export') &&
+      isIdentifierToken(tokens, cursor + 1, 'default') &&
+      isIdentifierToken(tokens, cursor + 2, 'defineConfig') &&
+      isToken(tokens, cursor + 3, '(') &&
+      isToken(tokens, cursor + 4, '{')
+    ) {
+      const closeIndex = findMatchingToken(tokens, cursor + 4);
+      if (closeIndex !== -1) {
+        return { open: cursor + 4, close: closeIndex };
+      }
     }
   }
 
   return null;
 }
 
-function findVitestCoverageBlock(tokens) {
-  const testObject = findVitestTestObject(tokens);
-  if (testObject === null) {
+function findObjectPropertyObject(tokens, objectRange, keyName) {
+  const valueRange = findObjectPropertyValue(tokens, objectRange.open, objectRange.close, keyName);
+  if (valueRange === null || !isToken(tokens, valueRange.start, '{')) {
     return null;
   }
 
-  const coverageValue = findObjectPropertyValue(tokens, testObject.open, testObject.close, 'coverage');
-  if (coverageValue === null || !isToken(tokens, coverageValue.start, '{')) {
-    return null;
-  }
-
-  const closeIndex = findMatchingToken(tokens, coverageValue.start);
-  if (closeIndex === -1 || closeIndex > coverageValue.end) {
-    return null;
-  }
-
-  return { open: coverageValue.start, close: closeIndex };
+  const closeIndex = findMatchingToken(tokens, valueRange.start);
+  return closeIndex !== -1 && closeIndex <= valueRange.end
+    ? { open: valueRange.start, close: closeIndex }
+    : null;
 }
 
-function coverageExcludeUsesGeneratedList(tokens, valueRange, importName, flattenedNames) {
-  if (valueRange.end === valueRange.start + 1 && flattenedNames.has(tokens[valueRange.start]?.value)) {
-    return true;
-  }
-
+function coverageExcludeUsesGeneratedList(tokens, valueRange, importName) {
   return isCoverageFlattenExpressionAt(tokens, valueRange.start, importName) && valueRange.end === valueRange.start + 10;
 }
 
@@ -512,26 +450,37 @@ function verifyVitestCoverageExclusions(config) {
     failures.push('web/vitest.config.ts must import ./coverage-exclusions.json with a default binding');
   }
 
-  const flattenedNames = importName === null ? new Set() : findFlattenedCoverageNames(tokens, importName);
-  const coverageBlock = findVitestCoverageBlock(tokens);
+  const configObject = findExportedDefineConfigObject(tokens);
+  const testObject = configObject === null ? null : findObjectPropertyObject(tokens, configObject, 'test');
+  const coverageObject = testObject === null ? null : findObjectPropertyObject(tokens, testObject, 'coverage');
   const coverageExcludeRange =
-    coverageBlock === null ? null : findObjectPropertyValue(tokens, coverageBlock.open, coverageBlock.close, 'exclude');
+    coverageObject === null
+      ? null
+      : findObjectPropertyValue(tokens, coverageObject.open, coverageObject.close, 'exclude');
 
-  if (coverageBlock === null) {
-    failures.push('web/vitest.config.ts must define test.coverage');
+  if (configObject === null) {
+    failures.push('web/vitest.config.ts must export default defineConfig with an object literal');
+  }
+
+  if (testObject === null) {
+    failures.push('web/vitest.config.ts defineConfig object must define a test object');
+  }
+
+  if (coverageObject === null) {
+    failures.push('web/vitest.config.ts defineConfig test object must define a coverage object');
   }
 
   if (coverageExcludeRange === null) {
-    failures.push('web/vitest.config.ts test.coverage must define coverage.exclude');
+    failures.push('web/vitest.config.ts defineConfig test.coverage object must define coverage.exclude');
   }
 
   if (
     importName !== null &&
     coverageExcludeRange !== null &&
-    !coverageExcludeUsesGeneratedList(tokens, coverageExcludeRange, importName, flattenedNames)
+    !coverageExcludeUsesGeneratedList(tokens, coverageExcludeRange, importName)
   ) {
     failures.push(
-      'web/vitest.config.ts test.coverage.exclude must use the flattened ./coverage-exclusions.json import',
+      'web/vitest.config.ts coverage.exclude must directly use Object.values(coverageExclusionGroups).flat()',
     );
   }
 
@@ -566,7 +515,15 @@ async function main() {
   logInfo('Updated sonar-project.properties coverage exclusions from web/coverage-exclusions.json.');
 }
 
-main().catch((error) => {
-  logError(error instanceof Error ? error.message : String(error));
-  process.exit(1);
-});
+function isMainModule() {
+  return process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
+}
+
+if (isMainModule()) {
+  main().catch((error) => {
+    logError(error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  });
+}
+
+export { verifyVitestCoverageExclusions };

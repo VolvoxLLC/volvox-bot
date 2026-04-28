@@ -54,10 +54,69 @@ async function renderConfigContext() {
 }
 
 function mockWindowLocation(href = '') {
-  const location = { href } as Location;
-  const spy = vi.spyOn(globalThis, 'location', 'get').mockReturnValue(location);
+  const originalLocation = globalThis.location;
+  // @ts-expect-error jsdom location replacement for redirect assertion
+  delete globalThis.location;
+  // @ts-expect-error minimal location mock for href assignment
+  globalThis.location = { href };
 
-  return () => spy.mockRestore();
+  return () => {
+    // @ts-expect-error restore jsdom location
+    globalThis.location = originalLocation;
+  };
+}
+
+type ConfigContextResult = Awaited<ReturnType<typeof renderConfigContext>>['result'];
+
+function dispatchGuildSelection(guildId: string, { cancel = false } = {}) {
+  const event = new CustomEvent<string>('volvox-bot:guild-selected', {
+    detail: guildId,
+    cancelable: cancel,
+  });
+  if (cancel) {
+    event.preventDefault();
+  }
+
+  act(() => globalThis.dispatchEvent(event));
+}
+
+function dispatchSelectedGuildStorage(newValue: string | null) {
+  act(() => {
+    globalThis.dispatchEvent(
+      new StorageEvent('storage', { key: 'volvox-bot-selected-guild', newValue }),
+    );
+  });
+}
+
+async function expectGuildSelectionFlow({
+  result,
+  initialGuildId,
+  eventGuildId,
+  storageGuildId,
+  fetchMock,
+}: {
+  result: ConfigContextResult;
+  initialGuildId: string;
+  eventGuildId: string;
+  storageGuildId: string | null;
+  fetchMock?: ReturnType<typeof vi.fn>;
+}) {
+  await waitFor(() => expect(result.current.guildId).toBe(initialGuildId));
+
+  dispatchGuildSelection('guild-cancelled', { cancel: true });
+  expect(result.current.guildId).toBe(initialGuildId);
+
+  dispatchGuildSelection(eventGuildId);
+  await waitFor(() => expect(result.current.guildId).toBe(eventGuildId));
+
+  if (fetchMock) {
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(`/api/guilds/${eventGuildId}/config`, expect.any(Object)),
+    );
+  }
+
+  dispatchSelectedGuildStorage(storageGuildId);
+  await waitFor(() => expect(result.current.guildId).toBe(storageGuildId ?? ''));
 }
 
 describe('ConfigProvider', () => {
@@ -179,33 +238,16 @@ describe('ConfigProvider', () => {
   });
 
   it('handles guild selection, storage updates, and cancelled guild switches', async () => {
-    const fetchMock = mockConfigFetch();
+    mockConfigFetch();
 
     const { result } = await renderConfigContext();
 
-    await waitFor(() => expect(result.current.guildId).toBe('guild-123'));
-
-    act(() => {
-      const cancelled = new CustomEvent('volvox-bot:guild-selected', {
-        detail: 'blocked-guild',
-        cancelable: true,
-      });
-      cancelled.preventDefault();
-      window.dispatchEvent(cancelled);
+    await expectGuildSelectionFlow({
+      result,
+      initialGuildId: 'guild-123',
+      eventGuildId: 'guild-456',
+      storageGuildId: null,
     });
-    expect(result.current.guildId).toBe('guild-123');
-
-    act(() => {
-      window.dispatchEvent(new CustomEvent('volvox-bot:guild-selected', { detail: 'guild-456' }));
-    });
-    await waitFor(() => expect(result.current.guildId).toBe('guild-456'));
-
-    act(() => {
-      window.dispatchEvent(
-        new StorageEvent('storage', { key: 'volvox-bot-selected-guild', newValue: null }),
-      );
-    });
-    await waitFor(() => expect(result.current.guildId).toBe(''));
   });
 
   it('normalizes role menu option ids and reports fetch failures', async () => {
@@ -376,7 +418,7 @@ describe('ConfigProvider', () => {
       await act(async () => {
         await result.current.executeSave();
       });
-      expect(window.location.href).toBe('/login');
+      expect(globalThis.location.href).toBe('/login');
     } finally {
       restoreLocation();
     }
@@ -393,38 +435,20 @@ describe('ConfigProvider', () => {
 
     const { result } = await renderConfigContext();
 
-    await waitFor(() => expect(result.current.guildId).toBe(''));
-    expect(fetchMock).not.toHaveBeenCalled();
+    try {
+      await waitFor(() => expect(result.current.guildId).toBe(''));
+      expect(fetchMock).not.toHaveBeenCalled();
 
-    const cancelled = new CustomEvent<string>('volvox-bot:guild-selected', {
-      detail: 'guild-cancelled',
-      cancelable: true,
-    });
-    cancelled.preventDefault();
-    act(() => window.dispatchEvent(cancelled));
-    expect(result.current.guildId).toBe('');
-
-    act(() => {
-      window.dispatchEvent(
-        new CustomEvent<string>('volvox-bot:guild-selected', { detail: 'guild-event' }),
-      );
-    });
-    await waitFor(() => expect(result.current.guildId).toBe('guild-event'));
-    await waitFor(() =>
-      expect(fetchMock).toHaveBeenCalledWith('/api/guilds/guild-event/config', expect.any(Object)),
-    );
-
-    act(() => {
-      window.dispatchEvent(
-        new StorageEvent('storage', {
-          key: 'volvox-bot-selected-guild',
-          newValue: 'guild-from-storage',
-        }),
-      );
-    });
-    await waitFor(() => expect(result.current.guildId).toBe('guild-from-storage'));
-
-    getItemSpy.mockRestore();
+      await expectGuildSelectionFlow({
+        result,
+        initialGuildId: '',
+        eventGuildId: 'guild-event',
+        storageGuildId: 'guild-from-storage',
+        fetchMock,
+      });
+    } finally {
+      getItemSpy.mockRestore();
+    }
   });
 
   it('handles fetch redirects, invalid payloads, API errors, and role menu id backfill', async () => {

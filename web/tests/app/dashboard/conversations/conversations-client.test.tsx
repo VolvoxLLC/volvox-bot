@@ -79,7 +79,7 @@ function resetState() {
     loading: false,
     error: null,
     currentOpts: { search: '', channel: '', page: 1 },
-    fetch: vi.fn().mockResolvedValue('ok'),
+    fetch: vi.fn().mockResolvedValue(undefined),
   });
 }
 

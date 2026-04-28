@@ -3,11 +3,6 @@ import react from '@vitejs/plugin-react';
 import { resolve } from 'node:path';
 import coverageExclusionGroups from './coverage-exclusions.json';
 
-// Single editable source of truth for web coverage exclusions.
-// Sonar's generated block is derived from this same JSON by
-// `pnpm sonar:sync-coverage-exclusions`; do not inline exclusions here.
-const coverageExclusions = Object.values(coverageExclusionGroups).flat();
-
 export default defineConfig({
   plugins: [react()],
   test: {
@@ -24,7 +19,8 @@ export default defineConfig({
        * types, or UI that is impractical to test).
        */
       include: ['src/**/*.{ts,tsx}'],
-      exclude: coverageExclusions,
+      // Single editable source of truth: edit web/coverage-exclusions.json, not this list.
+      exclude: Object.values(coverageExclusionGroups).flat(),
       thresholds: {
         statements: 85,
         branches: 85,
