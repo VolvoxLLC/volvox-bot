@@ -85,6 +85,10 @@ function formatSonarCoverageExclusions(groups) {
 }
 
 function countOccurrences(value, needle) {
+  if (needle.length === 0) {
+    throw new TypeError('needle must not be empty');
+  }
+
   let count = 0;
   let cursor = 0;
 
