@@ -21,20 +21,47 @@ vi.mock('../../src/utils/modExempt.js', () => ({
 }));
 
 vi.mock('../../src/modules/moderation.js', () => ({
+  checkEscalation: vi.fn().mockResolvedValue(null),
   createCase: vi.fn().mockResolvedValue({ id: 1, caseNumber: 42 }),
+  sendDmNotification: vi.fn().mockResolvedValue(undefined),
+  sendModLogEmbed: vi.fn().mockResolvedValue(null),
+  shouldSendDm: vi.fn().mockReturnValue(true),
 }));
 
-const { mockGenerate } = vi.hoisted(() => ({
-  mockGenerate: vi.fn(),
+vi.mock('../../src/modules/warningEngine.js', () => ({
+  createWarning: vi.fn().mockResolvedValue({ id: 10, severity: 'low', points: 1 }),
 }));
+
+const { mockGenerate, mockGetPool, mockPool } = vi.hoisted(() => ({
+  mockGenerate: vi.fn(),
+  mockGetPool: vi.fn(),
+  mockPool: { query: vi.fn() },
+}));
+
+vi.mock('../../src/db.js', () => ({
+  getPool: (...args) => mockGetPool(...args),
+}));
+
 vi.mock('../../src/utils/aiClient.js', () => ({
   generate: (...args) => mockGenerate(...args),
   stream: vi.fn(),
 }));
 
+vi.mock('../../src/modules/auditLogger.js', () => ({
+  logAuditEvent: vi.fn().mockResolvedValue(undefined),
+}));
+
 // Import after mocks
 import { analyzeMessage, checkAiAutoMod, getAiAutoModConfig } from '../../src/modules/aiAutoMod.js';
-import { createCase } from '../../src/modules/moderation.js';
+import { logAuditEvent } from '../../src/modules/auditLogger.js';
+import {
+  checkEscalation,
+  createCase,
+  sendDmNotification,
+  sendModLogEmbed,
+  shouldSendDm,
+} from '../../src/modules/moderation.js';
+import { createWarning } from '../../src/modules/warningEngine.js';
 import { isExempt } from '../../src/utils/modExempt.js';
 
 // --- Helpers ---
@@ -289,8 +316,26 @@ describe('checkAiAutoMod', () => {
 
   beforeEach(() => {
     mockGenerate.mockReset();
+    mockGetPool.mockReturnValue(mockPool);
+    mockPool.query.mockReset();
     vi.mocked(isExempt).mockReturnValue(false);
-    vi.mocked(createCase).mockResolvedValue({ id: 1, caseNumber: 42 });
+    vi.mocked(createCase).mockResolvedValue({
+      id: 1,
+      case_number: 42,
+      guild_id: 'guild-1',
+      action: 'warn',
+      target_id: 'user-1',
+      target_tag: 'user#0001',
+      moderator_id: 'bot-1',
+      moderator_tag: 'Bot#0001',
+      reason: 'AI Auto-Mod: harassment — harassment',
+    });
+    vi.mocked(createWarning).mockResolvedValue({ id: 10, severity: 'low', points: 1 });
+    vi.mocked(checkEscalation).mockResolvedValue(null);
+    vi.mocked(sendDmNotification).mockResolvedValue(undefined);
+    vi.mocked(sendModLogEmbed).mockResolvedValue(null);
+    vi.mocked(shouldSendDm).mockReturnValue(true);
+    vi.mocked(logAuditEvent).mockResolvedValue(undefined);
     message = makeMessage();
     client = makeClient();
   });
@@ -387,6 +432,62 @@ describe('checkAiAutoMod', () => {
     );
   });
 
+  it('records warning details, DMs the user, logs the case, and checks escalation for warn actions', async () => {
+    mockGenerate.mockResolvedValue(
+      makeClaudeResponse({ toxicity: 0.1, spam: 0.1, harassment: 0.9, reason: 'harassment' }),
+    );
+    const guildConfig = {
+      moderation: {
+        dmNotifications: { warn: true },
+        warnings: { expiryDays: 90, severityPoints: { low: 1, medium: 2, high: 3 } },
+        escalation: { enabled: true, thresholds: [] },
+      },
+      aiAutoMod: {
+        enabled: true,
+        thresholds: { toxicity: 0.7, spam: 0.8, harassment: 0.7 },
+        actions: { toxicity: 'flag', spam: 'delete', harassment: 'warn' },
+        autoDelete: false,
+        flagChannelId: null,
+        exemptRoleIds: [],
+      },
+    };
+
+    const result = await checkAiAutoMod(message, client, guildConfig);
+
+    expect(result).toMatchObject({ flagged: true, action: 'warn' });
+    expect(shouldSendDm).toHaveBeenCalledWith(guildConfig, 'warn');
+    expect(sendDmNotification).toHaveBeenCalledWith(
+      message.member,
+      'warn',
+      'AI Auto-Mod: harassment — harassment',
+      'guild-1',
+    );
+    expect(createWarning).toHaveBeenCalledWith(
+      'guild-1',
+      expect.objectContaining({
+        userId: 'user-1',
+        moderatorId: 'bot-1',
+        moderatorTag: 'Bot#0001',
+        severity: 'low',
+        caseId: 1,
+      }),
+      guildConfig,
+    );
+    expect(sendModLogEmbed).toHaveBeenCalledWith(
+      client,
+      guildConfig,
+      expect.objectContaining({ id: 1 }),
+    );
+    expect(checkEscalation).toHaveBeenCalledWith(
+      client,
+      'guild-1',
+      'user-1',
+      'bot-1',
+      'Bot#0001',
+      guildConfig,
+    );
+  });
+
   it('times out member when action is timeout', async () => {
     mockGenerate.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.9, spam: 0.1, harassment: 0.1, reason: 'toxic' }),
@@ -448,6 +549,64 @@ describe('checkAiAutoMod', () => {
     expect(message.guild.members.ban).toHaveBeenCalledWith(
       'user-1',
       expect.objectContaining({ reason: expect.any(String) }),
+    );
+  });
+
+  it.each([
+    ['none', 'ai_automod.none'],
+    ['flag', 'ai_automod.flag'],
+    ['delete', 'ai_automod.delete'],
+    ['warn', 'ai_automod.warn'],
+    ['timeout', 'ai_automod.timeout'],
+    ['kick', 'ai_automod.kick'],
+    ['ban', 'ai_automod.ban'],
+  ])('writes an audit log entry for %s AI auto-mod actions', async (configuredAction, auditAction) => {
+    mockGenerate.mockResolvedValue(
+      makeClaudeResponse({ toxicity: 0.9, spam: 0.1, harassment: 0.1, reason: 'toxic' }),
+    );
+    const guildConfig = {
+      moderation: {
+        dmNotifications: { warn: true },
+        warnings: { expiryDays: 90, severityPoints: { low: 1, medium: 2, high: 3 } },
+        escalation: { enabled: true, thresholds: [] },
+      },
+      aiAutoMod: {
+        enabled: true,
+        model: 'minimax:MiniMax-M2.7',
+        thresholds: { toxicity: 0.7, spam: 0.8, harassment: 0.7 },
+        actions: { toxicity: configuredAction, spam: 'delete', harassment: 'warn' },
+        autoDelete: false,
+        flagChannelId: null,
+        exemptRoleIds: [],
+        timeoutDurationMs: 300000,
+      },
+    };
+
+    await checkAiAutoMod(message, client, guildConfig);
+
+    expect(logAuditEvent).toHaveBeenCalledWith(
+      mockPool,
+      expect.objectContaining({
+        guildId: 'guild-1',
+        userId: 'bot-1',
+        userTag: 'Bot#0001',
+        action: auditAction,
+        targetType: 'member',
+        targetId: 'user-1',
+        targetTag: 'user#0001',
+        details: expect.objectContaining({
+          source: 'ai_auto_mod',
+          action: configuredAction,
+          model: 'minimax:MiniMax-M2.7',
+          messageId: 'msg-123',
+          channelId: 'chan-1',
+          messageUrl: 'https://discord.com/channels/1/2/3',
+          categories: ['toxicity'],
+          reason: 'AI Auto-Mod: toxicity — toxic',
+          scores: expect.objectContaining({ toxicity: 0.9 }),
+          thresholds: expect.objectContaining({ toxicity: 0.7 }),
+        }),
+      }),
     );
   });
 
