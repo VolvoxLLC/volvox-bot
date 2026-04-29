@@ -561,6 +561,20 @@ describe('checkAiAutoMod', () => {
     expect(message.delete).toHaveBeenCalled();
   });
 
+  it('does not audit delete actions when Discord deletion fails', async () => {
+    message.delete.mockRejectedValueOnce(new Error('Missing Permissions'));
+    mockGenerate.mockResolvedValue(
+      makeClaudeResponse({ toxicity: 0.1, spam: 0.95, harassment: 0.1, reason: 'spam' }),
+    );
+    const guildConfig = makeAiAutoModGuildConfig();
+
+    const result = await checkAiAutoMod(message, client, guildConfig);
+
+    expect(result).toMatchObject({ flagged: true, action: 'delete' });
+    expect(message.delete).toHaveBeenCalledTimes(1);
+    expect(logAuditEvent).not.toHaveBeenCalled();
+  });
+
   it('creates a warn case when action is warn', async () => {
     mockGenerate.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.1, spam: 0.1, harassment: 0.9, reason: 'harassment' }),
@@ -651,14 +665,7 @@ describe('checkAiAutoMod', () => {
     expect(result).toMatchObject({ flagged: true, action: 'warn' });
     expect(createCase).not.toHaveBeenCalled();
     expect(sendDmNotification).not.toHaveBeenCalled();
-    expect(logAuditEvent).toHaveBeenCalledWith(
-      mockPool,
-      expect.objectContaining({
-        action: 'ai_automod.warn',
-        targetId: 'user-1',
-        details: expect.objectContaining({ caseId: null }),
-      }),
-    );
+    expect(logAuditEvent).not.toHaveBeenCalled();
   });
 
   it('does not DM or create warning records when warn case creation fails', async () => {
@@ -678,13 +685,7 @@ describe('checkAiAutoMod', () => {
     expect(createWarning).not.toHaveBeenCalled();
     expect(sendModLogEmbed).not.toHaveBeenCalled();
     expect(checkEscalation).not.toHaveBeenCalled();
-    expect(logAuditEvent).toHaveBeenCalledWith(
-      mockPool,
-      expect.objectContaining({
-        action: 'ai_automod.warn',
-        details: expect.objectContaining({ caseId: null }),
-      }),
-    );
+    expect(logAuditEvent).not.toHaveBeenCalled();
   });
 
   it('continues warn persistence and escalation when warn DM notification fails', async () => {
@@ -815,6 +816,24 @@ describe('checkAiAutoMod', () => {
     expect(result.flagged).toBe(true);
     expect(result.action).toBe('timeout');
     expect(message.member.timeout).toHaveBeenCalledWith(300000, expect.any(String));
+  });
+
+  it('does not audit timeout actions when Discord timeout fails', async () => {
+    message.member.timeout.mockRejectedValueOnce(new Error('Missing Permissions'));
+    mockGenerate.mockResolvedValue(
+      makeClaudeResponse({ toxicity: 0.9, spam: 0.1, harassment: 0.1, reason: 'toxic' }),
+    );
+    const guildConfig = makeAiAutoModGuildConfig({
+      actions: { toxicity: 'timeout' },
+      timeoutDurationMs: 300000,
+    });
+
+    const result = await checkAiAutoMod(message, client, guildConfig);
+
+    expect(result).toMatchObject({ flagged: true, action: 'timeout' });
+    expect(message.member.timeout).toHaveBeenCalledWith(300000, expect.any(String));
+    expect(createCase).not.toHaveBeenCalled();
+    expect(logAuditEvent).not.toHaveBeenCalled();
   });
 
   it('kicks member when action is kick', async () => {

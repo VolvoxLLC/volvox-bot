@@ -13,6 +13,20 @@ import {
 } from '../utils/supportedAiModels.js';
 
 const DEFAULT_TRIAGE_MODEL = DEFAULT_AI_MODEL;
+const warnedModelFallbacks = new Set();
+
+function warnModelFallbackOnce(message, details) {
+  const dedupeKey = JSON.stringify({
+    message,
+    origin: details.origin,
+    value: details.value,
+    reason: details.reason ?? null,
+  });
+
+  if (warnedModelFallbacks.has(dedupeKey)) return;
+  warnedModelFallbacks.add(dedupeKey);
+  warn(message, details);
+}
 
 /**
  * Return `value` when it is a non-empty string AND parses as a valid
@@ -30,7 +44,7 @@ function validSupportedModel(value, origin) {
   try {
     parseProviderModel(value);
   } catch (err) {
-    warn('Triage config contains an invalid model string — falling back', {
+    warnModelFallbackOnce('Triage config contains an invalid model string — falling back', {
       origin,
       value,
       reason: err?.message,
@@ -40,7 +54,7 @@ function validSupportedModel(value, origin) {
   }
 
   if (!isSupportedAiModel(value)) {
-    warn('Triage config contains an unsupported model string — falling back', {
+    warnModelFallbackOnce('Triage config contains an unsupported model string — falling back', {
       origin,
       value,
       hint: 'Select one of the supported dashboard models.',
