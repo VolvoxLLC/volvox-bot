@@ -818,84 +818,86 @@ describe('checkAiAutoMod', () => {
     expect(message.member.timeout).toHaveBeenCalledWith(300000, expect.any(String));
   });
 
-  it.each(['timeout', 'kick', 'ban'])(
-    'audits %s actions when Discord moderation succeeds even if case creation fails',
-    async (action) => {
-      vi.mocked(createCase).mockRejectedValueOnce(new Error('database unavailable'));
-      mockGenerate.mockResolvedValue(
-        makeClaudeResponse({ toxicity: 0.9, spam: 0.1, harassment: 0.1, reason: 'toxic' }),
-      );
-      const guildConfig = makeAiAutoModGuildConfig({
-        actions: { toxicity: action },
-        timeoutDurationMs: 300000,
-      });
+  it.each([
+    'timeout',
+    'kick',
+    'ban',
+  ])('audits %s actions when Discord moderation succeeds even if case creation fails', async (action) => {
+    vi.mocked(createCase).mockRejectedValueOnce(new Error('database unavailable'));
+    mockGenerate.mockResolvedValue(
+      makeClaudeResponse({ toxicity: 0.9, spam: 0.1, harassment: 0.1, reason: 'toxic' }),
+    );
+    const guildConfig = makeAiAutoModGuildConfig({
+      actions: { toxicity: action },
+      timeoutDurationMs: 300000,
+    });
 
-      const result = await checkAiAutoMod(message, client, guildConfig);
+    const result = await checkAiAutoMod(message, client, guildConfig);
 
-      expect(result).toMatchObject({ flagged: true, action });
-      if (action === 'timeout') {
-        expect(message.member.timeout).toHaveBeenCalledWith(300000, expect.any(String));
-      } else if (action === 'kick') {
-        expect(message.member.kick).toHaveBeenCalledWith(expect.any(String));
-      } else {
-        expect(message.guild.members.ban).toHaveBeenCalledWith(
-          'user-1',
-          expect.objectContaining({ reason: expect.any(String) }),
-        );
-      }
-      expect(createCase).toHaveBeenCalledWith(
-        'guild-1',
-        expect.objectContaining({ action, targetId: 'user-1' }),
+    expect(result).toMatchObject({ flagged: true, action });
+    if (action === 'timeout') {
+      expect(message.member.timeout).toHaveBeenCalledWith(300000, expect.any(String));
+    } else if (action === 'kick') {
+      expect(message.member.kick).toHaveBeenCalledWith(expect.any(String));
+    } else {
+      expect(message.guild.members.ban).toHaveBeenCalledWith(
+        'user-1',
+        expect.objectContaining({ reason: expect.any(String) }),
       );
-      expect(logAuditEvent).toHaveBeenCalledWith(
-        mockPool,
-        expect.objectContaining({
-          action: `ai_automod.${action}`,
-          details: expect.objectContaining({
-            action,
-            caseId: null,
-            caseNumber: null,
-          }),
+    }
+    expect(createCase).toHaveBeenCalledWith(
+      'guild-1',
+      expect.objectContaining({ action, targetId: 'user-1' }),
+    );
+    expect(logAuditEvent).toHaveBeenCalledWith(
+      mockPool,
+      expect.objectContaining({
+        action: `ai_automod.${action}`,
+        details: expect.objectContaining({
+          action,
+          caseId: null,
+          caseNumber: null,
         }),
+      }),
+    );
+  });
+
+  it.each([
+    'timeout',
+    'kick',
+    'ban',
+  ])('does not audit %s actions when Discord moderation fails', async (action) => {
+    if (action === 'timeout') {
+      message.member.timeout.mockRejectedValueOnce(new Error('Missing Permissions'));
+    } else if (action === 'kick') {
+      message.member.kick.mockRejectedValueOnce(new Error('Missing Permissions'));
+    } else {
+      message.guild.members.ban.mockRejectedValueOnce(new Error('Missing Permissions'));
+    }
+    mockGenerate.mockResolvedValue(
+      makeClaudeResponse({ toxicity: 0.9, spam: 0.1, harassment: 0.1, reason: 'toxic' }),
+    );
+    const guildConfig = makeAiAutoModGuildConfig({
+      actions: { toxicity: action },
+      timeoutDurationMs: 300000,
+    });
+
+    const result = await checkAiAutoMod(message, client, guildConfig);
+
+    expect(result).toMatchObject({ flagged: true, action });
+    if (action === 'timeout') {
+      expect(message.member.timeout).toHaveBeenCalledWith(300000, expect.any(String));
+    } else if (action === 'kick') {
+      expect(message.member.kick).toHaveBeenCalledWith(expect.any(String));
+    } else {
+      expect(message.guild.members.ban).toHaveBeenCalledWith(
+        'user-1',
+        expect.objectContaining({ reason: expect.any(String) }),
       );
-    },
-  );
-
-  it.each(['timeout', 'kick', 'ban'])(
-    'does not audit %s actions when Discord moderation fails',
-    async (action) => {
-      if (action === 'timeout') {
-        message.member.timeout.mockRejectedValueOnce(new Error('Missing Permissions'));
-      } else if (action === 'kick') {
-        message.member.kick.mockRejectedValueOnce(new Error('Missing Permissions'));
-      } else {
-        message.guild.members.ban.mockRejectedValueOnce(new Error('Missing Permissions'));
-      }
-      mockGenerate.mockResolvedValue(
-        makeClaudeResponse({ toxicity: 0.9, spam: 0.1, harassment: 0.1, reason: 'toxic' }),
-      );
-      const guildConfig = makeAiAutoModGuildConfig({
-        actions: { toxicity: action },
-        timeoutDurationMs: 300000,
-      });
-
-      const result = await checkAiAutoMod(message, client, guildConfig);
-
-      expect(result).toMatchObject({ flagged: true, action });
-      if (action === 'timeout') {
-        expect(message.member.timeout).toHaveBeenCalledWith(300000, expect.any(String));
-      } else if (action === 'kick') {
-        expect(message.member.kick).toHaveBeenCalledWith(expect.any(String));
-      } else {
-        expect(message.guild.members.ban).toHaveBeenCalledWith(
-          'user-1',
-          expect.objectContaining({ reason: expect.any(String) }),
-        );
-      }
-      expect(createCase).not.toHaveBeenCalled();
-      expect(logAuditEvent).not.toHaveBeenCalled();
-    },
-  );
+    }
+    expect(createCase).not.toHaveBeenCalled();
+    expect(logAuditEvent).not.toHaveBeenCalled();
+  });
 
   it('kicks member when action is kick', async () => {
     mockGenerate.mockResolvedValue(
