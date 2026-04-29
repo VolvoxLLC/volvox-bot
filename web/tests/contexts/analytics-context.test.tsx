@@ -118,6 +118,21 @@ function renderProvider() {
   );
 }
 
+async function withMockLocation<T>(callback: () => Promise<T> | T): Promise<T> {
+  const originalLocation = window.location;
+  // @ts-expect-error jsdom location is read-only unless replaced for this test.
+  delete window.location;
+  // @ts-expect-error only href is needed by the provider.
+  window.location = { href: '' };
+
+  try {
+    return await callback();
+  } finally {
+    // @ts-expect-error restore mocked location.
+    window.location = originalLocation;
+  }
+}
+
 describe('AnalyticsProvider', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -193,12 +208,6 @@ describe('AnalyticsProvider', () => {
   });
 
   it('handles unauthorized, API, invalid payload, unknown, and abort errors', async () => {
-    const originalLocation = window.location;
-    // @ts-expect-error jsdom location is read-only unless replaced for this test.
-    delete window.location;
-    // @ts-expect-error only href is needed by the provider.
-    window.location = { href: '' };
-
     vi.mocked(fetch)
       .mockResolvedValueOnce(jsonResponse({ error: 'Unauthorized' }, { status: 401 }))
       .mockResolvedValueOnce(jsonResponse({ error: 'analytics down' }, { status: 503 }))
@@ -206,39 +215,45 @@ describe('AnalyticsProvider', () => {
       .mockRejectedValueOnce('boom')
       .mockRejectedValueOnce(new DOMException('aborted', 'AbortError'));
 
-    renderProvider();
+    await withMockLocation(async () => {
+      renderProvider();
 
-    await waitFor(() => expect(window.location.href).toBe('/login'));
+      await waitFor(() => expect(window.location.href).toBe('/login'));
 
-    await act(async () => {
-      screen.getByRole('button', { name: 'Background refresh' }).click();
+      await act(async () => {
+        screen.getByRole('button', { name: 'Background refresh' }).click();
+      });
+      expect(screen.getByTestId('error')).toHaveTextContent('analytics down');
+
+      await act(async () => {
+        screen.getByRole('button', { name: 'Background refresh' }).click();
+      });
+      expect(screen.getByTestId('error')).toHaveTextContent('Invalid analytics payload from server');
+
+      await act(async () => {
+        screen.getByRole('button', { name: 'Background refresh' }).click();
+      });
+      expect(screen.getByTestId('error')).toHaveTextContent('Unknown error');
+
+      await act(async () => {
+        screen.getByRole('button', { name: 'Background refresh' }).click();
+      });
+      expect(screen.getByTestId('error')).toHaveTextContent('');
     });
-    expect(screen.getByTestId('error')).toHaveTextContent('analytics down');
-
-    await act(async () => {
-      screen.getByRole('button', { name: 'Background refresh' }).click();
-    });
-    expect(screen.getByTestId('error')).toHaveTextContent('Invalid analytics payload from server');
-
-    await act(async () => {
-      screen.getByRole('button', { name: 'Background refresh' }).click();
-    });
-    expect(screen.getByTestId('error')).toHaveTextContent('Unknown error');
-
-    await act(async () => {
-      screen.getByRole('button', { name: 'Background refresh' }).click();
-    });
-    expect(screen.getByTestId('error')).toHaveTextContent('');
-
-    // @ts-expect-error restore mocked location.
-    window.location = originalLocation;
   });
 
-  it('throws when the hook is used outside the provider and skips fetch without a guild', () => {
+  it('throws when the hook is used outside the provider', () => {
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    expect(() => render(<AnalyticsHarness />)).toThrow('useAnalytics must be used within an AnalyticsProvider');
-    consoleErrorSpy.mockRestore();
+    try {
+      expect(() => render(<AnalyticsHarness />)).toThrow(
+        'useAnalytics must be used within an AnalyticsProvider',
+      );
+    } finally {
+      consoleErrorSpy.mockRestore();
+    }
+  });
 
+  it('skips fetching analytics when no guild is selected', () => {
     mockUseGuildSelection.mockReturnValueOnce(undefined);
     renderProvider();
     expect(fetch).not.toHaveBeenCalled();

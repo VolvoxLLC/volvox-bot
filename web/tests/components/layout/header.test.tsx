@@ -254,7 +254,16 @@ describe('Header', () => {
   });
 
   it.each([
-    ['/dashboard/moderation', /Refresh Mod Data/i, () => expect(mockFetchStats).toHaveBeenCalledWith('guild-1', expect.any(Object))],
+    [
+      '/dashboard/moderation',
+      /Refresh Mod Data/i,
+      async () => {
+        await waitFor(() => {
+          expect(mockFetchStats).toHaveBeenCalledWith('guild-1', expect.any(Object));
+          expect(mockFetchCases).toHaveBeenCalledWith('guild-1', expect.any(Object));
+        });
+      },
+    ],
     ['/dashboard/members', /Refresh Members/i, () => expect(mockRefreshMembers).toHaveBeenCalledWith('guild-1')],
     ['/dashboard/tickets', /Refresh Tickets/i, () => expect(mockRefreshTickets).toHaveBeenCalledWith('guild-1')],
     ['/dashboard/conversations', /Refresh Conversations/i, () => expect(mockRefreshConversations).toHaveBeenCalledWith('guild-1')],
@@ -268,7 +277,7 @@ describe('Header', () => {
 
     await user.click(screen.getByRole('button', { name: buttonName }));
 
-    assertion();
+    await assertion();
   });
 
   it.each([

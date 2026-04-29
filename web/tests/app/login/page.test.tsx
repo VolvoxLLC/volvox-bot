@@ -109,9 +109,12 @@ describe('LoginPage', () => {
     });
   });
 
-  it('falls back to /dashboard for an unsafe protocol-relative callbackUrl', async () => {
+  it.each([
+    ['protocol-relative', '//evil.com'],
+    ['absolute', 'https://evil.com'],
+  ])('falls back to /dashboard for an unsafe %s callbackUrl', async (_label, callbackUrl) => {
     const user = userEvent.setup();
-    mocks.searchParams = new URLSearchParams('callbackUrl=//evil.com');
+    mocks.searchParams = new URLSearchParams(`callbackUrl=${encodeURIComponent(callbackUrl)}`);
 
     renderLogin();
 
@@ -135,8 +138,11 @@ describe('LoginPage', () => {
     expect(screen.queryByText(/Authorize your Discord account/i)).not.toBeInTheDocument();
   });
 
-  it('sanitizes authenticated redirects and rejects protocol-relative callbackUrl values', async () => {
-    mocks.searchParams = new URLSearchParams('callbackUrl=//evil.com');
+  it.each([
+    ['protocol-relative', '//evil.com'],
+    ['absolute', 'https://evil.com'],
+  ])('sanitizes authenticated redirects and rejects %s callbackUrl values', async (_label, callbackUrl) => {
+    mocks.searchParams = new URLSearchParams(`callbackUrl=${encodeURIComponent(callbackUrl)}`);
     setSession({ user: { name: 'Test' } });
 
     renderLogin();

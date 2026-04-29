@@ -60,6 +60,21 @@ async function renderLoadedConfigContext() {
   return view;
 }
 
+async function withMockLocation<T>(callback: () => Promise<T> | T): Promise<T> {
+  const originalLocation = window.location;
+  // @ts-expect-error jsdom location replacement for redirect assertion
+  delete window.location;
+  // @ts-expect-error minimal location mock for href assignment
+  window.location = { href: '' };
+
+  try {
+    return await callback();
+  } finally {
+    // @ts-expect-error restore jsdom location
+    window.location = originalLocation;
+  }
+}
+
 describe('ConfigProvider', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -285,31 +300,24 @@ describe('ConfigProvider', () => {
       });
     vi.stubGlobal('fetch', fetchMock);
 
-    const originalLocation = window.location;
-    // @ts-expect-error jsdom location replacement for redirect assertion
-    delete window.location;
-    // @ts-expect-error minimal location mock for href assignment
-    window.location = { href: '' };
+    await withMockLocation(async () => {
+      const { result } = await renderConfigContext();
 
-    const { result } = await renderConfigContext();
+      await waitFor(() => expect(window.location.href).toBe('/login'));
+      expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/guilds/guild-123/config');
 
-    await waitFor(() => expect(window.location.href).toBe('/login'));
-    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/guilds/guild-123/config');
+      await act(async () => result.current.fetchConfig('guild-invalid'));
+      expect(result.current.error).toBe('Invalid config response');
 
-    await act(async () => result.current.fetchConfig('guild-invalid'));
-    expect(result.current.error).toBe('Invalid config response');
+      await act(async () => result.current.fetchConfig('guild-error'));
+      expect(result.current.error).toBe('temporarily unavailable');
+      expect(toast.error).toHaveBeenCalledWith('Failed to load config', {
+        description: 'temporarily unavailable',
+      });
 
-    await act(async () => result.current.fetchConfig('guild-error'));
-    expect(result.current.error).toBe('temporarily unavailable');
-    expect(toast.error).toHaveBeenCalledWith('Failed to load config', {
-      description: 'temporarily unavailable',
+      await act(async () => result.current.fetchConfig('guild-ok'));
+      await waitFor(() => expect(result.current.draftConfig?.welcome?.roleMenu?.options?.[0]?.id).toBeTruthy());
     });
-
-    await act(async () => result.current.fetchConfig('guild-ok'));
-    await waitFor(() => expect(result.current.draftConfig?.welcome?.roleMenu?.options?.[0]?.id).toBeTruthy());
-
-    // @ts-expect-error restore jsdom location
-    window.location = originalLocation;
   });
 
   it('derives search, active tabs, dirty counts, focus behavior, and category navigation', async () => {
@@ -443,51 +451,44 @@ describe('ConfigProvider', () => {
       .mockResolvedValueOnce(configResponse({}, 401));
     vi.stubGlobal('fetch', fetchMock);
 
-    const originalLocation = window.location;
-    // @ts-expect-error jsdom location replacement for redirect assertion
-    delete window.location;
-    // @ts-expect-error minimal location mock for href assignment
-    window.location = { href: '' };
+    await withMockLocation(async () => {
+      const { result } = await renderConfigContext();
 
-    const { result } = await renderConfigContext();
+      await waitFor(() => expect(result.current.draftConfig).not.toBeNull());
+      act(() => {
+        result.current.updateDraftConfig((prev) => ({
+          ...prev,
+          ai: { ...prev.ai, enabled: true },
+        }));
+      });
 
-    await waitFor(() => expect(result.current.draftConfig).not.toBeNull());
-    act(() => {
-      result.current.updateDraftConfig((prev) => ({
-        ...prev,
-        ai: { ...prev.ai, enabled: true },
-      }));
+      await act(async () => result.current.executeSave());
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/guilds/guild-123/config',
+        expect.objectContaining({ method: 'PUT', body: expect.stringContaining('ai.enabled') }),
+      );
+      expect(toast.success).toHaveBeenCalledWith('Config saved successfully!');
+      expect(result.current.prevSavedConfig?.guildId).toBe('guild-123');
+
+      act(() => result.current.undoLastSave());
+      expect(result.current.prevSavedConfig).toBeNull();
+      expect(toast.info).toHaveBeenCalledWith('Reverted to previous saved state. Save again to apply.');
+
+      act(() => result.current.revertSection('ai'));
+      expect(toast.success).toHaveBeenCalledWith('Reverted ai changes.');
+
+      act(() => {
+        result.current.updateDraftConfig((prev) => ({
+          ...prev,
+          moderation: { ...prev.moderation, enabled: true },
+        }));
+      });
+      await act(async () => result.current.executeSave());
+      expect(toast.error).toHaveBeenCalledWith('Failed to save config', { description: 'HTTP 400: bad patch' });
+
+      await act(async () => result.current.executeSave());
+      expect(window.location.href).toBe('/login');
     });
-
-    await act(async () => result.current.executeSave());
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/api/guilds/guild-123/config',
-      expect.objectContaining({ method: 'PUT', body: expect.stringContaining('ai.enabled') }),
-    );
-    expect(toast.success).toHaveBeenCalledWith('Config saved successfully!');
-    expect(result.current.prevSavedConfig?.guildId).toBe('guild-123');
-
-    act(() => result.current.undoLastSave());
-    expect(result.current.prevSavedConfig).toBeNull();
-    expect(toast.info).toHaveBeenCalledWith('Reverted to previous saved state. Save again to apply.');
-
-    act(() => result.current.revertSection('ai'));
-    expect(toast.success).toHaveBeenCalledWith('Reverted ai changes.');
-
-    act(() => {
-      result.current.updateDraftConfig((prev) => ({
-        ...prev,
-        moderation: { ...prev.moderation, enabled: true },
-      }));
-    });
-    await act(async () => result.current.executeSave());
-    expect(toast.error).toHaveBeenCalledWith('Failed to save config', { description: 'HTTP 400: bad patch' });
-
-    await act(async () => result.current.executeSave());
-    expect(window.location.href).toBe('/login');
-
-    // @ts-expect-error restore jsdom location
-    window.location = originalLocation;
   });
 
   it('handles keyboard search shortcuts and beforeunload only when changes exist', async () => {
