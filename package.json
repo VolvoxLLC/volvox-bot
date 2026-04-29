@@ -16,6 +16,8 @@
     "mono:test": "turbo run test",
     "mono:test:coverage": "turbo run test:coverage",
     "mono:typecheck": "turbo run typecheck",
+    "sonar:sync-coverage-exclusions": "node scripts/sync-sonar-coverage-exclusions.mjs",
+    "sonar:check-coverage-exclusions": "node scripts/sync-sonar-coverage-exclusions.mjs --check",
     "deploy": "node src/deploy-commands.js",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -30,7 +32,9 @@
     "migrate:down": "node-pg-migrate down --migrations-dir migrations",
     "migrate:create": "node-pg-migrate create --migrations-dir migrations",
     "prepare": "[ -d .git ] && git config core.hooksPath .hooks || true",
-    "docs:generate": "node scripts/generate-openapi.js"
+    "docs:generate": "node scripts/generate-openapi.js",
+    "providers:sync": "node scripts/sync-web-provider-catalog.js",
+    "providers:check": "node scripts/sync-web-provider-catalog.js --check"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.68",

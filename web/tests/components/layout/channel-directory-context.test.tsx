@@ -366,4 +366,89 @@ describe('ChannelDirectoryProvider', () => {
     } as Response);
   });
 
+  it('sorts valid channels while dropping malformed API entries', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => [
+        { id: '3', name: 'Category', type: 4 },
+        { id: '2', name: 'beta', type: 0 },
+        { id: 'bad', name: 'missing type' },
+        null,
+        { id: '1', name: 'alpha', type: 0 },
+      ],
+    } as Response);
+
+    render(
+      <ChannelDirectoryProvider>
+        <ChannelConsumer guildId="guild-1" />
+      </ChannelDirectoryProvider>,
+    );
+
+    await screen.findByText('alpha, beta, Category');
+  });
+
+  it('surfaces invalid channel payloads as retryable errors', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ channels: [] }),
+    } as Response);
+
+    render(
+      <ChannelDirectoryProvider>
+        <ChannelConsumer guildId="guild-1" />
+      </ChannelDirectoryProvider>,
+    );
+
+    await screen.findByText('Invalid response: expected array');
+  });
+
+  it('does not fetch when no guild is selected or when no-op loaders are invoked', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => [],
+    } as Response);
+
+    function NoGuildActions() {
+      const { ensureChannelsLoaded, refreshChannels } = useGuildChannels(null);
+
+      return (
+        <div>
+          <button type="button" onClick={() => void ensureChannelsLoaded()}>
+            Ensure
+          </button>
+          <button type="button" onClick={() => void refreshChannels()}>
+            Refresh
+          </button>
+        </div>
+      );
+    }
+
+    const user = userEvent.setup();
+    render(
+      <ChannelDirectoryProvider>
+        <ChannelConsumer guildId={null} />
+        <NoGuildActions />
+      </ChannelDirectoryProvider>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Ensure' }));
+    await user.click(screen.getByRole('button', { name: 'Refresh' }));
+
+    expect(screen.getByText('No guild')).toBeInTheDocument();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('requires consumers to be rendered within the provider', () => {
+    function MissingProviderConsumer() {
+      useGuildChannels('guild-1');
+      return null;
+    }
+
+    expect(() => render(<MissingProviderConsumer />)).toThrow(
+      'useGuildChannels must be used within ChannelDirectoryProvider',
+    );
+  });
 });

@@ -35,6 +35,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Check Sonar coverage exclusions
+        run: pnpm sonar:check-coverage-exclusions
+
       - name: Lint (Biome)
         run: pnpm mono:lint
 
@@ -57,6 +60,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Check provider catalog snapshot
+        run: pnpm providers:check
 
       - name: Test with coverage (bot)
         run: pnpm test:coverage
