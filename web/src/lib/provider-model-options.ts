@@ -1,7 +1,7 @@
 // The web app imports a generated snapshot because the Railway/Docker web build
 // context cannot read the backend src/ tree. `pnpm providers:check` enforces
 // that this file stays identical to src/data/providers.json.
-import providersCatalog from '../data/providers.json';
+import providersCatalog from '@/data/providers.json';
 
 export interface ProviderModelOption {
   value: string;
