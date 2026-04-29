@@ -108,7 +108,7 @@ function findProviderModelOptionByValue(
 export function isProviderModelId(value: unknown): value is string {
   return (
     typeof value === 'string' &&
-    /^[a-z0-9][a-z0-9._-]*:[^\s:][^\s]*$/i.test(value) &&
+    /^[a-z0-9][a-z0-9._-]*:[^\s:]+$/i.test(value) &&
     value === value.trim()
   );
 }
