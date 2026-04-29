@@ -523,7 +523,7 @@ async function executeSingleAction(
         logError('AI auto-mod: createCase (timeout) failed', { error: err?.message });
         return null;
       });
-      return { success: Boolean(caseData), caseData };
+      return { success: true, caseData };
     }
 
     case 'kick': {
@@ -548,7 +548,7 @@ async function executeSingleAction(
         logError('AI auto-mod: createCase (kick) failed', { error: err?.message });
         return null;
       });
-      return { success: Boolean(caseData), caseData };
+      return { success: true, caseData };
     }
 
     case 'ban': {
@@ -573,7 +573,7 @@ async function executeSingleAction(
         logError('AI auto-mod: createCase (ban) failed', { error: err?.message });
         return null;
       });
-      return { success: Boolean(caseData), caseData };
+      return { success: true, caseData };
     }
 
     case 'delete': {
