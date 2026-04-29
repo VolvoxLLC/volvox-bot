@@ -31,6 +31,8 @@ describe('supported AI models', () => {
   it('validates and normalizes against the generated allowlist', () => {
     expect(DEFAULT_AI_MODEL).toBe(SUPPORTED_AI_MODEL_TYPES[0]);
     expect(isSupportedAiModel('openrouter:minimax/minimax-m2.5:free')).toBe(true);
+    expect(isSupportedAiModel('MINIMAX:minimax-m2.5')).toBe(true);
+    expect(normalizeSupportedAiModel('MINIMAX:minimax-m2.5')).toBe('minimax:MiniMax-M2.5');
     expect(isSupportedAiModel('anthropic:claude-3-5-haiku')).toBe(false);
     expect(normalizeSupportedAiModel('anthropic:claude-3-5-haiku')).toBe(DEFAULT_AI_MODEL);
   });

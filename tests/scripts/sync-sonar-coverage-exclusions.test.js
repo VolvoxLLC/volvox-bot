@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { verifyVitestCoverageExclusions } from '../../scripts/sync-sonar-coverage-exclusions.mjs';
 
@@ -245,5 +247,19 @@ describe('verifyVitestCoverageExclusions', () => {
     expect(() => verifyVitestCoverageExclusions(config)).toThrow(
       /coverage\.exclude must directly use Object\.values\(coverageExclusionGroups\)\.flat\(\)/,
     );
+  });
+
+  it('keeps high-value web app logic out of broad coverage exclusions', () => {
+    const coverageExclusions = JSON.parse(
+      readFileSync(resolve(import.meta.dirname, '../../web/coverage-exclusions.json'), 'utf8'),
+    );
+    const patterns = Object.values(coverageExclusions).flat();
+
+    expect(patterns).not.toContain('src/app/**/route.ts');
+    expect(patterns).not.toContain('src/app/api/**/route.ts');
+    expect(patterns).not.toContain('src/stores/**');
+    expect(patterns).not.toContain('src/contexts/**');
+    expect(patterns).not.toContain('src/app/dashboard/**');
+    expect(patterns).not.toContain('src/components/dashboard/**');
   });
 });
