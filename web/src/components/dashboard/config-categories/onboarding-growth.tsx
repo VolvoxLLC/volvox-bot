@@ -17,6 +17,10 @@ import { ChannelSelector } from '@/components/ui/channel-selector';
 import { DiscordMarkdownEditor } from '@/components/ui/discord-markdown-editor';
 import { InfoTip } from '@/components/ui/info-tip';
 import { RoleSelector } from '@/components/ui/role-selector';
+import {
+  getVisibleProviderModelValue,
+  VISIBLE_PROVIDER_MODEL_OPTIONS,
+} from '@/lib/provider-model-options';
 import { cn } from '@/lib/utils';
 import { ToggleSwitch } from '../toggle-switch';
 import { ConfigCategoryLayout } from './config-category-layout';
@@ -27,6 +31,12 @@ const STATIC_VARIABLE_DEFINITIONS = [
   { name: 'server', description: 'Server name', sample: 'Volvox' },
   { name: 'memberCount', description: 'Total members', sample: '142' },
 ] as const;
+const hasVisibleModelOptions = VISIBLE_PROVIDER_MODEL_OPTIONS.length > 0;
+
+function shouldNormalizeSavedModel(value: unknown, normalizedValue: string): value is string {
+  return typeof value === 'string' && value.length > 0 && normalizedValue !== value;
+}
+
 const DYNAMIC_VARIABLE_DEFINITIONS = [
   {
     name: 'greeting',
@@ -176,6 +186,28 @@ export function OnboardingGrowthCategory() {
       updateWelcomeRoleMenu('options', welcomeRoleOptions);
     }
   }, [draftConfig, updateWelcomeRoleMenu, welcomeRoleOptions]);
+
+  const currentTldrModel = draftConfig?.tldr?.model;
+  const tldrModelValue = getVisibleProviderModelValue(currentTldrModel);
+
+  useEffect(() => {
+    if (!draftConfig || activeTab !== 'tldr-afk' || !hasVisibleModelOptions) return;
+    if (!shouldNormalizeSavedModel(currentTldrModel, tldrModelValue)) return;
+
+    updateDraftConfig((prev) => {
+      const previousModel = prev.tldr?.model;
+      const normalizedModel = getVisibleProviderModelValue(previousModel);
+      if (!shouldNormalizeSavedModel(previousModel, normalizedModel)) return prev;
+
+      return {
+        ...prev,
+        tldr: {
+          ...prev.tldr,
+          model: normalizedModel,
+        },
+      };
+    });
+  }, [activeTab, currentTldrModel, draftConfig, tldrModelValue, updateDraftConfig]);
 
   if (!draftConfig) return null;
   if (!activeTab) return null;

@@ -79,11 +79,14 @@ function normalizeAiAutoModActions(
 ): SelectableAiAutoModAction[] {
   if (value === 'none') return [];
 
-  const rawActions = Array.isArray(value)
-    ? value
-    : isSelectableAiAutoModAction(value)
-      ? [value]
-      : fallback;
+  let rawActions: readonly unknown[];
+  if (Array.isArray(value)) {
+    rawActions = value;
+  } else if (isSelectableAiAutoModAction(value)) {
+    rawActions = [value];
+  } else {
+    rawActions = fallback;
+  }
   const uniqueActions = rawActions.filter(
     (action, index, allActions): action is SelectableAiAutoModAction =>
       isSelectableAiAutoModAction(action) && allActions.indexOf(action) === index,
@@ -92,7 +95,63 @@ function normalizeAiAutoModActions(
   return sortAiAutoModActions(uniqueActions);
 }
 
+function toggleAiAutoModCategoryAction(
+  previousActions: AiAutoModDraft['actions'],
+  categoryKey: AiAutoModCategory,
+  fallbackActions: readonly SelectableAiAutoModAction[],
+  action: SelectableAiAutoModAction,
+  checked: boolean,
+): NonNullable<AiAutoModDraft['actions']> {
+  const previousActionMap = previousActions ?? {};
+  const previousCategoryActions = normalizeAiAutoModActions(
+    previousActionMap[categoryKey],
+    fallbackActions,
+  );
+  const nextActions = checked
+    ? sortAiAutoModActions([...previousCategoryActions, action])
+    : previousCategoryActions.filter((selectedAction) => selectedAction !== action);
+
+  return {
+    ...previousActionMap,
+    [categoryKey]: nextActions,
+  };
+}
+
+function AiAutoModActionToggle({
+  categoryLabel,
+  option,
+  checked,
+  disabled,
+  onToggle,
+}: {
+  categoryLabel: string;
+  option: (typeof AI_AUTOMOD_ACTION_OPTIONS)[number];
+  checked: boolean;
+  disabled: boolean;
+  onToggle: (checked: boolean) => void;
+}) {
+  return (
+    <label className="cursor-pointer">
+      <input
+        type="checkbox"
+        aria-label={`${categoryLabel} ${option.label}`}
+        checked={checked}
+        onChange={(event) => onToggle(event.target.checked)}
+        disabled={disabled}
+        className="peer sr-only"
+      />
+      <span className="block rounded-lg border border-border/40 bg-background/70 px-3 py-2 text-[11px] font-bold text-foreground/60 transition-colors peer-checked:border-primary/60 peer-checked:bg-primary/15 peer-checked:text-foreground peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary">
+        {option.label}
+      </span>
+    </label>
+  );
+}
+
 const hasVisibleModelOptions = VISIBLE_PROVIDER_MODEL_OPTIONS.length > 0;
+
+function shouldNormalizeSavedModel(value: unknown, normalizedValue: string): value is string {
+  return typeof value === 'string' && normalizedValue !== value;
+}
 
 /**
  * Render the AI & Automation configuration UI for the chat, automod, triage, and memory feature tabs.
@@ -203,6 +262,26 @@ export function AiAutomationCategory() {
     [updateDraftConfig],
   );
 
+  const updateAiAutoModAction = useCallback(
+    (
+      categoryKey: AiAutoModCategory,
+      fallbackActions: readonly SelectableAiAutoModAction[],
+      action: SelectableAiAutoModAction,
+      checked: boolean,
+    ) => {
+      updateAiAutoModField('actions', (previousActions) =>
+        toggleAiAutoModCategoryAction(
+          previousActions,
+          categoryKey,
+          fallbackActions,
+          action,
+          checked,
+        ),
+      );
+    },
+    [updateAiAutoModField],
+  );
+
   const updateTriageField = useCallback(
     (field: string, value: unknown) => {
       updateDraftConfig((prev) => ({
@@ -233,31 +312,57 @@ export function AiAutomationCategory() {
 
   useEffect(() => {
     if (!hasDraftConfig || activeTab !== 'ai-automod' || !hasVisibleModelOptions) return;
-    if (aiAutoModModelValue === currentAiAutoModModel) return;
+    if (!shouldNormalizeSavedModel(currentAiAutoModModel, aiAutoModModelValue)) return;
 
-    updateDraftConfig((prev) => ({
-      ...prev,
-      aiAutoMod: {
-        ...prev.aiAutoMod,
-        model: getVisibleProviderModelValue(prev.aiAutoMod?.model),
-      },
-    }));
+    updateDraftConfig((prev) => {
+      const previousModel = prev.aiAutoMod?.model;
+      const normalizedModel = getVisibleProviderModelValue(previousModel);
+      if (!shouldNormalizeSavedModel(previousModel, normalizedModel)) return prev;
+
+      return {
+        ...prev,
+        aiAutoMod: {
+          ...prev.aiAutoMod,
+          model: normalizedModel,
+        },
+      };
+    });
   }, [activeTab, aiAutoModModelValue, currentAiAutoModModel, hasDraftConfig, updateDraftConfig]);
 
   useEffect(() => {
     if (!hasDraftConfig || activeTab !== 'triage' || !hasVisibleModelOptions) return;
-    if (classifyModelValue === currentClassifyModel && respondModelValue === currentRespondModel) {
-      return;
-    }
+    const shouldNormalizeClassifyModel = shouldNormalizeSavedModel(
+      currentClassifyModel,
+      classifyModelValue,
+    );
+    const shouldNormalizeRespondModel = shouldNormalizeSavedModel(
+      currentRespondModel,
+      respondModelValue,
+    );
+    if (!shouldNormalizeClassifyModel && !shouldNormalizeRespondModel) return;
 
-    updateDraftConfig((prev) => ({
-      ...prev,
-      triage: {
-        ...prev.triage,
-        classifyModel: getVisibleProviderModelValue(prev.triage?.classifyModel),
-        respondModel: getVisibleProviderModelValue(prev.triage?.respondModel),
-      },
-    }));
+    updateDraftConfig((prev) => {
+      const previousTriage = prev.triage ?? {};
+      const normalizedTriageModels: Record<string, string> = {};
+      const normalizedClassifyModel = getVisibleProviderModelValue(previousTriage.classifyModel);
+      const normalizedRespondModel = getVisibleProviderModelValue(previousTriage.respondModel);
+
+      if (shouldNormalizeSavedModel(previousTriage.classifyModel, normalizedClassifyModel)) {
+        normalizedTriageModels.classifyModel = normalizedClassifyModel;
+      }
+      if (shouldNormalizeSavedModel(previousTriage.respondModel, normalizedRespondModel)) {
+        normalizedTriageModels.respondModel = normalizedRespondModel;
+      }
+      if (Object.keys(normalizedTriageModels).length === 0) return prev;
+
+      return {
+        ...prev,
+        triage: {
+          ...previousTriage,
+          ...normalizedTriageModels,
+        },
+      };
+    });
   }, [
     activeTab,
     classifyModelValue,
@@ -459,17 +564,14 @@ export function AiAutomationCategory() {
                             max={100}
                             step={5}
                             value={Math.round(
-                              ((draftConfig.aiAutoMod?.thresholds as Record<string, number>)?.[
-                                category.key
-                              ] ?? category.defaultThreshold) * 100,
+                              (draftConfig.aiAutoMod?.thresholds?.[category.key] ??
+                                category.defaultThreshold) * 100,
                             )}
                             onChange={(e) => {
                               const raw = Number(e.target.value);
                               const v = Number.isNaN(raw) ? 0 : Math.min(1, Math.max(0, raw / 100));
                               updateAiAutoModField('thresholds', (previousThresholds) => ({
-                                ...((previousThresholds as Partial<
-                                  Record<AiAutoModCategory, number>
-                                >) ?? {}),
+                                ...previousThresholds,
                                 [category.key]: v,
                               }));
                             }}
@@ -492,46 +594,21 @@ export function AiAutomationCategory() {
                         </span>
                         <div className="flex flex-wrap gap-2">
                           {AI_AUTOMOD_ACTION_OPTIONS.map((option) => (
-                            <label key={option.value} className="cursor-pointer">
-                              <input
-                                type="checkbox"
-                                aria-label={`${category.label} ${option.label}`}
-                                checked={selectedActions.includes(option.value)}
-                                onChange={(e) => {
-                                  const checked = e.target.checked;
-                                  updateAiAutoModField('actions', (previousActions) => {
-                                    const previousActionMap = (previousActions ??
-                                      {}) as NonNullable<AiAutoModDraft['actions']>;
-                                    const previousCategoryActions = normalizeAiAutoModActions(
-                                      (
-                                        previousActionMap as Partial<
-                                          Record<AiAutoModCategory, unknown>
-                                        >
-                                      )[category.key],
-                                      category.defaultActions,
-                                    );
-                                    const nextActions = checked
-                                      ? sortAiAutoModActions([
-                                          ...previousCategoryActions,
-                                          option.value,
-                                        ])
-                                      : previousCategoryActions.filter(
-                                          (action) => action !== option.value,
-                                        );
-
-                                    return {
-                                      ...previousActionMap,
-                                      [category.key]: nextActions,
-                                    };
-                                  });
-                                }}
-                                disabled={saving}
-                                className="peer sr-only"
-                              />
-                              <span className="block rounded-lg border border-border/40 bg-background/70 px-3 py-2 text-[11px] font-bold text-foreground/60 transition-colors peer-checked:border-primary/60 peer-checked:bg-primary/15 peer-checked:text-foreground peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary">
-                                {option.label}
-                              </span>
-                            </label>
+                            <AiAutoModActionToggle
+                              key={option.value}
+                              categoryLabel={category.label}
+                              option={option}
+                              checked={selectedActions.includes(option.value)}
+                              disabled={saving}
+                              onToggle={(checked) =>
+                                updateAiAutoModAction(
+                                  category.key,
+                                  category.defaultActions,
+                                  option.value,
+                                  checked,
+                                )
+                              }
+                            />
                           ))}
                           {selectedActions.length === 0 && (
                             <span className="rounded-lg border border-dashed border-border/40 px-3 py-2 text-[11px] font-bold text-muted-foreground">
@@ -566,7 +643,7 @@ export function AiAutomationCategory() {
                 <AiModelSelect
                   id="classify-model"
                   label="Classifier Engine"
-                  value={draftConfig.triage?.classifyModel}
+                  value={classifyModelValue}
                   onChange={(value) => updateTriageField('classifyModel', value)}
                   disabled={saving}
                   wrapperClassName="space-y-2"
@@ -575,7 +652,7 @@ export function AiAutomationCategory() {
                 <AiModelSelect
                   id="respond-model"
                   label="Response Engine"
-                  value={draftConfig.triage?.respondModel}
+                  value={respondModelValue}
                   onChange={(value) => updateTriageField('respondModel', value)}
                   disabled={saving}
                   wrapperClassName="space-y-2"

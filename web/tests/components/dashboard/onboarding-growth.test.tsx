@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -304,6 +304,73 @@ describe('OnboardingGrowthCategory', () => {
       unsupportedModel,
     );
     expect(screen.queryByText(`Custom: ${unsupportedModel}`)).not.toBeInTheDocument();
+  });
+
+  it('normalizes hidden saved TLDR models before saving', async () => {
+    const unsupportedModel = 'anthropic:claude-3-5-haiku';
+    const draftConfig = {
+      tldr: {
+        enabled: true,
+        model: unsupportedModel,
+        systemPrompt: '',
+        defaultMessages: 50,
+        maxMessages: 200,
+        cooldownSeconds: 300,
+      },
+      afk: { enabled: false },
+    };
+    const updateDraftConfig = vi.fn();
+
+    mockUseConfigContext.mockReturnValue({
+      draftConfig,
+      saving: false,
+      guildId: 'guild-1',
+      visibleFeatureIds: new Set(['tldr-afk']),
+      activeTabId: 'tldr-afk',
+      updateDraftConfig,
+    });
+
+    render(<OnboardingGrowthCategory />);
+
+    await waitFor(() => {
+      expect(updateDraftConfig).toHaveBeenCalled();
+    });
+
+    const updater = updateDraftConfig.mock.calls[0]?.[0] as (
+      config: typeof draftConfig,
+    ) => typeof draftConfig;
+    const nextConfig = updater(draftConfig);
+
+    expect(nextConfig.tldr.model).toBe('minimax:MiniMax-M2.7');
+  });
+
+  it('does not persist a default TLDR model when the saved field is absent', () => {
+    const draftConfig = {
+      tldr: {
+        enabled: true,
+        model: undefined,
+        systemPrompt: '',
+        defaultMessages: 50,
+        maxMessages: 200,
+        cooldownSeconds: 300,
+      },
+      afk: { enabled: false },
+    };
+    const updateDraftConfig = vi.fn();
+
+    mockUseConfigContext.mockReturnValue({
+      draftConfig,
+      saving: false,
+      guildId: 'guild-1',
+      visibleFeatureIds: new Set(['tldr-afk']),
+      activeTabId: 'tldr-afk',
+      updateDraftConfig,
+    });
+
+    render(<OnboardingGrowthCategory />);
+
+    expect(screen.getByLabelText('TL;DR Model')).toHaveValue('minimax:MiniMax-M2.7');
+    expect(updateDraftConfig).not.toHaveBeenCalled();
   });
 
   it('shows the full dynamic variable guide for welcome messages', async () => {

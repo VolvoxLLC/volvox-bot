@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_AI_MODEL,
+  VISIBLE_PROVIDER_MODEL_OPTIONS,
   buildVisibleProviderModelOptions,
   getVisibleProviderModelValue,
   groupProviderModelOptions,
@@ -76,16 +77,20 @@ describe('provider model options', () => {
     );
   });
 
-  it('falls back to the explicit default visible model when the saved model is hidden', () => {
+  it('derives the default model from the first synced visible catalog entry', () => {
+    expect(DEFAULT_AI_MODEL).toBe(VISIBLE_PROVIDER_MODEL_OPTIONS[0]?.value);
+  });
+
+  it('falls back to the first visible model when the saved model is hidden', () => {
     const options = buildVisibleProviderModelOptions(providerCatalog);
 
     expect(getVisibleProviderModelValue('minimax:MiniMax-M2.7', options)).toBe(
       'minimax:MiniMax-M2.7',
     );
-    expect(getVisibleProviderModelValue('minimax:MiniMax-M2.5', options)).toBe(DEFAULT_AI_MODEL);
+    expect(getVisibleProviderModelValue('minimax:MiniMax-M2.5', options)).toBe(options[0]?.value);
   });
 
-  it('does not depend on catalog order when falling back to the default model', () => {
+  it('uses catalog order when falling back to the default model', () => {
     const options = buildVisibleProviderModelOptions({
       providers: {
         moonshot: {
@@ -110,6 +115,6 @@ describe('provider model options', () => {
     });
 
     expect(options[0]?.value).toBe('moonshot:kimi-k2.6');
-    expect(getVisibleProviderModelValue('hidden:model', options)).toBe(DEFAULT_AI_MODEL);
+    expect(getVisibleProviderModelValue('hidden:model', options)).toBe(options[0]?.value);
   });
 });
