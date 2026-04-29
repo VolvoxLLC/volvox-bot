@@ -1202,6 +1202,27 @@ describe('checkAiAutoMod', () => {
     );
   });
 
+  it('includes global flag and delete actions in flag embeds when category actions are empty', async () => {
+    const mockFlagChannel = { id: 'flag-channel-1', send: vi.fn().mockResolvedValue(undefined) };
+    fetchChannelCached.mockResolvedValue(mockFlagChannel);
+    mockGenerate.mockResolvedValue(
+      makeClaudeResponse({ toxicity: 0.9, spam: 0.1, harassment: 0.1, reason: 'toxic' }),
+    );
+    const guildConfig = makeAiAutoModGuildConfig({
+      actions: { toxicity: 'none' },
+      autoDelete: true,
+      flagChannelId: 'flag-channel-1',
+    });
+
+    const result = await checkAiAutoMod(message, client, guildConfig);
+
+    expect(result).toMatchObject({ flagged: true, action: 'delete', actions: ['flag', 'delete'] });
+    expect(safeSend).toHaveBeenCalledTimes(1);
+    const embed = safeSend.mock.calls[0][1].embeds[0].toJSON();
+    expect(embed.description).toContain('Actions queued: `flag, delete`');
+    expect(embed.description).not.toContain('Actions queued: `none`');
+  });
+
   it('preserves flag embeds for non-flag actions when a flag channel is configured', async () => {
     const mockFlagChannel = { id: 'flag-channel-1', send: vi.fn().mockResolvedValue(undefined) };
     fetchChannelCached.mockResolvedValue(mockFlagChannel);
