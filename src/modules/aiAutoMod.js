@@ -11,6 +11,7 @@ import { generate } from '../utils/aiClient.js';
 import { fetchChannelCached } from '../utils/discordCache.js';
 import { isExempt } from '../utils/modExempt.js';
 import { safeSend } from '../utils/safeSend.js';
+import { DEFAULT_AI_MODEL, normalizeSupportedAiModel } from '../utils/supportedAiModels.js';
 import { logAuditEvent } from './auditLogger.js';
 import {
   checkEscalation,
@@ -79,7 +80,7 @@ const ACTION_PRIORITY = Object.freeze({
 /** Default config when none is provided */
 const DEFAULTS = {
   enabled: false,
-  model: 'minimax:MiniMax-M2.7',
+  model: DEFAULT_AI_MODEL,
   thresholds: {
     toxicity: 0.7,
     spam: 0.8,
@@ -148,6 +149,7 @@ export function getAiAutoModConfig(config) {
   return {
     ...DEFAULTS,
     ...raw,
+    model: normalizeSupportedAiModel(raw.model),
     thresholds: { ...DEFAULTS.thresholds, ...(raw.thresholds ?? {}) },
     actions: normalizeActionMap(raw.actions ?? {}),
   };

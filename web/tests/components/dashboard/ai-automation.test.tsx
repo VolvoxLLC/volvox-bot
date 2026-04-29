@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { GuildConfig } from '@/components/dashboard/config-editor-utils';
 
-const { visibleModelOption } = vi.hoisted(() => ({
+const { visibleModelOption, visibleMoonshotModelOption } = vi.hoisted(() => ({
   visibleModelOption: {
     value: 'minimax:MiniMax-M2.7',
     label: 'MiniMax M2.7',
@@ -10,6 +10,14 @@ const { visibleModelOption } = vi.hoisted(() => ({
     providerDisplayName: 'MiniMax',
     modelName: 'MiniMax-M2.7',
     modelDisplayName: 'MiniMax M2.7',
+  },
+  visibleMoonshotModelOption: {
+    value: 'moonshot:kimi-k2.6',
+    label: 'Kimi K2.6',
+    providerName: 'moonshot',
+    providerDisplayName: 'Moonshot',
+    modelName: 'kimi-k2.6',
+    modelDisplayName: 'Kimi K2.6',
   },
 }));
 
@@ -90,16 +98,24 @@ vi.mock('@/components/dashboard/config-sections/ChannelModeSection', () => ({
 }));
 
 vi.mock('@/lib/provider-model-options', () => ({
+  DEFAULT_AI_MODEL: visibleModelOption.value,
   VISIBLE_PROVIDER_MODEL_OPTION_GROUPS: [
     {
       providerName: 'minimax',
       providerDisplayName: 'MiniMax',
       options: [visibleModelOption],
     },
+    {
+      providerName: 'moonshot',
+      providerDisplayName: 'Moonshot',
+      options: [visibleMoonshotModelOption],
+    },
   ],
-  VISIBLE_PROVIDER_MODEL_OPTIONS: [visibleModelOption],
+  VISIBLE_PROVIDER_MODEL_OPTIONS: [visibleModelOption, visibleMoonshotModelOption],
   getVisibleProviderModelValue: (value: string | null | undefined) =>
-    value === visibleModelOption.value ? value : visibleModelOption.value,
+    [visibleModelOption, visibleMoonshotModelOption].some((option) => option.value === value)
+      ? value
+      : visibleModelOption.value,
 }));
 
 import { AiAutomationCategory } from '@/components/dashboard/config-categories/ai-automation';
@@ -167,8 +183,11 @@ function mockConfigContext({
   return updateDraftConfig;
 }
 
-function mockAiAutoModContext(updateDraftConfig = vi.fn((updater) => updater(createDraftConfig()))) {
-  return mockConfigContext({ updateDraftConfig });
+function mockAiAutoModContext(
+  updateDraftConfig = vi.fn((updater) => updater(createDraftConfig())),
+  draftConfig = createDraftConfig(),
+) {
+  return mockConfigContext({ updateDraftConfig, draftConfig });
 }
 
 function createTriageContext(overrides: Partial<GuildConfig['triage']> = {}) {

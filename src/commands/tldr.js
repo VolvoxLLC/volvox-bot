@@ -9,11 +9,12 @@ import { info, error as logError } from '../logger.js';
 import { getConfig } from '../modules/config.js';
 import { generate } from '../utils/aiClient.js';
 import { safeEditReply } from '../utils/safeSend.js';
+import { DEFAULT_AI_MODEL, normalizeSupportedAiModel } from '../utils/supportedAiModels.js';
 
 /** Colour for TLDR embeds (teal-ish) */
 const EMBED_COLOR = 0x1abc9c;
 
-/** Max chars to send to Claude to stay within context limits */
+/** Max chars sent to the selected model to stay within context limits */
 const MAX_INPUT_CHARS = 100_000;
 
 /** Default number of messages to summarize */
@@ -26,7 +27,7 @@ const MAX_MESSAGE_COUNT = 200;
 const cooldownMap = new Map();
 
 /** Provider:model pair for cost-efficient summarization (see src/data/providers.json) */
-const SUMMARIZE_MODEL = 'minimax:MiniMax-M2.7';
+const DEFAULT_SUMMARIZE_MODEL = DEFAULT_AI_MODEL;
 
 /** Default system prompt for summarization (used when no per-guild override is set) */
 const DEFAULT_SYSTEM_PROMPT =
@@ -167,11 +168,11 @@ async function fetchAndFormatMessages(channel, opts) {
  * @param {string} [systemPrompt] - Per-guild system prompt override
  * @returns {Promise<string>} Raw summary text from the AI provider
  */
-async function summarizeWithAI(conversationText, systemPrompt) {
+async function summarizeWithAI(conversationText, systemPrompt, model = DEFAULT_SUMMARIZE_MODEL) {
   const truncated = conversationText.slice(0, MAX_INPUT_CHARS);
   try {
     const result = await generate({
-      model: SUMMARIZE_MODEL,
+      model,
       system: systemPrompt || DEFAULT_SYSTEM_PROMPT,
       prompt: truncated,
       maxTokens: 4096,
@@ -303,7 +304,11 @@ export async function execute(interaction) {
     info('TLDR summarizing', { guildId, channelId, messageCount });
 
     // Call AI with per-guild system prompt if configured
-    const summary = await summarizeWithAI(conversationText, tldrConfig.systemPrompt);
+    const summary = await summarizeWithAI(
+      conversationText,
+      tldrConfig.systemPrompt,
+      normalizeSupportedAiModel(tldrConfig.model),
+    );
 
     if (!summary) {
       return await safeEditReply(interaction, '❌ Failed to generate summary.');

@@ -58,6 +58,20 @@ describe('triage-config', () => {
       expect(result.respondModel).toBe('minimax:MiniMax-M2.7');
       expect(result.respondBudget).toBe(0.5);
     });
+
+    it('should fall back to supported legacy models when configured models are unsupported', () => {
+      const result = resolveTriageConfig({
+        classifyModel: 'anthropic:claude-3-5-haiku',
+        respondModel: 'openai:gpt-4o-mini',
+        models: {
+          triage: 'moonshot:kimi-k2.6',
+          default: 'openrouter:minimax/minimax-m2.5',
+        },
+      });
+
+      expect(result.classifyModel).toBe('moonshot:kimi-k2.6');
+      expect(result.respondModel).toBe('openrouter:minimax/minimax-m2.5');
+    });
   });
 
   describe('isChannelEligible', () => {

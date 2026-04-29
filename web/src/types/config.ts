@@ -278,6 +278,7 @@ export interface BotStatusConfig {
 
 /** TL;DR summary feature settings. */
 export interface TldrConfig extends ToggleSectionConfig {
+  model?: string;
   systemPrompt?: string;
   defaultMessages: number;
   maxMessages: number;

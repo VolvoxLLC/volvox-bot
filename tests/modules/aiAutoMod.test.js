@@ -146,6 +146,16 @@ describe('getAiAutoModConfig', () => {
     expect(cfg.actions.spam).toEqual(['ban']);
     expect(cfg.actions.toxicity).toEqual(['flag']); // default preserved
   });
+
+  it('falls back to the default model when guild config references an unsupported detection model', () => {
+    const cfg = getAiAutoModConfig({
+      aiAutoMod: {
+        model: 'anthropic:claude-3-5-haiku',
+      },
+    });
+
+    expect(cfg.model).toBe('minimax:MiniMax-M2.7');
+  });
 });
 
 describe('analyzeMessage', () => {

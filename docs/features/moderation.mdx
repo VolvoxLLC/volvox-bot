@@ -22,6 +22,7 @@ Active Sentry is Volvox.Bot's moderation engine. It runs automatically and can b
 2. Review active cases, filter by type or member
 3. Use **Config → Moderation** to set up classic auto-mod rules
 4. Use **Config → AI & Automation → AI Auto-Moderation** to choose the detection model, thresholds, and actions
+5. Use **Config → AI & Automation → Triage** to choose the supported classifier and response models for AI triage
 
 <Callout type="tip">
 Configure escalation rules so that repeated warnings automatically escalate to timeouts or bans.
@@ -43,12 +44,14 @@ AI moderation settings are in **Config → AI & Automation → AI Auto-Moderatio
 
 | Setting | Description |
 |---------|-------------|
-| Detection model | The provider/model used to score incoming messages |
+| Detection model | The supported provider/model used to score incoming messages |
 | Incident report channel | Where flagged AI moderation reports are posted |
 | Instant enforcement | Global auto-delete for messages that trigger AI moderation |
 | Sensitivity thresholds | Per-category score required before action runs |
 | Response actions | Choose any combination of flag, delete, warn, timeout, kick, or ban per category. Leave a category empty to skip category-specific responses. `warn` creates a warning record, sends the warning DM when enabled, and checks escalation rules. |
 
 Every triggered AI moderation response is recorded in the audit log as `ai_automod.<action>` for each selected action, including `ai_automod.none` when a threshold is hit but no category-specific response action is selected.
+
+Triage model settings are in **Config → AI & Automation → Triage**. The classifier and response engines use the same supported model dropdown as AI auto-moderation; custom model strings are rejected.
 
 Changes apply instantly — no bot restart needed.
