@@ -148,8 +148,8 @@ describe('AnalyticsProvider', () => {
 
   it('fetches analytics, builds query strings, and exports CSV/PDF', async () => {
     const user = userEvent.setup();
-    const createObjectURLSpy = vi.spyOn(window.URL, 'createObjectURL').mockReturnValue('blob:csv');
-    const revokeObjectURLSpy = vi.spyOn(window.URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    const createObjectURLSpy = vi.spyOn(globalThis.URL, 'createObjectURL').mockReturnValue('blob:csv');
+    const revokeObjectURLSpy = vi.spyOn(globalThis.URL, 'revokeObjectURL').mockImplementation(() => undefined);
     const clickSpy = vi.fn();
     const exportedBlobs: Blob[] = [];
     createObjectURLSpy.mockImplementation((blob) => {

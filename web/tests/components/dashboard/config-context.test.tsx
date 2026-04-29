@@ -175,7 +175,7 @@ describe('ConfigProvider', () => {
   });
 
   it('handles guild selection, storage updates, and cancelled guild switches', async () => {
-    const fetchMock = stubConfigFetch();
+    stubConfigFetch();
     const { result } = await renderConfigContext();
 
     await waitFor(() => expect(result.current.guildId).toBe('guild-123'));

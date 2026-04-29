@@ -1,6 +1,7 @@
 type SelectOption = { value: string; label: string };
 
 type MockElement = { type: unknown; props: Record<string, unknown> };
+type SelectComponentName = 'SelectTrigger' | 'SelectItem';
 
 function isMockElement(value: unknown): value is MockElement {
   return typeof value === 'object' && value !== null && 'type' in value && 'props' in value;
@@ -11,6 +12,19 @@ function textFromChildren(children: unknown): string {
   if (Array.isArray(children)) return children.map(textFromChildren).join('');
   if (isMockElement(children)) return textFromChildren(children.props.children);
   return '';
+}
+
+function selectComponentName(type: unknown): string | undefined {
+  if (typeof type !== 'function') return undefined;
+  return (type as { displayName?: string; name?: string }).displayName ?? type.name;
+}
+
+function isSelectComponent(
+  type: unknown,
+  component: unknown,
+  fallbackName: SelectComponentName,
+): boolean {
+  return type === component || selectComponentName(type) === fallbackName;
 }
 
 export function readSelectChildren(children: unknown): { id?: string; options: SelectOption[] } {
@@ -26,16 +40,14 @@ export function readSelectChildren(children: unknown): { id?: string; options: S
     if (!isMockElement(child)) continue;
 
     if (
-      typeof child.type === 'function' &&
-      child.type.name === 'SelectTrigger' &&
+      isSelectComponent(child.type, SelectTrigger, 'SelectTrigger') &&
       typeof child.props.id === 'string'
     ) {
       result.id = child.props.id;
     }
 
     if (
-      typeof child.type === 'function' &&
-      child.type.name === 'SelectItem' &&
+      isSelectComponent(child.type, SelectItem, 'SelectItem') &&
       typeof child.props.value === 'string'
     ) {
       result.options.push({
@@ -61,10 +73,10 @@ export function Select({
   onValueChange,
   value,
 }: {
-  children: React.ReactNode;
-  disabled?: boolean;
-  onValueChange?: (value: string) => void;
-  value?: string;
+  readonly children: React.ReactNode;
+  readonly disabled?: boolean;
+  readonly onValueChange?: (value: string) => void;
+  readonly value?: string;
 }) {
   const { id, options } = readSelectChildren(children);
   return (
@@ -110,3 +122,11 @@ export function SelectTrigger({ children }: { children: React.ReactNode; id?: st
 export function SelectValue() {
   return null;
 }
+
+Select.displayName = 'Select';
+SelectContent.displayName = 'SelectContent';
+SelectGroup.displayName = 'SelectGroup';
+SelectItem.displayName = 'SelectItem';
+SelectLabel.displayName = 'SelectLabel';
+SelectTrigger.displayName = 'SelectTrigger';
+SelectValue.displayName = 'SelectValue';
