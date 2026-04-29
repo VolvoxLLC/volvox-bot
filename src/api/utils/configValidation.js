@@ -6,7 +6,11 @@
  * truth without creating an inverted dependency (utils → routes).
  */
 
-import { SUPPORTED_AI_MODEL_TYPES } from '../../utils/supportedAiModels.js';
+import {
+  isSupportedAiModel,
+  normalizeSupportedAiModel,
+  SUPPORTED_AI_MODEL_TYPES,
+} from '../../utils/supportedAiModels.js';
 import { validateUrlForSsrfSync } from './ssrfProtection.js';
 
 /** Module-level cache for compiled regex patterns used during validation. */
@@ -183,6 +187,8 @@ const AI_AUTOMOD_ACTION_VALUE_SCHEMA = {
     { type: 'array', items: { type: 'string', enum: AI_AUTOMOD_ACTION_TYPES } },
   ],
 };
+
+const AI_MODEL_VALUE_SCHEMA = { type: 'string', aiModel: true };
 
 const AI_AUTOMOD_THRESHOLD_SCHEMA = {
   type: 'object',
@@ -363,9 +369,9 @@ export const CONFIG_SCHEMA = {
       botAllowlist: { type: 'array', items: { type: 'string' } },
       triggerWords: { type: 'array' },
       moderationKeywords: { type: 'array' },
-      classifyModel: { type: 'string', enum: SUPPORTED_AI_MODEL_TYPES },
+      classifyModel: AI_MODEL_VALUE_SCHEMA,
       classifyBudget: { type: 'number', min: 0, max: 100000 },
-      respondModel: { type: 'string', enum: SUPPORTED_AI_MODEL_TYPES },
+      respondModel: AI_MODEL_VALUE_SCHEMA,
       respondBudget: { type: 'number', min: 0, max: 100000 },
       thinkingTokens: { type: 'number', min: 0, max: 100000 },
       classifyBaseUrl: { type: 'string', nullable: true },
@@ -392,7 +398,7 @@ export const CONFIG_SCHEMA = {
     type: 'object',
     properties: {
       enabled: { type: 'boolean' },
-      model: { type: 'string', enum: SUPPORTED_AI_MODEL_TYPES },
+      model: AI_MODEL_VALUE_SCHEMA,
       thresholds: AI_AUTOMOD_THRESHOLD_SCHEMA,
       actions: AI_AUTOMOD_ACTION_SCHEMA,
       timeoutDurationMs: { type: 'number', min: 1000, max: 2419200000 },
@@ -485,7 +491,7 @@ export const CONFIG_SCHEMA = {
     type: 'object',
     properties: {
       enabled: { type: 'boolean' },
-      model: { type: 'string', enum: SUPPORTED_AI_MODEL_TYPES },
+      model: AI_MODEL_VALUE_SCHEMA,
       systemPrompt: { type: 'string', maxLength: 4000 },
       defaultMessages: { type: 'number', min: 1, max: 200 },
       maxMessages: { type: 'number', min: 1, max: 200 },
@@ -584,7 +590,13 @@ export function validateValue(value, schema, path) {
         if (typeof schema.minLength === 'number' && value.length < schema.minLength) {
           errors.push(`${path}: must be at least ${schema.minLength} characters`);
         }
-        if (schema.enum && !schema.enum.includes(value)) {
+        if (schema.aiModel) {
+          if (!isSupportedAiModel(value)) {
+            errors.push(
+              `${path}: must be one of [${SUPPORTED_AI_MODEL_TYPES.join(', ')}], got "${value}"`,
+            );
+          }
+        } else if (schema.enum && !schema.enum.includes(value)) {
           errors.push(`${path}: must be one of [${schema.enum.join(', ')}], got "${value}"`);
         }
         if (schema.maxLength != null && value.length > schema.maxLength) {
@@ -688,12 +700,12 @@ export function validateValue(value, schema, path) {
  * @param {*} value - The value to validate for the given path.
  * @returns {string[]} Array of validation error messages (empty if valid).
  */
-export function validateSingleValue(path, value) {
+function getSchemaForPath(path) {
   const segments = path.split('.');
   const section = segments[0];
 
   const schema = CONFIG_SCHEMA[section];
-  if (!schema) return []; // unknown section — let SAFE_CONFIG_KEYS guard handle it
+  if (!schema) return undefined; // unknown section — let SAFE_CONFIG_KEYS guard handle it
 
   // Walk the schema tree to find the leaf schema for this path
   let currentSchema = schema;
@@ -704,9 +716,40 @@ export function validateSingleValue(path, value) {
       // Dynamic keys (e.g. channelModes.<channelId>) — validate as leaf value
       break;
     } else {
-      return [`Unknown config path: ${path}`];
+      return null;
     }
   }
 
-  return validateValue(value, currentSchema, path);
+  return currentSchema;
+}
+
+/**
+ * Validate a single configuration path and its value against the writable config schema.
+ *
+ * @param {string} path - Dot-notation config path (e.g. "ai.enabled").
+ * @param {*} value - The value to validate for the given path.
+ * @returns {string[]} Array of validation error messages (empty if valid).
+ */
+export function validateSingleValue(path, value) {
+  const schema = getSchemaForPath(path);
+  if (schema === undefined) return [];
+  if (schema === null) return [`Unknown config path: ${path}`];
+
+  return validateValue(value, schema, path);
+}
+
+/**
+ * Return the canonical runtime value for config leaves that support legacy aliases
+ * or case-insensitive inputs. Unknown paths and ordinary values pass through.
+ *
+ * @param {string} path
+ * @param {*} value
+ * @returns {*}
+ */
+export function normalizeSingleValue(path, value) {
+  const schema = getSchemaForPath(path);
+  if (schema?.aiModel && isSupportedAiModel(value)) {
+    return normalizeSupportedAiModel(value);
+  }
+  return value;
 }

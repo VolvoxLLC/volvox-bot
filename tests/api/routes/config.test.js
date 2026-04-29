@@ -226,6 +226,18 @@ describe('config routes', () => {
       expect(setConfigValue).toHaveBeenCalledWith('ai.threadMode.autoArchiveMinutes', 120);
     });
 
+    it('should canonicalize accepted legacy AI model casing before writing global config', async () => {
+      const res = await request(app)
+        .put('/api/v1/config')
+        .set('x-api-secret', SECRET)
+        .send({
+          triage: { classifyModel: 'MINIMAX:minimax-m2.5' },
+        });
+
+      expect(res.status).toBe(200);
+      expect(setConfigValue).toHaveBeenCalledWith('triage.classifyModel', 'minimax:MiniMax-M2.5');
+    });
+
     it('should pass arrays as leaf values without flattening', async () => {
       const res = await request(app)
         .put('/api/v1/config')
