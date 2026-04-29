@@ -1,5 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('../../src/logger.js', () => ({
+  warn: vi.fn(),
+}));
+
+import { warn } from '../../src/logger.js';
 import {
   getDynamicInterval,
   isChannelEligible,
@@ -9,6 +14,10 @@ import {
 } from '../../src/modules/triage-config.js';
 
 describe('triage-config', () => {
+  beforeEach(() => {
+    vi.mocked(warn).mockClear();
+  });
+
   describe('resolveTriageConfig', () => {
     it('should return defaults for an empty config', () => {
       const result = resolveTriageConfig({});
@@ -63,6 +72,7 @@ describe('triage-config', () => {
       const result = resolveTriageConfig({
         classifyModel: 'anthropic:claude-3-5-haiku',
         respondModel: 'openai:gpt-4o-mini',
+        model: 'legacy-bare-name',
         models: {
           triage: 'moonshot:kimi-k2.6',
           default: 'openrouter:minimax/minimax-m2.5',
@@ -71,6 +81,22 @@ describe('triage-config', () => {
 
       expect(result.classifyModel).toBe('moonshot:kimi-k2.6');
       expect(result.respondModel).toBe('openrouter:minimax/minimax-m2.5');
+    });
+
+    it('should not warn for stale lower-priority legacy models that are never consulted', () => {
+      const result = resolveTriageConfig({
+        classifyModel: 'moonshot:kimi-k2.6',
+        respondModel: 'openrouter:minimax/minimax-m2.5',
+        model: 'legacy-bare-name',
+        models: {
+          triage: 'also-legacy-bare-name',
+          default: 'anthropic:claude-3-5-haiku',
+        },
+      });
+
+      expect(result.classifyModel).toBe('moonshot:kimi-k2.6');
+      expect(result.respondModel).toBe('openrouter:minimax/minimax-m2.5');
+      expect(warn).not.toHaveBeenCalled();
     });
 
     it('should canonicalize supported legacy model casing through resolution', () => {

@@ -30,6 +30,40 @@ describe('configValidation', () => {
       expect(errors[0]).toContain('must not be null');
     });
 
+    it('should accept values matching any anyOf candidate', () => {
+      const schema = { anyOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }] };
+
+      expect(validateValue('delete', schema, 'test')).toEqual([]);
+      expect(validateValue(['flag', 'timeout'], schema, 'test')).toEqual([]);
+    });
+
+    it('should reject values that match no anyOf candidates', () => {
+      const schema = { anyOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }] };
+      const errors = validateValue(123, schema, 'test');
+
+      expect(errors).toEqual(expect.arrayContaining([expect.stringContaining('expected string')]));
+      expect(errors).toEqual(expect.arrayContaining([expect.stringContaining('expected array')]));
+    });
+
+    it('should honor nullable anyOf candidates', () => {
+      const schema = { anyOf: [{ type: 'string' }, { type: 'object', nullable: true }] };
+
+      expect(validateValue(null, schema, 'test')).toEqual([]);
+    });
+
+    it('should accept null when the parent anyOf schema is nullable', () => {
+      const schema = { nullable: true, anyOf: [{ type: 'string' }, { type: 'object' }] };
+
+      expect(validateValue(null, schema, 'test')).toEqual([]);
+    });
+
+    it('should reject null when neither parent nor anyOf candidates are nullable', () => {
+      const schema = { anyOf: [{ type: 'string' }, { type: 'object' }] };
+      const errors = validateValue(null, schema, 'test');
+
+      expect(errors).toEqual(['test: must not be null', 'test: must not be null']);
+    });
+
     it('should reject unknown keys in objects', () => {
       const schema = { type: 'object', properties: { enabled: { type: 'boolean' } } };
       const errors = validateValue({ enabled: true, fake: 'bad' }, schema, 'test');

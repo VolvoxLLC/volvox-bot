@@ -557,14 +557,11 @@ export const CONFIG_SCHEMA = {
 export function validateValue(value, schema, path) {
   const errors = [];
 
-  if (value === null) {
-    if (!schema.nullable) {
-      errors.push(`${path}: must not be null`);
-    }
+  if (value === undefined) {
     return errors;
   }
 
-  if (value === undefined) {
+  if (value === null && schema.nullable) {
     return errors;
   }
 
@@ -575,6 +572,11 @@ export function validateValue(value, schema, path) {
       return success;
     }
     return results.flat();
+  }
+
+  if (value === null) {
+    errors.push(`${path}: must not be null`);
+    return errors;
   }
 
   switch (schema.type) {

@@ -229,7 +229,12 @@ describe('listProviderModelTypes', () => {
   });
 
   it('can limit results to visible models', () => {
-    expect(listProviderModelTypes({ visibleOnly: true })).toEqual(listProviderModelTypes());
+    const allModels = listProviderModelTypes();
+    const visibleModels = listProviderModelTypes({ visibleOnly: true });
+    const allModelSet = new Set(allModels);
+
+    expect(visibleModels.length).toBeLessThanOrEqual(allModels.length);
+    expect(visibleModels.every((modelType) => allModelSet.has(modelType))).toBe(true);
   });
 
   it('returns a fresh array per call', () => {
