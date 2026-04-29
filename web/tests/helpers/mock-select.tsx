@@ -99,23 +99,28 @@ export function Select({
   );
 }
 
-export function SelectContent({ children }: { children: React.ReactNode }) {
+export function SelectContent({ children }: { readonly children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-export function SelectGroup({ children }: { children: React.ReactNode }) {
+export function SelectGroup({ children }: { readonly children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-export function SelectItem({ children }: { children: React.ReactNode; value: string }) {
+export function SelectItem({
+  children,
+}: {
+  readonly children: React.ReactNode;
+  readonly value: string;
+}) {
   return <>{children}</>;
 }
 
-export function SelectLabel({ children }: { children: React.ReactNode }) {
+export function SelectLabel({ children }: { readonly children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-export function SelectTrigger({ children }: { children: React.ReactNode; id?: string }) {
+export function SelectTrigger({ children }: { readonly children: React.ReactNode; readonly id?: string }) {
   return <>{children}</>;
 }
 
