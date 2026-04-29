@@ -199,8 +199,9 @@ describe('AnalyticsProvider', () => {
 
     await user.click(screen.getByRole('button', { name: 'Export CSV' }));
     const exportedBlob = exportedBlobs.at(-1);
-    expect(exportedBlob?.type).toContain('text/csv');
-    await expect(exportedBlob?.text()).resolves.toContain('"Top, ""Channel"""');
+    expect(exportedBlob).toBeDefined();
+    expect(exportedBlob!.type).toContain('text/csv');
+    await expect(exportedBlob!.text()).resolves.toContain('"Top, ""Channel"""');
     expect(clickSpy).toHaveBeenCalledTimes(1);
     expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:csv');
 
