@@ -470,6 +470,26 @@ export function listProviders() {
 }
 
 /**
+ * List registered `provider:model` identifiers in catalog order.
+ *
+ * @param {{ visibleOnly?: boolean }} [opts]
+ * @returns {string[]}
+ */
+export function listProviderModelTypes(opts = {}) {
+  const visibleOnly = opts.visibleOnly === true;
+  const modelTypes = [];
+
+  for (const provider of registry.values()) {
+    for (const model of provider.models.values()) {
+      if (visibleOnly && model.availability.visible === false) continue;
+      modelTypes.push(`${provider.name}:${model.id}`);
+    }
+  }
+
+  return modelTypes;
+}
+
+/**
  * Test-only: rebuild the registry from the current `providers.json` payload.
  * Exposed so tests can force a reload after mocking the JSON module.
  */

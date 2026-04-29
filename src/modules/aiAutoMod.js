@@ -342,6 +342,7 @@ async function logAiAutoModAuditEvent(
   botId,
   botTag,
   action,
+  auditedActions,
 ) {
   const guildId = message.guild?.id;
   if (!guildId) return;
@@ -360,7 +361,7 @@ async function logAiAutoModAuditEvent(
     details: {
       source: 'ai_auto_mod',
       action,
-      actions: result.actions ?? [],
+      actions: auditedActions ?? result.actions ?? [],
       actionsByCategory: result.actionsByCategory ?? {},
       model: autoModConfig.model ?? DEFAULTS.model,
       messageId: message.id,
@@ -381,6 +382,20 @@ async function logAiAutoModAuditEvent(
       error: err?.message,
     }),
   );
+}
+
+function getAuditedActions(result, autoModConfig) {
+  const auditedActions = normalizeActionList(result.actions, []);
+
+  if (autoModConfig.autoDelete && !auditedActions.includes('delete')) {
+    auditedActions.unshift('delete');
+  }
+
+  if (autoModConfig.flagChannelId && !auditedActions.includes('flag')) {
+    auditedActions.push('flag');
+  }
+
+  return auditedActions;
 }
 
 async function executeSingleAction(
@@ -407,9 +422,6 @@ async function executeSingleAction(
 
     case 'warn':
       if (!member || !guild) return null;
-      if (shouldSendDm(_guildConfig, 'warn')) {
-        await sendDmNotification(member, 'warn', reason, guild.name ?? guild.id);
-      }
       caseData = await createCase(guild.id, {
         action: 'warn',
         targetId: member.user.id,
@@ -423,6 +435,15 @@ async function executeSingleAction(
       });
 
       if (!caseData) return null;
+
+      if (shouldSendDm(_guildConfig, 'warn')) {
+        await sendDmNotification(member, 'warn', reason, guild.name ?? guild.id).catch((err) =>
+          logError('AI auto-mod: sendDmNotification (warn) failed', {
+            userId: member.user.id,
+            error: err?.message,
+          }),
+        );
+      }
 
       await createWarning(
         guild.id,
@@ -535,11 +556,7 @@ async function executeAction(message, client, result, autoModConfig, _guildConfi
   const reason = `AI Auto-Mod: ${result.categories.join(', ')} — ${result.reason}`;
   const botId = client.user?.id ?? 'bot';
   const botTag = client.user?.tag ?? 'Bot#0000';
-  const actions = normalizeActionList(result.actions, []);
-
-  if (autoModConfig.autoDelete) {
-    await message.delete().catch(() => {});
-  }
+  const actions = getAuditedActions(result, autoModConfig);
 
   if (actions.length === 0) {
     await logAiAutoModAuditEvent(
@@ -551,6 +568,7 @@ async function executeAction(message, client, result, autoModConfig, _guildConfi
       botId,
       botTag,
       'none',
+      actions,
     );
     return;
   }
@@ -574,6 +592,7 @@ async function executeAction(message, client, result, autoModConfig, _guildConfi
       botId,
       botTag,
       action,
+      actions,
     );
   }
 }

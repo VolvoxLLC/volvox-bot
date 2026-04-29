@@ -1,5 +1,5 @@
 {
-  "_comment": "Unified provider + model catalog. Single source of truth for non-secret model/provider state. API keys: <PROVIDER>_API_KEY in .env. Default models: triage.classifyModel / respondModel and tldr.model in config.json (seed; DB overrides at runtime). apiShape is string or array; currently only 'anthropic' is accepted by aiClient - see issue #530 for extensibility.",
+  "_comment": "Unified provider + model catalog. Single source of truth for non-secret model/provider state. API keys: <PROVIDER>_API_KEY in .env. Configured AI model defaults such as triage.classifyModel/respondModel, tldr.model, and aiAutoMod.model live in config.json (seed; DB overrides at runtime). apiShape is string or array; currently only 'anthropic' is accepted by aiClient - see issue #530 for extensibility.",
   "providers": {
     "minimax": {
       "displayName": "MiniMax",

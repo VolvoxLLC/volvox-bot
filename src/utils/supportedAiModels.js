@@ -1,16 +1,12 @@
-export const DEFAULT_AI_MODEL = 'minimax:MiniMax-M2.7';
+import { listProviderModelTypes } from './providerRegistry.js';
 
-export const SUPPORTED_AI_MODEL_TYPES = Object.freeze([
-  DEFAULT_AI_MODEL,
-  'minimax:MiniMax-M2.7-highspeed',
-  'minimax:MiniMax-M2.5',
-  'minimax:MiniMax-M2.5-highspeed',
-  'moonshot:kimi-k2.6',
-  'moonshot:kimi-k2.5',
-  'moonshot:kimi-k2-thinking',
-  'openrouter:minimax/minimax-m2.5',
-  'openrouter:moonshotai/kimi-k2.6',
-]);
+export const FALLBACK_AI_MODEL = 'minimax:MiniMax-M2.7';
+
+export const SUPPORTED_AI_MODEL_TYPES = Object.freeze(
+  listProviderModelTypes({ visibleOnly: true }),
+);
+
+export const DEFAULT_AI_MODEL = SUPPORTED_AI_MODEL_TYPES[0] ?? FALLBACK_AI_MODEL;
 
 /**
  * @param {unknown} value
