@@ -37,7 +37,7 @@
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.68",
     "@sentry/node": "^10.50.0",
-    "ai": "^6.0.158",
+    "ai": "^6.0.169",
     "discord.js": "^14.26.3",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
