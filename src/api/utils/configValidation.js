@@ -19,9 +19,6 @@ const _compiledPatterns = new Map();
 /** Maximum number of distinct patterns to keep in the cache. */
 const _MAX_PATTERN_CACHE = 100;
 
-/** Sentinel used when a known section receives an unknown nested config path. */
-const UNKNOWN_CONFIG_PATH = Symbol('unknownConfigPath');
-
 /**
  * Return a cached compiled RegExp for the given pattern string.
  * Avoids re-compiling the same pattern on every config validation call.
@@ -719,7 +716,7 @@ function getSchemaForPath(path) {
       // Dynamic keys (e.g. channelModes.<channelId>) — validate as leaf value
       break;
     } else {
-      return UNKNOWN_CONFIG_PATH;
+      return null;
     }
   }
 
@@ -735,8 +732,8 @@ function getSchemaForPath(path) {
  */
 export function validateSingleValue(path, value) {
   const schema = getSchemaForPath(path);
-  if (schema === UNKNOWN_CONFIG_PATH) return [`Unknown config path: ${path}`];
-  if (!schema) return [];
+  if (schema === null) return [`Unknown config path: ${path}`];
+  if (schema === undefined) return [];
 
   return validateValue(value, schema, path);
 }
