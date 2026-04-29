@@ -224,10 +224,25 @@ export function AiAutomationCategory() {
   );
 
   const hasDraftConfig = draftConfig !== null;
+  const currentAiAutoModModel = draftConfig?.aiAutoMod?.model;
   const currentClassifyModel = draftConfig?.triage?.classifyModel;
   const currentRespondModel = draftConfig?.triage?.respondModel;
+  const aiAutoModModelValue = getVisibleProviderModelValue(currentAiAutoModModel);
   const classifyModelValue = getVisibleProviderModelValue(currentClassifyModel);
   const respondModelValue = getVisibleProviderModelValue(currentRespondModel);
+
+  useEffect(() => {
+    if (!hasDraftConfig || activeTab !== 'ai-automod' || !hasVisibleModelOptions) return;
+    if (aiAutoModModelValue === currentAiAutoModModel) return;
+
+    updateDraftConfig((prev) => ({
+      ...prev,
+      aiAutoMod: {
+        ...prev.aiAutoMod,
+        model: getVisibleProviderModelValue(prev.aiAutoMod?.model),
+      },
+    }));
+  }, [activeTab, aiAutoModModelValue, currentAiAutoModModel, hasDraftConfig, updateDraftConfig]);
 
   useEffect(() => {
     if (!hasDraftConfig || activeTab !== 'triage' || !hasVisibleModelOptions) return;
@@ -345,7 +360,7 @@ export function AiAutomationCategory() {
               <AiModelSelect
                 id="ai-automod-model"
                 label="Detection Model"
-                value={draftConfig.aiAutoMod?.model}
+                value={aiAutoModModelValue}
                 onChange={(value) => updateAiAutoModField('model', value)}
                 disabled={saving}
               />

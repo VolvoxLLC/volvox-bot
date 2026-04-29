@@ -3,6 +3,8 @@
 // that this file stays identical to src/data/providers.json.
 import providersCatalog from '@/data/providers.json';
 
+export const DEFAULT_AI_MODEL = 'minimax:MiniMax-M2.7';
+
 export interface ProviderModelOption {
   value: string;
   label: string;
@@ -94,8 +96,15 @@ export const VISIBLE_PROVIDER_MODEL_OPTION_GROUPS = groupProviderModelOptions(
   VISIBLE_PROVIDER_MODEL_OPTIONS,
 );
 
+function findProviderModelOptionByValue(
+  modelValue: string,
+  options: ProviderModelOption[],
+): ProviderModelOption | undefined {
+  return options.find((option) => option.value.toLowerCase() === modelValue.toLowerCase());
+}
+
 /**
- * Return the canonical visible model value, falling back to the first visible option.
+ * Return the canonical visible model value, falling back to the default visible model.
  *
  * @param modelValue - Saved provider:model value from config.
  * @param options - Visible model options to resolve against.
@@ -106,9 +115,11 @@ export function getVisibleProviderModelValue(
   options: ProviderModelOption[] = VISIBLE_PROVIDER_MODEL_OPTIONS,
 ) {
   if (typeof modelValue === 'string' && modelValue) {
-    const match = options.find((option) => option.value.toLowerCase() === modelValue.toLowerCase());
+    const match = findProviderModelOptionByValue(modelValue, options);
     if (match) return match.value;
   }
 
-  return options[0]?.value ?? '';
+  return (
+    findProviderModelOptionByValue(DEFAULT_AI_MODEL, options)?.value ?? options[0]?.value ?? ''
+  );
 }

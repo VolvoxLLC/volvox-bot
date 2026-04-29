@@ -1,14 +1,23 @@
 'use client';
 
-import { inputClasses } from '@/components/dashboard/config-editor-utils';
 import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  DEFAULT_AI_MODEL,
   getVisibleProviderModelValue,
   VISIBLE_PROVIDER_MODEL_OPTION_GROUPS,
   VISIBLE_PROVIDER_MODEL_OPTIONS,
 } from '@/lib/provider-model-options';
 import { cn } from '@/lib/utils';
 
-export const DEFAULT_AI_MODEL = VISIBLE_PROVIDER_MODEL_OPTIONS[0]?.value ?? '';
+export { DEFAULT_AI_MODEL };
 
 const hasVisibleModelOptions = VISIBLE_PROVIDER_MODEL_OPTIONS.length > 0;
 
@@ -17,7 +26,9 @@ export type AiModelValue = string;
 export function isSupportedAiModel(value: unknown): value is AiModelValue {
   return (
     typeof value === 'string' &&
-    VISIBLE_PROVIDER_MODEL_OPTIONS.some((option) => option.value === value)
+    VISIBLE_PROVIDER_MODEL_OPTIONS.some(
+      (option) => option.value.toLowerCase() === value.toLowerCase(),
+    )
   );
 }
 
@@ -54,27 +65,27 @@ export function AiModelSelect({
       >
         {label}
       </label>
-      <select
-        id={id}
+      <Select
         value={normalizeAiModel(value)}
-        onChange={(event) => onChange(event.target.value as AiModelValue)}
+        onValueChange={(selectedValue) => onChange(selectedValue as AiModelValue)}
         disabled={disabled || !hasVisibleModelOptions}
-        className={cn(inputClasses, 'w-full font-semibold', selectClassName)}
       >
-        {hasVisibleModelOptions ? (
-          VISIBLE_PROVIDER_MODEL_OPTION_GROUPS.map((group) => (
-            <optgroup key={group.providerName} label={group.providerDisplayName}>
+        <SelectTrigger id={id} className={cn('w-full font-semibold', selectClassName)}>
+          <SelectValue placeholder="No visible models configured" />
+        </SelectTrigger>
+        <SelectContent>
+          {VISIBLE_PROVIDER_MODEL_OPTION_GROUPS.map((group) => (
+            <SelectGroup key={group.providerName}>
+              <SelectLabel>{group.providerDisplayName}</SelectLabel>
               {group.options.map((option) => (
-                <option key={option.value} value={option.value}>
+                <SelectItem key={option.value} value={option.value}>
                   {option.label}
-                </option>
+                </SelectItem>
               ))}
-            </optgroup>
-          ))
-        ) : (
-          <option value="">No visible models configured</option>
-        )}
-      </select>
+            </SelectGroup>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }

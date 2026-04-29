@@ -41,6 +41,131 @@ const { visibleModelOptions } = vi.hoisted(() => ({
 
 const mockUseConfigContext = vi.fn();
 
+vi.mock('@/components/ui/select', () => {
+  type SelectOption = { value: string; label: string };
+
+  function isMockElement(
+    value: unknown,
+  ): value is { type: unknown; props: Record<string, unknown> } {
+    return typeof value === 'object' && value !== null && 'type' in value && 'props' in value;
+  }
+
+  function textFromChildren(children: unknown): string {
+    if (typeof children === 'string' || typeof children === 'number') return String(children);
+    if (Array.isArray(children)) return children.map(textFromChildren).join('');
+    if (isMockElement(children)) return textFromChildren(children.props.children);
+    return '';
+  }
+
+  function readSelectChildren(children: unknown): { id?: string; options: SelectOption[] } {
+    const result: { id?: string; options: SelectOption[] } = { options: [] };
+    const stack = Array.isArray(children) ? [...children] : [children];
+
+    while (stack.length > 0) {
+      const child = stack.shift();
+      if (Array.isArray(child)) {
+        stack.push(...child);
+        continue;
+      }
+      if (!isMockElement(child)) continue;
+
+      if (
+        typeof child.type === 'function' &&
+        child.type.name === 'SelectTrigger' &&
+        typeof child.props.id === 'string'
+      ) {
+        result.id = child.props.id;
+      }
+
+      if (
+        typeof child.type === 'function' &&
+        child.type.name === 'SelectItem' &&
+        typeof child.props.value === 'string'
+      ) {
+        result.options.push({
+          value: child.props.value,
+          label: textFromChildren(child.props.children),
+        });
+      }
+
+      const nestedChildren = child.props.children;
+      if (Array.isArray(nestedChildren)) {
+        stack.push(...nestedChildren);
+      } else if (nestedChildren !== undefined) {
+        stack.push(nestedChildren);
+      }
+    }
+
+    return result;
+  }
+
+  function Select({
+    children,
+    disabled,
+    onValueChange,
+    value,
+  }: {
+    children: React.ReactNode;
+    disabled?: boolean;
+    onValueChange?: (value: string) => void;
+    value?: string;
+  }) {
+    const { id, options } = readSelectChildren(children);
+    return (
+      <select
+        id={id}
+        disabled={disabled}
+        value={value}
+        onChange={(event) => onValueChange?.(event.target.value)}
+      >
+        {options.length > 0 ? (
+          options.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))
+        ) : (
+          <option value="">No visible models configured</option>
+        )}
+      </select>
+    );
+  }
+
+  function SelectContent({ children }: { children: React.ReactNode }) {
+    return <>{children}</>;
+  }
+
+  function SelectGroup({ children }: { children: React.ReactNode }) {
+    return <>{children}</>;
+  }
+
+  function SelectItem({ children }: { children: React.ReactNode; value: string }) {
+    return <>{children}</>;
+  }
+
+  function SelectLabel({ children }: { children: React.ReactNode }) {
+    return <>{children}</>;
+  }
+
+  function SelectTrigger({ children }: { children: React.ReactNode; id?: string }) {
+    return <>{children}</>;
+  }
+
+  function SelectValue() {
+    return null;
+  }
+
+  return {
+    Select,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectLabel,
+    SelectTrigger,
+    SelectValue,
+  };
+});
+
 vi.mock('@/components/dashboard/config-context', () => ({
   useConfigContext: () => mockUseConfigContext(),
 }));
@@ -118,6 +243,7 @@ vi.mock('@/components/dashboard/config-sections/ChannelModeSection', () => ({
 }));
 
 vi.mock('@/lib/provider-model-options', () => ({
+  DEFAULT_AI_MODEL: 'minimax:MiniMax-M2.7',
   VISIBLE_PROVIDER_MODEL_OPTION_GROUPS: [
     {
       providerName: 'minimax',
@@ -348,6 +474,27 @@ describe('AiAutomationCategory', () => {
 
     expect(screen.getByLabelText('Detection Model')).toHaveValue('minimax:MiniMax-M2.7');
     expect(screen.queryByText(`Custom: ${unsupportedModel}`)).not.toBeInTheDocument();
+  });
+
+  it('normalizes hidden saved AI auto-moderation models before saving', async () => {
+    const updateDraftConfig = vi.fn();
+    mockAiAutoModContext(
+      updateDraftConfig,
+      createDraftConfig({ aiAutoMod: { model: 'anthropic:claude-3-5-haiku' } }),
+    );
+
+    render(<AiAutomationCategory />);
+
+    await waitFor(() => {
+      expect(updateDraftConfig).toHaveBeenCalled();
+    });
+
+    const updater = updateDraftConfig.mock.calls[0]?.[0] as (config: GuildConfig) => GuildConfig;
+    const nextConfig = updater(
+      createDraftConfig({ aiAutoMod: { model: 'anthropic:claude-3-5-haiku' } }),
+    );
+
+    expect(nextConfig.aiAutoMod?.model).toBe('minimax:MiniMax-M2.7');
   });
 
   it('renders supported model dropdowns in triage engine setup', () => {
