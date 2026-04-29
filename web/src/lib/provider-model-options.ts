@@ -1,6 +1,7 @@
 // The web app imports a generated snapshot because the Railway/Docker web build
 // context cannot read the backend src/ tree. `pnpm providers:check` enforces
-// that this file stays identical to src/data/providers.json.
+// web/src/data/providers.json stays synced with the backend provider catalog;
+// this helper consumes that web JSON snapshot.
 import providersCatalog from '@/data/providers.json';
 
 const FALLBACK_AI_MODEL = 'minimax:MiniMax-M2.7';
