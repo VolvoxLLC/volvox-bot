@@ -1,32 +1,28 @@
 'use client';
 
 import { inputClasses } from '@/components/dashboard/config-editor-utils';
+import {
+  getVisibleProviderModelValue,
+  VISIBLE_PROVIDER_MODEL_OPTION_GROUPS,
+  VISIBLE_PROVIDER_MODEL_OPTIONS,
+} from '@/lib/provider-model-options';
 import { cn } from '@/lib/utils';
 
-export const DEFAULT_AI_MODEL = 'minimax:MiniMax-M2.7';
+export const DEFAULT_AI_MODEL = VISIBLE_PROVIDER_MODEL_OPTIONS[0]?.value ?? '';
 
-export const AI_MODEL_OPTIONS = [
-  { value: DEFAULT_AI_MODEL, label: 'MiniMax M2.7' },
-  { value: 'minimax:MiniMax-M2.7-highspeed', label: 'MiniMax M2.7 Highspeed' },
-  { value: 'minimax:MiniMax-M2.5', label: 'MiniMax M2.5' },
-  { value: 'minimax:MiniMax-M2.5-highspeed', label: 'MiniMax M2.5 Highspeed' },
-  { value: 'moonshot:kimi-k2.6', label: 'Kimi K2.6' },
-  { value: 'moonshot:kimi-k2.5', label: 'Kimi K2.5' },
-  { value: 'moonshot:kimi-k2-thinking', label: 'Kimi K2 Thinking' },
-  { value: 'openrouter:minimax/minimax-m2.5', label: 'MiniMax M2.5 via OpenRouter' },
-  { value: 'openrouter:moonshotai/kimi-k2.6', label: 'Kimi K2.6 via OpenRouter' },
-] as const;
+const hasVisibleModelOptions = VISIBLE_PROVIDER_MODEL_OPTIONS.length > 0;
 
-export type AiModelValue = (typeof AI_MODEL_OPTIONS)[number]['value'];
-
-const AI_MODEL_VALUES = AI_MODEL_OPTIONS.map((option) => option.value);
+export type AiModelValue = string;
 
 export function isSupportedAiModel(value: unknown): value is AiModelValue {
-  return typeof value === 'string' && AI_MODEL_VALUES.includes(value as AiModelValue);
+  return (
+    typeof value === 'string' &&
+    VISIBLE_PROVIDER_MODEL_OPTIONS.some((option) => option.value === value)
+  );
 }
 
 export function normalizeAiModel(value: unknown): AiModelValue {
-  return isSupportedAiModel(value) ? value : DEFAULT_AI_MODEL;
+  return getVisibleProviderModelValue(typeof value === 'string' ? value : undefined);
 }
 
 type AiModelSelectProps = {
@@ -62,14 +58,22 @@ export function AiModelSelect({
         id={id}
         value={normalizeAiModel(value)}
         onChange={(event) => onChange(event.target.value as AiModelValue)}
-        disabled={disabled}
+        disabled={disabled || !hasVisibleModelOptions}
         className={cn(inputClasses, 'w-full font-semibold', selectClassName)}
       >
-        {AI_MODEL_OPTIONS.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
+        {hasVisibleModelOptions ? (
+          VISIBLE_PROVIDER_MODEL_OPTION_GROUPS.map((group) => (
+            <optgroup key={group.providerName} label={group.providerDisplayName}>
+              {group.options.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </optgroup>
+          ))
+        ) : (
+          <option value="">No visible models configured</option>
+        )}
       </select>
     </div>
   );

@@ -1,5 +1,43 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import type { GuildConfig } from '@/components/dashboard/config-editor-utils';
+
+const { visibleModelOptions } = vi.hoisted(() => ({
+  visibleModelOptions: [
+    {
+      value: 'minimax:MiniMax-M2.7',
+      label: 'MiniMax M2.7',
+      providerName: 'minimax',
+      providerDisplayName: 'MiniMax',
+      modelName: 'MiniMax-M2.7',
+      modelDisplayName: 'MiniMax M2.7',
+    },
+    {
+      value: 'moonshot:kimi-k2.6',
+      label: 'Kimi K2.6',
+      providerName: 'moonshot',
+      providerDisplayName: 'Moonshot',
+      modelName: 'kimi-k2.6',
+      modelDisplayName: 'Kimi K2.6',
+    },
+    {
+      value: 'moonshot:kimi-k2.5',
+      label: 'Kimi K2.5',
+      providerName: 'moonshot',
+      providerDisplayName: 'Moonshot',
+      modelName: 'kimi-k2.5',
+      modelDisplayName: 'Kimi K2.5',
+    },
+    {
+      value: 'openrouter:minimax/minimax-m2.5',
+      label: 'MiniMax M2.5 (via OpenRouter)',
+      providerName: 'openrouter',
+      providerDisplayName: 'OpenRouter',
+      modelName: 'minimax/minimax-m2.5',
+      modelDisplayName: 'MiniMax M2.5 (via OpenRouter)',
+    },
+  ],
+}));
 
 const mockUseConfigContext = vi.fn();
 
@@ -72,17 +110,44 @@ vi.mock('@/components/ui/channel-selector', () => ({
 }));
 
 vi.mock('@/components/ui/role-selector', () => ({
-  RoleSelector: () => <div data-testid="role-selector" />,
+  RoleSelector: ({ id }: { id?: string }) => <div data-testid={id ?? 'role-selector'} />,
 }));
 
 vi.mock('@/components/dashboard/config-sections/ChannelModeSection', () => ({
   ChannelModeSection: () => <div data-testid="channel-mode-section" />,
 }));
 
+vi.mock('@/lib/provider-model-options', () => ({
+  VISIBLE_PROVIDER_MODEL_OPTION_GROUPS: [
+    {
+      providerName: 'minimax',
+      providerDisplayName: 'MiniMax',
+      options: [visibleModelOptions[0]],
+    },
+    {
+      providerName: 'moonshot',
+      providerDisplayName: 'Moonshot',
+      options: [visibleModelOptions[1], visibleModelOptions[2]],
+    },
+    {
+      providerName: 'openrouter',
+      providerDisplayName: 'OpenRouter',
+      options: [visibleModelOptions[3]],
+    },
+  ],
+  VISIBLE_PROVIDER_MODEL_OPTIONS: visibleModelOptions,
+  getVisibleProviderModelValue: (value: string | null | undefined) => {
+    const match = visibleModelOptions.find(
+      (option) => option.value.toLowerCase() === value?.toLowerCase(),
+    );
+    return match?.value ?? visibleModelOptions[0].value;
+  },
+}));
+
 import { AiAutomationCategory } from '@/components/dashboard/config-categories/ai-automation';
 
-function createDraftConfig(overrides: Record<string, unknown> = {}) {
-  const config = {
+function createDraftConfig(overrides: GuildConfig = {}): GuildConfig {
+  const config: GuildConfig = {
     ai: { enabled: true, systemPrompt: '', blockedChannelIds: [] },
     aiAutoMod: {
       enabled: true,
@@ -121,11 +186,11 @@ function createDraftConfig(overrides: Record<string, unknown> = {}) {
     ...overrides,
     aiAutoMod: {
       ...config.aiAutoMod,
-      ...((overrides.aiAutoMod as Record<string, unknown> | undefined) ?? {}),
+      ...(overrides.aiAutoMod ?? {}),
     },
     triage: {
       ...config.triage,
-      ...((overrides.triage as Record<string, unknown> | undefined) ?? {}),
+      ...(overrides.triage ?? {}),
     },
   };
 }
@@ -136,7 +201,7 @@ function mockConfigContext({
   updateDraftConfig = vi.fn((updater) => updater(draftConfig)),
 }: {
   activeTabId?: string;
-  draftConfig?: ReturnType<typeof createDraftConfig>;
+  draftConfig?: GuildConfig;
   updateDraftConfig?: ReturnType<typeof vi.fn>;
 } = {}) {
   mockUseConfigContext.mockReturnValue({
@@ -252,6 +317,38 @@ describe('AiAutomationCategory', () => {
     expect(updateDraftConfig.mock.results[1]?.value.triage.respondModel).toBe('moonshot:kimi-k2.5');
   });
 
+  it('normalizes hidden saved triage models to the first visible model', async () => {
+    const updateDraftConfig = vi.fn();
+    mockConfigContext({
+      activeTabId: 'triage',
+      draftConfig: createDraftConfig({
+        triage: {
+          classifyModel: 'minimax:MiniMax-M2.5',
+          respondModel: 'anthropic:claude-3-5-haiku',
+        },
+      }),
+      updateDraftConfig,
+    });
+
+    render(<AiAutomationCategory />);
+
+    await waitFor(() => {
+      expect(updateDraftConfig).toHaveBeenCalled();
+    });
+
+    const updater = updateDraftConfig.mock.calls[0]?.[0] as (config: GuildConfig) => GuildConfig;
+    const nextConfig = updater({
+      triage: {
+        enabled: true,
+        classifyModel: 'minimax:MiniMax-M2.5',
+        respondModel: 'anthropic:claude-3-5-haiku',
+      },
+    });
+
+    expect(nextConfig.triage?.classifyModel).toBe('minimax:MiniMax-M2.7');
+    expect(nextConfig.triage?.respondModel).toBe('minimax:MiniMax-M2.7');
+  });
+
   it('does not add unsupported saved models to triage model dropdowns', () => {
     const unsupportedModel = 'anthropic:claude-3-5-haiku';
     mockConfigContext({
@@ -259,6 +356,7 @@ describe('AiAutomationCategory', () => {
       draftConfig: createDraftConfig({
         triage: { classifyModel: unsupportedModel, respondModel: unsupportedModel },
       }),
+      updateDraftConfig: vi.fn(),
     });
 
     render(<AiAutomationCategory />);

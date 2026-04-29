@@ -86,6 +86,11 @@
           "pricing": { "input": 0.15, "output": 1.20, "cacheRead": 0.03, "cacheWrite": 0 },
           "availability": { "visible": true, "tier": "free" }
         },
+        "minimax/minimax-m2.5:free": {
+          "displayName": "MiniMax M2.5 Free (via OpenRouter)",
+          "pricing": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 },
+          "availability": { "visible": true, "tier": "free" }
+        },
         "moonshotai/kimi-k2.6": {
           "displayName": "Kimi K2.6 (via OpenRouter)",
           "pricing": { "input": 0.60, "output": 2.80, "cacheRead": 0.16, "cacheWrite": 0 },

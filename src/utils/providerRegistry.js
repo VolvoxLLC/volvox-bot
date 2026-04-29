@@ -130,6 +130,42 @@ function validatePricing(pricing, name, modelId) {
 }
 
 /**
+ * Validate and normalise optional model availability metadata.
+ * @param {unknown} availability
+ * @param {string} name
+ * @param {string} modelId
+ * @returns {{ visible: boolean, tier: string }}
+ */
+function validateAvailability(availability, name, modelId) {
+  if (availability === undefined || availability === null) {
+    return { visible: true, tier: 'free' };
+  }
+
+  if (typeof availability !== 'object' || Array.isArray(availability)) {
+    throw new TypeError(
+      `providers.json: provider "${name}" model "${modelId}" availability must be an object`,
+    );
+  }
+
+  if (availability.visible !== undefined && typeof availability.visible !== 'boolean') {
+    throw new TypeError(
+      `providers.json: provider "${name}" model "${modelId}" availability.visible must be boolean`,
+    );
+  }
+
+  if (availability.tier !== undefined && typeof availability.tier !== 'string') {
+    throw new TypeError(
+      `providers.json: provider "${name}" model "${modelId}" availability.tier must be a string`,
+    );
+  }
+
+  return {
+    visible: availability.visible ?? true,
+    tier: availability.tier ?? 'free',
+  };
+}
+
+/**
  * Normalise a single model entry.
  * @param {string} modelId
  * @param {object} modelCfg
@@ -141,8 +177,8 @@ function normaliseModel(modelId, modelCfg, name) {
     throw new TypeError(`providers.json: provider "${name}" model "${modelId}" must be an object`);
   }
   validatePricing(modelCfg.pricing, name, modelId);
+  const availability = validateAvailability(modelCfg.availability, name, modelId);
 
-  const availability = modelCfg.availability ?? {};
   return {
     id: modelId, // preserve original casing for display
     displayName: modelCfg.displayName ?? modelId,
@@ -152,10 +188,7 @@ function normaliseModel(modelId, modelCfg, name) {
       cacheRead: modelCfg.pricing.cacheRead,
       cacheWrite: modelCfg.pricing.cacheWrite,
     },
-    availability: {
-      visible: availability.visible ?? true,
-      tier: availability.tier ?? 'free',
-    },
+    availability,
   };
 }
 

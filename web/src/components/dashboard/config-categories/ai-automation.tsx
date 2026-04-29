@@ -1,5 +1,5 @@
 'use client';
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { AiModelSelect } from '@/components/dashboard/ai-model-select';
 import { useConfigContext } from '@/components/dashboard/config-context';
 import { inputClasses, parseNumberInput } from '@/components/dashboard/config-editor-utils';
@@ -7,6 +7,10 @@ import { ChannelModeSection } from '@/components/dashboard/config-sections/Chann
 import type { ConfigFeatureId } from '@/components/dashboard/config-workspace/types';
 import { ChannelSelector } from '@/components/ui/channel-selector';
 import { RoleSelector } from '@/components/ui/role-selector';
+import {
+  getVisibleProviderModelValue,
+  VISIBLE_PROVIDER_MODEL_OPTIONS,
+} from '@/lib/provider-model-options';
 import { cn } from '@/lib/utils';
 import type { AiAutoModAction, AiAutoModCategory, ChannelMode } from '@/types/config';
 import { SYSTEM_PROMPT_MAX_LENGTH } from '@/types/config';
@@ -77,6 +81,8 @@ function normalizeAiAutoModActions(
 
   return sortAiAutoModActions(uniqueActions);
 }
+
+const hasVisibleModelOptions = VISIBLE_PROVIDER_MODEL_OPTIONS.length > 0;
 
 /**
  * Render the AI & Automation configuration UI for the chat, automod, triage, and memory feature tabs.
@@ -193,6 +199,36 @@ export function AiAutomationCategory() {
     },
     [updateDraftConfig],
   );
+
+  const hasDraftConfig = draftConfig !== null;
+  const currentClassifyModel = draftConfig?.triage?.classifyModel;
+  const currentRespondModel = draftConfig?.triage?.respondModel;
+  const classifyModelValue = getVisibleProviderModelValue(currentClassifyModel);
+  const respondModelValue = getVisibleProviderModelValue(currentRespondModel);
+
+  useEffect(() => {
+    if (!hasDraftConfig || activeTab !== 'triage' || !hasVisibleModelOptions) return;
+    if (classifyModelValue === currentClassifyModel && respondModelValue === currentRespondModel) {
+      return;
+    }
+
+    updateDraftConfig((prev) => ({
+      ...prev,
+      triage: {
+        ...prev.triage,
+        classifyModel: getVisibleProviderModelValue(prev.triage?.classifyModel),
+        respondModel: getVisibleProviderModelValue(prev.triage?.respondModel),
+      },
+    }));
+  }, [
+    activeTab,
+    classifyModelValue,
+    currentClassifyModel,
+    currentRespondModel,
+    hasDraftConfig,
+    respondModelValue,
+    updateDraftConfig,
+  ]);
 
   if (!draftConfig) return null;
   if (!activeTab) return null;
@@ -475,7 +511,7 @@ export function AiAutomationCategory() {
                 <AiModelSelect
                   id="classify-model"
                   label="Classifier Engine"
-                  value={draftConfig.triage?.classifyModel}
+                  value={classifyModelValue}
                   onChange={(value) => updateTriageField('classifyModel', value)}
                   disabled={saving}
                   wrapperClassName="space-y-2"
@@ -484,7 +520,7 @@ export function AiAutomationCategory() {
                 <AiModelSelect
                   id="respond-model"
                   label="Response Engine"
-                  value={draftConfig.triage?.respondModel}
+                  value={respondModelValue}
                   onChange={(value) => updateTriageField('respondModel', value)}
                   disabled={saving}
                   wrapperClassName="space-y-2"

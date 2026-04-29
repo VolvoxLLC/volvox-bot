@@ -1300,6 +1300,7 @@ describe('triage module', () => {
       expect(info).toHaveBeenCalledWith(
         'Triage configured',
         expect.objectContaining({
+          scope: 'global-defaults',
           classifyModel: 'minimax:MiniMax-M2.7',
           respondModel: 'minimax:MiniMax-M2.7',
         }),
