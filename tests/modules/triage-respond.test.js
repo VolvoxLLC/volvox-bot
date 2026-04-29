@@ -59,12 +59,25 @@ vi.mock('../../src/modules/moderation.js', () => ({
   isProtectedTarget: vi.fn().mockReturnValue(false),
 }));
 
+vi.mock('../../src/db.js', () => ({
+  getPool: vi.fn(),
+}));
+
+vi.mock('../../src/modules/auditLogger.js', () => ({
+  logAuditEvent: vi.fn(),
+}));
+
+import { getPool } from '../../src/db.js';
 import { warn } from '../../src/logger.js';
+import { logAuditEvent } from '../../src/modules/auditLogger.js';
 import { isProtectedTarget } from '../../src/modules/moderation.js';
 import { safeSend } from '../../src/utils/safeSend.js';
 
 beforeEach(() => {
   vi.clearAllMocks();
+  getPool.mockImplementation(() => {
+    throw new Error('Database not initialized');
+  });
 });
 
 describe('triage-respond', () => {
@@ -332,7 +345,11 @@ describe('triage-respond', () => {
         id: 'log-channel',
       };
 
+      const mockPool = { query: vi.fn() };
+      getPool.mockReturnValue(mockPool);
+
       const mockClient = {
+        user: { id: 'bot1', tag: 'Volvox.Bot#0001' },
         channels: {
           fetch: vi.fn(async (id) => (id === 'log-channel' ? mockLogChannel : null)),
         },
@@ -360,7 +377,27 @@ describe('triage-respond', () => {
         },
       };
 
-      await sendModerationLog(mockClient, classification, snapshot, 'channel1', config);
+      await sendModerationLog(mockClient, classification, snapshot, 'channel1', config, 'guild1');
+
+      expect(logAuditEvent).toHaveBeenCalledWith(
+        mockPool,
+        expect.objectContaining({
+          guildId: 'guild1',
+          userId: 'bot1',
+          userTag: 'Volvox.Bot#0001',
+          action: 'triage.moderation_flag',
+          targetType: 'message',
+          targetId: 'msg1',
+          targetTag: 'BadUser',
+          details: expect.objectContaining({
+            sourceChannelId: 'channel1',
+            logChannelId: 'log-channel',
+            recommendedAction: 'warn',
+            violatedRule: 'Rule 1: Be respectful',
+            targetMessageIds: ['msg1'],
+          }),
+        }),
+      );
 
       expect(safeSend).toHaveBeenCalledWith(
         mockLogChannel,

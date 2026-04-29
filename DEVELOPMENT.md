@@ -29,6 +29,7 @@ pnpm mono:dev              # Start bot + dashboard together
 ```
 
 > Use `pnpm dev` (bot only) or `pnpm mono:dev` (all workspaces) for file-watching dev mode.
+> Restart dev mode after changing `.env` files; running Node/Next processes keep their startup environment.
 
 ## Environment Variables
 
@@ -37,6 +38,8 @@ Copy [`.env.example`](.env.example) to `.env` — it contains full documentation
 **Required:** `DISCORD_TOKEN`, `ANTHROPIC_API_KEY`, `DATABASE_URL`, `DISCORD_CLIENT_ID`
 
 **Optional:** `REDIS_URL`, `SENTRY_DSN`, `BOT_API_SECRET`, `LOG_LEVEL`, `NEXT_PUBLIC_SITE_URL`, and more — see the file.
+
+The bot dev script loads root [`.env`](.env). The dashboard dev script runs from [`web/`](web) and loads [`web/.env`](web/.env.example); changing root dashboard values like `NEXTAUTH_URL` does not update the Next.js dev server unless the matching `web/.env` value changes too. Dev startup intentionally lets those files override stale exported shell variables.
 
 ## Commands
 

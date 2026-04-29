@@ -4,6 +4,7 @@
  */
 
 import { EmbedBuilder } from 'discord.js';
+import { getPool } from '../db.js';
 import { info, error as logError, warn } from '../logger.js';
 import { buildDebugEmbed, extractStats, logAiUsage } from '../utils/debugFooter.js';
 import { fetchChannelCached } from '../utils/discordCache.js';
@@ -11,6 +12,7 @@ import { parseProviderModel } from '../utils/modelString.js';
 import { safeSend } from '../utils/safeSend.js';
 import { splitMessage } from '../utils/splitMessage.js';
 import { addToHistory } from './ai.js';
+import { logAuditEvent } from './auditLogger.js';
 import { isProtectedTarget } from './moderation.js';
 import { isMessageTypeEligible } from './triage-config.js';
 import { resolveMessageId, sanitizeText } from './triage-filter.js';
@@ -150,6 +152,53 @@ export async function fetchChannelContext(channelId, client, bufferSnapshot, lim
 
 // ── Moderation audit log ─────────────────────────────────────────────────────
 
+function getAuditPool() {
+  try {
+    return getPool();
+  } catch {
+    return null;
+  }
+}
+
+function recordTriageModerationAudit(
+  client,
+  classification,
+  targets,
+  channelId,
+  logChannelId,
+  guildId,
+) {
+  if (!guildId) return;
+
+  const targetMessageIds =
+    classification.targetMessageIds ?? targets.map((target) => target.messageId);
+  const primaryTarget = targets[0] ?? null;
+
+  logAuditEvent(getAuditPool(), {
+    guildId,
+    userId: client.user?.id ?? 'volvox-bot',
+    userTag: client.user?.tag ?? client.user?.username ?? 'Volvox.Bot',
+    action: 'triage.moderation_flag',
+    targetType: 'message',
+    targetId: primaryTarget?.messageId ?? targetMessageIds[0] ?? null,
+    targetTag: primaryTarget?.author ?? null,
+    details: {
+      sourceChannelId: channelId,
+      logChannelId,
+      recommendedAction: classification.recommendedAction ?? null,
+      violatedRule: classification.violatedRule ?? null,
+      reasoning: classification.reasoning ?? null,
+      targetMessageIds,
+      targets: targets.map((target) => ({
+        messageId: target.messageId,
+        userId: target.userId,
+        author: target.author,
+        content: target.content,
+      })),
+    },
+  });
+}
+
 /**
  * Send a moderation audit embed to the configured moderation log channel
  * summarizing the classification and flagged messages.
@@ -197,6 +246,8 @@ export async function sendModerationLog(
         }
       }
     }
+
+    recordTriageModerationAudit(client, classification, targets, channelId, logChannelId, guildId);
 
     const actionLabels = {
       warn: '\u26A0\uFE0F Warn',
