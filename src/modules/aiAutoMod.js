@@ -434,14 +434,17 @@ async function executeSingleAction(
   let caseData = null;
 
   switch (action) {
-    case 'flag':
-      await sendFlagEmbed(message, client, { ...result, action }, autoModConfig).catch((err) =>
-        logError('AI auto-mod: sendFlagEmbed failed', { error: err?.message }),
-      );
-      break;
+    case 'flag': {
+      let success = true;
+      await sendFlagEmbed(message, client, { ...result, action }, autoModConfig).catch((err) => {
+        success = false;
+        logError('AI auto-mod: sendFlagEmbed failed', { error: err?.message });
+      });
+      return { success, caseData: null };
+    }
 
     case 'warn':
-      if (!member || !guild) return null;
+      if (!member || !guild) return { success: false, caseData: null };
       caseData = await createCase(guild.id, {
         action: 'warn',
         targetId: member.user.id,
@@ -454,7 +457,7 @@ async function executeSingleAction(
         return null;
       });
 
-      if (!caseData) return null;
+      if (!caseData) return { success: false, caseData: null };
 
       if (shouldSendDm(_guildConfig, 'warn')) {
         await sendDmNotification(member, 'warn', reason, guild.name ?? guild.id).catch((err) =>
@@ -494,16 +497,20 @@ async function executeSingleAction(
             error: err?.message,
           }),
       );
-      break;
+      return { success: true, caseData };
 
     case 'timeout': {
-      if (!member || !guild) return null;
+      if (!member || !guild) return { success: false, caseData: null };
       const durationMs = autoModConfig.timeoutDurationMs ?? DEFAULTS.timeoutDurationMs;
-      await member
+      const timedOut = await member
         .timeout(durationMs, reason)
-        .catch((err) =>
-          logError('AI auto-mod: timeout failed', { userId: member.user.id, error: err?.message }),
-        );
+        .then(() => true)
+        .catch((err) => {
+          logError('AI auto-mod: timeout failed', { userId: member.user.id, error: err?.message });
+          return false;
+        });
+      if (!timedOut) return { success: false, caseData: null };
+
       caseData = await createCase(guild.id, {
         action: 'timeout',
         targetId: member.user.id,
@@ -511,20 +518,25 @@ async function executeSingleAction(
         moderatorId: botId,
         moderatorTag: botTag,
         reason,
-        duration: `${durationMs}ms`,
-      }).catch((err) =>
-        logError('AI auto-mod: createCase (timeout) failed', { error: err?.message }),
-      );
-      break;
+        duration: `${String(durationMs)}ms`,
+      }).catch((err) => {
+        logError('AI auto-mod: createCase (timeout) failed', { error: err?.message });
+        return null;
+      });
+      return { success: Boolean(caseData), caseData };
     }
 
-    case 'kick':
-      if (!member || !guild) return null;
-      await member
+    case 'kick': {
+      if (!member || !guild) return { success: false, caseData: null };
+      const kicked = await member
         .kick(reason)
-        .catch((err) =>
-          logError('AI auto-mod: kick failed', { userId: member.user.id, error: err?.message }),
-        );
+        .then(() => true)
+        .catch((err) => {
+          logError('AI auto-mod: kick failed', { userId: member.user.id, error: err?.message });
+          return false;
+        });
+      if (!kicked) return { success: false, caseData: null };
+
       caseData = await createCase(guild.id, {
         action: 'kick',
         targetId: member.user.id,
@@ -532,16 +544,24 @@ async function executeSingleAction(
         moderatorId: botId,
         moderatorTag: botTag,
         reason,
-      }).catch((err) => logError('AI auto-mod: createCase (kick) failed', { error: err?.message }));
-      break;
+      }).catch((err) => {
+        logError('AI auto-mod: createCase (kick) failed', { error: err?.message });
+        return null;
+      });
+      return { success: Boolean(caseData), caseData };
+    }
 
-    case 'ban':
-      if (!member || !guild) return null;
-      await guild.members
+    case 'ban': {
+      if (!member || !guild) return { success: false, caseData: null };
+      const banned = await guild.members
         .ban(member.user.id, { reason, deleteMessageSeconds: 0 })
-        .catch((err) =>
-          logError('AI auto-mod: ban failed', { userId: member.user.id, error: err?.message }),
-        );
+        .then(() => true)
+        .catch((err) => {
+          logError('AI auto-mod: ban failed', { userId: member.user.id, error: err?.message });
+          return false;
+        });
+      if (!banned) return { success: false, caseData: null };
+
       caseData = await createCase(guild.id, {
         action: 'ban',
         targetId: member.user.id,
@@ -549,18 +569,24 @@ async function executeSingleAction(
         moderatorId: botId,
         moderatorTag: botTag,
         reason,
-      }).catch((err) => logError('AI auto-mod: createCase (ban) failed', { error: err?.message }));
-      break;
+      }).catch((err) => {
+        logError('AI auto-mod: createCase (ban) failed', { error: err?.message });
+        return null;
+      });
+      return { success: Boolean(caseData), caseData };
+    }
 
-    case 'delete':
-      await message.delete().catch(() => {});
-      break;
+    case 'delete': {
+      const success = await message
+        .delete()
+        .then(() => true)
+        .catch(() => false);
+      return { success, caseData: null };
+    }
 
     default:
-      break;
+      return { success: false, caseData: null };
   }
-
-  return caseData;
 }
 
 /**
@@ -594,7 +620,7 @@ async function executeAction(message, client, result, autoModConfig, _guildConfi
   }
 
   for (const action of actions) {
-    const caseData = await executeSingleAction(
+    const { success, caseData } = await executeSingleAction(
       action,
       message,
       client,
@@ -603,6 +629,9 @@ async function executeAction(message, client, result, autoModConfig, _guildConfi
       autoModConfig,
       _guildConfig,
     );
+
+    if (!success) continue;
+
     logAiAutoModAuditEvent(
       message,
       result,

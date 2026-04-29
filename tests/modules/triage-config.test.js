@@ -72,6 +72,17 @@ describe('triage-config', () => {
       );
     });
 
+    it('should deduplicate repeated model fallback warnings by origin, value, and reason', () => {
+      resolveTriageConfig({ model: 'dedupe-bare-model' });
+      resolveTriageConfig({ model: 'dedupe-bare-model' });
+
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(warn).toHaveBeenCalledWith(
+        'Triage config contains an invalid model string — falling back',
+        expect.objectContaining({ origin: 'triage.model', value: 'dedupe-bare-model' }),
+      );
+    });
+
     it('should fall back to supported legacy models when configured models are unsupported', () => {
       const result = resolveTriageConfig({
         classifyModel: 'anthropic:claude-3-5-haiku',
