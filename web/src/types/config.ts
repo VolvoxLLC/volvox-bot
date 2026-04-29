@@ -22,19 +22,24 @@ export interface AiConfig {
 }
 
 /** AI Auto-Moderation configuration. */
+export type AiAutoModCategory =
+  | 'toxicity'
+  | 'spam'
+  | 'harassment'
+  | 'hateSpeech'
+  | 'sexualContent'
+  | 'violence'
+  | 'selfHarm';
+
+export type AiAutoModAction = 'none' | 'flag' | 'delete' | 'warn' | 'timeout' | 'kick' | 'ban';
+
+export type AiAutoModActionValue = AiAutoModAction | AiAutoModAction[];
+
 export interface AiAutoModConfig {
   enabled: boolean;
   model: string;
-  thresholds: {
-    toxicity: number;
-    spam: number;
-    harassment: number;
-  };
-  actions: {
-    toxicity: string;
-    spam: string;
-    harassment: string;
-  };
+  thresholds: Record<AiAutoModCategory, number>;
+  actions: Record<AiAutoModCategory, AiAutoModActionValue>;
   timeoutDurationMs: number;
   flagChannelId: string | null;
   autoDelete: boolean;
@@ -275,6 +280,7 @@ export interface BotStatusConfig {
 
 /** TL;DR summary feature settings. */
 export interface TldrConfig extends ToggleSectionConfig {
+  model?: string;
   systemPrompt?: string;
   defaultMessages: number;
   maxMessages: number;

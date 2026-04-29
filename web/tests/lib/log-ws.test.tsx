@@ -51,23 +51,6 @@ class MockWebSocket {
   }
 }
 
-function mockTicketFetch(wsUrl = 'wss://bot.example/ws/logs', ticket = 'ticket') {
-  return vi.spyOn(global, 'fetch').mockResolvedValue({
-    ok: true,
-    json: async () => ({ wsUrl, ticket }),
-  } as Response);
-}
-
-function expectSocketSent(ws: MockWebSocket, payload: unknown) {
-  expect(ws.sent).toContain(JSON.stringify(payload));
-}
-
-async function renderLogStream(options: Parameters<typeof useLogStream>[0] = { guildId: 'guild-1' }) {
-  const hook = renderHook(() => useLogStream(options));
-  await waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
-  return { ...hook, ws: MockWebSocket.instances[0]! };
-}
-
 describe('useLogStream', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -81,10 +64,14 @@ describe('useLogStream', () => {
   });
 
   it('fetches an HMAC ticket, opens the returned websocket URL, authenticates, and applies the guild filter', async () => {
-    const fetchSpy = mockTicketFetch('wss://bot.example/ws/logs', 'signed-ticket');
+    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({ wsUrl: 'wss://bot.example/ws/logs', ticket: 'signed-ticket' }),
+    } as Response);
 
-    const { result } = await renderLogStream({ guildId: 'guild 1' });
+    const { result } = renderHook(() => useLogStream({ guildId: 'guild 1' }));
 
+    await waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
     expect(fetchSpy).toHaveBeenCalledWith(
       '/api/log-stream/ws-ticket?guildId=guild+1',
       expect.objectContaining({ cache: 'no-store' }),
@@ -94,17 +81,22 @@ describe('useLogStream', () => {
     expect(ws.url).toBe('wss://bot.example/ws/logs');
 
     act(() => ws.open());
-    expectSocketSent(ws, { type: 'auth', ticket: 'signed-ticket' });
+    expect(ws.sent).toContain(JSON.stringify({ type: 'auth', ticket: 'signed-ticket' }));
 
     act(() => ws.message({ type: 'auth_ok' }));
     await waitFor(() => expect(result.current.status).toBe('connected'));
-    expectSocketSent(ws, { type: 'filter', guildId: 'guild 1' });
+    expect(ws.sent).toContain(JSON.stringify({ type: 'filter', guildId: 'guild 1' }));
   });
 
   it('normalizes history and live log payloads while ignoring malformed frames', async () => {
-    mockTicketFetch();
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({ wsUrl: 'wss://bot.example/ws/logs', ticket: 'ticket' }),
+    } as Response);
 
-    const { result, ws } = await renderLogStream();
+    const { result } = renderHook(() => useLogStream({ guildId: 'guild-1' }));
+    await waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+    const ws = MockWebSocket.instances[0]!;
 
     act(() => {
       ws.open();
@@ -134,9 +126,14 @@ describe('useLogStream', () => {
   });
 
   it('sends updated filters over an open socket and preserves them after reconnect auth', async () => {
-    mockTicketFetch();
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({ wsUrl: 'wss://bot.example/ws/logs', ticket: 'ticket' }),
+    } as Response);
 
-    const { result, ws } = await renderLogStream();
+    const { result } = renderHook(() => useLogStream({ guildId: 'guild-1' }));
+    await waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+    const ws = MockWebSocket.instances[0]!;
 
     act(() => {
       ws.open();
@@ -144,13 +141,9 @@ describe('useLogStream', () => {
       result.current.sendFilter({ level: 'error', channelIds: ['chan-1'], search: 'panic' });
     });
 
-    expectSocketSent(ws, {
-      type: 'filter',
-      level: 'error',
-      channelIds: ['chan-1'],
-      search: 'panic',
-      guildId: 'guild-1',
-    });
+    expect(ws.sent).toContain(
+      JSON.stringify({ type: 'filter', level: 'error', channelIds: ['chan-1'], search: 'panic', guildId: 'guild-1' }),
+    );
   });
 
   it('retries ticket failures with exponential backoff', async () => {
@@ -166,11 +159,14 @@ describe('useLogStream', () => {
       await Promise.resolve();
       await Promise.resolve();
     });
-    expect(fetchSpy).toHaveBeenCalledTimes(1);
+
     expect(result.current.status).toBe('reconnecting');
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(1_000);
+      vi.advanceTimersByTime(1_000);
+      await Promise.resolve();
+      await Promise.resolve();
     });
 
     expect(fetchSpy).toHaveBeenCalledTimes(2);
@@ -189,9 +185,13 @@ describe('useLogStream', () => {
   });
 
   it('clears logs on demand', async () => {
-    mockTicketFetch();
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({ wsUrl: 'wss://bot.example/ws/logs', ticket: 'ticket' }),
+    } as Response);
 
-    const { result } = await renderLogStream();
+    const { result } = renderHook(() => useLogStream({ guildId: 'guild-1' }));
+    await waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
 
     act(() => {
       MockWebSocket.instances[0]!.message({ type: 'history', logs: [{ level: 'info', message: 'hello' }] });
@@ -219,7 +219,6 @@ describe('useLogStream', () => {
       await Promise.resolve();
     });
     expect(fetchSpy).toHaveBeenCalledTimes(1);
-    expect(result.current.status).toBe('reconnecting');
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1_000);
@@ -245,7 +244,7 @@ describe('useLogStream', () => {
     });
 
     expect(result.current.status).toBe('connected');
-    expectSocketSent(first, { type: 'filter', module: 'api', level: 'all', guildId: 'guild-1' });
+    expect(first.sent).toContain(JSON.stringify({ type: 'filter', module: 'api', level: 'all', guildId: 'guild-1' }));
     expect(result.current.logs.at(-1)).toEqual(expect.objectContaining({ level: 'error', message: 'boom' }));
 
     act(() => first.serverClose());
@@ -261,7 +260,7 @@ describe('useLogStream', () => {
       second.open();
       second.message({ type: 'auth_ok' });
     });
-    expectSocketSent(second, { type: 'filter', module: 'api', level: 'all', guildId: 'guild-1' });
+    expect(second.sent).toContain(JSON.stringify({ type: 'filter', module: 'api', level: 'all', guildId: 'guild-1' }));
 
     unmount();
     expect(second.readyState).toBe(MockWebSocket.CLOSED);

@@ -1,5 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('../../src/logger.js', () => ({
+  warn: vi.fn(),
+}));
+
+import { warn } from '../../src/logger.js';
 import {
   getDynamicInterval,
   isChannelEligible,
@@ -9,6 +14,10 @@ import {
 } from '../../src/modules/triage-config.js';
 
 describe('triage-config', () => {
+  beforeEach(() => {
+    vi.mocked(warn).mockClear();
+  });
+
   describe('resolveTriageConfig', () => {
     it('should return defaults for an empty config', () => {
       const result = resolveTriageConfig({});
@@ -57,6 +66,83 @@ describe('triage-config', () => {
       // Bare string does not parse as provider:model → warn + fall back to default.
       expect(result.respondModel).toBe('minimax:MiniMax-M2.7');
       expect(result.respondBudget).toBe(0.5);
+      expect(warn).toHaveBeenCalledWith(
+        'Triage config contains an invalid model string — falling back',
+        expect.objectContaining({ origin: 'triage.model', value: 'legacy-bare-name' }),
+      );
+    });
+
+    it('should deduplicate repeated model fallback warnings by origin, value, and reason', () => {
+      resolveTriageConfig({ model: 'dedupe-bare-model' });
+      resolveTriageConfig({ model: 'dedupe-bare-model' });
+
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(warn).toHaveBeenCalledWith(
+        'Triage config contains an invalid model string — falling back',
+        expect.objectContaining({ origin: 'triage.model', value: 'dedupe-bare-model' }),
+      );
+    });
+
+    it('should bound model fallback warning dedupe and drop the oldest entries', () => {
+      for (let index = 0; index <= 100; index += 1) {
+        resolveTriageConfig({ model: `bounded-bare-model-${index}` });
+      }
+
+      vi.mocked(warn).mockClear();
+      resolveTriageConfig({ model: 'bounded-bare-model-0' });
+      expect(warn).toHaveBeenCalledWith(
+        'Triage config contains an invalid model string — falling back',
+        expect.objectContaining({ origin: 'triage.model', value: 'bounded-bare-model-0' }),
+      );
+
+      vi.mocked(warn).mockClear();
+      resolveTriageConfig({ model: 'bounded-bare-model-100' });
+      expect(warn).not.toHaveBeenCalled();
+    });
+
+    it('should fall back to supported legacy models when configured models are unsupported', () => {
+      const result = resolveTriageConfig({
+        classifyModel: 'definitely-fake-classify-provider:not-a-real-model',
+        respondModel: 'definitely-fake-respond-provider:not-a-real-model',
+        model: 'legacy-bare-name',
+        models: {
+          triage: 'moonshot:kimi-k2.6',
+          default: 'openrouter:minimax/minimax-m2.5',
+        },
+      });
+
+      expect(result.classifyModel).toBe('moonshot:kimi-k2.6');
+      expect(result.respondModel).toBe('openrouter:minimax/minimax-m2.5');
+    });
+
+    it('should not warn for stale lower-priority legacy models that are never consulted', () => {
+      const result = resolveTriageConfig({
+        classifyModel: 'moonshot:kimi-k2.6',
+        respondModel: 'openrouter:minimax/minimax-m2.5',
+        model: 'legacy-bare-name',
+        models: {
+          triage: 'also-legacy-bare-name',
+          default: 'anthropic:claude-3-5-haiku',
+        },
+      });
+
+      expect(result.classifyModel).toBe('moonshot:kimi-k2.6');
+      expect(result.respondModel).toBe('openrouter:minimax/minimax-m2.5');
+      expect(warn).not.toHaveBeenCalled();
+    });
+
+    it('should canonicalize supported legacy model casing through resolution', () => {
+      const result = resolveTriageConfig({
+        classifyModel: 'MINIMAX:minimax-m2.5',
+        respondModel: 'MINIMAX:minimax-m2.5',
+        models: {
+          triage: 'MOONSHOT:KIMI-K2.6',
+          default: 'OPENROUTER:MINIMAX/MINIMAX-M2.5',
+        },
+      });
+
+      expect(result.classifyModel).toBe('minimax:MiniMax-M2.5');
+      expect(result.respondModel).toBe('minimax:MiniMax-M2.5');
     });
   });
 

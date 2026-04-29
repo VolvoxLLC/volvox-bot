@@ -43,7 +43,7 @@ const features: readonly Feature[] = [
   {
     icon: Shield,
     title: 'AI Auto-Moderation',
-    description: 'Automated toxicity, spam, and harassment detection with configurable thresholds.',
+    description: 'Model-selectable safety scoring with configurable thresholds and actions.',
     size: 'medium',
     className: 'md:col-span-1 lg:col-span-1',
     animationOrder: 1,

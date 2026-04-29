@@ -14,6 +14,10 @@ import {
 import { logger } from '@/lib/logger';
 
 describe('config workspace category helpers', () => {
+  it('retrieves the default category by its ID', () => {
+    expect(getCategoryById(DEFAULT_CONFIG_CATEGORY).id).toBe(DEFAULT_CONFIG_CATEGORY);
+  });
+
   it('finds categories by id and falls back to the default category for unknown ids', () => {
     expect(getCategoryById('moderation-safety').label).toMatch(/Moderation/i);
 

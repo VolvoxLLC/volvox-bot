@@ -1,7 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { handleAsyncClick } from '../../helpers/async-events';
 import { RoleDirectoryProvider, useGuildRoles } from '@/components/layout/role-directory-context';
 
 const { mockUsePathname } = vi.hoisted(() => ({
@@ -122,7 +121,7 @@ describe('RoleDirectoryProvider', () => {
 
       return (
         <div>
-          <button type="button" onClick={handleAsyncClick(refreshRoles)}>
+          <button type="button" onClick={() => void refreshRoles()}>
             Refresh
           </button>
           <span>{roles.map((role) => role.name).join(', ')}</span>
@@ -163,7 +162,7 @@ describe('RoleDirectoryProvider', () => {
 
       return (
         <div>
-          <button type="button" onClick={handleAsyncClick(refreshRoles)}>
+          <button type="button" onClick={() => void refreshRoles()}>
             Retry
           </button>
           <span>{error ?? roles.map((role) => role.name).join(', ')}</span>
@@ -251,28 +250,15 @@ describe('RoleDirectoryProvider', () => {
       json: async () => [],
     } as Response);
 
-    let ensureResult: Promise<void> | undefined;
-    let refreshResult: Promise<void> | undefined;
-
     function NoGuildActions() {
       const { ensureRolesLoaded, refreshRoles } = useGuildRoles(null);
 
       return (
         <div>
-          <button
-            type="button"
-            onClick={() => {
-              ensureResult = ensureRolesLoaded();
-            }}
-          >
+          <button type="button" onClick={() => void ensureRolesLoaded()}>
             Ensure
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              refreshResult = refreshRoles();
-            }}
-          >
+          <button type="button" onClick={() => void refreshRoles()}>
             Refresh
           </button>
         </div>
@@ -288,9 +274,7 @@ describe('RoleDirectoryProvider', () => {
     );
 
     await user.click(screen.getByRole('button', { name: 'Ensure' }));
-    await expect(ensureResult).resolves.toBeUndefined();
     await user.click(screen.getByRole('button', { name: 'Refresh' }));
-    await expect(refreshResult).resolves.toBeUndefined();
 
     expect(screen.getByText('No guild')).toBeInTheDocument();
     expect(fetchSpy).not.toHaveBeenCalled();

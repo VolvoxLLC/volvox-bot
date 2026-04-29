@@ -1,8 +1,10 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 const mockUseConfigContext = vi.fn();
+
+vi.mock('@/components/ui/select', () => import('../../helpers/mock-select'));
 
 vi.mock('framer-motion', () => ({
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -226,6 +228,184 @@ function mockWelcomeContext({
 }
 
 describe('OnboardingGrowthCategory', () => {
+  it('renders and updates the TLDR summary model selector', () => {
+    const draftConfig = {
+      tldr: {
+        enabled: true,
+        model: 'moonshot:kimi-k2.6',
+        systemPrompt: '',
+        defaultMessages: 50,
+        maxMessages: 200,
+        cooldownSeconds: 300,
+      },
+      afk: { enabled: false },
+    };
+    const updateDraftConfig = vi.fn((updater) => updater(draftConfig));
+
+    mockUseConfigContext.mockReturnValue({
+      draftConfig,
+      saving: false,
+      guildId: 'guild-1',
+      visibleFeatureIds: new Set(['tldr-afk']),
+      activeTabId: 'tldr-afk',
+      updateDraftConfig,
+    });
+
+    render(<OnboardingGrowthCategory />);
+
+    const modelSelect = screen.getByLabelText('TL;DR Model');
+    expect(modelSelect).toHaveValue('moonshot:kimi-k2.6');
+    expect(screen.getByRole('option', { name: 'Kimi K2.6' })).toHaveAttribute(
+      'value',
+      'moonshot:kimi-k2.6',
+    );
+
+    fireEvent.change(modelSelect, {
+      target: { value: 'openrouter:minimax/minimax-m2.5' },
+    });
+
+    expect(updateDraftConfig).toHaveBeenCalledTimes(1);
+    expect(updateDraftConfig.mock.results[0]?.value.tldr.model).toBe(
+      'openrouter:minimax/minimax-m2.5',
+    );
+  });
+
+  it('preserves unsupported saved models in the TLDR model selector', () => {
+    const unsupportedModel = 'anthropic:claude-3-5-haiku';
+    const updateDraftConfig = vi.fn();
+
+    mockUseConfigContext.mockReturnValue({
+      draftConfig: {
+        tldr: {
+          enabled: true,
+          model: unsupportedModel,
+          systemPrompt: '',
+          defaultMessages: 50,
+          maxMessages: 200,
+          cooldownSeconds: 300,
+        },
+        afk: { enabled: false },
+      },
+      saving: false,
+      guildId: 'guild-1',
+      visibleFeatureIds: new Set(['tldr-afk']),
+      activeTabId: 'tldr-afk',
+      updateDraftConfig,
+    });
+
+    render(<OnboardingGrowthCategory />);
+
+    expect(screen.getByLabelText('TL;DR Model')).toHaveValue(unsupportedModel);
+    expect(
+      screen.getByRole('option', { name: `Current saved model: ${unsupportedModel}` }),
+    ).toHaveAttribute('value', unsupportedModel);
+    expect(updateDraftConfig).not.toHaveBeenCalled();
+  });
+
+  it('normalizes case-variant saved TLDR models before saving', async () => {
+    const unsupportedModel = 'MINIMAX:minimax-m2.7';
+    const draftConfig = {
+      tldr: {
+        enabled: true,
+        model: unsupportedModel,
+        systemPrompt: '',
+        defaultMessages: 50,
+        maxMessages: 200,
+        cooldownSeconds: 300,
+      },
+      afk: { enabled: false },
+    };
+    const updateDraftConfig = vi.fn();
+
+    mockUseConfigContext.mockReturnValue({
+      draftConfig,
+      saving: false,
+      guildId: 'guild-1',
+      visibleFeatureIds: new Set(['tldr-afk']),
+      activeTabId: 'tldr-afk',
+      updateDraftConfig,
+    });
+
+    render(<OnboardingGrowthCategory />);
+
+    await waitFor(() => {
+      expect(updateDraftConfig).toHaveBeenCalled();
+    });
+
+    const updater = updateDraftConfig.mock.calls[0]?.[0] as (
+      config: typeof draftConfig,
+    ) => typeof draftConfig;
+    const nextConfig = updater(draftConfig);
+
+    expect(nextConfig.tldr.model).toBe('minimax:MiniMax-M2.7');
+  });
+
+  it('normalizes legacy empty-string saved TLDR models before saving', async () => {
+    const draftConfig = {
+      tldr: {
+        enabled: true,
+        model: '',
+        systemPrompt: '',
+        defaultMessages: 50,
+        maxMessages: 200,
+        cooldownSeconds: 300,
+      },
+      afk: { enabled: false },
+    };
+    const updateDraftConfig = vi.fn();
+
+    mockUseConfigContext.mockReturnValue({
+      draftConfig,
+      saving: false,
+      guildId: 'guild-1',
+      visibleFeatureIds: new Set(['tldr-afk']),
+      activeTabId: 'tldr-afk',
+      updateDraftConfig,
+    });
+
+    render(<OnboardingGrowthCategory />);
+
+    await waitFor(() => {
+      expect(updateDraftConfig).toHaveBeenCalled();
+    });
+
+    const updater = updateDraftConfig.mock.calls[0]?.[0] as (
+      config: typeof draftConfig,
+    ) => typeof draftConfig;
+    const nextConfig = updater(draftConfig);
+
+    expect(nextConfig.tldr.model).toBe('minimax:MiniMax-M2.7');
+  });
+
+  it('does not persist a default TLDR model when the saved field is absent', () => {
+    const draftConfig = {
+      tldr: {
+        enabled: true,
+        model: undefined,
+        systemPrompt: '',
+        defaultMessages: 50,
+        maxMessages: 200,
+        cooldownSeconds: 300,
+      },
+      afk: { enabled: false },
+    };
+    const updateDraftConfig = vi.fn();
+
+    mockUseConfigContext.mockReturnValue({
+      draftConfig,
+      saving: false,
+      guildId: 'guild-1',
+      visibleFeatureIds: new Set(['tldr-afk']),
+      activeTabId: 'tldr-afk',
+      updateDraftConfig,
+    });
+
+    render(<OnboardingGrowthCategory />);
+
+    expect(screen.getByLabelText('TL;DR Model')).toHaveValue('minimax:MiniMax-M2.7');
+    expect(updateDraftConfig).not.toHaveBeenCalled();
+  });
+
   it('shows the full dynamic variable guide for welcome messages', async () => {
     const user = userEvent.setup();
 

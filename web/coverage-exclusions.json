@@ -1,7 +1,6 @@
 {
   "typesAndFrameworkGlue": [
     "src/types/**",
-    "src/app/**/page.tsx",
     "src/app/**/layout.tsx",
     "src/app/**/loading.tsx",
     "src/app/**/error.tsx",
@@ -11,12 +10,27 @@
     "src/app/robots.ts",
     "src/app/sitemap.ts"
   ],
+  "appStaticAndFrameworkPageShells": [
+    "src/app/page.tsx",
+    "src/app/privacy/page.tsx",
+    "src/app/terms/page.tsx",
+    "src/app/dashboard/ai/page.tsx",
+    "src/app/dashboard/config/page.tsx",
+    "src/app/dashboard/conversations/page.tsx",
+    "src/app/dashboard/members/page.tsx",
+    "src/app/dashboard/moderation/page.tsx",
+    "src/app/dashboard/page.tsx",
+    "src/app/dashboard/performance/page.tsx",
+    "src/app/dashboard/settings/[category]/page.tsx",
+    "src/app/dashboard/settings/page.tsx",
+    "src/app/dashboard/tickets/page.tsx"
+  ],
   "sharedUiShells": [
     "src/components/ui/**",
     "src/components/error-card.tsx",
     "src/components/theme-provider.tsx"
   ],
-  "dashboardPresentationSurfaces": [
+  "dashboardBrowserCompositionSurfaces": [
     "src/components/dashboard/action-badge.tsx",
     "src/components/dashboard/analytics-dashboard.tsx",
     "src/components/dashboard/case-detail.tsx",
@@ -41,8 +55,10 @@
     "src/components/dashboard/config-sections/StarboardSection.tsx",
     "src/components/dashboard/config-sections/TicketsSection.tsx",
     "src/components/dashboard/config-sections/index.ts",
+    "src/components/dashboard/config-sections/shared.ts",
     "src/components/dashboard/config-workspace/category-navigation.tsx",
     "src/components/dashboard/config-workspace/config-search.tsx",
+    "src/components/dashboard/config-workspace/navigation.ts",
     "src/components/dashboard/config-workspace/settings-feature-card.tsx",
     "src/components/dashboard/config-workspace/types.ts",
     "src/components/dashboard/conversation-replay.tsx",
@@ -63,32 +79,37 @@
     "src/components/dashboard/settings-tabs.tsx",
     "src/components/dashboard/system-prompt-editor.tsx",
     "src/components/dashboard/toggle-switch.tsx",
-    "src/components/dashboard/types.ts",
     "src/components/dashboard/xp-level-actions-editor.tsx"
   ],
-  "landingPresentationSurfaces": [
+  "landingVisualCompositionSurfaces": [
     "src/components/landing/index.ts",
+    "src/components/landing/AnimatedCounter.tsx",
+    "src/components/landing/ComparisonTable.tsx",
+    "src/components/landing/DashboardShowcase.tsx",
     "src/components/landing/FeatureGrid.tsx",
+    "src/components/landing/Footer.tsx",
     "src/components/landing/Hero.tsx",
     "src/components/landing/InviteButton.tsx",
+    "src/components/landing/Stats.tsx",
     "src/components/landing/bento/BentoChart.tsx",
     "src/components/landing/bento/BentoModeration.tsx",
     "src/components/landing/bento/BentoAIChat.tsx",
-    "src/components/landing/bento/BentoConversations.tsx"
+    "src/components/landing/bento/BentoConversations.tsx",
+    "src/components/landing/bento/BentoKpi.tsx",
+    "src/components/landing/bento/bento-data.ts"
   ],
-  "layoutPresentationSurfaces": [
+  "layoutNavigationShells": [
     "src/components/layout/LandingNavbar.tsx",
     "src/components/layout/dashboard-shell.tsx",
     "src/components/layout/mobile-sidebar.tsx",
     "src/components/layout/sidebar.tsx",
     "src/components/layout/site-footer.tsx"
   ],
-  "browserSideEffectHooksAndUtilities": [
+  "browserLifecycleHooksAndUtilities": [
     "src/hooks/use-glow-card.ts",
     "src/hooks/use-moderation-cases.ts",
     "src/hooks/use-moderation-stats.ts",
     "src/hooks/use-user-history.ts",
-    "src/lib/logger.ts",
     "src/lib/scroll-to-section.ts"
   ]
 }

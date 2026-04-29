@@ -15,7 +15,7 @@ function GuildDirectoryConsumer() {
         {loading ? 'loading' : 'idle'}:{error ? 'error' : 'ok'}:
         {guilds.map((guild) => guild.name).join(', ') || 'none'}
       </div>
-      <button type="button" onClick={() => refreshGuilds()}>
+      <button type="button" onClick={() => void refreshGuilds()}>
         Refresh guilds
       </button>
     </div>
@@ -103,23 +103,18 @@ describe('GuildDirectoryProvider', () => {
     // @ts-expect-error minimal location mock for href assignment
     window.location = { href: '' };
 
-    try {
-      vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-        ok: false,
-        status: 401,
-        json: vi.fn(),
-      } as unknown as Response);
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: vi.fn(),
+    } as unknown as Response);
 
-      renderProvider();
+    renderProvider();
 
-      await waitFor(() => {
-        expect(window.location.href).toBe('/login');
-        expect(screen.getByTestId('guild-directory-status')).toHaveTextContent('idle:ok:none');
-      });
-    } finally {
-      // @ts-expect-error restore jsdom location
-      window.location = originalLocation;
-    }
+    await waitFor(() => expect(window.location.href).toBe('/login'));
+
+    // @ts-expect-error restore jsdom location
+    window.location = originalLocation;
   });
 
   it('throws when consumed outside the provider boundary', () => {

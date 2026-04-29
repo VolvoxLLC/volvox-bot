@@ -6,8 +6,32 @@
 import { MessageType } from 'discord.js';
 import { warn } from '../logger.js';
 import { parseProviderModel } from '../utils/modelString.js';
+import {
+  DEFAULT_AI_MODEL,
+  isSupportedAiModel,
+  normalizeSupportedAiModel,
+} from '../utils/supportedAiModels.js';
 
-const DEFAULT_TRIAGE_MODEL = 'minimax:MiniMax-M2.7';
+const DEFAULT_TRIAGE_MODEL = DEFAULT_AI_MODEL;
+const MAX_WARNED_MODEL_FALLBACKS = 100;
+const warnedModelFallbacks = new Set();
+
+function warnModelFallbackOnce(message, details) {
+  const dedupeKey = JSON.stringify({
+    message,
+    origin: details.origin,
+    value: details.value,
+    reason: details.reason ?? null,
+  });
+
+  if (warnedModelFallbacks.has(dedupeKey)) return;
+  warnedModelFallbacks.add(dedupeKey);
+  if (warnedModelFallbacks.size > MAX_WARNED_MODEL_FALLBACKS) {
+    const oldestKey = warnedModelFallbacks.keys().next().value;
+    warnedModelFallbacks.delete(oldestKey);
+  }
+  warn(message, details);
+}
 
 /**
  * Return `value` when it is a non-empty string AND parses as a valid
@@ -20,13 +44,12 @@ const DEFAULT_TRIAGE_MODEL = 'minimax:MiniMax-M2.7';
  * @param {string} origin - The key the value came from, for the warning.
  * @returns {string | undefined}
  */
-function validProviderModel(value, origin) {
+function validSupportedModel(value, origin) {
   if (typeof value !== 'string' || !value) return undefined;
   try {
     parseProviderModel(value);
-    return value;
   } catch (err) {
-    warn('Triage config contains a legacy bare model string — falling back', {
+    warnModelFallbackOnce('Triage config contains an invalid model string — falling back', {
       origin,
       value,
       reason: err?.message,
@@ -34,6 +57,25 @@ function validProviderModel(value, origin) {
     });
     return undefined;
   }
+
+  if (!isSupportedAiModel(value)) {
+    warnModelFallbackOnce('Triage config contains an unsupported model string — falling back', {
+      origin,
+      value,
+      hint: 'Select one of the supported dashboard models.',
+    });
+    return undefined;
+  }
+
+  return normalizeSupportedAiModel(value);
+}
+
+function firstValidSupportedModel(candidates) {
+  for (const [value, origin] of candidates) {
+    const resolved = validSupportedModel(value, origin);
+    if (resolved) return resolved;
+  }
+  return undefined;
 }
 
 // ── Config resolution ───────────────────────────────────────────────────────
@@ -47,9 +89,8 @@ function validProviderModel(value, origin) {
  * Legacy slots `models.triage` and `models.default` are also consulted so
  * upgraded guild configs don't silently lose their custom classifier.
  *
- * All resolved model values are validated via `parseProviderModel` — bare
- * strings (no `:`) are logged and skipped so the strict D1 parser never
- * receives them at runtime.
+ * All resolved model values must be provider-qualified and in the supported
+ * dashboard model list, so custom model strings never reach the AI client.
  *
  * @param {Object} triageConfig - Raw triage configuration object
  * @returns {Object} Resolved configuration with canonical field names
@@ -59,22 +100,20 @@ export function resolveTriageConfig(triageConfig) {
   // (original nested). Keep precedence stable so behaviour is predictable:
   //   classifyModel ← classifyModel → models.triage → model → models.default → default
   //   respondModel  ← respondModel  → model → models.default → default
-  const legacyModel = validProviderModel(triageConfig.model, 'triage.model');
-  const legacyDefault = validProviderModel(triageConfig.models?.default, 'triage.models.default');
-  const legacyTriage = validProviderModel(triageConfig.models?.triage, 'triage.models.triage');
-
   const classifyModel =
-    validProviderModel(triageConfig.classifyModel, 'triage.classifyModel') ??
-    legacyTriage ??
-    legacyModel ??
-    legacyDefault ??
-    DEFAULT_TRIAGE_MODEL;
+    firstValidSupportedModel([
+      [triageConfig.classifyModel, 'triage.classifyModel'],
+      [triageConfig.models?.triage, 'triage.models.triage'],
+      [triageConfig.model, 'triage.model'],
+      [triageConfig.models?.default, 'triage.models.default'],
+    ]) ?? DEFAULT_TRIAGE_MODEL;
 
   const respondModel =
-    validProviderModel(triageConfig.respondModel, 'triage.respondModel') ??
-    legacyModel ??
-    legacyDefault ??
-    DEFAULT_TRIAGE_MODEL;
+    firstValidSupportedModel([
+      [triageConfig.respondModel, 'triage.respondModel'],
+      [triageConfig.model, 'triage.model'],
+      [triageConfig.models?.default, 'triage.models.default'],
+    ]) ?? DEFAULT_TRIAGE_MODEL;
 
   const classifyBudget = triageConfig.classifyBudget ?? 0.05;
 

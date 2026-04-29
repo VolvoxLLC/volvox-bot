@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useHealthStore } from '@/stores/health-store';
-import type { BotHealth } from '@/components/dashboard/types';
+import { isBotHealth, validateBotHealth, type BotHealth } from '@/components/dashboard/types';
 
 const healthyPayload: BotHealth = {
   uptime: 1234,
@@ -132,5 +132,42 @@ describe('useHealthStore', () => {
     await expect(useHealthStore.getState().refresh('guild-1')).resolves.toBe('error');
     expect(useHealthStore.getState().error).toBe('socket hang up');
     expect(useHealthStore.getState().loading).toBe(false);
+  });
+
+  it('validates health payload shape with targeted diagnostics', () => {
+    expect(validateBotHealth(healthyPayload)).toBeNull();
+    expect(isBotHealth(healthyPayload)).toBe(true);
+
+    const invalidCases: Array<[unknown, string]> = [
+      [null, 'payload is not an object'],
+      [{ ...healthyPayload, uptime: '123' }, 'missing uptime'],
+      [{ ...healthyPayload, memory: { heapUsed: 1 } }, 'invalid memory fields'],
+      [{ ...healthyPayload, discord: null }, 'missing discord'],
+      [{ ...healthyPayload, discord: { ping: 1 } }, 'invalid discord fields'],
+      [{ ...healthyPayload, errors: null }, 'missing errors'],
+      [{ ...healthyPayload, errors: { lastHour: '0', lastDay: 1 } }, 'invalid errors.lastHour'],
+      [{ ...healthyPayload, errors: { lastHour: 0, lastDay: '1' } }, 'invalid errors.lastDay'],
+      [{ ...healthyPayload, system: null }, 'missing system'],
+      [{ ...healthyPayload, system: { ...healthyPayload.system, nodeVersion: 22 } }, 'invalid system.nodeVersion'],
+      [{ ...healthyPayload, system: { nodeVersion: 'v22', cpuUsage: null } }, 'missing system.cpuUsage'],
+      [
+        { ...healthyPayload, system: { nodeVersion: 'v22', cpuUsage: { user: 1 } } },
+        'invalid system.cpuUsage fields',
+      ],
+      [{ ...healthyPayload, restarts: null }, 'missing restarts'],
+      [{ ...healthyPayload, restarts: [null] }, 'invalid restart entry'],
+      [{ ...healthyPayload, restarts: [{ ...healthyPayload.restarts[0], timestamp: 123 }] }, 'invalid restart.timestamp'],
+      [{ ...healthyPayload, restarts: [{ ...healthyPayload.restarts[0], reason: null }] }, 'invalid restart.reason'],
+      [{ ...healthyPayload, restarts: [{ ...healthyPayload.restarts[0], version: 123 }] }, 'invalid restart.version'],
+      [
+        { ...healthyPayload, restarts: [{ ...healthyPayload.restarts[0], uptimeBefore: '99' }] },
+        'invalid restart.uptimeBefore',
+      ],
+    ];
+
+    for (const [payload, expected] of invalidCases) {
+      expect(validateBotHealth(payload)).toBe(expected);
+      expect(isBotHealth(payload)).toBe(false);
+    }
   });
 });

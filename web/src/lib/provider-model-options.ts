@@ -1,4 +1,10 @@
+// The web app imports a generated snapshot because the Railway/Docker web build
+// context cannot read the backend src/ tree. `pnpm providers:check` enforces
+// web/src/data/providers.json stays synced with the backend provider catalog;
+// this helper consumes that web JSON snapshot.
 import providersCatalog from '@/data/providers.json';
+
+const FALLBACK_AI_MODEL = 'minimax:MiniMax-M2.7';
 
 export interface ProviderModelOption {
   value: string;
@@ -87,24 +93,48 @@ export function groupProviderModelOptions(options: ProviderModelOption[]) {
 }
 
 export const VISIBLE_PROVIDER_MODEL_OPTIONS = buildVisibleProviderModelOptions();
+export const DEFAULT_AI_MODEL = VISIBLE_PROVIDER_MODEL_OPTIONS[0]?.value ?? FALLBACK_AI_MODEL;
 export const VISIBLE_PROVIDER_MODEL_OPTION_GROUPS = groupProviderModelOptions(
   VISIBLE_PROVIDER_MODEL_OPTIONS,
 );
 
+function findProviderModelOptionByValue(
+  modelValue: string,
+  options: ProviderModelOption[],
+): ProviderModelOption | undefined {
+  return options.find((option) => option.value.toLowerCase() === modelValue.toLowerCase());
+}
+
+export function isProviderModelId(value: unknown): value is string {
+  if (typeof value !== 'string' || value !== value.trim() || /\s/.test(value)) return false;
+
+  const separatorIndex = value.indexOf(':');
+  if (separatorIndex <= 0 || separatorIndex === value.length - 1) return false;
+
+  return /^[a-z0-9][a-z0-9._-]*$/i.test(value.slice(0, separatorIndex));
+}
+
 /**
- * Return the canonical visible model value, falling back to the first visible option.
+ * Return the canonical display model value while preserving valid provider:model IDs.
+ *
+ * Supported visible values are canonicalized case-insensitively. Unknown or hidden values that
+ * still look like provider:model IDs are preserved so opening a dashboard tab does not silently
+ * rewrite saved config to the default. Empty or malformed values fall back to the default visible
+ * model for display.
  *
  * @param modelValue - Saved provider:model value from config.
  * @param options - Visible model options to resolve against.
- * @returns A canonical visible provider:model value, or an empty string when none exist.
+ * @returns A canonical visible provider:model value, the preserved saved provider:model ID, or an
+ * empty string when none exist.
  */
 export function getVisibleProviderModelValue(
   modelValue: string | null | undefined,
   options: ProviderModelOption[] = VISIBLE_PROVIDER_MODEL_OPTIONS,
 ) {
   if (typeof modelValue === 'string' && modelValue) {
-    const match = options.find((option) => option.value.toLowerCase() === modelValue.toLowerCase());
+    const match = findProviderModelOptionByValue(modelValue, options);
     if (match) return match.value;
+    if (isProviderModelId(modelValue)) return modelValue;
   }
 
   return options[0]?.value ?? '';

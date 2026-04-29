@@ -159,6 +159,19 @@ describe('validateConfigPatch', () => {
       expect(result.topLevelKey).toBe('triage');
     });
 
+    it('should canonicalize accepted legacy AI model casing before storage', () => {
+      const result = validateConfigPatchBody(
+        {
+          path: 'triage.classifyModel',
+          value: 'MINIMAX:minimax-m2.5',
+        },
+        SAFE_CONFIG_KEYS,
+      );
+
+      expect(result.error).toBeUndefined();
+      expect(result.value).toBe('minimax:MiniMax-M2.5');
+    });
+
     it('should handle deeply nested paths', () => {
       const body = {
         path: 'moderation.logging.channels.default',
