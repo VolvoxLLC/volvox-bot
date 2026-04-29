@@ -83,6 +83,23 @@ describe('triage-config', () => {
       );
     });
 
+    it('should bound model fallback warning dedupe and drop the oldest entries', () => {
+      for (let index = 0; index <= 100; index += 1) {
+        resolveTriageConfig({ model: `bounded-bare-model-${index}` });
+      }
+
+      vi.mocked(warn).mockClear();
+      resolveTriageConfig({ model: 'bounded-bare-model-0' });
+      expect(warn).toHaveBeenCalledWith(
+        'Triage config contains an invalid model string — falling back',
+        expect.objectContaining({ origin: 'triage.model', value: 'bounded-bare-model-0' }),
+      );
+
+      vi.mocked(warn).mockClear();
+      resolveTriageConfig({ model: 'bounded-bare-model-100' });
+      expect(warn).not.toHaveBeenCalled();
+    });
+
     it('should fall back to supported legacy models when configured models are unsupported', () => {
       const result = resolveTriageConfig({
         classifyModel: 'definitely-fake-classify-provider:not-a-real-model',
