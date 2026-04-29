@@ -16,6 +16,8 @@
     "mono:test": "turbo run test",
     "mono:test:coverage": "turbo run test:coverage",
     "mono:typecheck": "turbo run typecheck",
+    "sonar:sync-coverage-exclusions": "node scripts/sync-sonar-coverage-exclusions.mjs",
+    "sonar:check-coverage-exclusions": "node scripts/sync-sonar-coverage-exclusions.mjs --check",
     "deploy": "node src/deploy-commands.js",
     "test": "vitest run",
     "test:watch": "vitest",

@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { handleAsyncClick } from '../../helpers/async-events';
 import {
   ChannelDirectoryProvider,
   useGuildChannels,
@@ -134,7 +135,7 @@ describe('ChannelDirectoryProvider', () => {
 
       return (
         <div>
-          <button type="button" onClick={() => void refreshChannels()}>
+          <button type="button" onClick={handleAsyncClick(refreshChannels)}>
             Refresh
           </button>
           <span>{channels.map((channel) => channel.name).join(', ')}</span>
@@ -176,7 +177,7 @@ describe('ChannelDirectoryProvider', () => {
 
       return (
         <div>
-          <button type="button" onClick={() => void refreshChannels()}>
+          <button type="button" onClick={handleAsyncClick(refreshChannels)}>
             Retry
           </button>
           <span>{error ?? channels.map((channel) => channel.name).join(', ')}</span>
@@ -242,7 +243,7 @@ describe('ChannelDirectoryProvider', () => {
             () => reject(new DOMException('Aborted', 'AbortError')),
             { once: true },
           );
-          void firstRequest.promise.then(resolve, reject);
+          firstRequest.promise.then(resolve, reject).catch(reject);
         });
       })
       .mockImplementationOnce(() => secondRequest.promise);
@@ -252,7 +253,7 @@ describe('ChannelDirectoryProvider', () => {
 
       return (
         <div>
-          <button type="button" onClick={() => void refreshChannels()}>
+          <button type="button" onClick={handleAsyncClick(refreshChannels)}>
             {label}
           </button>
           <span>{loading ? 'Loading channels' : channels.map((channel) => channel.name).join(', ')}</span>
@@ -302,7 +303,7 @@ describe('ChannelDirectoryProvider', () => {
             () => reject(new DOMException('Aborted', 'AbortError')),
             { once: true },
           );
-          void firstRequest.promise.then(resolve, reject);
+          firstRequest.promise.then(resolve, reject).catch(reject);
         });
       })
       .mockImplementationOnce(() => secondRequest.promise)
@@ -317,7 +318,7 @@ describe('ChannelDirectoryProvider', () => {
 
       return (
         <div>
-          <button type="button" onClick={() => void refreshChannels()}>
+          <button type="button" onClick={handleAsyncClick(refreshChannels)}>
             {label}
           </button>
           <span>{loading ? 'Loading channels' : channels.map((channel) => channel.name).join(', ')}</span>
@@ -366,4 +367,104 @@ describe('ChannelDirectoryProvider', () => {
     } as Response);
   });
 
+  it('sorts valid channels while dropping malformed API entries', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => [
+        { id: '3', name: 'Category', type: 4 },
+        { id: '2', name: 'beta', type: 0 },
+        { id: 'bad', name: 'missing type' },
+        null,
+        { id: '1', name: 'alpha', type: 0 },
+      ],
+    } as Response);
+
+    render(
+      <ChannelDirectoryProvider>
+        <ChannelConsumer guildId="guild-1" />
+      </ChannelDirectoryProvider>,
+    );
+
+    await screen.findByText('alpha, beta, Category');
+  });
+
+  it('surfaces invalid channel payloads as retryable errors', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ channels: [] }),
+    } as Response);
+
+    render(
+      <ChannelDirectoryProvider>
+        <ChannelConsumer guildId="guild-1" />
+      </ChannelDirectoryProvider>,
+    );
+
+    await screen.findByText('Invalid response: expected array');
+  });
+
+  it('does not fetch when no guild is selected or when no-op loaders are invoked', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => [],
+    } as Response);
+
+    let ensureResult: Promise<void> | undefined;
+    let refreshResult: Promise<void> | undefined;
+
+    function NoGuildActions() {
+      const { ensureChannelsLoaded, refreshChannels } = useGuildChannels(null);
+
+      return (
+        <div>
+          <button
+            type="button"
+            onClick={() => {
+              ensureResult = ensureChannelsLoaded();
+            }}
+          >
+            Ensure
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              refreshResult = refreshChannels();
+            }}
+          >
+            Refresh
+          </button>
+        </div>
+      );
+    }
+
+    const user = userEvent.setup();
+    render(
+      <ChannelDirectoryProvider>
+        <ChannelConsumer guildId={null} />
+        <NoGuildActions />
+      </ChannelDirectoryProvider>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Ensure' }));
+    await expect(ensureResult).resolves.toBeUndefined();
+    await user.click(screen.getByRole('button', { name: 'Refresh' }));
+    await expect(refreshResult).resolves.toBeUndefined();
+
+    expect(screen.getByText('No guild')).toBeInTheDocument();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('requires consumers to be rendered within the provider', () => {
+    function MissingProviderConsumer() {
+      useGuildChannels('guild-1');
+      return null;
+    }
+
+    expect(() => render(<MissingProviderConsumer />)).toThrow(
+      'useGuildChannels must be used within ChannelDirectoryProvider',
+    );
+  });
 });

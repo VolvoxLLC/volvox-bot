@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'node:path';
+import coverageExclusionGroups from './coverage-exclusions.json';
 
 export default defineConfig({
   plugins: [react()],
@@ -18,37 +19,8 @@ export default defineConfig({
        * types, or UI that is impractical to test).
        */
       include: ['src/**/*.{ts,tsx}'],
-      exclude: [
-        'src/types/**',
-        'src/app/**/page.tsx',
-        'src/app/**/layout.tsx',
-        'src/app/**/loading.tsx',
-        'src/app/**/error.tsx',
-        'src/app/global-error.tsx',
-        'src/app/globals.css',
-        'src/stores/**',
-        'src/components/ui/**',
-        'src/components/error-card.tsx',
-        'src/components/theme-provider.tsx',
-        // Dashboard UI is excluded from unit-test coverage because it requires complex DOM interactions
-        // (drag-and-drop, rich text editors, modal flows) that are better validated through integration
-        // and e2e tests. The components are manually tested and covered by dashboard integration tests.
-        // TODO(#363): Add Playwright e2e suite and revisit these exclusions once automated e2e coverage
-        // is in place. See discussion in PR #362 for context on why unit tests are impractical here.
-        'src/components/dashboard/**',
-        'src/components/landing/index.ts',
-        // Bento cells use heavy framer-motion animations that require browser environment; tested via integration tests in dashboard-showcase.test.tsx
-        'src/components/landing/bento/BentoChart.tsx',
-        'src/components/landing/bento/BentoModeration.tsx',
-        'src/components/landing/bento/BentoAIChat.tsx',
-        'src/components/landing/bento/BentoConversations.tsx',
-        'src/components/layout/mobile-sidebar.tsx',
-        'src/hooks/use-moderation-cases.ts',
-        'src/hooks/use-moderation-stats.ts',
-        'src/hooks/use-user-history.ts',
-        'src/lib/log-ws.ts',
-        'src/lib/logger.ts',
-      ],
+      // Single editable source of truth: edit web/coverage-exclusions.json, not this list.
+      exclude: Object.values(coverageExclusionGroups).flat(),
       thresholds: {
         statements: 85,
         branches: 85,

@@ -19,7 +19,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Client, Collection, GatewayIntentBits, Partials } from 'discord.js';
 import { config as dotenvConfig } from 'dotenv';
-import { startServer, stopServer } from './api/server.js';
+import { startServer, stopServer, updateServerDbPool } from './api/server.js';
 import {
   registerConfigListeners,
   removeLoggingTransport,
@@ -270,6 +270,12 @@ if (!token) {
   process.exit(1);
 }
 
+function canContinueWithoutDatabase() {
+  const environmentName = process.env.RAILWAY_ENVIRONMENT_NAME ?? '';
+  const isRailwayPullRequestEnvironment = /^volvox-bot-pr-\d+$/i.test(environmentName);
+  return process.env.ALLOW_DATABASE_STARTUP_FAILURE === 'true' || isRailwayPullRequestEnvironment;
+}
+
 /**
  * Perform full application startup: initialize the database and optional PostgreSQL logging, load configuration and conversation history, start background services (conversation cleanup, memory checks, triage, tempban scheduler), register event handlers, load slash commands, and log the Discord client in.
  */
@@ -277,22 +283,54 @@ async function startup() {
   // Pre-warm AI SDK in background (non-blocking) — avoids 6s import delay on first AI request
   preloadSDK();
 
+  // Start REST API server immediately so Railway health checks can pass while
+  // heavier startup work (DB migrations, config loading, Discord login) runs.
+  {
+    let wsTransport = null;
+    try {
+      wsTransport = addWebSocketTransport();
+      await startServer(client, null, { wsTransport });
+    } catch (err) {
+      // Clean up orphaned transport if startServer failed after it was created
+      if (wsTransport) {
+        removeWebSocketTransport(wsTransport);
+      }
+      error('REST API server failed to start — continuing without API', { error: err.message });
+    }
+  }
+
   // Initialize database
   let dbPool = null;
   if (process.env.DATABASE_URL) {
-    dbPool = await initDb();
+    try {
+      dbPool = await initDb();
 
-    // Initialize Redis (gracefully degrades if REDIS_URL not set)
-    initRedis();
-    info('Database initialized');
+      updateServerDbPool(dbPool);
 
-    // Record this startup in the restart history table
-    await recordRestart(dbPool, 'startup', BOT_VERSION);
+      // Initialize Redis (gracefully degrades if REDIS_URL not set)
+      initRedis();
+      info('Database initialized');
 
-    // Seed built-in role menu templates (idempotent)
-    await seedBuiltinTemplates().catch((err) =>
-      warn('Failed to seed built-in role menu templates', { error: err.message }),
-    );
+      // Record this startup in the restart history table
+      await recordRestart(dbPool, 'startup', BOT_VERSION);
+
+      // Seed built-in role menu templates (idempotent)
+      await seedBuiltinTemplates().catch((err) =>
+        warn('Failed to seed built-in role menu templates', { error: err.message }),
+      );
+    } catch (err) {
+      if (!canContinueWithoutDatabase()) {
+        throw err;
+      }
+
+      warn(
+        'Database initialization failed — continuing without persistence for preview deployment',
+        {
+          error: err.message,
+          railwayEnvironment: process.env.RAILWAY_ENVIRONMENT_NAME ?? null,
+        },
+      );
+    }
   } else {
     warn('DATABASE_URL not set — using config.json only (no persistence)');
   }
@@ -398,21 +436,6 @@ async function startup() {
       }
     })
     .catch(() => {});
-
-  // Start REST API server with WebSocket log streaming (non-fatal — bot continues without it)
-  {
-    let wsTransport = null;
-    try {
-      wsTransport = addWebSocketTransport();
-      await startServer(client, dbPool, { wsTransport });
-    } catch (err) {
-      // Clean up orphaned transport if startServer failed after it was created
-      if (wsTransport) {
-        removeWebSocketTransport(wsTransport);
-      }
-      error('REST API server failed to start — continuing without API', { error: err.message });
-    }
-  }
 }
 
 startup().catch((err) => {
