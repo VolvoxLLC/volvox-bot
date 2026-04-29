@@ -94,6 +94,11 @@ describe('configValidation', () => {
 
     it('should validate aiAutoMod model, thresholds, and actions', () => {
       expect(validateSingleValue('aiAutoMod.model', 'minimax:MiniMax-M2.7')).toEqual([]);
+      expect(validateSingleValue('triage.classifyModel', 'moonshot:kimi-k2.6')).toEqual([]);
+      expect(validateSingleValue('triage.respondModel', 'openrouter:minimax/minimax-m2.5')).toEqual(
+        [],
+      );
+      expect(validateSingleValue('tldr.model', 'moonshot:kimi-k2.6')).toEqual([]);
       expect(validateSingleValue('aiAutoMod.thresholds.hateSpeech', 0.85)).toEqual([]);
       expect(validateSingleValue('aiAutoMod.actions.hateSpeech', 'timeout')).toEqual([]);
       expect(validateSingleValue('aiAutoMod.actions.hateSpeech', ['flag', 'timeout'])).toEqual([]);
@@ -103,12 +108,24 @@ describe('configValidation', () => {
 
     it('should reject invalid aiAutoMod model, threshold, and action values', () => {
       expect(validateSingleValue('aiAutoMod.model', 'MiniMax-M2.7')).toEqual(
-        expect.arrayContaining([expect.stringContaining('does not match required pattern')]),
+        expect.arrayContaining([expect.stringContaining('must be one of')]),
       );
       expect(validateSingleValue('aiAutoMod.thresholds.toxicity', 1.1)).toEqual(
         expect.arrayContaining([expect.stringContaining('<= 1')]),
       );
       expect(validateSingleValue('aiAutoMod.actions.spam', 'obliterate')).toEqual(
+        expect.arrayContaining([expect.stringContaining('must be one of')]),
+      );
+      expect(validateSingleValue('aiAutoMod.model', 'anthropic:claude-3-5-haiku')).toEqual(
+        expect.arrayContaining([expect.stringContaining('must be one of')]),
+      );
+      expect(validateSingleValue('triage.classifyModel', 'anthropic:claude-3-5-haiku')).toEqual(
+        expect.arrayContaining([expect.stringContaining('must be one of')]),
+      );
+      expect(validateSingleValue('triage.respondModel', 'MiniMax-M2.7')).toEqual(
+        expect.arrayContaining([expect.stringContaining('must be one of')]),
+      );
+      expect(validateSingleValue('tldr.model', 'anthropic:claude-3-5-haiku')).toEqual(
         expect.arrayContaining([expect.stringContaining('must be one of')]),
       );
       expect(validateSingleValue('aiAutoMod.actions.spam', ['delete', 'obliterate'])).toEqual(

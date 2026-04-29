@@ -1,5 +1,6 @@
 'use client';
 import { useCallback } from 'react';
+import { AiModelSelect } from '@/components/dashboard/ai-model-select';
 import { useConfigContext } from '@/components/dashboard/config-context';
 import { inputClasses, parseNumberInput } from '@/components/dashboard/config-editor-utils';
 import { ChannelModeSection } from '@/components/dashboard/config-sections/ChannelModeSection';
@@ -14,18 +15,6 @@ import { ToggleSwitch } from '../toggle-switch';
 import { ConfigCategoryLayout } from './config-category-layout';
 
 type SelectableAiAutoModAction = Exclude<AiAutoModAction, 'none'>;
-
-const AI_AUTOMOD_MODEL_OPTIONS = [
-  { value: 'minimax:MiniMax-M2.7', label: 'MiniMax M2.7' },
-  { value: 'minimax:MiniMax-M2.7-highspeed', label: 'MiniMax M2.7 Highspeed' },
-  { value: 'minimax:MiniMax-M2.5', label: 'MiniMax M2.5' },
-  { value: 'minimax:MiniMax-M2.5-highspeed', label: 'MiniMax M2.5 Highspeed' },
-  { value: 'moonshot:kimi-k2.6', label: 'Kimi K2.6' },
-  { value: 'moonshot:kimi-k2.5', label: 'Kimi K2.5' },
-  { value: 'moonshot:kimi-k2-thinking', label: 'Kimi K2 Thinking' },
-  { value: 'openrouter:minimax/minimax-m2.5', label: 'MiniMax M2.5 via OpenRouter' },
-  { value: 'openrouter:moonshotai/kimi-k2.6', label: 'Kimi K2.6 via OpenRouter' },
-] as const;
 
 const AI_AUTOMOD_CATEGORIES = [
   { key: 'toxicity', label: 'Toxicity', defaultThreshold: 0.7, defaultActions: ['flag'] },
@@ -225,16 +214,6 @@ export function AiAutomationCategory() {
     handleToggleCurrentFeature = (v) => updateMemoryField('enabled', v);
   }
 
-  const selectedAiAutoModModel = draftConfig.aiAutoMod?.model ?? 'minimax:MiniMax-M2.7';
-  const aiAutoModModelOptions = AI_AUTOMOD_MODEL_OPTIONS.some(
-    (option) => option.value === selectedAiAutoModModel,
-  )
-    ? AI_AUTOMOD_MODEL_OPTIONS
-    : [
-        { value: selectedAiAutoModModel, label: `Custom: ${selectedAiAutoModModel}` },
-        ...AI_AUTOMOD_MODEL_OPTIONS,
-      ];
-
   return (
     <ConfigCategoryLayout
       featureId={activeTab}
@@ -304,27 +283,13 @@ export function AiAutomationCategory() {
               </p>
             </div>
             <div className="space-y-6">
-              <div className="space-y-3">
-                <label
-                  htmlFor="ai-automod-model"
-                  className="text-sm font-bold tracking-tight text-foreground/80"
-                >
-                  Detection Model
-                </label>
-                <select
-                  id="ai-automod-model"
-                  value={selectedAiAutoModModel}
-                  onChange={(e) => updateAiAutoModField('model', e.target.value)}
-                  disabled={saving}
-                  className={cn(inputClasses, 'w-full font-semibold')}
-                >
-                  {aiAutoModModelOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <AiModelSelect
+                id="ai-automod-model"
+                label="Detection Model"
+                value={draftConfig.aiAutoMod?.model}
+                onChange={(value) => updateAiAutoModField('model', value)}
+                disabled={saving}
+              />
 
               <div className="space-y-3">
                 <label
@@ -507,42 +472,24 @@ export function AiAutomationCategory() {
             </div>
             <div className="grid gap-6">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <label
-                    htmlFor="classify-model"
-                    className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground ml-1"
-                  >
-                    Classifier Engine
-                  </label>
-                  <input
-                    id="classify-model"
-                    type="text"
-                    value={draftConfig.triage?.classifyModel ?? ''}
-                    onChange={(e) => updateTriageField('classifyModel', e.target.value)}
-                    onFocus={(e) => e.target.select()}
-                    disabled={saving}
-                    className={inputClasses}
-                    placeholder="e.g. gpt-4o-mini"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label
-                    htmlFor="respond-model"
-                    className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground ml-1"
-                  >
-                    Response Engine
-                  </label>
-                  <input
-                    id="respond-model"
-                    type="text"
-                    value={draftConfig.triage?.respondModel ?? ''}
-                    onChange={(e) => updateTriageField('respondModel', e.target.value)}
-                    onFocus={(e) => e.target.select()}
-                    disabled={saving}
-                    className={inputClasses}
-                    placeholder="e.g. claude-3-5-sonnet"
-                  />
-                </div>
+                <AiModelSelect
+                  id="classify-model"
+                  label="Classifier Engine"
+                  value={draftConfig.triage?.classifyModel}
+                  onChange={(value) => updateTriageField('classifyModel', value)}
+                  disabled={saving}
+                  wrapperClassName="space-y-2"
+                  labelClassName="ml-1 text-[11px] uppercase tracking-wider text-muted-foreground"
+                />
+                <AiModelSelect
+                  id="respond-model"
+                  label="Response Engine"
+                  value={draftConfig.triage?.respondModel}
+                  onChange={(value) => updateTriageField('respondModel', value)}
+                  disabled={saving}
+                  wrapperClassName="space-y-2"
+                  labelClassName="ml-1 text-[11px] uppercase tracking-wider text-muted-foreground"
+                />
               </div>
 
               <div className="space-y-2">

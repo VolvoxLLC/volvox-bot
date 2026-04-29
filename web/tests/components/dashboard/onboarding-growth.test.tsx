@@ -226,6 +226,72 @@ function mockWelcomeContext({
 }
 
 describe('OnboardingGrowthCategory', () => {
+  it('renders and updates the TLDR summary model selector', () => {
+    const draftConfig = {
+      tldr: {
+        enabled: true,
+        model: 'moonshot:kimi-k2.6',
+        systemPrompt: '',
+        defaultMessages: 50,
+        maxMessages: 200,
+        cooldownSeconds: 300,
+      },
+      afk: { enabled: false },
+    };
+    const updateDraftConfig = vi.fn((updater) => updater(draftConfig));
+
+    mockUseConfigContext.mockReturnValue({
+      draftConfig,
+      saving: false,
+      guildId: 'guild-1',
+      visibleFeatureIds: new Set(['tldr-afk']),
+      activeTabId: 'tldr-afk',
+      updateDraftConfig,
+    });
+
+    render(<OnboardingGrowthCategory />);
+
+    expect(screen.getByLabelText('TL;DR Model').tagName).toBe('SELECT');
+    expect(screen.getByLabelText('TL;DR Model')).toHaveValue('moonshot:kimi-k2.6');
+
+    fireEvent.change(screen.getByLabelText('TL;DR Model'), {
+      target: { value: 'openrouter:minimax/minimax-m2.5' },
+    });
+
+    expect(updateDraftConfig).toHaveBeenCalledTimes(1);
+    expect(updateDraftConfig.mock.results[0]?.value.tldr.model).toBe(
+      'openrouter:minimax/minimax-m2.5',
+    );
+  });
+
+  it('does not add unsupported saved models to the TLDR model selector', () => {
+    const unsupportedModel = 'anthropic:claude-3-5-haiku';
+
+    mockUseConfigContext.mockReturnValue({
+      draftConfig: {
+        tldr: {
+          enabled: true,
+          model: unsupportedModel,
+          systemPrompt: '',
+          defaultMessages: 50,
+          maxMessages: 200,
+          cooldownSeconds: 300,
+        },
+        afk: { enabled: false },
+      },
+      saving: false,
+      guildId: 'guild-1',
+      visibleFeatureIds: new Set(['tldr-afk']),
+      activeTabId: 'tldr-afk',
+      updateDraftConfig: vi.fn(),
+    });
+
+    render(<OnboardingGrowthCategory />);
+
+    expect(screen.getByLabelText('TL;DR Model')).toHaveValue('minimax:MiniMax-M2.7');
+    expect(screen.queryByText(`Custom: ${unsupportedModel}`)).not.toBeInTheDocument();
+  });
+
   it('shows the full dynamic variable guide for welcome messages', async () => {
     const user = userEvent.setup();
 

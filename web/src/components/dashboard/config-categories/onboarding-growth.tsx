@@ -2,6 +2,7 @@
 
 import { Info } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AiModelSelect } from '@/components/dashboard/ai-model-select';
 import { useConfigContext } from '@/components/dashboard/config-context';
 import {
   DEFAULT_ACTIVITY_BADGES,
@@ -863,6 +864,17 @@ export function OnboardingGrowthCategory() {
                   label="TL;DR"
                 />
               </div>
+              <AiModelSelect
+                id="tldr-model"
+                label="TL;DR Model"
+                value={draftConfig.tldr?.model}
+                onChange={(value) =>
+                  updateDraftConfig((p) => ({ ...p, tldr: { ...p.tldr, model: value } }))
+                }
+                disabled={saving}
+                wrapperClassName="space-y-2"
+                labelClassName="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60"
+              />
               <div className="space-y-3">
                 <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
                   Personality Override

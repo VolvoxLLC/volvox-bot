@@ -6,6 +6,7 @@
  * truth without creating an inverted dependency (utils → routes).
  */
 
+import { SUPPORTED_AI_MODEL_TYPES } from '../../utils/supportedAiModels.js';
 import { validateUrlForSsrfSync } from './ssrfProtection.js';
 
 /** Module-level cache for compiled regex patterns used during validation. */
@@ -163,14 +164,6 @@ const XP_LEVEL_ACTION_ENTRY_SCHEMA = {
     },
   },
 };
-
-/**
- * Provider-qualified model string: `<provider>:<model>` with no whitespace on
- * either side of the colon. Hoisted via `String.raw` to avoid doubled-up
- * backslash escaping (keeps SonarCloud quiet) and to keep the two schema
- * entries (classifyModel, respondModel) in sync.
- */
-const PROVIDER_MODEL_PATTERN = String.raw`^[^:\s]+:[^\s]+$`;
 
 const AI_AUTOMOD_CATEGORY_KEYS = [
   'toxicity',
@@ -370,12 +363,9 @@ export const CONFIG_SCHEMA = {
       botAllowlist: { type: 'array', items: { type: 'string' } },
       triggerWords: { type: 'array' },
       moderationKeywords: { type: 'array' },
-      // Model fields must be in `provider:model` format (see issue #553 D1) —
-      // `parseProviderModel` throws on bare strings at runtime. Catching it
-      // at the API boundary turns a silent-dispatch-crash into a clear 400.
-      classifyModel: { type: 'string', pattern: PROVIDER_MODEL_PATTERN },
+      classifyModel: { type: 'string', enum: SUPPORTED_AI_MODEL_TYPES },
       classifyBudget: { type: 'number', min: 0, max: 100000 },
-      respondModel: { type: 'string', pattern: PROVIDER_MODEL_PATTERN },
+      respondModel: { type: 'string', enum: SUPPORTED_AI_MODEL_TYPES },
       respondBudget: { type: 'number', min: 0, max: 100000 },
       thinkingTokens: { type: 'number', min: 0, max: 100000 },
       classifyBaseUrl: { type: 'string', nullable: true },
@@ -402,7 +392,7 @@ export const CONFIG_SCHEMA = {
     type: 'object',
     properties: {
       enabled: { type: 'boolean' },
-      model: { type: 'string', pattern: PROVIDER_MODEL_PATTERN },
+      model: { type: 'string', enum: SUPPORTED_AI_MODEL_TYPES },
       thresholds: AI_AUTOMOD_THRESHOLD_SCHEMA,
       actions: AI_AUTOMOD_ACTION_SCHEMA,
       timeoutDurationMs: { type: 'number', min: 1000, max: 2419200000 },
@@ -495,6 +485,7 @@ export const CONFIG_SCHEMA = {
     type: 'object',
     properties: {
       enabled: { type: 'boolean' },
+      model: { type: 'string', enum: SUPPORTED_AI_MODEL_TYPES },
       systemPrompt: { type: 'string', maxLength: 4000 },
       defaultMessages: { type: 'number', min: 1, max: 200 },
       maxMessages: { type: 'number', min: 1, max: 200 },

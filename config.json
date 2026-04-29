@@ -243,6 +243,7 @@
   },
   "tldr": {
     "enabled": false,
+    "model": "minimax:MiniMax-M2.7",
     "defaultMessages": 50,
     "maxMessages": 200,
     "cooldownSeconds": 300

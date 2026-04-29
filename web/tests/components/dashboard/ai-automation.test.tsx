@@ -81,8 +81,8 @@ vi.mock('@/components/dashboard/config-sections/ChannelModeSection', () => ({
 
 import { AiAutomationCategory } from '@/components/dashboard/config-categories/ai-automation';
 
-function createDraftConfig() {
-  return {
+function createDraftConfig(overrides: Record<string, unknown> = {}) {
+  const config = {
     ai: { enabled: true, systemPrompt: '', blockedChannelIds: [] },
     aiAutoMod: {
       enabled: true,
@@ -108,21 +108,53 @@ function createDraftConfig() {
       flagChannelId: null,
       autoDelete: true,
     },
-    triage: { enabled: true },
+    triage: {
+      enabled: true,
+      classifyModel: 'minimax:MiniMax-M2.7',
+      respondModel: 'minimax:MiniMax-M2.7',
+    },
     memory: { enabled: true },
+  };
+
+  return {
+    ...config,
+    ...overrides,
+    aiAutoMod: {
+      ...config.aiAutoMod,
+      ...((overrides.aiAutoMod as Record<string, unknown> | undefined) ?? {}),
+    },
+    triage: {
+      ...config.triage,
+      ...((overrides.triage as Record<string, unknown> | undefined) ?? {}),
+    },
   };
 }
 
-function mockAiAutoModContext(updateDraftConfig = vi.fn((updater) => updater(createDraftConfig()))) {
+function mockConfigContext({
+  activeTabId = 'ai-automod',
+  draftConfig = createDraftConfig(),
+  updateDraftConfig = vi.fn((updater) => updater(draftConfig)),
+}: {
+  activeTabId?: string;
+  draftConfig?: ReturnType<typeof createDraftConfig>;
+  updateDraftConfig?: ReturnType<typeof vi.fn>;
+} = {}) {
   mockUseConfigContext.mockReturnValue({
-    draftConfig: createDraftConfig(),
+    draftConfig,
     saving: false,
     guildId: 'guild-1',
-    activeTabId: 'ai-automod',
+    activeTabId,
     updateDraftConfig,
   });
 
   return updateDraftConfig;
+}
+
+function mockAiAutoModContext(
+  updateDraftConfig = vi.fn((updater) => updater(createDraftConfig())),
+  draftConfig = createDraftConfig(),
+) {
+  return mockConfigContext({ updateDraftConfig, draftConfig });
 }
 
 describe('AiAutomationCategory', () => {
@@ -166,5 +198,73 @@ describe('AiAutomationCategory', () => {
       'flag',
       'warn',
     ]);
+  });
+
+  it('does not add unsupported saved models to the detection model dropdown', () => {
+    const unsupportedModel = 'anthropic:claude-3-5-haiku';
+    mockAiAutoModContext(vi.fn(), createDraftConfig({ aiAutoMod: { model: unsupportedModel } }));
+
+    render(<AiAutomationCategory />);
+
+    expect(screen.getByLabelText('Detection Model')).toHaveValue('minimax:MiniMax-M2.7');
+    expect(screen.queryByText(`Custom: ${unsupportedModel}`)).not.toBeInTheDocument();
+  });
+
+  it('renders supported model dropdowns in triage engine setup', () => {
+    mockConfigContext({
+      activeTabId: 'triage',
+      draftConfig: createDraftConfig({
+        triage: {
+          classifyModel: 'moonshot:kimi-k2.6',
+          respondModel: 'openrouter:minimax/minimax-m2.5',
+        },
+      }),
+    });
+
+    render(<AiAutomationCategory />);
+
+    expect(screen.getByLabelText('Classifier Engine').tagName).toBe('SELECT');
+    expect(screen.getByLabelText('Response Engine').tagName).toBe('SELECT');
+    expect(screen.getByLabelText('Classifier Engine')).toHaveValue('moonshot:kimi-k2.6');
+    expect(screen.getByLabelText('Response Engine')).toHaveValue(
+      'openrouter:minimax/minimax-m2.5',
+    );
+    expect(screen.getAllByRole('option', { name: 'MiniMax M2.7' })).toHaveLength(2);
+    expect(screen.queryByPlaceholderText('e.g. gpt-4o-mini')).not.toBeInTheDocument();
+  });
+
+  it('updates triage classifier and response models in draft config', () => {
+    const updateDraftConfig = mockConfigContext({ activeTabId: 'triage' });
+
+    render(<AiAutomationCategory />);
+
+    fireEvent.change(screen.getByLabelText('Classifier Engine'), {
+      target: { value: 'moonshot:kimi-k2.6' },
+    });
+    fireEvent.change(screen.getByLabelText('Response Engine'), {
+      target: { value: 'moonshot:kimi-k2.5' },
+    });
+
+    expect(updateDraftConfig).toHaveBeenCalledTimes(2);
+    expect(updateDraftConfig.mock.results[0]?.value.triage.classifyModel).toBe(
+      'moonshot:kimi-k2.6',
+    );
+    expect(updateDraftConfig.mock.results[1]?.value.triage.respondModel).toBe('moonshot:kimi-k2.5');
+  });
+
+  it('does not add unsupported saved models to triage model dropdowns', () => {
+    const unsupportedModel = 'anthropic:claude-3-5-haiku';
+    mockConfigContext({
+      activeTabId: 'triage',
+      draftConfig: createDraftConfig({
+        triage: { classifyModel: unsupportedModel, respondModel: unsupportedModel },
+      }),
+    });
+
+    render(<AiAutomationCategory />);
+
+    expect(screen.getByLabelText('Classifier Engine')).toHaveValue('minimax:MiniMax-M2.7');
+    expect(screen.getByLabelText('Response Engine')).toHaveValue('minimax:MiniMax-M2.7');
+    expect(screen.queryByText(`Custom: ${unsupportedModel}`)).not.toBeInTheDocument();
   });
 });
