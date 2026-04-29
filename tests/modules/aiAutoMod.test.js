@@ -120,6 +120,31 @@ function makeClaudeResponse(scores) {
   };
 }
 
+const defaultAiAutoModThresholds = { toxicity: 0.7, spam: 0.8, harassment: 0.7 };
+const defaultAiAutoModActions = { toxicity: 'flag', spam: 'delete', harassment: 'warn' };
+const moderationWarnConfig = {
+  dmNotifications: { warn: true },
+  warnings: { expiryDays: 90, severityPoints: { low: 1, medium: 2, high: 3 } },
+  escalation: { enabled: true, thresholds: [] },
+};
+
+function makeAiAutoModGuildConfig(aiAutoModOverrides = {}, guildOverrides = {}) {
+  const { thresholds = {}, actions = {}, ...restOverrides } = aiAutoModOverrides;
+
+  return {
+    ...guildOverrides,
+    aiAutoMod: {
+      enabled: true,
+      thresholds: { ...defaultAiAutoModThresholds, ...thresholds },
+      actions: { ...defaultAiAutoModActions, ...actions },
+      autoDelete: false,
+      flagChannelId: null,
+      exemptRoleIds: [],
+      ...restOverrides,
+    },
+  };
+}
+
 // --- Tests ---
 
 describe('getAiAutoModConfig', () => {
@@ -480,16 +505,11 @@ describe('checkAiAutoMod', () => {
     mockGenerate.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.9, spam: 0.1, harassment: 0.1, reason: 'toxic' }),
     );
-    const result = await checkAiAutoMod(message, client, {
-      aiAutoMod: {
-        enabled: true,
-        thresholds: { toxicity: 0.7, spam: 0.8, harassment: 0.7 },
-        actions: { toxicity: 'flag', spam: 'delete', harassment: 'warn' },
-        autoDelete: false,
-        flagChannelId: null,
-        exemptRoleIds: ['exempt-role-1'],
-      },
-    });
+    const result = await checkAiAutoMod(
+      message,
+      client,
+      makeAiAutoModGuildConfig({ exemptRoleIds: ['exempt-role-1'] }),
+    );
 
     expect(result).toMatchObject({ flagged: true, action: 'flag' });
     expect(message.member.roles.cache.some).toHaveBeenCalled();
@@ -503,16 +523,7 @@ describe('checkAiAutoMod', () => {
     mockGenerate.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.1, spam: 0.2, harassment: 0.1, reason: 'clean' }),
     );
-    const result = await checkAiAutoMod(message, client, {
-      aiAutoMod: {
-        enabled: true,
-        thresholds: { toxicity: 0.7, spam: 0.8, harassment: 0.7 },
-        actions: { toxicity: 'flag', spam: 'delete', harassment: 'warn' },
-        autoDelete: false,
-        flagChannelId: null,
-        exemptRoleIds: [],
-      },
-    });
+    const result = await checkAiAutoMod(message, client, makeAiAutoModGuildConfig());
 
     expect(result.flagged).toBe(false);
     expect(logAuditEvent).not.toHaveBeenCalled();
@@ -524,16 +535,11 @@ describe('checkAiAutoMod', () => {
     mockGenerate.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.9, spam: 0.1, harassment: 0.1, reason: 'toxic' }),
     );
-    const result = await checkAiAutoMod(message, client, {
-      aiAutoMod: {
-        enabled: true,
-        thresholds: { toxicity: 0.7, spam: 0.8, harassment: 0.7 },
-        actions: { toxicity: 'flag', spam: 'delete', harassment: 'warn' },
-        autoDelete: false,
-        flagChannelId: null,
-        exemptRoleIds: ['exempt-role-1'],
-      },
-    });
+    const result = await checkAiAutoMod(
+      message,
+      client,
+      makeAiAutoModGuildConfig({ exemptRoleIds: ['exempt-role-1'] }),
+    );
 
     expect(result).toMatchObject({ flagged: true, action: 'flag' });
     expect(logAuditEvent).toHaveBeenCalledWith(
@@ -546,16 +552,7 @@ describe('checkAiAutoMod', () => {
     mockGenerate.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.1, spam: 0.95, harassment: 0.1, reason: 'spam' }),
     );
-    const guildConfig = {
-      aiAutoMod: {
-        enabled: true,
-        thresholds: { toxicity: 0.7, spam: 0.8, harassment: 0.7 },
-        actions: { toxicity: 'flag', spam: 'delete', harassment: 'warn' },
-        autoDelete: true,
-        flagChannelId: null,
-        exemptRoleIds: [],
-      },
-    };
+    const guildConfig = makeAiAutoModGuildConfig({ autoDelete: true });
     const result = await checkAiAutoMod(message, client, guildConfig);
     expect(result.flagged).toBe(true);
     expect(result.action).toBe('delete');
@@ -566,16 +563,7 @@ describe('checkAiAutoMod', () => {
     mockGenerate.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.1, spam: 0.1, harassment: 0.9, reason: 'harassment' }),
     );
-    const guildConfig = {
-      aiAutoMod: {
-        enabled: true,
-        thresholds: { toxicity: 0.7, spam: 0.8, harassment: 0.7 },
-        actions: { toxicity: 'flag', spam: 'delete', harassment: 'warn' },
-        autoDelete: false,
-        flagChannelId: null,
-        exemptRoleIds: [],
-      },
-    };
+    const guildConfig = makeAiAutoModGuildConfig();
     const result = await checkAiAutoMod(message, client, guildConfig);
     expect(result.flagged).toBe(true);
     expect(result.action).toBe('warn');
@@ -589,21 +577,7 @@ describe('checkAiAutoMod', () => {
     mockGenerate.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.1, spam: 0.1, harassment: 0.9, reason: 'harassment' }),
     );
-    const guildConfig = {
-      moderation: {
-        dmNotifications: { warn: true },
-        warnings: { expiryDays: 90, severityPoints: { low: 1, medium: 2, high: 3 } },
-        escalation: { enabled: true, thresholds: [] },
-      },
-      aiAutoMod: {
-        enabled: true,
-        thresholds: { toxicity: 0.7, spam: 0.8, harassment: 0.7 },
-        actions: { toxicity: 'flag', spam: 'delete', harassment: 'warn' },
-        autoDelete: false,
-        flagChannelId: null,
-        exemptRoleIds: [],
-      },
-    };
+    const guildConfig = makeAiAutoModGuildConfig({}, { moderation: moderationWarnConfig });
 
     const result = await checkAiAutoMod(message, client, guildConfig);
 
@@ -646,17 +620,10 @@ describe('checkAiAutoMod', () => {
     mockGenerate.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.1, spam: 0.1, harassment: 0.9, reason: 'harassment' }),
     );
-    const guildConfig = {
-      moderation: { dmNotifications: { warn: false } },
-      aiAutoMod: {
-        enabled: true,
-        thresholds: { toxicity: 0.7, spam: 0.8, harassment: 0.7 },
-        actions: { toxicity: 'flag', spam: 'delete', harassment: 'warn' },
-        autoDelete: false,
-        flagChannelId: null,
-        exemptRoleIds: [],
-      },
-    };
+    const guildConfig = makeAiAutoModGuildConfig(
+      {},
+      { moderation: { dmNotifications: { warn: false } } },
+    );
 
     const result = await checkAiAutoMod(message, client, guildConfig);
 
@@ -675,16 +642,7 @@ describe('checkAiAutoMod', () => {
     mockGenerate.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.1, spam: 0.1, harassment: 0.9, reason: 'harassment' }),
     );
-    const guildConfig = {
-      aiAutoMod: {
-        enabled: true,
-        thresholds: { toxicity: 0.7, spam: 0.8, harassment: 0.7 },
-        actions: { toxicity: 'flag', spam: 'delete', harassment: 'warn' },
-        autoDelete: false,
-        flagChannelId: null,
-        exemptRoleIds: [],
-      },
-    };
+    const guildConfig = makeAiAutoModGuildConfig();
 
     const result = await checkAiAutoMod(message, client, guildConfig);
 
@@ -706,17 +664,10 @@ describe('checkAiAutoMod', () => {
     mockGenerate.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.1, spam: 0.1, harassment: 0.9, reason: 'harassment' }),
     );
-    const guildConfig = {
-      moderation: { dmNotifications: { warn: true } },
-      aiAutoMod: {
-        enabled: true,
-        thresholds: { toxicity: 0.7, spam: 0.8, harassment: 0.7 },
-        actions: { toxicity: 'flag', spam: 'delete', harassment: 'warn' },
-        autoDelete: false,
-        flagChannelId: null,
-        exemptRoleIds: [],
-      },
-    };
+    const guildConfig = makeAiAutoModGuildConfig(
+      {},
+      { moderation: { dmNotifications: { warn: true } } },
+    );
 
     const result = await checkAiAutoMod(message, client, guildConfig);
 
@@ -739,21 +690,7 @@ describe('checkAiAutoMod', () => {
     mockGenerate.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.1, spam: 0.1, harassment: 0.9, reason: 'harassment' }),
     );
-    const guildConfig = {
-      moderation: {
-        dmNotifications: { warn: true },
-        warnings: { expiryDays: 90, severityPoints: { low: 1, medium: 2, high: 3 } },
-        escalation: { enabled: true, thresholds: [] },
-      },
-      aiAutoMod: {
-        enabled: true,
-        thresholds: { toxicity: 0.7, spam: 0.8, harassment: 0.7 },
-        actions: { toxicity: 'flag', spam: 'delete', harassment: 'warn' },
-        autoDelete: false,
-        flagChannelId: null,
-        exemptRoleIds: [],
-      },
-    };
+    const guildConfig = makeAiAutoModGuildConfig({}, { moderation: moderationWarnConfig });
 
     const result = await checkAiAutoMod(message, client, guildConfig);
 
@@ -788,21 +725,10 @@ describe('checkAiAutoMod', () => {
     mockGenerate.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.1, spam: 0.1, harassment: 0.9, reason: 'harassment' }),
     );
-    const guildConfig = {
-      moderation: {
-        dmNotifications: { warn: false },
-        warnings: { expiryDays: 90, severityPoints: { low: 1, medium: 2, high: 3 } },
-        escalation: { enabled: true, thresholds: [] },
-      },
-      aiAutoMod: {
-        enabled: true,
-        thresholds: { toxicity: 0.7, spam: 0.8, harassment: 0.7 },
-        actions: { toxicity: 'flag', spam: 'delete', harassment: 'warn' },
-        autoDelete: false,
-        flagChannelId: null,
-        exemptRoleIds: [],
-      },
-    };
+    const guildConfig = makeAiAutoModGuildConfig(
+      {},
+      { moderation: { ...moderationWarnConfig, dmNotifications: { warn: false } } },
+    );
 
     const result = await checkAiAutoMod(message, client, guildConfig);
 
@@ -832,23 +758,14 @@ describe('checkAiAutoMod', () => {
     mockGenerate.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.9, spam: 0.1, harassment: 0.1, reason: 'toxic' }),
     );
-    const guildConfig = {
-      moderation: {
-        dmNotifications: { warn: true },
-        warnings: { expiryDays: 90, severityPoints: { low: 1, medium: 2, high: 3 } },
-        escalation: { enabled: true, thresholds: [] },
-      },
-      aiAutoMod: {
-        enabled: true,
+    const guildConfig = makeAiAutoModGuildConfig(
+      {
         model: 'minimax:MiniMax-M2.7',
-        thresholds: { toxicity: 0.7, spam: 0.8, harassment: 0.7 },
         actions: { toxicity: ['delete', 'warn', 'timeout'], spam: [], harassment: [] },
-        autoDelete: false,
-        flagChannelId: null,
-        exemptRoleIds: [],
         timeoutDurationMs: 300000,
       },
-    };
+      { moderation: moderationWarnConfig },
+    );
 
     const result = await checkAiAutoMod(message, client, guildConfig);
 
@@ -888,17 +805,10 @@ describe('checkAiAutoMod', () => {
     mockGenerate.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.9, spam: 0.1, harassment: 0.1, reason: 'toxic' }),
     );
-    const guildConfig = {
-      aiAutoMod: {
-        enabled: true,
-        thresholds: { toxicity: 0.7, spam: 0.8, harassment: 0.7 },
-        actions: { toxicity: 'timeout', spam: 'delete', harassment: 'warn' },
-        autoDelete: false,
-        flagChannelId: null,
-        exemptRoleIds: [],
-        timeoutDurationMs: 300000,
-      },
-    };
+    const guildConfig = makeAiAutoModGuildConfig({
+      actions: { toxicity: 'timeout' },
+      timeoutDurationMs: 300000,
+    });
     const result = await checkAiAutoMod(message, client, guildConfig);
     expect(result.flagged).toBe(true);
     expect(result.action).toBe('timeout');
@@ -909,16 +819,7 @@ describe('checkAiAutoMod', () => {
     mockGenerate.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.9, spam: 0.1, harassment: 0.1, reason: 'toxic' }),
     );
-    const guildConfig = {
-      aiAutoMod: {
-        enabled: true,
-        thresholds: { toxicity: 0.7, spam: 0.8, harassment: 0.7 },
-        actions: { toxicity: 'kick', spam: 'delete', harassment: 'warn' },
-        autoDelete: false,
-        flagChannelId: null,
-        exemptRoleIds: [],
-      },
-    };
+    const guildConfig = makeAiAutoModGuildConfig({ actions: { toxicity: 'kick' } });
     const result = await checkAiAutoMod(message, client, guildConfig);
     expect(result.flagged).toBe(true);
     expect(result.action).toBe('kick');
@@ -929,16 +830,7 @@ describe('checkAiAutoMod', () => {
     mockGenerate.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.95, spam: 0.1, harassment: 0.1, reason: 'severe' }),
     );
-    const guildConfig = {
-      aiAutoMod: {
-        enabled: true,
-        thresholds: { toxicity: 0.7, spam: 0.8, harassment: 0.7 },
-        actions: { toxicity: 'ban', spam: 'delete', harassment: 'warn' },
-        autoDelete: false,
-        flagChannelId: null,
-        exemptRoleIds: [],
-      },
-    };
+    const guildConfig = makeAiAutoModGuildConfig({ actions: { toxicity: 'ban' } });
     const result = await checkAiAutoMod(message, client, guildConfig);
     expect(result.flagged).toBe(true);
     expect(result.action).toBe('ban');
@@ -960,23 +852,14 @@ describe('checkAiAutoMod', () => {
     mockGenerate.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.9, spam: 0.1, harassment: 0.1, reason: 'toxic' }),
     );
-    const guildConfig = {
-      moderation: {
-        dmNotifications: { warn: true },
-        warnings: { expiryDays: 90, severityPoints: { low: 1, medium: 2, high: 3 } },
-        escalation: { enabled: true, thresholds: [] },
-      },
-      aiAutoMod: {
-        enabled: true,
+    const guildConfig = makeAiAutoModGuildConfig(
+      {
         model: 'minimax:MiniMax-M2.7',
-        thresholds: { toxicity: 0.7, spam: 0.8, harassment: 0.7 },
-        actions: { toxicity: configuredAction, spam: 'delete', harassment: 'warn' },
-        autoDelete: false,
-        flagChannelId: null,
-        exemptRoleIds: [],
+        actions: { toxicity: configuredAction },
         timeoutDurationMs: 300000,
       },
-    };
+      { moderation: moderationWarnConfig },
+    );
 
     await checkAiAutoMod(message, client, guildConfig);
 
@@ -1008,16 +891,9 @@ describe('checkAiAutoMod', () => {
 
   it('fails open when Claude throws', async () => {
     mockGenerate.mockRejectedValue(new Error('API error'));
-    const guildConfig = {
-      aiAutoMod: {
-        enabled: true,
-        thresholds: { toxicity: 0.7, spam: 0.8, harassment: 0.7 },
-        actions: { toxicity: 'ban', spam: 'ban', harassment: 'ban' },
-        autoDelete: false,
-        flagChannelId: null,
-        exemptRoleIds: [],
-      },
-    };
+    const guildConfig = makeAiAutoModGuildConfig({
+      actions: { toxicity: 'ban', spam: 'ban', harassment: 'ban' },
+    });
     const result = await checkAiAutoMod(message, client, guildConfig);
     expect(result.flagged).toBe(false);
     expect(message.member.kick).not.toHaveBeenCalled();
@@ -1027,16 +903,7 @@ describe('checkAiAutoMod', () => {
     mockGenerate.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.9, spam: 0.9, harassment: 0.9, reason: 'everything bad' }),
     );
-    const guildConfig = {
-      aiAutoMod: {
-        enabled: true,
-        thresholds: { toxicity: 0.7, spam: 0.8, harassment: 0.7 },
-        actions: { toxicity: 'flag', spam: 'flag', harassment: 'flag' },
-        autoDelete: false,
-        flagChannelId: null,
-        exemptRoleIds: [],
-      },
-    };
+    const guildConfig = makeAiAutoModGuildConfig({ actions: { spam: 'flag', harassment: 'flag' } });
     const result = await checkAiAutoMod(message, client, guildConfig);
     expect(result.flagged).toBe(true);
     expect(result.categories).toContain('toxicity');
@@ -1048,16 +915,7 @@ describe('checkAiAutoMod', () => {
     mockGenerate.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.1, spam: 0.95, harassment: 0.1, reason: 'spam' }),
     );
-    const guildConfig = {
-      aiAutoMod: {
-        enabled: true,
-        thresholds: { toxicity: 0.7, spam: 0.8, harassment: 0.7 },
-        actions: { toxicity: 'flag', spam: 'delete', harassment: 'warn' },
-        autoDelete: false,
-        flagChannelId: null,
-        exemptRoleIds: [],
-      },
-    };
+    const guildConfig = makeAiAutoModGuildConfig();
 
     await checkAiAutoMod(message, {}, guildConfig);
 
@@ -1071,16 +929,7 @@ describe('checkAiAutoMod', () => {
     mockGenerate.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.1, spam: 0.95, harassment: 0.1, reason: 'spam' }),
     );
-    const guildConfig = {
-      aiAutoMod: {
-        enabled: true,
-        thresholds: { toxicity: 0.7, spam: 0.8, harassment: 0.7 },
-        actions: { toxicity: 'flag', spam: 'delete', harassment: 'warn' },
-        autoDelete: false,
-        flagChannelId: null,
-        exemptRoleIds: [],
-      },
-    };
+    const guildConfig = makeAiAutoModGuildConfig();
     const result = await checkAiAutoMod(message, client, guildConfig);
     expect(result.flagged).toBe(true);
     expect(result.action).toBe('delete');
@@ -1093,16 +942,7 @@ describe('checkAiAutoMod', () => {
     mockGenerate.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.1, spam: 0.95, harassment: 0.1, reason: 'spam' }),
     );
-    const guildConfig = {
-      aiAutoMod: {
-        enabled: true,
-        thresholds: { toxicity: 0.7, spam: 0.8, harassment: 0.7 },
-        actions: { toxicity: 'flag', spam: 'delete', harassment: 'warn' },
-        autoDelete: true,
-        flagChannelId: null,
-        exemptRoleIds: [],
-      },
-    };
+    const guildConfig = makeAiAutoModGuildConfig({ autoDelete: true });
     const result = await checkAiAutoMod(message, client, guildConfig);
     expect(result.flagged).toBe(true);
     expect(result.action).toBe('delete');
@@ -1120,16 +960,10 @@ describe('checkAiAutoMod', () => {
     mockGenerate.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.9, spam: 0.1, harassment: 0.1, reason: 'toxic' }),
     );
-    const guildConfig = {
-      aiAutoMod: {
-        enabled: true,
-        thresholds: { toxicity: 0.7, spam: 0.8, harassment: 0.7 },
-        actions: { toxicity: 'none', spam: 'delete', harassment: 'warn' },
-        autoDelete: true,
-        flagChannelId: null,
-        exemptRoleIds: [],
-      },
-    };
+    const guildConfig = makeAiAutoModGuildConfig({
+      actions: { toxicity: 'none' },
+      autoDelete: true,
+    });
 
     const result = await checkAiAutoMod(message, client, guildConfig);
 
@@ -1159,16 +993,7 @@ describe('checkAiAutoMod', () => {
     mockGenerate.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.1, spam: 0.1, harassment: 0.9, reason: 'harassment' }),
     );
-    const guildConfig = {
-      aiAutoMod: {
-        enabled: true,
-        thresholds: { toxicity: 0.7, spam: 0.8, harassment: 0.7 },
-        actions: { toxicity: 'flag', spam: 'delete', harassment: 'warn' },
-        autoDelete: false,
-        flagChannelId: 'flag-channel-1',
-        exemptRoleIds: [],
-      },
-    };
+    const guildConfig = makeAiAutoModGuildConfig({ flagChannelId: 'flag-channel-1' });
 
     const result = await checkAiAutoMod(message, client, guildConfig);
 
@@ -1194,16 +1019,10 @@ describe('checkAiAutoMod', () => {
     mockGenerate.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.9, spam: 0.1, harassment: 0.1, reason: 'toxic' }),
     );
-    const guildConfig = {
-      aiAutoMod: {
-        enabled: true,
-        thresholds: { toxicity: 0.7, spam: 0.8, harassment: 0.7 },
-        actions: { toxicity: 'flag', spam: 'delete', harassment: 'warn' },
-        autoDelete: true,
-        flagChannelId: 'flag-channel-1',
-        exemptRoleIds: [],
-      },
-    };
+    const guildConfig = makeAiAutoModGuildConfig({
+      autoDelete: true,
+      flagChannelId: 'flag-channel-1',
+    });
 
     const result = await checkAiAutoMod(message, client, guildConfig);
 
@@ -1231,16 +1050,7 @@ describe('checkAiAutoMod', () => {
     mockGenerate.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.1, spam: 0.95, harassment: 0.1, reason: 'spam' }),
     );
-    const guildConfig = {
-      aiAutoMod: {
-        enabled: true,
-        thresholds: { toxicity: 0.7, spam: 0.8, harassment: 0.7 },
-        actions: { toxicity: 'flag', spam: 'delete', harassment: 'warn' },
-        autoDelete: false,
-        flagChannelId: null,
-        exemptRoleIds: [],
-      },
-    };
+    const guildConfig = makeAiAutoModGuildConfig();
 
     const result = await checkAiAutoMod(message, client, guildConfig);
 
@@ -1256,16 +1066,7 @@ describe('checkAiAutoMod', () => {
     mockGenerate.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.9, spam: 0.1, harassment: 0.1, reason: 'toxic content' }),
     );
-    const guildConfig = {
-      aiAutoMod: {
-        enabled: true,
-        thresholds: { toxicity: 0.7, spam: 0.8, harassment: 0.7 },
-        actions: { toxicity: 'flag', spam: 'delete', harassment: 'warn' },
-        autoDelete: false,
-        flagChannelId: 'flag-channel-1',
-        exemptRoleIds: [],
-      },
-    };
+    const guildConfig = makeAiAutoModGuildConfig({ flagChannelId: 'flag-channel-1' });
     const result = await checkAiAutoMod(message, client, guildConfig);
     expect(result.flagged).toBe(true);
 

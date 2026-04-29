@@ -72,7 +72,7 @@ import * as tempRoleDetailRoute from '@/app/api/temp-roles/[id]/route';
 import * as tempRolesRoute from '@/app/api/temp-roles/route';
 
 const apiConfig = {
-  baseUrl: 'http://bot.internal:3001/api/v1',
+  baseUrl: 'https://bot.internal:3001/api/v1',
   secret: 'bot-secret',
 };
 
@@ -94,11 +94,11 @@ describe('proxy route coverage', () => {
     mockAuthorizeGuildAdmin.mockResolvedValue(null);
     mockAuthorizeGuildModerator.mockResolvedValue(null);
     mockGetBotApiConfig.mockReturnValue(apiConfig);
-    mockGetBotApiBaseUrl.mockReturnValue('http://bot.internal:3001');
+    mockGetBotApiBaseUrl.mockReturnValue('https://bot.internal:3001');
     mockGetToken.mockResolvedValue({ accessToken: 'access-token' });
     mockBuildUpstreamUrl.mockImplementation((baseUrl: string, path: string) => new URL(path, baseUrl));
     mockProxyToBotApi.mockResolvedValue(NextResponse.json({ ok: true }));
-    vi.spyOn(global, 'fetch').mockResolvedValue(
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response('id,name\n1,Ada\n', {
         status: 200,
         headers: { 'Content-Type': 'text/csv' },
@@ -342,7 +342,7 @@ describe('proxy route coverage', () => {
   });
 
   it('covers public stats proxy responses', async () => {
-    vi.mocked(global.fetch).mockResolvedValueOnce(
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce(
       Response.json({ guilds: 12, users: 34 }),
     );
     const ok = await statsRoute.GET();
@@ -353,11 +353,11 @@ describe('proxy route coverage', () => {
     const unconfigured = await statsRoute.GET();
     expect(unconfigured.status).toBe(503);
 
-    vi.mocked(global.fetch).mockResolvedValueOnce(new Response('nope', { status: 502 }));
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce(new Response('nope', { status: 502 }));
     const upstreamError = await statsRoute.GET();
     expect(upstreamError.status).toBe(502);
 
-    vi.mocked(global.fetch).mockRejectedValueOnce(new Error('down'));
+    vi.mocked(globalThis.fetch).mockRejectedValueOnce(new Error('down'));
     const unavailable = await statsRoute.GET();
     expect(unavailable.status).toBe(503);
   });
@@ -367,7 +367,7 @@ describe('proxy route coverage', () => {
     expect(ok.status).toBe(200);
     expect(ok.headers.get('Content-Disposition')).toBe('attachment; filename="members.csv"');
 
-    vi.mocked(global.fetch).mockResolvedValueOnce(new Response('bad export', { status: 503 }));
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce(new Response('bad export', { status: 503 }));
     const error = await membersExportRoute.GET(request('http://localhost/api'), guildParams('guild-1'));
     expect(error.status).toBe(503);
     await expectJson(error, { error: 'bad export' });
