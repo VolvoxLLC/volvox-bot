@@ -159,6 +159,17 @@ const dirtyCounts = {
   'support-integrations': 0,
 };
 
+const featureCategoryByTabId: Record<string, string> = {
+  moderation: 'moderation-safety',
+  permissions: 'moderation-safety',
+  'audit-log': 'moderation-safety',
+  'community-tools': 'community-tools',
+  starboard: 'community-tools',
+  'bot-status': 'community-tools',
+  tickets: 'support-integrations',
+  'github-feed': 'support-integrations',
+};
+
 function setConfigContext(activeTabId: string) {
   mockUseConfigContext.mockReturnValue({
     draftConfig: baseConfig,
@@ -166,7 +177,7 @@ function setConfigContext(activeTabId: string) {
     saving: false,
     guildId: 'guild-1',
     activeTabId,
-    activeCategoryId: 'moderation-safety',
+    activeCategoryId: featureCategoryByTabId[activeTabId] ?? activeTabId,
     visibleFeatureIds: new Set([activeTabId]),
     dirtyCategoryCounts: dirtyCounts,
     updateDraftConfig,

@@ -608,72 +608,74 @@ describe('previously unexcluded app page alternate states', () => {
   });
 });
 
-it('covers community rank, avatar, contributor, and showcase link variants', async () => {
-  vi.mocked(fetch)
-    .mockResolvedValueOnce(jsonResponse({
-      memberCount: 5,
-      totalMessagesSent: 1000,
-      activeProjects: 2,
-      challengesCompleted: 1,
-      topContributors: [
-        { userId: 'c1', username: 'grace', displayName: undefined, avatar: 'https://cdn.example/grace.png', xp: 3000, level: 6, badge: 'Builder' },
-        { userId: 'c2', username: 'linus', displayName: 'Linus', avatar: null, xp: 2500, level: 5, badge: 'Reviewer' },
-      ],
-    }))
-    .mockResolvedValueOnce(jsonResponse({
-      members: [
-        { userId: 'u2', username: 'grace', displayName: 'Grace', avatar: 'https://cdn.example/grace.png', xp: 1400, level: 4, badge: 'Helper', rank: 2, currentLevelXp: 1000, nextLevelXp: 1500 },
-        { userId: 'u3', username: 'linus', displayName: 'Linus', avatar: null, xp: 1300, level: 3, badge: 'Guide', rank: 3, currentLevelXp: 1500, nextLevelXp: 1500 },
-        { userId: 'u4', username: 'margaret', displayName: 'Margaret', avatar: null, xp: 900, level: 2, badge: 'Member', rank: 4, currentLevelXp: 500, nextLevelXp: 1000 },
-      ],
-      total: 3,
-    }))
-    .mockResolvedValueOnce(jsonResponse({
-      projects: [
-        { id: 11, title: 'Live Demo', description: 'Running app', tech: ['Next'], repoUrl: null, liveUrl: 'https://example.com/live', authorName: 'Grace', authorAvatar: 'https://cdn.example/grace.png', upvotes: 7, createdAt: '2026-04-28T08:00:00Z' },
-        { id: 12, title: 'Private Notes', description: 'No links', tech: [], repoUrl: null, liveUrl: null, authorName: 'Linus', authorAvatar: null, upvotes: 0, createdAt: '2026-04-28T08:00:00Z' },
-      ],
-      total: 2,
-    }));
+describe('community public page variants', () => {
+  it('covers community rank, avatar, contributor, and showcase link variants', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(jsonResponse({
+        memberCount: 5,
+        totalMessagesSent: 1000,
+        activeProjects: 2,
+        challengesCompleted: 1,
+        topContributors: [
+          { userId: 'c1', username: 'grace', displayName: undefined, avatar: 'https://cdn.example/grace.png', xp: 3000, level: 6, badge: 'Builder' },
+          { userId: 'c2', username: 'linus', displayName: 'Linus', avatar: null, xp: 2500, level: 5, badge: 'Reviewer' },
+        ],
+      }))
+      .mockResolvedValueOnce(jsonResponse({
+        members: [
+          { userId: 'u2', username: 'grace', displayName: 'Grace', avatar: 'https://cdn.example/grace.png', xp: 1400, level: 4, badge: 'Helper', rank: 2, currentLevelXp: 1000, nextLevelXp: 1500 },
+          { userId: 'u3', username: 'linus', displayName: 'Linus', avatar: null, xp: 1300, level: 3, badge: 'Guide', rank: 3, currentLevelXp: 1500, nextLevelXp: 1500 },
+          { userId: 'u4', username: 'margaret', displayName: 'Margaret', avatar: null, xp: 900, level: 2, badge: 'Member', rank: 4, currentLevelXp: 500, nextLevelXp: 1000 },
+        ],
+        total: 3,
+      }))
+      .mockResolvedValueOnce(jsonResponse({
+        projects: [
+          { id: 11, title: 'Live Demo', description: 'Running app', tech: ['Next'], repoUrl: null, liveUrl: 'https://example.com/live', authorName: 'Grace', authorAvatar: 'https://cdn.example/grace.png', upvotes: 7, createdAt: '2026-04-28T08:00:00Z' },
+          { id: 12, title: 'Private Notes', description: 'No links', tech: [], repoUrl: null, liveUrl: null, authorName: 'Linus', authorAvatar: null, upvotes: 0, createdAt: '2026-04-28T08:00:00Z' },
+        ],
+        total: 2,
+      }));
 
-  render(await CommunityPage({ params: Promise.resolve({ guildId: 'guild-rich' }) }));
+    render(await CommunityPage({ params: Promise.resolve({ guildId: 'guild-rich' }) }));
 
-  expect(screen.getByText('🥈')).toBeInTheDocument();
-  expect(screen.getByText('🥉')).toBeInTheDocument();
-  expect(screen.getByText('#4')).toBeInTheDocument();
-  expect(screen.getByText(/Top Contributors/)).toBeInTheDocument();
-  expect(screen.getByText('Live Demo')).toBeInTheDocument();
-  expect(screen.getByLabelText('View live demo')).toHaveAttribute('href', 'https://example.com/live');
-  expect(screen.getByText('Private Notes')).toBeInTheDocument();
-});
-
-it('covers community profile avatar, maxed XP, and hidden optional sections', async () => {
-  const profile = {
-    username: 'hopper',
-    displayName: 'Grace Hopper',
-    avatar: 'https://cdn.example/hopper.png',
-    xp: 5000,
-    level: 10,
-    currentLevelXp: 5000,
-    nextLevelXp: 5000,
-    badge: 'Admiral',
-    joinedAt: null,
-    stats: { messagesSent: 1000, reactionsGiven: 10, reactionsReceived: 15, daysActive: 99 },
-    projects: [],
-    recentBadges: [],
-  };
-  vi.mocked(fetch)
-    .mockResolvedValueOnce(jsonResponse(profile))
-    .mockResolvedValueOnce(jsonResponse(profile));
-
-  await expect(generateProfileMetadata({ params: Promise.resolve({ guildId: 'guild-1', userId: 'hopper' }) })).resolves.toMatchObject({
-    openGraph: { images: [{ url: 'https://cdn.example/hopper.png', width: 128, height: 128 }] },
+    expect(screen.getByText('🥈')).toBeInTheDocument();
+    expect(screen.getByText('🥉')).toBeInTheDocument();
+    expect(screen.getByText('#4')).toBeInTheDocument();
+    expect(screen.getByText(/Top Contributors/)).toBeInTheDocument();
+    expect(screen.getByText('Live Demo')).toBeInTheDocument();
+    expect(screen.getByLabelText('View live demo')).toHaveAttribute('href', 'https://example.com/live');
+    expect(screen.getByText('Private Notes')).toBeInTheDocument();
   });
 
-  render(await ProfilePage({ params: Promise.resolve({ guildId: 'guild-1', userId: 'hopper' }) }));
+  it('covers community profile avatar, maxed XP, and hidden optional sections', async () => {
+    const profile = {
+      username: 'hopper',
+      displayName: 'Grace Hopper',
+      avatar: 'https://cdn.example/hopper.png',
+      xp: 5000,
+      level: 10,
+      currentLevelXp: 5000,
+      nextLevelXp: 5000,
+      badge: 'Admiral',
+      joinedAt: null,
+      stats: { messagesSent: 1000, reactionsGiven: 10, reactionsReceived: 15, daysActive: 99 },
+      projects: [],
+      recentBadges: [],
+    };
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(jsonResponse(profile))
+      .mockResolvedValueOnce(jsonResponse(profile));
 
-  expect(screen.getByAltText('Grace Hopper')).toBeInTheDocument();
-  expect(screen.queryByText(/Joined/)).not.toBeInTheDocument();
-  expect(screen.queryByRole('heading', { name: 'Badges' })).not.toBeInTheDocument();
-  expect(screen.queryByRole('heading', { name: 'Projects' })).not.toBeInTheDocument();
+    await expect(generateProfileMetadata({ params: Promise.resolve({ guildId: 'guild-1', userId: 'hopper' }) })).resolves.toMatchObject({
+      openGraph: { images: [{ url: 'https://cdn.example/hopper.png', width: 128, height: 128 }] },
+    });
+
+    render(await ProfilePage({ params: Promise.resolve({ guildId: 'guild-1', userId: 'hopper' }) }));
+
+    expect(screen.getByAltText('Grace Hopper')).toBeInTheDocument();
+    expect(screen.queryByText(/Joined/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Badges' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Projects' })).not.toBeInTheDocument();
+  });
 });
