@@ -426,8 +426,10 @@ describe('memory module', () => {
 
       // Verify it performed a lightweight search to check connectivity
       expect(mockClient.search).toHaveBeenCalledWith('health-check', {
-        user_id: '__health_check__',
-        app_id: 'volvox-bot',
+        filters: {
+          user_id: '__health_check__',
+          app_id: 'volvox-bot',
+        },
         limit: 1,
       });
     });
@@ -509,7 +511,6 @@ describe('memory module', () => {
         user_id: 'user123',
         app_id: 'volvox-bot',
         metadata: {},
-        enable_graph: true,
       });
     });
 
@@ -584,10 +585,11 @@ describe('memory module', () => {
       expect(result.relations[0].relationship).toBe('works at');
 
       expect(mockClient.search).toHaveBeenCalledWith('What language?', {
-        user_id: 'user123',
-        app_id: 'volvox-bot',
+        filters: {
+          user_id: 'user123',
+          app_id: 'volvox-bot',
+        },
         limit: 5,
-        enable_graph: true,
       });
     });
 
@@ -715,7 +717,6 @@ describe('memory module', () => {
       expect(mockClient.getAll).toHaveBeenCalledWith({
         user_id: 'user123',
         app_id: 'volvox-bot',
-        enable_graph: true,
       });
     });
 
@@ -1084,7 +1085,7 @@ describe('memory module', () => {
       expect(mockClient.add).not.toHaveBeenCalled();
     });
 
-    it('should call client.add with conversation messages and graph enabled', async () => {
+    it('should call client.add with conversation messages', async () => {
       _setMem0Available(true);
       const mockClient = createMockClient();
       _setClient(mockClient);
@@ -1106,7 +1107,6 @@ describe('memory module', () => {
           user_id: 'user123',
           app_id: 'volvox-bot',
           metadata: { username: 'testuser' },
-          enable_graph: true,
         },
       );
     });
