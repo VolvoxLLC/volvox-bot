@@ -244,13 +244,17 @@ describe('Header', () => {
   it('dispatches the performance refresh event and reflects loading events', async () => {
     mockUsePathname.mockReturnValue('/dashboard/performance');
     const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
-    const user = userEvent.setup();
-    render(<Header />);
 
-    await user.click(screen.getByRole('button', { name: /Refresh Metrics/i }));
+    try {
+      const user = userEvent.setup();
+      render(<Header />);
 
-    expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'refresh-performance' }));
-    dispatchSpy.mockRestore();
+      await user.click(screen.getByRole('button', { name: /Refresh Metrics/i }));
+
+      expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'refresh-performance' }));
+    } finally {
+      dispatchSpy.mockRestore();
+    }
   });
 
   it.each([
