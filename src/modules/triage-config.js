@@ -30,7 +30,7 @@ function validSupportedModel(value, origin) {
   try {
     parseProviderModel(value);
   } catch (err) {
-    warn('Triage config contains a legacy bare model string — falling back', {
+    warn('Triage config contains an invalid model string — falling back', {
       origin,
       value,
       reason: err?.message,

@@ -136,6 +136,7 @@ describe('configValidation', () => {
       expect(validateSingleValue('tldr.model', 'moonshot:kimi-k2.6')).toEqual([]);
       expect(validateSingleValue('aiAutoMod.thresholds.hateSpeech', 0.85)).toEqual([]);
       expect(validateSingleValue('aiAutoMod.actions.hateSpeech', 'timeout')).toEqual([]);
+      expect(validateSingleValue('aiAutoMod.actions.hateSpeech', 'none')).toEqual([]);
       expect(validateSingleValue('aiAutoMod.actions.hateSpeech', ['flag', 'timeout'])).toEqual([]);
       expect(validateSingleValue('aiAutoMod.actions.hateSpeech', [])).toEqual([]);
       expect(validateSingleValue('aiAutoMod.exemptRoleIds', ['role-1'])).toEqual([]);
@@ -326,12 +327,28 @@ describe('configValidation', () => {
 
     it('should validate ai.channelModes as open-properties', () => {
       expect(validateSingleValue('ai.channelModes', { 12345: 'vibe' })).toEqual([]);
+      expect(validateSingleValue('ai.channelModes', { 12345: 'loud' })).toEqual(
+        expect.arrayContaining([expect.stringContaining('must be one of')]),
+      );
     });
 
     it('should resolve nested dynamic keys in validateSingleValue (channelModes path)', () => {
-      // channelModes has openProperties — any channel-ID sub-key is dynamic;
-      // the value is validated against the parent object schema, so an object passes
-      expect(validateSingleValue('ai.channelModes.12345', { mode: 'vibe' })).toEqual([]);
+      // channelModes has schema-backed openProperties — any channel-ID sub-key is dynamic;
+      // the value is validated against the map's ChannelMode leaf schema.
+      expect(validateSingleValue('ai.channelModes.12345', 'vibe')).toEqual([]);
+      expect(validateSingleValue('ai.channelModes.12345', { mode: 'vibe' })).toEqual(
+        expect.arrayContaining([expect.stringContaining('expected string')]),
+      );
+      expect(validateSingleValue('ai.channelModes.12345', 'loud')).toEqual(
+        expect.arrayContaining([expect.stringContaining('must be one of')]),
+      );
+    });
+
+    it('should resolve nested dynamic keys in validateSingleValue (allowedCommands path)', () => {
+      expect(validateSingleValue('permissions.allowedCommands.tldr', 'everyone')).toEqual([]);
+      expect(validateSingleValue('permissions.allowedCommands.tldr', 'owner')).toEqual(
+        expect.arrayContaining([expect.stringContaining('must be one of')]),
+      );
     });
   });
 

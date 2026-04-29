@@ -33,11 +33,13 @@ export type AiAutoModCategory =
 
 export type AiAutoModAction = 'none' | 'flag' | 'delete' | 'warn' | 'timeout' | 'kick' | 'ban';
 
+export type AiAutoModActionValue = AiAutoModAction | AiAutoModAction[];
+
 export interface AiAutoModConfig {
   enabled: boolean;
   model: string;
   thresholds: Record<AiAutoModCategory, number>;
-  actions: Record<AiAutoModCategory, AiAutoModAction[]>;
+  actions: Record<AiAutoModCategory, AiAutoModActionValue>;
   timeoutDurationMs: number;
   flagChannelId: string | null;
   autoDelete: boolean;
