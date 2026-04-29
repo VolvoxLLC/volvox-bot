@@ -85,8 +85,8 @@ describe('triage-config', () => {
 
     it('should fall back to supported legacy models when configured models are unsupported', () => {
       const result = resolveTriageConfig({
-        classifyModel: 'anthropic:claude-3-5-haiku',
-        respondModel: 'openai:gpt-4o-mini',
+        classifyModel: 'definitely-fake-classify-provider:not-a-real-model',
+        respondModel: 'definitely-fake-respond-provider:not-a-real-model',
         model: 'legacy-bare-name',
         models: {
           triage: 'moonshot:kimi-k2.6',

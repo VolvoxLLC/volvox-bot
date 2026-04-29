@@ -629,6 +629,8 @@ async function executeAction(message, client, result, autoModConfig, _guildConfi
   const botId = client.user?.id ?? 'bot';
   const botTag = client.user?.tag ?? 'Bot#0000';
   const actions = getAuditedActions(result, autoModConfig);
+  const executedActions = [];
+  const successfulAuditEvents = [];
 
   if (actions.length === 0) {
     logAiAutoModAuditEvent(
@@ -640,9 +642,9 @@ async function executeAction(message, client, result, autoModConfig, _guildConfi
       botId,
       botTag,
       'none',
-      actions,
+      executedActions,
     );
-    return;
+    return executedActions;
   }
 
   for (const action of actions) {
@@ -658,6 +660,11 @@ async function executeAction(message, client, result, autoModConfig, _guildConfi
 
     if (!success) continue;
 
+    executedActions.push(action);
+    successfulAuditEvents.push({ action, caseData });
+  }
+
+  for (const { action, caseData } of successfulAuditEvents) {
     logAiAutoModAuditEvent(
       message,
       result,
@@ -667,9 +674,11 @@ async function executeAction(message, client, result, autoModConfig, _guildConfi
       botId,
       botTag,
       action,
-      actions,
+      executedActions,
     );
   }
+
+  return executedActions;
 }
 
 /**
@@ -717,29 +726,36 @@ export async function checkAiAutoMod(message, client, guildConfig) {
       return { flagged: false };
     }
 
+    const executedActions = await executeAction(
+      message,
+      client,
+      result,
+      autoModConfig,
+      guildConfig,
+    );
+    const executedAction = getPrimaryAction(executedActions);
+
     warn('AI auto-mod: flagged message', {
       userId: message.author.id,
       guildId: message.guild?.id,
       categories: result.categories,
-      action: result.action,
-      actions: result.actions,
+      action: executedAction,
+      actions: executedActions,
       scores: result.scores,
     });
 
-    info('AI auto-mod: executing action', {
-      action: result.action,
-      actions: result.actions,
+    info('AI auto-mod: executed action', {
+      action: executedAction,
+      actions: executedActions,
       guildId: message.guild?.id,
       channelId: message.channel?.id,
       userId: message.author.id,
     });
 
-    await executeAction(message, client, result, autoModConfig, guildConfig);
-
     return {
       flagged: true,
-      action: result.action,
-      actions: result.actions,
+      action: executedAction,
+      actions: executedActions,
       categories: result.categories,
     };
   } catch (err) {

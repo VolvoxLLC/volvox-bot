@@ -593,7 +593,7 @@ describe('checkAiAutoMod', () => {
 
     const result = await checkAiAutoMod(message, client, guildConfig);
 
-    expect(result).toMatchObject({ flagged: true, action: 'delete' });
+    expect(result).toMatchObject({ flagged: true, action: 'none', actions: [] });
     expect(message.delete).toHaveBeenCalledTimes(1);
     expect(logAuditEvent).not.toHaveBeenCalled();
   });
@@ -685,7 +685,7 @@ describe('checkAiAutoMod', () => {
 
     const result = await checkAiAutoMod(message, client, guildConfig);
 
-    expect(result).toMatchObject({ flagged: true, action: 'warn' });
+    expect(result).toMatchObject({ flagged: true, action: 'none', actions: [] });
     expect(createCase).not.toHaveBeenCalled();
     expect(sendDmNotification).not.toHaveBeenCalled();
     expect(logAuditEvent).not.toHaveBeenCalled();
@@ -703,7 +703,7 @@ describe('checkAiAutoMod', () => {
 
     const result = await checkAiAutoMod(message, client, guildConfig);
 
-    expect(result).toMatchObject({ flagged: true, action: 'warn' });
+    expect(result).toMatchObject({ flagged: true, action: 'none', actions: [] });
     expect(sendDmNotification).not.toHaveBeenCalled();
     expect(createWarning).not.toHaveBeenCalled();
     expect(sendModLogEmbed).not.toHaveBeenCalled();
@@ -857,7 +857,7 @@ describe('checkAiAutoMod', () => {
 
     const result = await checkAiAutoMod(message, client, guildConfig);
 
-    expect(result).toMatchObject({ flagged: true, action });
+    expect(result).toMatchObject({ flagged: true, action, actions: [action] });
     if (action === 'timeout') {
       expect(message.member.timeout).toHaveBeenCalledWith(300000, expect.any(String));
     } else if (action === 'kick') {
@@ -907,7 +907,7 @@ describe('checkAiAutoMod', () => {
 
     const result = await checkAiAutoMod(message, client, guildConfig);
 
-    expect(result).toMatchObject({ flagged: true, action });
+    expect(result).toMatchObject({ flagged: true, action: 'none', actions: [] });
     if (action === 'timeout') {
       expect(message.member.timeout).toHaveBeenCalledWith(300000, expect.any(String));
     } else if (action === 'kick') {
@@ -1076,7 +1076,7 @@ describe('checkAiAutoMod', () => {
 
     const result = await checkAiAutoMod(message, client, guildConfig);
 
-    expect(result).toMatchObject({ flagged: true, action: 'none', actions: [] });
+    expect(result).toMatchObject({ flagged: true, action: 'delete', actions: ['delete'] });
     expect(message.delete).toHaveBeenCalledTimes(1);
     expect(logAuditEvent).toHaveBeenCalledTimes(1);
     expect(logAuditEvent).toHaveBeenCalledWith(
@@ -1106,7 +1106,7 @@ describe('checkAiAutoMod', () => {
 
     const result = await checkAiAutoMod(message, client, guildConfig);
 
-    expect(result).toMatchObject({ flagged: true, action: 'warn', actions: ['warn'] });
+    expect(result).toMatchObject({ flagged: true, action: 'warn', actions: ['warn', 'flag'] });
     expect(createCase).toHaveBeenCalledWith(
       'guild-1',
       expect.objectContaining({ action: 'warn', targetId: 'user-1' }),
@@ -1135,7 +1135,7 @@ describe('checkAiAutoMod', () => {
 
     const result = await checkAiAutoMod(message, client, guildConfig);
 
-    expect(result).toMatchObject({ flagged: true, action: 'flag', actions: ['flag'] });
+    expect(result).toMatchObject({ flagged: true, action: 'delete', actions: ['flag', 'delete'] });
     expect(message.delete).toHaveBeenCalledTimes(1);
     expect(safeSend).toHaveBeenCalledTimes(1);
     expect(logAuditEvent).toHaveBeenCalledWith(
