@@ -520,6 +520,7 @@ describe('AiAutomationCategory', () => {
     expect(nextConfig.triage?.respondModel).toBeUndefined();
   });
 
+<<<<<<< HEAD
   it('repairs empty-string saved triage model fields before saving', async () => {
     const updateDraftConfig = vi.fn();
     mockConfigContext({
@@ -549,6 +550,8 @@ describe('AiAutomationCategory', () => {
     expect(nextConfig.triage?.respondModel).toBe('minimax:MiniMax-M2.7');
   });
 
+=======
+>>>>>>> 3ae5e9a5 (fix: preserve saved dashboard model selections)
   it('shows unsupported saved models as current triage selections', () => {
     const unsupportedModel = 'anthropic:claude-3-5-haiku';
     mockConfigContext({

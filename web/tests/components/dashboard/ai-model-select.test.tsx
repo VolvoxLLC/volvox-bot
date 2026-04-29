@@ -11,7 +11,11 @@ describe('AiModelSelect helpers', () => {
     expect(isSupportedAiModel('MINIMAX:minimax-m2.7')).toBe(true);
   });
 
-  it('normalizes stale model values to the explicit dashboard default', () => {
-    expect(normalizeAiModel('anthropic:claude-3-5-haiku')).toBe(DEFAULT_AI_MODEL);
+  it('preserves unknown valid provider:model values', () => {
+    expect(normalizeAiModel('anthropic:claude-3-5-haiku')).toBe('anthropic:claude-3-5-haiku');
+  });
+
+  it('normalizes malformed model values to the explicit dashboard default', () => {
+    expect(normalizeAiModel('not a provider model')).toBe(DEFAULT_AI_MODEL);
   });
 });

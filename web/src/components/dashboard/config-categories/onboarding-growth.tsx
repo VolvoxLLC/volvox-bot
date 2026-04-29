@@ -899,7 +899,7 @@ export function OnboardingGrowthCategory() {
               <AiModelSelect
                 id="tldr-model"
                 label="TL;DR Model"
-                value={draftConfig.tldr?.model}
+                value={tldrModelValue}
                 onChange={(value) =>
                   updateDraftConfig((p) => ({ ...p, tldr: { ...p.tldr, model: value } }))
                 }
