@@ -16,6 +16,7 @@
  */
 
 // MessageType no longer needed — moved to triage-config.js
+import { getPool } from '../db.js';
 import { debug, info, error as logError, warn } from '../logger.js';
 import { loadPrompt } from '../prompts/index.js';
 import { generate, stream, warmConnection } from '../utils/aiClient.js';
@@ -23,6 +24,7 @@ import { fetchChannelCached } from '../utils/discordCache.js';
 import { AIClientError } from '../utils/errors.js';
 import { checkGuildBudget } from '../utils/guildSpend.js';
 import { safeSend } from '../utils/safeSend.js';
+import { logAuditEvent } from './auditLogger.js';
 import { buildMemoryContext, extractAndStoreMemories } from './memory.js';
 
 // ── Sub-module imports ───────────────────────────────────────────────────────
@@ -549,6 +551,7 @@ async function evaluateAndRespond(channelId, snapshot, evalConfig, evalClient, a
               const lastAlert = budgetAlertSentAt.get(guildId) ?? 0;
               if (now - lastAlert >= BUDGET_ALERT_COOLDOWN_MS) {
                 budgetAlertSentAt.set(guildId, now);
+                recordBudgetExceededAudit(evalClient, guildId, channelId, logChannelId, budget);
                 fetchChannelCached(evalClient, logChannelId, guildId)
                   .then((logCh) => {
                     if (logCh) {
@@ -935,6 +938,32 @@ export async function accumulateMessage(message, msgConfig) {
 }
 
 const MAX_REEVAL_DEPTH = 3;
+
+function getAuditPool() {
+  try {
+    return getPool();
+  } catch {
+    return null;
+  }
+}
+
+function recordBudgetExceededAudit(evalClient, guildId, channelId, logChannelId, budget) {
+  logAuditEvent(getAuditPool(), {
+    guildId,
+    userId: evalClient.user?.id ?? 'volvox-bot',
+    userTag: evalClient.user?.tag ?? evalClient.user?.username ?? 'Volvox.Bot',
+    action: 'triage.budget_exceeded',
+    targetType: 'guild',
+    targetId: guildId,
+    details: {
+      sourceChannelId: channelId,
+      logChannelId,
+      spend: budget.spend,
+      budget: budget.budget,
+      pct: budget.pct,
+    },
+  });
+}
 
 /**
  * Run an immediate triage evaluation of the buffered messages for the given channel.

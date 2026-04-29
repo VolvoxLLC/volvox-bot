@@ -21,6 +21,7 @@
     },
     "dev": {
       "cache": false,
+      "envMode": "loose",
       "persistent": true
     },
     "lint": {

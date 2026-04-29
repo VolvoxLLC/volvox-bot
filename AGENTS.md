@@ -33,6 +33,7 @@ Community-facing features must be gated behind `config.<feature>.enabled`. Moder
 
 ## Dashboard and Web Gotchas
 
+- `pnpm mono:dev` runs the Turbo `dev` task in loose env mode and each dev script loads its workspace `.env` with override semantics. `.env` edits still require restarting dev mode. The bot reads root `.env`; the dashboard reads `web/.env`.
 - Next.js dev with Chrome DevTools uses `127.0.0.1`; keep `web/next.config.mjs` `allowedDevOrigins` including `127.0.0.1` or HMR can reload-loop and Turbopack can fail with `Map maximum size exceeded`.
 - Railway builds the web service with `web/` as the Docker context, so web code cannot import repo-root files. Keep root-shared web data copied under `web/src/data/` and covered by a sync test.
 - New dashboard routes need title wiring in `web/src/lib/page-titles.ts`: use `createPageMetadata()` for SSR and keep `DashboardTitleSync` aligned for client navigation.

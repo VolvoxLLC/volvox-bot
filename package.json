@@ -7,7 +7,7 @@
   "type": "module",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "node --watch src/index.js",
+    "dev": "node scripts/dev-env.js .env node --watch src/index.js",
     "build": "node -e \"console.log('volvox-bot: no build step required')\"",
     "typecheck": "node -e \"console.log('volvox-bot: no typecheck step required')\"",
     "mono:dev": "turbo run dev --parallel",
