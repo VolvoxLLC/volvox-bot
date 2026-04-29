@@ -5,11 +5,6 @@ import type { GuildConfig } from '@/components/dashboard/config-editor-utils';
 const mockUseConfigContext = vi.fn();
 const updateDraftConfig = vi.fn((updater: (config: GuildConfig) => GuildConfig) => updater(baseConfig));
 
-vi.mock('next/navigation', () => ({
-  usePathname: () => '/dashboard/settings/moderation-safety',
-  useRouter: () => ({ push: vi.fn() }),
-}));
-
 vi.mock('@/components/dashboard/config-context', () => ({
   useConfigContext: () => mockUseConfigContext(),
 }));
@@ -95,22 +90,73 @@ const baseConfig: GuildConfig = {
   ai: { enabled: true, systemPrompt: 'Be helpful', blockedChannelIds: [] },
   moderation: {
     enabled: true,
-    logChannelId: 'logs',
-    reportChannelId: 'reports',
-    modRoleIds: ['mods'],
-    autoDeleteThreshold: 3,
-    muteDuration: '10m',
+    alertChannelId: 'reports',
+    autoDelete: true,
+    logging: { channels: { default: 'logs' } },
+    dmNotifications: { warn: true, timeout: true, kick: true, ban: true },
+    escalation: { enabled: true, thresholds: [] },
   },
-  permissions: { enabled: true, botOwners: ['owner'], adminRoleIds: ['admin'], moderatorRoleIds: ['mod'] },
-  auditLog: { enabled: true, channelId: 'audit' },
-  tickets: { enabled: true, categoryId: 'tickets', logChannelId: 'ticket-log', supportRoleIds: ['support'], transcriptChannelId: 'transcripts' },
-  github: { enabled: true, repo: 'VolvoxLLC/volvox-bot', channelId: 'github' },
-  starboard: { enabled: true, channelId: 'stars', threshold: 3, emoji: '⭐' },
-  botStatus: { enabled: true, channelId: 'status', intervalMinutes: 30 },
-  community: { showcaseEnabled: true, showcaseChannelId: 'showcase' },
-  memory: { enabled: true, ttlDays: 30 },
-  engagement: { enabled: true, xpPerMessage: 5, cooldownSeconds: 60 },
-  challenges: { enabled: true, channelId: 'challenges' },
+  permissions: {
+    enabled: true,
+    adminRoleIds: ['admin'],
+    moderatorRoleIds: ['mod'],
+    modRoles: ['mod'],
+    usePermissions: true,
+    allowedCommands: {},
+  },
+  auditLog: { enabled: true, retentionDays: 90 },
+  tickets: {
+    enabled: true,
+    mode: 'thread',
+    category: 'tickets',
+    supportRole: 'support',
+    transcriptChannel: 'transcripts',
+    autoCloseHours: 48,
+    maxOpenPerUser: 3,
+  },
+  github: {
+    feed: {
+      enabled: true,
+      channelId: 'github',
+      repos: ['VolvoxLLC/volvox-bot'],
+      events: ['push'],
+      pollIntervalMinutes: 5,
+    },
+  },
+  starboard: {
+    enabled: true,
+    channelId: 'stars',
+    threshold: 3,
+    emoji: '⭐',
+    selfStarAllowed: false,
+    ignoredChannels: [],
+  },
+  botStatus: {
+    enabled: true,
+    rotation: { enabled: true, intervalMinutes: 30, messages: [{ text: 'Watching tests' }] },
+  },
+  showcase: { enabled: true },
+  memory: { enabled: true, maxContextMemories: 10, autoExtract: true },
+  engagement: {
+    enabled: true,
+    trackMessages: true,
+    trackReactions: true,
+    activityBadges: [{ days: 7, label: 'Regular' }],
+  },
+  challenges: {
+    enabled: true,
+    channelId: 'challenges',
+    postTime: '09:00',
+    timezone: 'America/New_York',
+  },
+};
+
+const dirtyCounts = {
+  'ai-automation': 2,
+  'moderation-safety': 0,
+  'onboarding-growth': 0,
+  'community-tools': 0,
+  'support-integrations': 0,
 };
 
 function setConfigContext(activeTabId: string) {
@@ -122,13 +168,7 @@ function setConfigContext(activeTabId: string) {
     activeTabId,
     activeCategoryId: 'moderation-safety',
     visibleFeatureIds: new Set([activeTabId]),
-    dirtyCategoryCounts: {
-      'ai-automation': 2,
-      'moderation-safety': 0,
-      'onboarding-growth': 0,
-      'community-tools': 0,
-      'support-integrations': 0,
-    },
+    dirtyCategoryCounts: dirtyCounts,
     updateDraftConfig,
     handleSearchSelect: vi.fn(),
   });
@@ -158,14 +198,20 @@ describe('dashboard config coverage smoke tests', () => {
     render(
       <>
         <ConfigLandingContent />
-        <CategoryNavigation dirtyCounts={{ 'ai-automation': 2 }} />
+        <CategoryNavigation dirtyCounts={dirtyCounts} />
         <ConfigSearch
           value="ai"
           onChange={vi.fn()}
           results={[{ id: 'ai-chat-enabled', label: 'Enable AI Chat', categoryId: 'ai-automation', featureId: 'ai-chat', description: 'Toggle AI chat', keywords: ['ai'], isAdvanced: false }]}
           onSelect={vi.fn()}
         />
-        <SettingsFeatureCard title="AI Chat" description="Toggle AI replies" href="/dashboard/settings/ai-automation" dirtyCount={1} />
+        <SettingsFeatureCard
+          featureId="ai-chat"
+          title="AI Chat"
+          description="Toggle AI replies"
+          basicContent={<span>AI Chat settings</span>}
+          enabled
+        />
       </>,
     );
 
@@ -176,15 +222,48 @@ describe('dashboard config coverage smoke tests', () => {
   it('renders reusable config sections with enabled drafts', () => {
     render(
       <>
-        <AuditLogSection draftConfig={baseConfig} saving={false} onFieldChange={vi.fn()} />
-        <ChallengesSection draftConfig={baseConfig} saving={false} onFieldChange={vi.fn()} />
-        <CommunityFeaturesSection draftConfig={baseConfig} saving={false} onFieldChange={vi.fn()} />
-        <EngagementSection draftConfig={baseConfig} saving={false} onFieldChange={vi.fn()} />
+        <AuditLogSection
+          draftConfig={baseConfig}
+          saving={false}
+          onEnabledChange={vi.fn()}
+          onRetentionDaysChange={vi.fn()}
+        />
+        <ChallengesSection
+          draftConfig={baseConfig}
+          saving={false}
+          onEnabledChange={vi.fn()}
+          onFieldChange={vi.fn()}
+        />
+        <CommunityFeaturesSection
+          draftConfig={baseConfig}
+          saving={false}
+          onToggleChange={vi.fn()}
+        />
+        <EngagementSection
+          draftConfig={baseConfig}
+          saving={false}
+          onActivityBadgesChange={vi.fn()}
+        />
         <GitHubSection draftConfig={baseConfig} saving={false} onFieldChange={vi.fn()} />
-        <MemorySection draftConfig={baseConfig} saving={false} onFieldChange={vi.fn()} />
-        <PermissionsSection draftConfig={baseConfig} saving={false} onFieldChange={vi.fn()} />
+        <MemorySection
+          draftConfig={baseConfig}
+          saving={false}
+          onEnabledChange={vi.fn()}
+          onFieldChange={vi.fn()}
+        />
+        <PermissionsSection
+          draftConfig={baseConfig}
+          guildId="guild-1"
+          saving={false}
+          onFieldChange={vi.fn()}
+        />
         <StarboardSection draftConfig={baseConfig} saving={false} onFieldChange={vi.fn()} />
-        <TicketsSection draftConfig={baseConfig} saving={false} onFieldChange={vi.fn()} />
+        <TicketsSection
+          draftConfig={baseConfig}
+          saving={false}
+          onEnabledChange={vi.fn()}
+          onFieldChange={vi.fn()}
+        />
       </>,
     );
 
