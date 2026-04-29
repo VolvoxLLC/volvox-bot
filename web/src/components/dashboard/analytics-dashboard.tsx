@@ -5,7 +5,6 @@ import {
   ArrowDown,
   ArrowUp,
   Bot,
-  Coins,
   Heart,
   type LucideIcon,
   MessageSquare,
@@ -36,7 +35,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useAnalytics } from '@/contexts/analytics-context';
 import { useChartTheme } from '@/hooks/use-chart-theme';
 import { useGlowCard } from '@/hooks/use-glow-card';
-import { formatNumber, formatUsd } from '@/lib/analytics-utils';
+import { formatNumber } from '@/lib/analytics-utils';
 import { cn } from '@/lib/utils';
 import type { AnalyticsRangePreset } from '@/types/analytics';
 import { DashboardCard } from './dashboard-card';
@@ -278,7 +277,7 @@ function LiveActivityFeed() {
  * Render the analytics dashboard UI showing workspace metrics, charts, and interactive filters.
  *
  * Renders KPI cards with optional comparison deltas, realtime metrics and activity feed, message
- * volume and AI cost charts, top channels and command telemetry tables, community engagement and
+ * volume and AI usage charts, top channels and command telemetry tables, community engagement and
  * XP economy summaries, an activity heatmap, and CSV export functionality. Handles loading,
  * empty, and error states based on analytics data and exposes channel filtering and refresh actions
  * via hooks.
@@ -444,13 +443,6 @@ export function AnalyticsDashboard() {
         format: formatNumber,
       },
       {
-        label: 'AI cost (est.)',
-        value: analytics?.kpis.aiCostUsd,
-        previous: analytics?.comparison?.kpis.aiCostUsd,
-        icon: Coins,
-        format: formatUsd,
-      },
-      {
         label: 'Active users',
         value: analytics?.kpis.activeUsers,
         previous: analytics?.comparison?.kpis.activeUsers,
@@ -555,9 +547,9 @@ export function AnalyticsDashboard() {
         </div>
       ) : null}
 
-      <div className="grid gap-3 grid-cols-2 lg:grid-cols-5 stagger-fade-in">
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4 stagger-fade-in">
         {showKpiSkeleton
-          ? (['kpi-0', 'kpi-1', 'kpi-2', 'kpi-3', 'kpi-4'] as const).map((key) => (
+          ? (['kpi-0', 'kpi-1', 'kpi-2', 'kpi-3'] as const).map((key) => (
               <div
                 key={key}
                 className="h-28 animate-pulse rounded-[20px] bg-muted/20 border border-border/10"
@@ -786,10 +778,10 @@ export function AnalyticsDashboard() {
           <div className="mb-8 flex items-center justify-between">
             <div>
               <h2 className="text-lg font-black tracking-tight text-foreground/90">
-                AI Cost Analysis
+                AI Usage Analysis
               </h2>
               <p className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/40">
-                Model requests & computation
+                Model requests and token volume
               </p>
             </div>
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/20">
@@ -886,7 +878,7 @@ export function AnalyticsDashboard() {
               ) : (
                 <div className="flex h-[140px] flex-col items-center justify-center text-center">
                   <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/5 text-emerald-500/40 shadow-[0_0_15px_rgba(34,197,94,0.1)] transition-transform group-hover:scale-110">
-                    <Coins className="h-5 w-5" />
+                    <Zap className="h-5 w-5" />
                   </div>
                   <h3 className="text-[11px] font-bold uppercase tracking-wider text-foreground/70">
                     No token metrics
