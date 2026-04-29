@@ -700,27 +700,30 @@ export function validateValue(value, schema, path) {
  * @param {*} value - The value to validate for the given path.
  * @returns {string[]} Array of validation error messages (empty if valid).
  */
-function getSchemaForPath(path) {
+function resolveSchemaForPath(path) {
   const segments = path.split('.');
   const section = segments[0];
 
   const schema = CONFIG_SCHEMA[section];
-  if (!schema) return undefined; // unknown section — let SAFE_CONFIG_KEYS guard handle it
+  if (!schema) {
+    // Unknown section — let SAFE_CONFIG_KEYS guard handle it.
+    return { status: 'unknown-section' };
+  }
 
-  // Walk the schema tree to find the leaf schema for this path
+  // Walk the schema tree to find the leaf schema for this path.
   let currentSchema = schema;
   for (let i = 1; i < segments.length; i++) {
     if (currentSchema.properties && Object.hasOwn(currentSchema.properties, segments[i])) {
       currentSchema = currentSchema.properties[segments[i]];
     } else if (currentSchema.openProperties) {
-      // Dynamic keys (e.g. channelModes.<channelId>) — validate as leaf value
+      // Dynamic keys (e.g. channelModes.<channelId>) — validate as leaf value.
       break;
     } else {
-      return null;
+      return { status: 'unknown-path' };
     }
   }
 
-  return currentSchema;
+  return { status: 'found', schema: currentSchema };
 }
 
 /**
@@ -731,11 +734,11 @@ function getSchemaForPath(path) {
  * @returns {string[]} Array of validation error messages (empty if valid).
  */
 export function validateSingleValue(path, value) {
-  const schema = getSchemaForPath(path);
-  if (schema === null) return [`Unknown config path: ${path}`];
-  if (schema === undefined) return [];
+  const resolved = resolveSchemaForPath(path);
+  if (resolved.status === 'unknown-path') return [`Unknown config path: ${path}`];
+  if (resolved.status === 'unknown-section') return [];
 
-  return validateValue(value, schema, path);
+  return validateValue(value, resolved.schema, path);
 }
 
 /**
@@ -747,8 +750,8 @@ export function validateSingleValue(path, value) {
  * @returns {*}
  */
 export function normalizeSingleValue(path, value) {
-  const schema = getSchemaForPath(path);
-  if (schema?.aiModel && isSupportedAiModel(value)) {
+  const resolved = resolveSchemaForPath(path);
+  if (resolved.schema?.aiModel && isSupportedAiModel(value)) {
     return normalizeSupportedAiModel(value);
   }
   return value;
