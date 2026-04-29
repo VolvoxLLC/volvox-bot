@@ -28,6 +28,38 @@ const minimalConfig = {
   memory: { enabled: false },
 };
 
+type FetchMock = ReturnType<typeof vi.fn>;
+
+function configResponse(body: unknown, status = 200) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: () => Promise.resolve(body),
+  };
+}
+
+function stubConfigFetch(config: unknown = minimalConfig): FetchMock {
+  const fetchMock = vi.fn().mockResolvedValue(configResponse(config));
+  vi.stubGlobal('fetch', fetchMock);
+  return fetchMock;
+}
+
+async function renderConfigContext() {
+  const { ConfigProvider, useConfigContext } = await import(
+    '@/components/dashboard/config-context'
+  );
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <ConfigProvider>{children}</ConfigProvider>
+  );
+  return renderHook(() => useConfigContext(), { wrapper });
+}
+
+async function renderLoadedConfigContext() {
+  const view = await renderConfigContext();
+  await waitFor(() => expect(view.result.current.draftConfig).not.toBeNull());
+  return view;
+}
+
 describe('ConfigProvider', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -44,20 +76,8 @@ describe('ConfigProvider', () => {
   });
 
   it('provides config after fetch', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: () => Promise.resolve(minimalConfig),
-    });
-    vi.stubGlobal('fetch', fetchMock);
-
-    const { ConfigProvider, useConfigContext } = await import(
-      '@/components/dashboard/config-context'
-    );
-    const wrapper = ({ children }: { children: ReactNode }) => (
-      <ConfigProvider>{children}</ConfigProvider>
-    );
-    const { result } = renderHook(() => useConfigContext(), { wrapper });
+    stubConfigFetch();
+    const { result } = await renderConfigContext();
 
     await waitFor(() => {
       expect(result.current.guildId).toBe('guild-123');
@@ -69,24 +89,8 @@ describe('ConfigProvider', () => {
   });
 
   it('updateDraftConfig marks hasChanges', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(minimalConfig),
-      }),
-    );
-
-    const { ConfigProvider, useConfigContext } = await import(
-      '@/components/dashboard/config-context'
-    );
-    const wrapper = ({ children }: { children: ReactNode }) => (
-      <ConfigProvider>{children}</ConfigProvider>
-    );
-    const { result } = renderHook(() => useConfigContext(), { wrapper });
-
-    await waitFor(() => expect(result.current.draftConfig).not.toBeNull());
+    stubConfigFetch();
+    const { result } = await renderLoadedConfigContext();
     act(() => {
       result.current.updateDraftConfig((prev) => ({
         ...prev,
@@ -97,24 +101,8 @@ describe('ConfigProvider', () => {
   });
 
   it('discardChanges resets draft to saved', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(minimalConfig),
-      }),
-    );
-
-    const { ConfigProvider, useConfigContext } = await import(
-      '@/components/dashboard/config-context'
-    );
-    const wrapper = ({ children }: { children: ReactNode }) => (
-      <ConfigProvider>{children}</ConfigProvider>
-    );
-    const { result } = renderHook(() => useConfigContext(), { wrapper });
-
-    await waitFor(() => expect(result.current.draftConfig).not.toBeNull());
+    stubConfigFetch();
+    const { result } = await renderLoadedConfigContext();
     act(() => {
       result.current.updateDraftConfig((prev) => ({
         ...prev,
@@ -135,92 +123,28 @@ describe('ConfigProvider', () => {
 
   it('derives activeCategoryId as null on landing page', async () => {
     mockPathname.mockReturnValue('/dashboard/settings');
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(minimalConfig),
-      }),
-    );
-
-    const { ConfigProvider, useConfigContext } = await import(
-      '@/components/dashboard/config-context'
-    );
-    const wrapper = ({ children }: { children: ReactNode }) => (
-      <ConfigProvider>{children}</ConfigProvider>
-    );
-    const { result } = renderHook(() => useConfigContext(), { wrapper });
-
-    await waitFor(() => expect(result.current.draftConfig).not.toBeNull());
+    stubConfigFetch();
+    const { result } = await renderLoadedConfigContext();
     expect(result.current.activeCategoryId).toBeNull();
   });
 
   it('derives activeCategoryId from pathname', async () => {
     mockPathname.mockReturnValue('/dashboard/settings/ai-automation');
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(minimalConfig),
-      }),
-    );
-
-    const { ConfigProvider, useConfigContext } = await import(
-      '@/components/dashboard/config-context'
-    );
-    const wrapper = ({ children }: { children: ReactNode }) => (
-      <ConfigProvider>{children}</ConfigProvider>
-    );
-    const { result } = renderHook(() => useConfigContext(), { wrapper });
-
-    await waitFor(() => expect(result.current.draftConfig).not.toBeNull());
+    stubConfigFetch();
+    const { result } = await renderLoadedConfigContext();
     expect(result.current.activeCategoryId).toBe('ai-automation');
   });
 
   it('returns empty visibleFeatureIds when activeCategoryId is null', async () => {
     mockPathname.mockReturnValue('/dashboard/settings');
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(minimalConfig),
-      }),
-    );
-
-    const { ConfigProvider, useConfigContext } = await import(
-      '@/components/dashboard/config-context'
-    );
-    const wrapper = ({ children }: { children: ReactNode }) => (
-      <ConfigProvider>{children}</ConfigProvider>
-    );
-    const { result } = renderHook(() => useConfigContext(), { wrapper });
-
-    await waitFor(() => expect(result.current.draftConfig).not.toBeNull());
+    stubConfigFetch();
+    const { result } = await renderLoadedConfigContext();
     expect(result.current.visibleFeatureIds.size).toBe(0);
   });
 
   it('handleSearchSelect navigates to the category page', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(minimalConfig),
-      }),
-    );
-
-    const { ConfigProvider, useConfigContext } = await import(
-      '@/components/dashboard/config-context'
-    );
-    const wrapper = ({ children }: { children: ReactNode }) => (
-      <ConfigProvider>{children}</ConfigProvider>
-    );
-    const { result } = renderHook(() => useConfigContext(), { wrapper });
-
-    await waitFor(() => expect(result.current.draftConfig).not.toBeNull());
+    stubConfigFetch();
+    const { result } = await renderLoadedConfigContext();
     act(() => {
       result.current.handleSearchSelect({
         id: 'ai-chat-enabled',
@@ -236,20 +160,8 @@ describe('ConfigProvider', () => {
   });
 
   it('handles guild selection, storage updates, and cancelled guild switches', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: () => Promise.resolve(minimalConfig),
-    });
-    vi.stubGlobal('fetch', fetchMock);
-
-    const { ConfigProvider, useConfigContext } = await import(
-      '@/components/dashboard/config-context'
-    );
-    const wrapper = ({ children }: { children: ReactNode }) => (
-      <ConfigProvider>{children}</ConfigProvider>
-    );
-    const { result } = renderHook(() => useConfigContext(), { wrapper });
+    const fetchMock = stubConfigFetch();
+    const { result } = await renderConfigContext();
 
     await waitFor(() => expect(result.current.guildId).toBe('guild-123'));
 
@@ -286,17 +198,11 @@ describe('ConfigProvider', () => {
     };
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve(configWithMissingRoleId) })
-      .mockResolvedValueOnce({ ok: false, status: 500, json: () => Promise.resolve({ error: 'Nope' }) });
+      .mockResolvedValueOnce(configResponse(configWithMissingRoleId))
+      .mockResolvedValueOnce(configResponse({ error: 'Nope' }, 500));
     vi.stubGlobal('fetch', fetchMock);
 
-    const { ConfigProvider, useConfigContext } = await import(
-      '@/components/dashboard/config-context'
-    );
-    const wrapper = ({ children }: { children: ReactNode }) => (
-      <ConfigProvider>{children}</ConfigProvider>
-    );
-    const { result } = renderHook(() => useConfigContext(), { wrapper });
+    const { result } = await renderConfigContext();
 
     await waitFor(() => expect(result.current.draftConfig?.welcome?.roleMenu?.options?.[0]?.id).toBeTruthy());
 
@@ -308,195 +214,6 @@ describe('ConfigProvider', () => {
     expect(toast.error).toHaveBeenCalledWith('Failed to load config', { description: 'Nope' });
   });
 
-  it('tracks validation errors, search filtering, active tabs, and search keyboard shortcuts', async () => {
-    mockPathname.mockReturnValue('/dashboard/settings/onboarding-growth');
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(minimalConfig),
-      }),
-    );
-
-    const { ConfigProvider, useConfigContext } = await import(
-      '@/components/dashboard/config-context'
-    );
-    const wrapper = ({ children }: { children: ReactNode }) => (
-      <ConfigProvider>{children}</ConfigProvider>
-    );
-    const { result } = renderHook(() => useConfigContext(), { wrapper });
-
-    await waitFor(() => expect(result.current.activeCategoryId).toBe('onboarding-growth'));
-    await waitFor(() => expect(result.current.activeTabId).toBe('welcome'));
-
-    act(() => result.current.handleSearchChange('role menu'));
-    expect(result.current.searchResults.map((item) => item.id)).toContain('welcome-role-menu');
-    expect(result.current.visibleFeatureIds.has('welcome')).toBe(true);
-
-    act(() => {
-      result.current.handleSearchSelect({
-        id: 'welcome-role-menu',
-        featureId: 'welcome',
-        categoryId: 'onboarding-growth',
-        label: 'Welcome Role Menu',
-        description: 'Configure role menu options.',
-        keywords: ['role menu'],
-        isAdvanced: true,
-      });
-    });
-    expect(result.current.forceOpenAdvancedFeatureId).toBe('welcome');
-
-    act(() => {
-      result.current.updateDraftConfig((prev) => ({
-        ...prev,
-        welcome: {
-          ...prev.welcome,
-          roleMenu: { enabled: true, options: [{ id: '1', label: '', roleId: '' }] },
-        },
-      }));
-    });
-    expect(result.current.hasValidationErrors).toBe(true);
-
-    act(() => result.current.openDiffModal());
-    expect(toast.error).toHaveBeenCalledWith('Cannot save', {
-      description: 'Fix validation errors before saving.',
-    });
-
-    const input = document.createElement('input');
-    input.id = 'config-search';
-    document.body.append(input);
-    const focusSpy = vi.spyOn(input, 'focus');
-    act(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: '/', bubbles: true })));
-    expect(focusSpy).toHaveBeenCalled();
-
-    act(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
-    expect(result.current.searchQuery).toBe('');
-  });
-
-  it('opens the diff modal with changes and supports keyboard save shortcuts', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(minimalConfig),
-      }),
-    );
-
-    const { ConfigProvider, useConfigContext } = await import(
-      '@/components/dashboard/config-context'
-    );
-    const wrapper = ({ children }: { children: ReactNode }) => (
-      <ConfigProvider>{children}</ConfigProvider>
-    );
-    const { result } = renderHook(() => useConfigContext(), { wrapper });
-
-    await waitFor(() => expect(result.current.draftConfig).not.toBeNull());
-    act(() => result.current.openDiffModal());
-    expect(toast.info).toHaveBeenCalledWith('No changes to save.');
-
-    act(() => {
-      result.current.updateDraftConfig((prev) => ({ ...prev, ai: { ...prev.ai, enabled: true } }));
-    });
-    act(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true })));
-    expect(result.current.showDiffModal).toBe(true);
-
-    act(() => result.current.setShowDiffModal(false));
-    const input = document.createElement('input');
-    document.body.append(input);
-    act(() => {
-      input.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true, bubbles: true }));
-    });
-    expect(result.current.showDiffModal).toBe(false);
-  });
-
-  it('saves patches, refreshes config, reverts sections, and undoes the last save', async () => {
-    const savedAgain = { ...minimalConfig, ai: { ...minimalConfig.ai, enabled: true } };
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve(minimalConfig) })
-      .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve({ ok: true }) })
-      .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve(savedAgain) });
-    vi.stubGlobal('fetch', fetchMock);
-
-    const { ConfigProvider, useConfigContext } = await import(
-      '@/components/dashboard/config-context'
-    );
-    const wrapper = ({ children }: { children: ReactNode }) => (
-      <ConfigProvider>{children}</ConfigProvider>
-    );
-    const { result } = renderHook(() => useConfigContext(), { wrapper });
-
-    await waitFor(() => expect(result.current.draftConfig).not.toBeNull());
-    act(() => {
-      result.current.updateDraftConfig((prev) => ({ ...prev, ai: { ...prev.ai, enabled: true } }));
-    });
-
-    await act(async () => {
-      await result.current.executeSave();
-    });
-
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      2,
-      '/api/guilds/guild-123/config',
-      expect.objectContaining({ method: 'PUT', body: expect.stringContaining('ai.enabled') }),
-    );
-    expect(toast.success).toHaveBeenCalledWith('Config saved successfully!');
-    expect(result.current.prevSavedConfig?.guildId).toBe('guild-123');
-
-    act(() => result.current.undoLastSave());
-    expect(result.current.prevSavedConfig).toBeNull();
-    expect(toast.info).toHaveBeenCalledWith('Reverted to previous saved state. Save again to apply.');
-
-    act(() => result.current.revertSection('ai'));
-    expect(toast.success).toHaveBeenCalledWith('Reverted ai changes.');
-  });
-
-  it('surfaces save validation, no-op, unauthorized, and detailed API failures', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve(minimalConfig) })
-      .mockResolvedValueOnce({ ok: false, status: 400, json: () => Promise.resolve({ error: 'Bad config', details: ['bad path'] }) })
-      .mockResolvedValueOnce({ ok: false, status: 401, json: () => Promise.resolve({}) });
-    vi.stubGlobal('fetch', fetchMock);
-    const originalLocation = window.location;
-    // @ts-expect-error jsdom location replacement for redirect assertion
-    delete window.location;
-    // @ts-expect-error minimal location mock for href assignment
-    window.location = { href: '' };
-
-    const { ConfigProvider, useConfigContext } = await import(
-      '@/components/dashboard/config-context'
-    );
-    const wrapper = ({ children }: { children: ReactNode }) => (
-      <ConfigProvider>{children}</ConfigProvider>
-    );
-    const { result } = renderHook(() => useConfigContext(), { wrapper });
-
-    await waitFor(() => expect(result.current.draftConfig).not.toBeNull());
-    await act(async () => {
-      await result.current.executeSave();
-    });
-    expect(toast.info).toHaveBeenCalledWith('No changes to save.');
-
-    act(() => result.current.updateDraftConfig((prev) => ({ ...prev, ai: { ...prev.ai, enabled: true } })));
-    await act(async () => {
-      await result.current.executeSave();
-    });
-    expect(toast.error).toHaveBeenCalledWith('Failed to save config', {
-      description: 'Bad config: bad path',
-    });
-
-    await act(async () => {
-      await result.current.executeSave();
-    });
-    expect(window.location.href).toBe('/login');
-
-    // @ts-expect-error restore jsdom location
-    window.location = originalLocation;
-  });
-
   it('reacts to guild selection and storage events while respecting cancelled switches', async () => {
     const getItemSpy = vi
       .spyOn(Storage.prototype, 'getItem')
@@ -504,20 +221,8 @@ describe('ConfigProvider', () => {
         throw new Error('storage blocked');
       })
       .mockImplementation((key) => (key === 'volvox-bot-selected-guild' ? 'guild-storage' : null));
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: () => Promise.resolve(minimalConfig),
-    });
-    vi.stubGlobal('fetch', fetchMock);
-
-    const { ConfigProvider, useConfigContext } = await import(
-      '@/components/dashboard/config-context'
-    );
-    const wrapper = ({ children }: { children: ReactNode }) => (
-      <ConfigProvider>{children}</ConfigProvider>
-    );
-    const { result } = renderHook(() => useConfigContext(), { wrapper });
+    const fetchMock = stubConfigFetch();
+    const { result } = await renderConfigContext();
 
     await waitFor(() => expect(result.current.guildId).toBe(''));
     expect(fetchMock).not.toHaveBeenCalled();
@@ -556,8 +261,8 @@ describe('ConfigProvider', () => {
   it('handles fetch redirects, invalid payloads, API errors, and role menu id backfill', async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce({ ok: false, status: 401, json: vi.fn() })
-      .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve({ nope: true }) })
+      .mockResolvedValueOnce(configResponse({}, 401))
+      .mockResolvedValueOnce(configResponse({ nope: true }))
       .mockResolvedValueOnce({
         ok: false,
         status: 503,
@@ -586,13 +291,7 @@ describe('ConfigProvider', () => {
     // @ts-expect-error minimal location mock for href assignment
     window.location = { href: '' };
 
-    const { ConfigProvider, useConfigContext } = await import(
-      '@/components/dashboard/config-context'
-    );
-    const wrapper = ({ children }: { children: ReactNode }) => (
-      <ConfigProvider>{children}</ConfigProvider>
-    );
-    const { result } = renderHook(() => useConfigContext(), { wrapper });
+    const { result } = await renderConfigContext();
 
     await waitFor(() => expect(window.location.href).toBe('/login'));
     expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/guilds/guild-123/config');
@@ -615,14 +314,7 @@ describe('ConfigProvider', () => {
 
   it('derives search, active tabs, dirty counts, focus behavior, and category navigation', async () => {
     mockPathname.mockReturnValue('/dashboard/settings/onboarding-growth');
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(minimalConfig),
-      }),
-    );
+    stubConfigFetch();
     const rafSpy = vi
       .spyOn(window, 'requestAnimationFrame')
       .mockImplementation((callback: FrameRequestCallback) => {
@@ -637,13 +329,7 @@ describe('ConfigProvider', () => {
     feature.append(focusTarget);
     document.body.append(feature);
 
-    const { ConfigProvider, useConfigContext } = await import(
-      '@/components/dashboard/config-context'
-    );
-    const wrapper = ({ children }: { children: ReactNode }) => (
-      <ConfigProvider>{children}</ConfigProvider>
-    );
-    const { result } = renderHook(() => useConfigContext(), { wrapper });
+    const { result } = await renderConfigContext();
 
     await waitFor(() => expect(result.current.draftConfig).not.toBeNull());
     expect(result.current.activeCategoryId).toBe('onboarding-growth');
@@ -660,6 +346,7 @@ describe('ConfigProvider', () => {
     expect(roleMenuResult).toBeDefined();
     act(() => result.current.handleSearchSelect(roleMenuResult!));
 
+    expect(result.current.forceOpenAdvancedFeatureId).toBe('welcome');
     expect(mockPush).toHaveBeenCalledWith('/dashboard/settings/onboarding-growth');
     expect(result.current.activeTabId).toBe('welcome');
     expect(feature.scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
@@ -690,24 +377,8 @@ describe('ConfigProvider', () => {
   });
 
   it('opens the diff modal from save actions and blocks invalid or unchanged saves', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(minimalConfig),
-      }),
-    );
-
-    const { ConfigProvider, useConfigContext } = await import(
-      '@/components/dashboard/config-context'
-    );
-    const wrapper = ({ children }: { children: ReactNode }) => (
-      <ConfigProvider>{children}</ConfigProvider>
-    );
-    const { result } = renderHook(() => useConfigContext(), { wrapper });
-
-    await waitFor(() => expect(result.current.draftConfig).not.toBeNull());
+    stubConfigFetch();
+    const { result } = await renderLoadedConfigContext();
 
     act(() => result.current.openDiffModal());
     expect(toast.info).toHaveBeenCalledWith('No changes to save.');
@@ -765,11 +436,11 @@ describe('ConfigProvider', () => {
     const savedAfterPut = { ...minimalConfig, ai: { ...minimalConfig.ai, enabled: true } };
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve(minimalConfig) })
-      .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve({}) })
-      .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve(savedAfterPut) })
-      .mockResolvedValueOnce({ ok: false, status: 400, json: () => Promise.resolve({ details: ['bad patch'] }) })
-      .mockResolvedValueOnce({ ok: false, status: 401, json: () => Promise.resolve({}) });
+      .mockResolvedValueOnce(configResponse(minimalConfig))
+      .mockResolvedValueOnce(configResponse({}))
+      .mockResolvedValueOnce(configResponse(savedAfterPut))
+      .mockResolvedValueOnce(configResponse({ details: ['bad patch'] }, 400))
+      .mockResolvedValueOnce(configResponse({}, 401));
     vi.stubGlobal('fetch', fetchMock);
 
     const originalLocation = window.location;
@@ -778,13 +449,7 @@ describe('ConfigProvider', () => {
     // @ts-expect-error minimal location mock for href assignment
     window.location = { href: '' };
 
-    const { ConfigProvider, useConfigContext } = await import(
-      '@/components/dashboard/config-context'
-    );
-    const wrapper = ({ children }: { children: ReactNode }) => (
-      <ConfigProvider>{children}</ConfigProvider>
-    );
-    const { result } = renderHook(() => useConfigContext(), { wrapper });
+    const { result } = await renderConfigContext();
 
     await waitFor(() => expect(result.current.draftConfig).not.toBeNull());
     act(() => {
@@ -797,7 +462,7 @@ describe('ConfigProvider', () => {
     await act(async () => result.current.executeSave());
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/guilds/guild-123/config',
-      expect.objectContaining({ method: 'PUT', body: expect.any(String) }),
+      expect.objectContaining({ method: 'PUT', body: expect.stringContaining('ai.enabled') }),
     );
     expect(toast.success).toHaveBeenCalledWith('Config saved successfully!');
     expect(result.current.prevSavedConfig?.guildId).toBe('guild-123');
@@ -826,25 +491,12 @@ describe('ConfigProvider', () => {
   });
 
   it('handles keyboard search shortcuts and beforeunload only when changes exist', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(minimalConfig),
-      }),
-    );
+    stubConfigFetch();
     const searchInput = document.createElement('input');
     searchInput.id = 'config-search';
     document.body.append(searchInput);
 
-    const { ConfigProvider, useConfigContext } = await import(
-      '@/components/dashboard/config-context'
-    );
-    const wrapper = ({ children }: { children: ReactNode }) => (
-      <ConfigProvider>{children}</ConfigProvider>
-    );
-    const { result } = renderHook(() => useConfigContext(), { wrapper });
+    const { result } = await renderConfigContext();
 
     await waitFor(() => expect(result.current.draftConfig).not.toBeNull());
 
