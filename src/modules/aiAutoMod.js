@@ -106,7 +106,14 @@ const DEFAULTS = {
 };
 
 function normalizeActionList(value, fallback = []) {
-  const rawActions = Array.isArray(value) ? value : value ? [value] : fallback;
+  let rawActions;
+  if (Array.isArray(value)) {
+    rawActions = value;
+  } else if (value) {
+    rawActions = [value];
+  } else {
+    rawActions = fallback;
+  }
   const actions = [];
 
   for (const action of rawActions) {
@@ -380,17 +387,8 @@ function getAuditTarget(message, action) {
   };
 }
 
-function logAiAutoModAuditEvent(
-  message,
-  result,
-  autoModConfig,
-  caseData,
-  reason,
-  botId,
-  botTag,
-  action,
-  auditedActions,
-) {
+function logAiAutoModAuditEvent(message, result, autoModConfig, options = {}) {
+  const { caseData, reason, botId, botTag, action, auditedActions } = options;
   const guildId = message.guild?.id;
   if (!guildId) return;
 
@@ -660,17 +658,14 @@ async function executeAction(message, client, result, autoModConfig, _guildConfi
   const successfulAuditEvents = [];
 
   if (actions.length === 0) {
-    logAiAutoModAuditEvent(
-      message,
-      result,
-      autoModConfig,
-      null,
+    logAiAutoModAuditEvent(message, result, autoModConfig, {
+      caseData: null,
       reason,
       botId,
       botTag,
-      'none',
-      executedActions,
-    );
+      action: 'none',
+      auditedActions: executedActions,
+    });
     return executedActions;
   }
 
@@ -692,17 +687,14 @@ async function executeAction(message, client, result, autoModConfig, _guildConfi
   }
 
   for (const { action, caseData } of successfulAuditEvents) {
-    logAiAutoModAuditEvent(
-      message,
-      result,
-      autoModConfig,
+    logAiAutoModAuditEvent(message, result, autoModConfig, {
       caseData,
       reason,
       botId,
       botTag,
       action,
-      executedActions,
-    );
+      auditedActions: executedActions,
+    });
   }
 
   return executedActions;
