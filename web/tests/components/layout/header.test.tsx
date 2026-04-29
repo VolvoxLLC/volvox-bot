@@ -322,5 +322,6 @@ describe('Header', () => {
     rerender(<Header />);
     await user.click(screen.getByRole('button', { name: /Refresh Tickets/i }));
     await waitFor(() => expect(mockReplace).toHaveBeenNthCalledWith(3, '/login'));
+    expect(mockReplace).toHaveBeenCalledTimes(3);
   });
 });

@@ -79,11 +79,14 @@ function normalizeAiAutoModActions(
 ): SelectableAiAutoModAction[] {
   if (value === 'none') return [];
 
-  const rawActions = Array.isArray(value)
-    ? value
-    : isSelectableAiAutoModAction(value)
-      ? [value]
-      : fallback;
+  let rawActions: readonly unknown[];
+  if (Array.isArray(value)) {
+    rawActions = value;
+  } else if (isSelectableAiAutoModAction(value)) {
+    rawActions = [value];
+  } else {
+    rawActions = fallback;
+  }
   const uniqueActions = rawActions.filter(
     (action, index, allActions): action is SelectableAiAutoModAction =>
       isSelectableAiAutoModAction(action) && allActions.indexOf(action) === index,
@@ -99,9 +102,9 @@ function toggleAiAutoModCategoryAction(
   action: SelectableAiAutoModAction,
   checked: boolean,
 ): NonNullable<AiAutoModDraft['actions']> {
-  const previousActionMap = (previousActions ?? {}) as NonNullable<AiAutoModDraft['actions']>;
+  const previousActionMap = previousActions ?? {};
   const previousCategoryActions = normalizeAiAutoModActions(
-    (previousActionMap as Partial<Record<AiAutoModCategory, unknown>>)[categoryKey],
+    previousActionMap[categoryKey],
     fallbackActions,
   );
   const nextActions = checked
@@ -561,17 +564,14 @@ export function AiAutomationCategory() {
                             max={100}
                             step={5}
                             value={Math.round(
-                              ((draftConfig.aiAutoMod?.thresholds as Record<string, number>)?.[
-                                category.key
-                              ] ?? category.defaultThreshold) * 100,
+                              (draftConfig.aiAutoMod?.thresholds?.[category.key] ??
+                                category.defaultThreshold) * 100,
                             )}
                             onChange={(e) => {
                               const raw = Number(e.target.value);
                               const v = Number.isNaN(raw) ? 0 : Math.min(1, Math.max(0, raw / 100));
                               updateAiAutoModField('thresholds', (previousThresholds) => ({
-                                ...((previousThresholds as Partial<
-                                  Record<AiAutoModCategory, number>
-                                >) ?? {}),
+                                ...previousThresholds,
                                 [category.key]: v,
                               }));
                             }}

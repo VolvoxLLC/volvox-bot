@@ -190,17 +190,16 @@ function createDraftConfig(overrides: GuildConfig = {}): GuildConfig {
     memory: { enabled: true },
   };
 
+  const aiAutoMod = overrides.aiAutoMod
+    ? { ...config.aiAutoMod, ...overrides.aiAutoMod }
+    : config.aiAutoMod;
+  const triage = overrides.triage ? { ...config.triage, ...overrides.triage } : config.triage;
+
   return {
     ...config,
     ...overrides,
-    aiAutoMod: {
-      ...config.aiAutoMod,
-      ...(overrides.aiAutoMod ?? {}),
-    },
-    triage: {
-      ...config.triage,
-      ...(overrides.triage ?? {}),
-    },
+    aiAutoMod,
+    triage,
   };
 }
 
