@@ -102,15 +102,9 @@ function toggleAiAutoModCategoryAction(
   action: SelectableAiAutoModAction,
   checked: boolean,
 ): NonNullable<AiAutoModDraft['actions']> {
-<<<<<<< HEAD
   const previousActionMap = previousActions ?? {};
   const previousCategoryActions = normalizeAiAutoModActions(
     previousActionMap[categoryKey],
-=======
-  const previousActionMap = (previousActions ?? {}) as NonNullable<AiAutoModDraft['actions']>;
-  const previousCategoryActions = normalizeAiAutoModActions(
-    (previousActionMap as Partial<Record<AiAutoModCategory, unknown>>)[categoryKey],
->>>>>>> 3ae5e9a5 (fix: preserve saved dashboard model selections)
     fallbackActions,
   );
   const nextActions = checked

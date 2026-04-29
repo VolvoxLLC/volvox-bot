@@ -35,6 +35,15 @@ const providerCatalog = {
         },
       },
     },
+    openrouter: {
+      displayName: 'OpenRouter',
+      models: {
+        'minimax/minimax-m2.5:free': {
+          displayName: 'MiniMax M2.5 Free',
+          availability: { visible: true, tier: 'free' },
+        },
+      },
+    },
   },
 };
 
@@ -46,6 +55,7 @@ describe('provider model options', () => {
       'minimax:MiniMax-M2.7',
       'minimax:MiniMax-M2',
       'moonshot:kimi-k2.6',
+      'openrouter:minimax/minimax-m2.5:free',
     ]);
     expect(options.map((option) => option.value)).not.toContain('minimax:MiniMax-M2.5');
   });
@@ -66,6 +76,11 @@ describe('provider model options', () => {
         providerName: 'moonshot',
         providerDisplayName: 'Moonshot',
         options: [expect.objectContaining({ value: 'moonshot:kimi-k2.6' })],
+      },
+      {
+        providerName: 'openrouter',
+        providerDisplayName: 'OpenRouter',
+        options: [expect.objectContaining({ value: 'openrouter:minimax/minimax-m2.5:free' })],
       },
     ]);
   });
@@ -96,11 +111,33 @@ describe('provider model options', () => {
     );
   });
 
-  it('rejects extra-colon provider model IDs and falls back to the default option', () => {
+  it('preserves provider model IDs with colons in the model segment', () => {
     const options = buildVisibleProviderModelOptions(providerCatalog);
 
-    expect(isProviderModelId('provider:model:extra')).toBe(false);
-    expect(getVisibleProviderModelValue('provider:model:extra', options)).toBe(options[0]?.value);
+    expect(isProviderModelId('openrouter:minimax/minimax-m2.5:free')).toBe(true);
+    expect(getVisibleProviderModelValue('OPENROUTER:minimax/minimax-m2.5:free', options)).toBe(
+      'openrouter:minimax/minimax-m2.5:free',
+    );
+    expect(getVisibleProviderModelValue('provider:model:extra', options)).toBe(
+      'provider:model:extra',
+    );
+  });
+
+  it('rejects malformed provider model IDs and falls back to the default option', () => {
+    const options = buildVisibleProviderModelOptions(providerCatalog);
+
+    for (const value of [
+      '',
+      ':orphan-model',
+      'provider:',
+      'bare-model',
+      'provider:has whitespace',
+      ' provider:model',
+      'provider:model ',
+    ]) {
+      expect(isProviderModelId(value)).toBe(false);
+      expect(getVisibleProviderModelValue(value, options)).toBe(options[0]?.value);
+    }
   });
 
   it('uses catalog order when falling back to the default model', () => {
