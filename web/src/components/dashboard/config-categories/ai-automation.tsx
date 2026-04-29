@@ -12,50 +12,25 @@ import type { ConfigFeatureId } from '@/components/dashboard/config-workspace/ty
 import { ChannelSelector } from '@/components/ui/channel-selector';
 import { RoleSelector } from '@/components/ui/role-selector';
 import {
+  AI_AUTOMOD_ACTION_OPTIONS,
+  AI_AUTOMOD_CATEGORIES,
+  type SelectableAiAutoModAction,
+} from '@/data/ai-automod-catalog';
+import {
   getVisibleProviderModelValue,
   VISIBLE_PROVIDER_MODEL_OPTIONS,
 } from '@/lib/provider-model-options';
 import { cn } from '@/lib/utils';
-import type { AiAutoModAction, AiAutoModCategory, ChannelMode } from '@/types/config';
+import type { AiAutoModCategory, ChannelMode } from '@/types/config';
 import { SYSTEM_PROMPT_MAX_LENGTH } from '@/types/config';
 import { SystemPromptEditor } from '../system-prompt-editor';
 import { ToggleSwitch } from '../toggle-switch';
 import { ConfigCategoryLayout } from './config-category-layout';
 
-type SelectableAiAutoModAction = Exclude<AiAutoModAction, 'none'>;
 type AiAutoModDraft = NonNullable<GuildConfig['aiAutoMod']>;
 type AiAutoModFieldUpdater<K extends keyof AiAutoModDraft> =
   | AiAutoModDraft[K]
   | ((previousValue: AiAutoModDraft[K], previousAiAutoMod: AiAutoModDraft) => AiAutoModDraft[K]);
-
-const AI_AUTOMOD_CATEGORIES = [
-  { key: 'toxicity', label: 'Toxicity', defaultThreshold: 0.7, defaultActions: ['flag'] },
-  { key: 'spam', label: 'Spam', defaultThreshold: 0.8, defaultActions: ['delete'] },
-  { key: 'harassment', label: 'Harassment', defaultThreshold: 0.7, defaultActions: ['warn'] },
-  { key: 'hateSpeech', label: 'Hate Speech', defaultThreshold: 0.8, defaultActions: ['timeout'] },
-  {
-    key: 'sexualContent',
-    label: 'Sexual Content',
-    defaultThreshold: 0.8,
-    defaultActions: ['delete'],
-  },
-  { key: 'violence', label: 'Violence', defaultThreshold: 0.85, defaultActions: ['ban'] },
-  { key: 'selfHarm', label: 'Self-Harm', defaultThreshold: 0.7, defaultActions: ['flag'] },
-] as const satisfies readonly {
-  key: AiAutoModCategory;
-  label: string;
-  defaultThreshold: number;
-  defaultActions: readonly SelectableAiAutoModAction[];
-}[];
-
-const AI_AUTOMOD_ACTION_OPTIONS = [
-  { value: 'flag', label: 'Flag & Log' },
-  { value: 'delete', label: 'Hard Delete' },
-  { value: 'warn', label: 'Issue Warning' },
-  { value: 'timeout', label: 'Temporary Timeout' },
-  { value: 'kick', label: 'Server Kick' },
-  { value: 'ban', label: 'Permanent Ban' },
-] as const satisfies readonly { value: SelectableAiAutoModAction; label: string }[];
 
 const AI_AUTOMOD_ACTION_ORDER = AI_AUTOMOD_ACTION_OPTIONS.map((option) => option.value);
 

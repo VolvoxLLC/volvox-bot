@@ -66,7 +66,14 @@ const SCORE_ALIASES = Object.freeze({
   selfHarm: ['self_harm', 'self-harm'],
 });
 
-const AI_AUTOMOD_ACTION_TYPES = Object.freeze(['flag', 'delete', 'warn', 'timeout', 'kick', 'ban']);
+export const AI_AUTOMOD_ACTION_TYPES = Object.freeze([
+  'flag',
+  'delete',
+  'warn',
+  'timeout',
+  'kick',
+  'ban',
+]);
 const ACTION_PRIORITY = Object.freeze({
   ban: 5,
   kick: 4,
