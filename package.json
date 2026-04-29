@@ -35,7 +35,7 @@
     "docs:generate": "node scripts/generate-openapi.js"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.68",
+    "@ai-sdk/anthropic": "^3.0.72",
     "@sentry/node": "^10.50.0",
     "ai": "^6.0.158",
     "discord.js": "^14.26.3",
