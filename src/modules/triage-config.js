@@ -13,6 +13,7 @@ import {
 } from '../utils/supportedAiModels.js';
 
 const DEFAULT_TRIAGE_MODEL = DEFAULT_AI_MODEL;
+const MAX_WARNED_MODEL_FALLBACKS = 100;
 const warnedModelFallbacks = new Set();
 
 function warnModelFallbackOnce(message, details) {
@@ -25,6 +26,10 @@ function warnModelFallbackOnce(message, details) {
 
   if (warnedModelFallbacks.has(dedupeKey)) return;
   warnedModelFallbacks.add(dedupeKey);
+  if (warnedModelFallbacks.size > MAX_WARNED_MODEL_FALLBACKS) {
+    const oldestKey = warnedModelFallbacks.keys().next().value;
+    warnedModelFallbacks.delete(oldestKey);
+  }
   warn(message, details);
 }
 

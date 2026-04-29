@@ -52,6 +52,7 @@ vi.mock('../../src/modules/auditLogger.js', () => ({
 }));
 
 // Import after mocks
+import { warn as logWarn } from '../../src/logger.js';
 import { analyzeMessage, checkAiAutoMod, getAiAutoModConfig } from '../../src/modules/aiAutoMod.js';
 import { logAuditEvent } from '../../src/modules/auditLogger.js';
 import {
@@ -526,6 +527,8 @@ describe('checkAiAutoMod', () => {
   });
 
   it('continues moderation when configured exempt roles do not match member roles', async () => {
+    const mockFlagChannel = { id: 'flag-channel-1', send: vi.fn().mockResolvedValue(undefined) };
+    fetchChannelCached.mockResolvedValue(mockFlagChannel);
     message.member.roles.cache.some = vi.fn((predicate) => predicate({ id: 'member-role-1' }));
     mockGenerate.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.9, spam: 0.1, harassment: 0.1, reason: 'toxic' }),
@@ -533,7 +536,10 @@ describe('checkAiAutoMod', () => {
     const result = await checkAiAutoMod(
       message,
       client,
-      makeAiAutoModGuildConfig({ exemptRoleIds: ['exempt-role-1'] }),
+      makeAiAutoModGuildConfig({
+        exemptRoleIds: ['exempt-role-1'],
+        flagChannelId: 'flag-channel-1',
+      }),
     );
 
     expect(result).toMatchObject({ flagged: true, action: 'flag' });
@@ -556,6 +562,8 @@ describe('checkAiAutoMod', () => {
   });
 
   it('handles configured exempt roles when the message has no member', async () => {
+    const mockFlagChannel = { id: 'flag-channel-1', send: vi.fn().mockResolvedValue(undefined) };
+    fetchChannelCached.mockResolvedValue(mockFlagChannel);
     message.member = null;
     mockGenerate.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.9, spam: 0.1, harassment: 0.1, reason: 'toxic' }),
@@ -563,13 +571,53 @@ describe('checkAiAutoMod', () => {
     const result = await checkAiAutoMod(
       message,
       client,
-      makeAiAutoModGuildConfig({ exemptRoleIds: ['exempt-role-1'] }),
+      makeAiAutoModGuildConfig({
+        exemptRoleIds: ['exempt-role-1'],
+        flagChannelId: 'flag-channel-1',
+      }),
     );
 
     expect(result).toMatchObject({ flagged: true, action: 'flag' });
     expect(logAuditEvent).toHaveBeenCalledWith(
       mockPool,
       expect.objectContaining({ action: 'ai_automod.flag' }),
+    );
+  });
+
+  it('does not audit flag actions when flagChannelId is not configured', async () => {
+    mockGenerate.mockResolvedValue(
+      makeClaudeResponse({ toxicity: 0.9, spam: 0.1, harassment: 0.1, reason: 'toxic' }),
+    );
+    const guildConfig = makeAiAutoModGuildConfig();
+
+    const result = await checkAiAutoMod(message, client, guildConfig);
+
+    expect(result).toMatchObject({ flagged: true, action: 'none', actions: [] });
+    expect(fetchChannelCached).not.toHaveBeenCalled();
+    expect(safeSend).not.toHaveBeenCalled();
+    expect(logAuditEvent).not.toHaveBeenCalled();
+    expect(logWarn).toHaveBeenCalledWith(
+      'AI auto-mod: flag action skipped because flagChannelId is not configured',
+      expect.objectContaining({ guildId: 'guild-1', messageId: 'msg-123' }),
+    );
+  });
+
+  it('does not audit flag actions when the configured flag channel is unusable', async () => {
+    fetchChannelCached.mockResolvedValue(null);
+    mockGenerate.mockResolvedValue(
+      makeClaudeResponse({ toxicity: 0.9, spam: 0.1, harassment: 0.1, reason: 'toxic' }),
+    );
+    const guildConfig = makeAiAutoModGuildConfig({ flagChannelId: 'missing-channel' });
+
+    const result = await checkAiAutoMod(message, client, guildConfig);
+
+    expect(result).toMatchObject({ flagged: true, action: 'none', actions: [] });
+    expect(fetchChannelCached).toHaveBeenCalledWith(client, 'missing-channel', 'guild-1');
+    expect(safeSend).not.toHaveBeenCalled();
+    expect(logAuditEvent).not.toHaveBeenCalled();
+    expect(logWarn).toHaveBeenCalledWith(
+      'AI auto-mod: flag action skipped because flag channel was not found or inaccessible',
+      expect.objectContaining({ guildId: 'guild-1', channelId: 'missing-channel' }),
     );
   });
 
@@ -889,6 +937,57 @@ describe('checkAiAutoMod', () => {
     'timeout',
     'kick',
     'ban',
+  ])('sends moderation log embeds for %s cases when Discord moderation succeeds', async (action) => {
+    mockGenerate.mockResolvedValue(
+      makeClaudeResponse({ toxicity: 0.9, spam: 0.1, harassment: 0.1, reason: 'toxic' }),
+    );
+    const guildConfig = makeAiAutoModGuildConfig({
+      actions: { toxicity: action },
+      timeoutDurationMs: 300000,
+    });
+
+    const result = await checkAiAutoMod(message, client, guildConfig);
+
+    expect(result).toMatchObject({ flagged: true, action, actions: [action] });
+    expect(sendModLogEmbed).toHaveBeenCalledWith(
+      client,
+      guildConfig,
+      expect.objectContaining({ id: 1 }),
+    );
+    expect(logAuditEvent).toHaveBeenCalledWith(
+      mockPool,
+      expect.objectContaining({ action: `ai_automod.${action}` }),
+    );
+  });
+
+  it('continues timeout audit when the moderation log embed fails', async () => {
+    vi.mocked(sendModLogEmbed).mockRejectedValueOnce(new Error('missing channel'));
+    mockGenerate.mockResolvedValue(
+      makeClaudeResponse({ toxicity: 0.9, spam: 0.1, harassment: 0.1, reason: 'toxic' }),
+    );
+    const guildConfig = makeAiAutoModGuildConfig({
+      actions: { toxicity: 'timeout' },
+      timeoutDurationMs: 300000,
+    });
+
+    const result = await checkAiAutoMod(message, client, guildConfig);
+
+    expect(result).toMatchObject({ flagged: true, action: 'timeout', actions: ['timeout'] });
+    expect(sendModLogEmbed).toHaveBeenCalledWith(
+      client,
+      guildConfig,
+      expect.objectContaining({ id: 1 }),
+    );
+    expect(logAuditEvent).toHaveBeenCalledWith(
+      mockPool,
+      expect.objectContaining({ action: 'ai_automod.timeout' }),
+    );
+  });
+
+  it.each([
+    'timeout',
+    'kick',
+    'ban',
   ])('does not audit %s actions when Discord moderation fails', async (action) => {
     if (action === 'timeout') {
       message.member.timeout.mockRejectedValueOnce(new Error('Missing Permissions'));
@@ -956,6 +1055,12 @@ describe('checkAiAutoMod', () => {
     ['kick', 'ai_automod.kick'],
     ['ban', 'ai_automod.ban'],
   ])('writes an audit log entry for %s AI auto-mod actions', async (configuredAction, auditAction) => {
+    if (configuredAction === 'flag') {
+      fetchChannelCached.mockResolvedValue({
+        id: 'flag-channel-1',
+        send: vi.fn().mockResolvedValue(undefined),
+      });
+    }
     mockGenerate.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.9, spam: 0.1, harassment: 0.1, reason: 'toxic' }),
     );
@@ -964,6 +1069,7 @@ describe('checkAiAutoMod', () => {
         model: 'minimax:MiniMax-M2.7',
         actions: { toxicity: configuredAction },
         timeoutDurationMs: 300000,
+        ...(configuredAction === 'flag' ? { flagChannelId: 'flag-channel-1' } : {}),
       },
       { moderation: moderationWarnConfig },
     );

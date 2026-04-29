@@ -288,12 +288,25 @@ ${responseShape}
  */
 async function sendFlagEmbed(message, client, result, autoModConfig) {
   const channelId = autoModConfig.flagChannelId;
-  if (!channelId) return;
+  if (!channelId) {
+    warn('AI auto-mod: flag action skipped because flagChannelId is not configured', {
+      guildId: message.guild?.id,
+      messageId: message.id,
+    });
+    return false;
+  }
 
   const flagChannel = await fetchChannelCached(client, channelId, message.guild?.id).catch(
     () => null,
   );
-  if (!flagChannel) return;
+  if (!flagChannel) {
+    warn('AI auto-mod: flag action skipped because flag channel was not found or inaccessible', {
+      guildId: message.guild?.id,
+      channelId,
+      messageId: message.id,
+    });
+    return false;
+  }
 
   const scoreBar = (score) => {
     const filled = Math.round(score * 10);
@@ -327,6 +340,15 @@ async function sendFlagEmbed(message, client, result, autoModConfig) {
     .setTimestamp();
 
   await safeSend(flagChannel, { embeds: [embed] });
+  return true;
+}
+
+async function sendCaseModLogEmbed(client, guildConfig, caseData, action) {
+  if (!caseData) return;
+
+  await sendModLogEmbed(client, guildConfig, caseData).catch((err) =>
+    logError(`AI auto-mod: sendModLogEmbed (${action}) failed`, { error: err?.message }),
+  );
 }
 
 function getAuditPool() {
@@ -461,10 +483,14 @@ async function executeSingleAction(
 
   switch (action) {
     case 'flag': {
-      let success = true;
-      await sendFlagEmbed(message, client, { ...result, action }, autoModConfig).catch((err) => {
-        success = false;
+      const success = await sendFlagEmbed(
+        message,
+        client,
+        { ...result, action },
+        autoModConfig,
+      ).catch((err) => {
         logError('AI auto-mod: sendFlagEmbed failed', { error: err?.message });
+        return false;
       });
       return { success, caseData: null };
     }
@@ -512,9 +538,7 @@ async function executeSingleAction(
         }),
       );
 
-      await sendModLogEmbed(client, _guildConfig, caseData).catch((err) =>
-        logError('AI auto-mod: sendModLogEmbed (warn) failed', { error: err?.message }),
-      );
+      await sendCaseModLogEmbed(client, _guildConfig, caseData, 'warn');
 
       await checkEscalation(client, guild.id, member.user.id, botId, botTag, _guildConfig).catch(
         (err) =>
@@ -549,6 +573,7 @@ async function executeSingleAction(
         logError('AI auto-mod: createCase (timeout) failed', { error: err?.message });
         return null;
       });
+      await sendCaseModLogEmbed(client, _guildConfig, caseData, 'timeout');
       return { success: true, caseData };
     }
 
@@ -574,6 +599,7 @@ async function executeSingleAction(
         logError('AI auto-mod: createCase (kick) failed', { error: err?.message });
         return null;
       });
+      await sendCaseModLogEmbed(client, _guildConfig, caseData, 'kick');
       return { success: true, caseData };
     }
 
@@ -599,6 +625,7 @@ async function executeSingleAction(
         logError('AI auto-mod: createCase (ban) failed', { error: err?.message });
         return null;
       });
+      await sendCaseModLogEmbed(client, _guildConfig, caseData, 'ban');
       return { success: true, caseData };
     }
 
