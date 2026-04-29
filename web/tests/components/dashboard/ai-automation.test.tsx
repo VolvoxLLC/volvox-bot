@@ -265,6 +265,81 @@ describe('AiAutomationCategory', () => {
     ]);
   });
 
+  it('preserves legacy none AI auto-moderation actions as an empty action set', () => {
+    const draftConfig = createDraftConfig({
+      aiAutoMod: {
+        actions: {
+          toxicity: 'none',
+        } as unknown as NonNullable<GuildConfig['aiAutoMod']>['actions'],
+      },
+    });
+    const updateDraftConfig = vi.fn();
+    mockAiAutoModContext(updateDraftConfig, draftConfig);
+
+    render(<AiAutomationCategory />);
+
+    expect(screen.getByLabelText('Toxicity Flag & Log')).not.toBeChecked();
+    expect(screen.getByLabelText('Toxicity Issue Warning')).not.toBeChecked();
+    expect(screen.getByText('No response actions')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Toxicity Issue Warning'));
+
+    const updater = updateDraftConfig.mock.calls[0]?.[0] as (config: GuildConfig) => GuildConfig;
+    const nextConfig = updater(draftConfig);
+
+    expect(nextConfig.aiAutoMod?.actions?.toxicity).toEqual(['warn']);
+  });
+
+  it('queues threshold edits against the latest AI auto-moderation state', () => {
+    const updateDraftConfig = vi.fn();
+    mockAiAutoModContext(updateDraftConfig);
+
+    render(<AiAutomationCategory />);
+
+    fireEvent.change(screen.getByLabelText('Toxicity Threshold'), {
+      target: { value: '55' },
+    });
+    fireEvent.change(screen.getByLabelText('Spam Threshold'), {
+      target: { value: '65' },
+    });
+
+    const baseConfig = createDraftConfig();
+    const firstUpdater = updateDraftConfig.mock.calls[0]?.[0] as (
+      config: GuildConfig,
+    ) => GuildConfig;
+    const secondUpdater = updateDraftConfig.mock.calls[1]?.[0] as (
+      config: GuildConfig,
+    ) => GuildConfig;
+
+    const nextConfig = secondUpdater(firstUpdater(baseConfig));
+
+    expect(nextConfig.aiAutoMod?.thresholds?.toxicity).toBe(0.55);
+    expect(nextConfig.aiAutoMod?.thresholds?.spam).toBe(0.65);
+  });
+
+  it('queues response action edits against the latest AI auto-moderation state', () => {
+    const updateDraftConfig = vi.fn();
+    mockAiAutoModContext(updateDraftConfig);
+
+    render(<AiAutomationCategory />);
+
+    fireEvent.click(screen.getByLabelText('Toxicity Issue Warning'));
+    fireEvent.click(screen.getByLabelText('Spam Flag & Log'));
+
+    const baseConfig = createDraftConfig();
+    const firstUpdater = updateDraftConfig.mock.calls[0]?.[0] as (
+      config: GuildConfig,
+    ) => GuildConfig;
+    const secondUpdater = updateDraftConfig.mock.calls[1]?.[0] as (
+      config: GuildConfig,
+    ) => GuildConfig;
+
+    const nextConfig = secondUpdater(firstUpdater(baseConfig));
+
+    expect(nextConfig.aiAutoMod?.actions?.toxicity).toEqual(['flag', 'warn']);
+    expect(nextConfig.aiAutoMod?.actions?.spam).toEqual(['flag', 'delete']);
+  });
+
   it('does not add unsupported saved models to the detection model dropdown', () => {
     const unsupportedModel = 'anthropic:claude-3-5-haiku';
     mockAiAutoModContext(vi.fn(), createDraftConfig({ aiAutoMod: { model: unsupportedModel } }));

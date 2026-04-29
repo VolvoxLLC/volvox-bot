@@ -2,7 +2,11 @@
 import { useCallback, useEffect } from 'react';
 import { AiModelSelect } from '@/components/dashboard/ai-model-select';
 import { useConfigContext } from '@/components/dashboard/config-context';
-import { inputClasses, parseNumberInput } from '@/components/dashboard/config-editor-utils';
+import {
+  type GuildConfig,
+  inputClasses,
+  parseNumberInput,
+} from '@/components/dashboard/config-editor-utils';
 import { ChannelModeSection } from '@/components/dashboard/config-sections/ChannelModeSection';
 import type { ConfigFeatureId } from '@/components/dashboard/config-workspace/types';
 import { ChannelSelector } from '@/components/ui/channel-selector';
@@ -19,6 +23,10 @@ import { ToggleSwitch } from '../toggle-switch';
 import { ConfigCategoryLayout } from './config-category-layout';
 
 type SelectableAiAutoModAction = Exclude<AiAutoModAction, 'none'>;
+type AiAutoModDraft = NonNullable<GuildConfig['aiAutoMod']>;
+type AiAutoModFieldUpdater<K extends keyof AiAutoModDraft> =
+  | AiAutoModDraft[K]
+  | ((previousValue: AiAutoModDraft[K], previousAiAutoMod: AiAutoModDraft) => AiAutoModDraft[K]);
 
 const AI_AUTOMOD_CATEGORIES = [
   { key: 'toxicity', label: 'Toxicity', defaultThreshold: 0.7, defaultActions: ['flag'] },
@@ -69,6 +77,8 @@ function normalizeAiAutoModActions(
   value: unknown,
   fallback: readonly SelectableAiAutoModAction[],
 ): SelectableAiAutoModAction[] {
+  if (value === 'none') return [];
+
   const rawActions = Array.isArray(value)
     ? value
     : isSelectableAiAutoModAction(value)
@@ -171,11 +181,24 @@ export function AiAutomationCategory() {
   }, [updateDraftConfig]);
 
   const updateAiAutoModField = useCallback(
-    (field: string, value: unknown) => {
-      updateDraftConfig((prev) => ({
-        ...prev,
-        aiAutoMod: { ...prev.aiAutoMod, [field]: value },
-      }));
+    <K extends keyof AiAutoModDraft>(field: K, value: AiAutoModFieldUpdater<K>) => {
+      updateDraftConfig((prev) => {
+        const previousAiAutoMod = (prev.aiAutoMod ?? {}) as AiAutoModDraft;
+        const nextValue =
+          typeof value === 'function'
+            ? (
+                value as (
+                  previousValue: AiAutoModDraft[K],
+                  previousAiAutoMod: AiAutoModDraft,
+                ) => AiAutoModDraft[K]
+              )(previousAiAutoMod[field], previousAiAutoMod)
+            : value;
+
+        return {
+          ...prev,
+          aiAutoMod: { ...previousAiAutoMod, [field]: nextValue },
+        };
+      });
     },
     [updateDraftConfig],
   );
@@ -428,11 +451,12 @@ export function AiAutomationCategory() {
                             onChange={(e) => {
                               const raw = Number(e.target.value);
                               const v = Number.isNaN(raw) ? 0 : Math.min(1, Math.max(0, raw / 100));
-                              updateAiAutoModField('thresholds', {
-                                ...((draftConfig.aiAutoMod?.thresholds as Record<string, number>) ??
-                                  {}),
+                              updateAiAutoModField('thresholds', (previousThresholds) => ({
+                                ...((previousThresholds as Partial<
+                                  Record<AiAutoModCategory, number>
+                                >) ?? {}),
                                 [category.key]: v,
-                              });
+                              }));
                             }}
                             onFocus={(e) => e.target.select()}
                             disabled={saving}
@@ -459,15 +483,31 @@ export function AiAutomationCategory() {
                                 aria-label={`${category.label} ${option.label}`}
                                 checked={selectedActions.includes(option.value)}
                                 onChange={(e) => {
-                                  const nextActions = e.target.checked
-                                    ? sortAiAutoModActions([...selectedActions, option.value])
-                                    : selectedActions.filter((action) => action !== option.value);
+                                  const checked = e.target.checked;
+                                  updateAiAutoModField('actions', (previousActions) => {
+                                    const previousActionMap = (previousActions ??
+                                      {}) as NonNullable<AiAutoModDraft['actions']>;
+                                    const previousCategoryActions = normalizeAiAutoModActions(
+                                      (
+                                        previousActionMap as Partial<
+                                          Record<AiAutoModCategory, unknown>
+                                        >
+                                      )[category.key],
+                                      category.defaultActions,
+                                    );
+                                    const nextActions = checked
+                                      ? sortAiAutoModActions([
+                                          ...previousCategoryActions,
+                                          option.value,
+                                        ])
+                                      : previousCategoryActions.filter(
+                                          (action) => action !== option.value,
+                                        );
 
-                                  updateAiAutoModField('actions', {
-                                    ...((draftConfig.aiAutoMod?.actions as Partial<
-                                      Record<AiAutoModCategory, unknown>
-                                    >) ?? {}),
-                                    [category.key]: nextActions,
+                                    return {
+                                      ...previousActionMap,
+                                      [category.key]: nextActions,
+                                    };
                                   });
                                 }}
                                 disabled={saving}
