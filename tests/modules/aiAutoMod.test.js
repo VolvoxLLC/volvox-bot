@@ -759,6 +759,30 @@ describe('checkAiAutoMod', () => {
     expect(logAuditEvent).not.toHaveBeenCalled();
   });
 
+  it('does not treat warn as successful when warning creation fails', async () => {
+    vi.mocked(createWarning).mockRejectedValueOnce(new Error('warning store unavailable'));
+    mockGenerate.mockResolvedValue(
+      makeClaudeResponse({ toxicity: 0.1, spam: 0.1, harassment: 0.9, reason: 'harassment' }),
+    );
+    const guildConfig = makeAiAutoModGuildConfig({}, { moderation: moderationWarnConfig });
+
+    const result = await checkAiAutoMod(message, client, guildConfig);
+
+    expect(result).toMatchObject({ flagged: true, action: 'none', actions: [] });
+    expect(createCase).toHaveBeenCalledWith(
+      'guild-1',
+      expect.objectContaining({ action: 'warn', targetId: 'user-1' }),
+    );
+    expect(createWarning).toHaveBeenCalledWith(
+      'guild-1',
+      expect.objectContaining({ userId: 'user-1', caseId: 1 }),
+      guildConfig,
+    );
+    expect(sendModLogEmbed).not.toHaveBeenCalled();
+    expect(checkEscalation).not.toHaveBeenCalled();
+    expect(logAuditEvent).not.toHaveBeenCalled();
+  });
+
   it('continues warn persistence and escalation when warn DM notification fails', async () => {
     vi.mocked(sendDmNotification).mockRejectedValueOnce(new Error('Cannot send messages'));
     mockGenerate.mockResolvedValue(

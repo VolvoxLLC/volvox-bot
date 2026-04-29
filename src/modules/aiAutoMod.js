@@ -519,23 +519,30 @@ async function executeSingleAction(
         );
       }
 
-      await createWarning(
-        guild.id,
-        {
-          userId: member.user.id,
-          moderatorId: botId,
-          moderatorTag: botTag,
-          reason,
-          severity: 'low',
-          caseId: caseData.id,
-        },
-        _guildConfig,
-      ).catch((err) =>
-        logError('AI auto-mod: createWarning failed', {
-          userId: member.user.id,
-          error: err?.message,
-        }),
-      );
+      if (
+        !(await createWarning(
+          guild.id,
+          {
+            userId: member.user.id,
+            moderatorId: botId,
+            moderatorTag: botTag,
+            reason,
+            severity: 'low',
+            caseId: caseData.id,
+          },
+          _guildConfig,
+        )
+          .then(() => true)
+          .catch((err) => {
+            logError('AI auto-mod: createWarning failed', {
+              userId: member.user.id,
+              error: err?.message,
+            });
+            return false;
+          }))
+      ) {
+        return { success: false, caseData: null };
+      }
 
       await sendCaseModLogEmbed(client, _guildConfig, caseData, 'warn');
 
