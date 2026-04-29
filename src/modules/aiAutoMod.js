@@ -472,6 +472,7 @@ async function executeSingleAction(
   reason,
   autoModConfig,
   _guildConfig,
+  auditedActions = result.actions,
 ) {
   const { member, guild } = message;
   const botId = client.user?.id ?? 'bot';
@@ -484,7 +485,7 @@ async function executeSingleAction(
       const success = await sendFlagEmbed(
         message,
         client,
-        { ...result, action },
+        { ...result, action, actions: auditedActions },
         autoModConfig,
       ).catch((err) => {
         logError('AI auto-mod: sendFlagEmbed failed', { error: err?.message });
@@ -678,6 +679,7 @@ async function executeAction(message, client, result, autoModConfig, _guildConfi
       reason,
       autoModConfig,
       _guildConfig,
+      actions,
     );
 
     if (!success) continue;
