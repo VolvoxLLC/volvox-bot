@@ -270,8 +270,9 @@ describe('OnboardingGrowthCategory', () => {
     );
   });
 
-  it('does not add unsupported saved models to the TLDR model selector', () => {
+  it('preserves unsupported saved models in the TLDR model selector', () => {
     const unsupportedModel = 'anthropic:claude-3-5-haiku';
+    const updateDraftConfig = vi.fn();
 
     mockUseConfigContext.mockReturnValue({
       draftConfig: {
@@ -289,25 +290,20 @@ describe('OnboardingGrowthCategory', () => {
       guildId: 'guild-1',
       visibleFeatureIds: new Set(['tldr-afk']),
       activeTabId: 'tldr-afk',
-      updateDraftConfig: vi.fn(),
+      updateDraftConfig,
     });
 
     render(<OnboardingGrowthCategory />);
 
-    const modelSelect = screen.getByLabelText('TL;DR Model') as HTMLSelectElement;
-    expect(modelSelect).toHaveValue('minimax:MiniMax-M2.7');
-    expect(screen.getByRole('option', { name: 'MiniMax M2.7' })).toHaveAttribute(
-      'value',
-      'minimax:MiniMax-M2.7',
-    );
-    expect(Array.from(modelSelect.options, (option) => option.value)).not.toContain(
-      unsupportedModel,
-    );
-    expect(screen.queryByText(`Custom: ${unsupportedModel}`)).not.toBeInTheDocument();
+    expect(screen.getByLabelText('TL;DR Model')).toHaveValue(unsupportedModel);
+    expect(
+      screen.getByRole('option', { name: `Current saved model: ${unsupportedModel}` }),
+    ).toHaveAttribute('value', unsupportedModel);
+    expect(updateDraftConfig).not.toHaveBeenCalled();
   });
 
-  it('normalizes hidden saved TLDR models before saving', async () => {
-    const unsupportedModel = 'anthropic:claude-3-5-haiku';
+  it('normalizes case-variant saved TLDR models before saving', async () => {
+    const unsupportedModel = 'MINIMAX:minimax-m2.7';
     const draftConfig = {
       tldr: {
         enabled: true,

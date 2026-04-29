@@ -140,10 +140,16 @@ vi.mock('@/lib/provider-model-options', () => ({
   ],
   VISIBLE_PROVIDER_MODEL_OPTIONS: visibleModelOptions,
   getVisibleProviderModelValue: (value: string | null | undefined) => {
-    const match = visibleModelOptions.find(
-      (option) => option.value.toLowerCase() === value?.toLowerCase(),
-    );
-    return match?.value ?? visibleModelOptions[0].value;
+    if (typeof value === 'string' && value) {
+      const match = visibleModelOptions.find(
+        (option) => option.value.toLowerCase() === value.toLowerCase(),
+      );
+      if (match) return match.value;
+      if (/^[a-z0-9][a-z0-9._-]*:[^\s:][^\s]*$/i.test(value) && value === value.trim()) {
+        return value;
+      }
+    }
+    return visibleModelOptions[0].value;
   },
 }));
 
@@ -343,21 +349,28 @@ describe('AiAutomationCategory', () => {
     expect(nextConfig.aiAutoMod?.actions?.spam).toEqual(['flag', 'delete']);
   });
 
-  it('does not add unsupported saved models to the detection model dropdown', () => {
+  it('preserves unknown saved models in the detection model dropdown', () => {
     const unsupportedModel = 'anthropic:claude-3-5-haiku';
-    mockAiAutoModContext(vi.fn(), createDraftConfig({ aiAutoMod: { model: unsupportedModel } }));
-
-    render(<AiAutomationCategory />);
-
-    expect(screen.getByLabelText('Detection Model')).toHaveValue('minimax:MiniMax-M2.7');
-    expect(screen.queryByText(`Custom: ${unsupportedModel}`)).not.toBeInTheDocument();
-  });
-
-  it('normalizes hidden saved AI auto-moderation models before saving', async () => {
     const updateDraftConfig = vi.fn();
     mockAiAutoModContext(
       updateDraftConfig,
-      createDraftConfig({ aiAutoMod: { model: 'anthropic:claude-3-5-haiku' } }),
+      createDraftConfig({ aiAutoMod: { model: unsupportedModel } }),
+    );
+
+    render(<AiAutomationCategory />);
+
+    expect(screen.getByLabelText('Detection Model')).toHaveValue(unsupportedModel);
+    expect(
+      screen.getByRole('option', { name: `Current saved model: ${unsupportedModel}` }),
+    ).toHaveAttribute('value', unsupportedModel);
+    expect(updateDraftConfig).not.toHaveBeenCalled();
+  });
+
+  it('normalizes case-variant saved AI auto-moderation models before saving', async () => {
+    const updateDraftConfig = vi.fn();
+    mockAiAutoModContext(
+      updateDraftConfig,
+      createDraftConfig({ aiAutoMod: { model: 'MINIMAX:minimax-m2.7' } }),
     );
 
     render(<AiAutomationCategory />);
@@ -368,7 +381,7 @@ describe('AiAutomationCategory', () => {
 
     const updater = updateDraftConfig.mock.calls[0]?.[0] as (config: GuildConfig) => GuildConfig;
     const nextConfig = updater(
-      createDraftConfig({ aiAutoMod: { model: 'anthropic:claude-3-5-haiku' } }),
+      createDraftConfig({ aiAutoMod: { model: 'MINIMAX:minimax-m2.7' } }),
     );
 
     expect(nextConfig.aiAutoMod?.model).toBe('minimax:MiniMax-M2.7');
@@ -426,7 +439,7 @@ describe('AiAutomationCategory', () => {
     expect(updateDraftConfig.mock.results[1]?.value.triage.respondModel).toBe('moonshot:kimi-k2.5');
   });
 
-  it('normalizes hidden saved triage models to the first visible model', async () => {
+  it('preserves hidden and unknown saved triage models', () => {
     const updateDraftConfig = vi.fn();
     mockConfigContext({
       activeTabId: 'triage',
@@ -441,21 +454,9 @@ describe('AiAutomationCategory', () => {
 
     render(<AiAutomationCategory />);
 
-    await waitFor(() => {
-      expect(updateDraftConfig).toHaveBeenCalled();
-    });
-
-    const updater = updateDraftConfig.mock.calls[0]?.[0] as (config: GuildConfig) => GuildConfig;
-    const nextConfig = updater({
-      triage: {
-        enabled: true,
-        classifyModel: 'minimax:MiniMax-M2.5',
-        respondModel: 'anthropic:claude-3-5-haiku',
-      },
-    });
-
-    expect(nextConfig.triage?.classifyModel).toBe('minimax:MiniMax-M2.7');
-    expect(nextConfig.triage?.respondModel).toBe('minimax:MiniMax-M2.7');
+    expect(screen.getByLabelText('Classifier Engine')).toHaveValue('minimax:MiniMax-M2.5');
+    expect(screen.getByLabelText('Response Engine')).toHaveValue('anthropic:claude-3-5-haiku');
+    expect(updateDraftConfig).not.toHaveBeenCalled();
   });
 
   it('does not persist default triage models when saved fields are absent', () => {
@@ -475,12 +476,12 @@ describe('AiAutomationCategory', () => {
     expect(updateDraftConfig).not.toHaveBeenCalled();
   });
 
-  it('normalizes only stale saved triage model fields', async () => {
+  it('normalizes only case-variant saved triage model fields', async () => {
     const updateDraftConfig = vi.fn();
     mockConfigContext({
       activeTabId: 'triage',
       draftConfig: createDraftConfig({
-        triage: { classifyModel: 'anthropic:claude-3-5-haiku', respondModel: undefined },
+        triage: { classifyModel: 'MINIMAX:minimax-m2.7', respondModel: undefined },
       }),
       updateDraftConfig,
     });
@@ -495,7 +496,7 @@ describe('AiAutomationCategory', () => {
     const nextConfig = updater({
       triage: {
         enabled: true,
-        classifyModel: 'anthropic:claude-3-5-haiku',
+        classifyModel: 'MINIMAX:minimax-m2.7',
         respondModel: undefined,
       },
     });
@@ -504,7 +505,7 @@ describe('AiAutomationCategory', () => {
     expect(nextConfig.triage?.respondModel).toBeUndefined();
   });
 
-  it('does not add unsupported saved models to triage model dropdowns', () => {
+  it('shows unsupported saved models as current triage selections', () => {
     const unsupportedModel = 'anthropic:claude-3-5-haiku';
     mockConfigContext({
       activeTabId: 'triage',
@@ -516,8 +517,10 @@ describe('AiAutomationCategory', () => {
 
     render(<AiAutomationCategory />);
 
-    expect(screen.getByLabelText('Classifier Engine')).toHaveValue('minimax:MiniMax-M2.7');
-    expect(screen.getByLabelText('Response Engine')).toHaveValue('minimax:MiniMax-M2.7');
-    expect(screen.queryByText(`Custom: ${unsupportedModel}`)).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Classifier Engine')).toHaveValue(unsupportedModel);
+    expect(screen.getByLabelText('Response Engine')).toHaveValue(unsupportedModel);
+    expect(
+      screen.getAllByRole('option', { name: `Current saved model: ${unsupportedModel}` }),
+    ).toHaveLength(2);
   });
 });

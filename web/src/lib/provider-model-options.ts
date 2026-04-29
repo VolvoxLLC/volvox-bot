@@ -104,12 +104,26 @@ function findProviderModelOptionByValue(
   return options.find((option) => option.value.toLowerCase() === modelValue.toLowerCase());
 }
 
+export function isProviderModelId(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    /^[a-z0-9][a-z0-9._-]*:[^\s:][^\s]*$/i.test(value) &&
+    value === value.trim()
+  );
+}
+
 /**
- * Return the canonical visible model value, falling back to the default visible model.
+ * Return the canonical display model value while preserving valid provider:model IDs.
+ *
+ * Supported visible values are canonicalized case-insensitively. Unknown or hidden values that
+ * still look like provider:model IDs are preserved so opening a dashboard tab does not silently
+ * rewrite saved config to the default. Empty or malformed values fall back to the default visible
+ * model for display.
  *
  * @param modelValue - Saved provider:model value from config.
  * @param options - Visible model options to resolve against.
- * @returns A canonical visible provider:model value, or an empty string when none exist.
+ * @returns A canonical visible provider:model value, the preserved saved provider:model ID, or an
+ * empty string when none exist.
  */
 export function getVisibleProviderModelValue(
   modelValue: string | null | undefined,
@@ -118,6 +132,7 @@ export function getVisibleProviderModelValue(
   if (typeof modelValue === 'string' && modelValue) {
     const match = findProviderModelOptionByValue(modelValue, options);
     if (match) return match.value;
+    if (isProviderModelId(modelValue)) return modelValue;
   }
 
   return options[0]?.value ?? '';

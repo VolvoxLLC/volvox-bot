@@ -81,13 +81,18 @@ describe('provider model options', () => {
     expect(DEFAULT_AI_MODEL).toBe(VISIBLE_PROVIDER_MODEL_OPTIONS[0]?.value);
   });
 
-  it('falls back to the first visible model when the saved model is hidden', () => {
+  it('preserves hidden and unknown valid provider:model IDs', () => {
     const options = buildVisibleProviderModelOptions(providerCatalog);
 
     expect(getVisibleProviderModelValue('minimax:MiniMax-M2.7', options)).toBe(
       'minimax:MiniMax-M2.7',
     );
-    expect(getVisibleProviderModelValue('minimax:MiniMax-M2.5', options)).toBe(options[0]?.value);
+    expect(getVisibleProviderModelValue('minimax:MiniMax-M2.5', options)).toBe(
+      'minimax:MiniMax-M2.5',
+    );
+    expect(getVisibleProviderModelValue('anthropic:claude-3-5-haiku', options)).toBe(
+      'anthropic:claude-3-5-haiku',
+    );
   });
 
   it('uses catalog order when falling back to the default model', () => {
@@ -115,6 +120,6 @@ describe('provider model options', () => {
     });
 
     expect(options[0]?.value).toBe('moonshot:kimi-k2.6');
-    expect(getVisibleProviderModelValue('hidden:model', options)).toBe(options[0]?.value);
+    expect(getVisibleProviderModelValue('not a provider model', options)).toBe(options[0]?.value);
   });
 });

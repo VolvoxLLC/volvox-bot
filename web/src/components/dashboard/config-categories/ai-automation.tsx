@@ -92,6 +92,58 @@ function normalizeAiAutoModActions(
   return sortAiAutoModActions(uniqueActions);
 }
 
+function toggleAiAutoModCategoryAction(
+  previousActions: AiAutoModDraft['actions'],
+  categoryKey: AiAutoModCategory,
+  fallbackActions: readonly SelectableAiAutoModAction[],
+  action: SelectableAiAutoModAction,
+  checked: boolean,
+): NonNullable<AiAutoModDraft['actions']> {
+  const previousActionMap = (previousActions ?? {}) as NonNullable<AiAutoModDraft['actions']>;
+  const previousCategoryActions = normalizeAiAutoModActions(
+    (previousActionMap as Partial<Record<AiAutoModCategory, unknown>>)[categoryKey],
+    fallbackActions,
+  );
+  const nextActions = checked
+    ? sortAiAutoModActions([...previousCategoryActions, action])
+    : previousCategoryActions.filter((selectedAction) => selectedAction !== action);
+
+  return {
+    ...previousActionMap,
+    [categoryKey]: nextActions,
+  };
+}
+
+function AiAutoModActionToggle({
+  categoryLabel,
+  option,
+  checked,
+  disabled,
+  onToggle,
+}: {
+  categoryLabel: string;
+  option: (typeof AI_AUTOMOD_ACTION_OPTIONS)[number];
+  checked: boolean;
+  disabled: boolean;
+  onToggle: (checked: boolean) => void;
+}) {
+  return (
+    <label className="cursor-pointer">
+      <input
+        type="checkbox"
+        aria-label={`${categoryLabel} ${option.label}`}
+        checked={checked}
+        onChange={(event) => onToggle(event.target.checked)}
+        disabled={disabled}
+        className="peer sr-only"
+      />
+      <span className="block rounded-lg border border-border/40 bg-background/70 px-3 py-2 text-[11px] font-bold text-foreground/60 transition-colors peer-checked:border-primary/60 peer-checked:bg-primary/15 peer-checked:text-foreground peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary">
+        {option.label}
+      </span>
+    </label>
+  );
+}
+
 const hasVisibleModelOptions = VISIBLE_PROVIDER_MODEL_OPTIONS.length > 0;
 
 function shouldNormalizeSavedModel(value: unknown, normalizedValue: string): value is string {
@@ -205,6 +257,26 @@ export function AiAutomationCategory() {
       });
     },
     [updateDraftConfig],
+  );
+
+  const updateAiAutoModAction = useCallback(
+    (
+      categoryKey: AiAutoModCategory,
+      fallbackActions: readonly SelectableAiAutoModAction[],
+      action: SelectableAiAutoModAction,
+      checked: boolean,
+    ) => {
+      updateAiAutoModField('actions', (previousActions) =>
+        toggleAiAutoModCategoryAction(
+          previousActions,
+          categoryKey,
+          fallbackActions,
+          action,
+          checked,
+        ),
+      );
+    },
+    [updateAiAutoModField],
   );
 
   const updateTriageField = useCallback(
@@ -522,46 +594,21 @@ export function AiAutomationCategory() {
                         </span>
                         <div className="flex flex-wrap gap-2">
                           {AI_AUTOMOD_ACTION_OPTIONS.map((option) => (
-                            <label key={option.value} className="cursor-pointer">
-                              <input
-                                type="checkbox"
-                                aria-label={`${category.label} ${option.label}`}
-                                checked={selectedActions.includes(option.value)}
-                                onChange={(e) => {
-                                  const checked = e.target.checked;
-                                  updateAiAutoModField('actions', (previousActions) => {
-                                    const previousActionMap = (previousActions ??
-                                      {}) as NonNullable<AiAutoModDraft['actions']>;
-                                    const previousCategoryActions = normalizeAiAutoModActions(
-                                      (
-                                        previousActionMap as Partial<
-                                          Record<AiAutoModCategory, unknown>
-                                        >
-                                      )[category.key],
-                                      category.defaultActions,
-                                    );
-                                    const nextActions = checked
-                                      ? sortAiAutoModActions([
-                                          ...previousCategoryActions,
-                                          option.value,
-                                        ])
-                                      : previousCategoryActions.filter(
-                                          (action) => action !== option.value,
-                                        );
-
-                                    return {
-                                      ...previousActionMap,
-                                      [category.key]: nextActions,
-                                    };
-                                  });
-                                }}
-                                disabled={saving}
-                                className="peer sr-only"
-                              />
-                              <span className="block rounded-lg border border-border/40 bg-background/70 px-3 py-2 text-[11px] font-bold text-foreground/60 transition-colors peer-checked:border-primary/60 peer-checked:bg-primary/15 peer-checked:text-foreground peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary">
-                                {option.label}
-                              </span>
-                            </label>
+                            <AiAutoModActionToggle
+                              key={option.value}
+                              categoryLabel={category.label}
+                              option={option}
+                              checked={selectedActions.includes(option.value)}
+                              disabled={saving}
+                              onToggle={(checked) =>
+                                updateAiAutoModAction(
+                                  category.key,
+                                  category.defaultActions,
+                                  option.value,
+                                  checked,
+                                )
+                              }
+                            />
                           ))}
                           {selectedActions.length === 0 && (
                             <span className="rounded-lg border border-dashed border-border/40 px-3 py-2 text-[11px] font-bold text-muted-foreground">

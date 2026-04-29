@@ -57,6 +57,9 @@ export function AiModelSelect({
   labelClassName,
   selectClassName,
 }: AiModelSelectProps) {
+  const selectedValue = normalizeAiModel(value);
+  const hasSelectedVisibleOption = isSupportedAiModel(selectedValue);
+
   return (
     <div className={cn('space-y-3', wrapperClassName)}>
       <label
@@ -66,7 +69,7 @@ export function AiModelSelect({
         {label}
       </label>
       <Select
-        value={normalizeAiModel(value)}
+        value={selectedValue}
         onValueChange={(selectedValue) => onChange(selectedValue as AiModelValue)}
         disabled={disabled || !hasVisibleModelOptions}
       >
@@ -74,6 +77,9 @@ export function AiModelSelect({
           <SelectValue placeholder="No visible models configured" />
         </SelectTrigger>
         <SelectContent>
+          {selectedValue && !hasSelectedVisibleOption && (
+            <SelectItem value={selectedValue}>Current saved model: {selectedValue}</SelectItem>
+          )}
           {VISIBLE_PROVIDER_MODEL_OPTION_GROUPS.map((group) => (
             <SelectGroup key={group.providerName}>
               <SelectLabel>{group.providerDisplayName}</SelectLabel>
