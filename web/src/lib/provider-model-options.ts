@@ -3,7 +3,7 @@
 // that this file stays identical to src/data/providers.json.
 import providersCatalog from '@/data/providers.json';
 
-export const DEFAULT_AI_MODEL = 'minimax:MiniMax-M2.7';
+const FALLBACK_AI_MODEL = 'minimax:MiniMax-M2.7';
 
 export interface ProviderModelOption {
   value: string;
@@ -92,6 +92,7 @@ export function groupProviderModelOptions(options: ProviderModelOption[]) {
 }
 
 export const VISIBLE_PROVIDER_MODEL_OPTIONS = buildVisibleProviderModelOptions();
+export const DEFAULT_AI_MODEL = VISIBLE_PROVIDER_MODEL_OPTIONS[0]?.value ?? FALLBACK_AI_MODEL;
 export const VISIBLE_PROVIDER_MODEL_OPTION_GROUPS = groupProviderModelOptions(
   VISIBLE_PROVIDER_MODEL_OPTIONS,
 );
@@ -119,7 +120,5 @@ export function getVisibleProviderModelValue(
     if (match) return match.value;
   }
 
-  return (
-    findProviderModelOptionByValue(DEFAULT_AI_MODEL, options)?.value ?? options[0]?.value ?? ''
-  );
+  return options[0]?.value ?? '';
 }

@@ -94,6 +94,10 @@ function normalizeAiAutoModActions(
 
 const hasVisibleModelOptions = VISIBLE_PROVIDER_MODEL_OPTIONS.length > 0;
 
+function shouldNormalizeSavedModel(value: unknown, normalizedValue: string): value is string {
+  return typeof value === 'string' && value.length > 0 && normalizedValue !== value;
+}
+
 /**
  * Render the AI & Automation configuration UI for the chat, automod, triage, and memory feature tabs.
  *
@@ -233,31 +237,57 @@ export function AiAutomationCategory() {
 
   useEffect(() => {
     if (!hasDraftConfig || activeTab !== 'ai-automod' || !hasVisibleModelOptions) return;
-    if (aiAutoModModelValue === currentAiAutoModModel) return;
+    if (!shouldNormalizeSavedModel(currentAiAutoModModel, aiAutoModModelValue)) return;
 
-    updateDraftConfig((prev) => ({
-      ...prev,
-      aiAutoMod: {
-        ...prev.aiAutoMod,
-        model: getVisibleProviderModelValue(prev.aiAutoMod?.model),
-      },
-    }));
+    updateDraftConfig((prev) => {
+      const previousModel = prev.aiAutoMod?.model;
+      const normalizedModel = getVisibleProviderModelValue(previousModel);
+      if (!shouldNormalizeSavedModel(previousModel, normalizedModel)) return prev;
+
+      return {
+        ...prev,
+        aiAutoMod: {
+          ...prev.aiAutoMod,
+          model: normalizedModel,
+        },
+      };
+    });
   }, [activeTab, aiAutoModModelValue, currentAiAutoModModel, hasDraftConfig, updateDraftConfig]);
 
   useEffect(() => {
     if (!hasDraftConfig || activeTab !== 'triage' || !hasVisibleModelOptions) return;
-    if (classifyModelValue === currentClassifyModel && respondModelValue === currentRespondModel) {
-      return;
-    }
+    const shouldNormalizeClassifyModel = shouldNormalizeSavedModel(
+      currentClassifyModel,
+      classifyModelValue,
+    );
+    const shouldNormalizeRespondModel = shouldNormalizeSavedModel(
+      currentRespondModel,
+      respondModelValue,
+    );
+    if (!shouldNormalizeClassifyModel && !shouldNormalizeRespondModel) return;
 
-    updateDraftConfig((prev) => ({
-      ...prev,
-      triage: {
-        ...prev.triage,
-        classifyModel: getVisibleProviderModelValue(prev.triage?.classifyModel),
-        respondModel: getVisibleProviderModelValue(prev.triage?.respondModel),
-      },
-    }));
+    updateDraftConfig((prev) => {
+      const previousTriage = prev.triage ?? {};
+      const normalizedTriageModels: Record<string, string> = {};
+      const normalizedClassifyModel = getVisibleProviderModelValue(previousTriage.classifyModel);
+      const normalizedRespondModel = getVisibleProviderModelValue(previousTriage.respondModel);
+
+      if (shouldNormalizeSavedModel(previousTriage.classifyModel, normalizedClassifyModel)) {
+        normalizedTriageModels.classifyModel = normalizedClassifyModel;
+      }
+      if (shouldNormalizeSavedModel(previousTriage.respondModel, normalizedRespondModel)) {
+        normalizedTriageModels.respondModel = normalizedRespondModel;
+      }
+      if (Object.keys(normalizedTriageModels).length === 0) return prev;
+
+      return {
+        ...prev,
+        triage: {
+          ...previousTriage,
+          ...normalizedTriageModels,
+        },
+      };
+    });
   }, [
     activeTab,
     classifyModelValue,

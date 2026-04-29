@@ -374,6 +374,16 @@ describe('AiAutomationCategory', () => {
     expect(nextConfig.aiAutoMod?.model).toBe('minimax:MiniMax-M2.7');
   });
 
+  it('does not persist a default AI auto-moderation model when the saved field is absent', () => {
+    const updateDraftConfig = vi.fn();
+    mockAiAutoModContext(updateDraftConfig, createDraftConfig({ aiAutoMod: { model: undefined } }));
+
+    render(<AiAutomationCategory />);
+
+    expect(screen.getByLabelText('Detection Model')).toHaveValue('minimax:MiniMax-M2.7');
+    expect(updateDraftConfig).not.toHaveBeenCalled();
+  });
+
   it('renders supported model dropdowns in triage engine setup', () => {
     mockConfigContext({
       activeTabId: 'triage',
@@ -446,6 +456,52 @@ describe('AiAutomationCategory', () => {
 
     expect(nextConfig.triage?.classifyModel).toBe('minimax:MiniMax-M2.7');
     expect(nextConfig.triage?.respondModel).toBe('minimax:MiniMax-M2.7');
+  });
+
+  it('does not persist default triage models when saved fields are absent', () => {
+    const updateDraftConfig = vi.fn();
+    mockConfigContext({
+      activeTabId: 'triage',
+      draftConfig: createDraftConfig({
+        triage: { classifyModel: undefined, respondModel: undefined },
+      }),
+      updateDraftConfig,
+    });
+
+    render(<AiAutomationCategory />);
+
+    expect(screen.getByLabelText('Classifier Engine')).toHaveValue('minimax:MiniMax-M2.7');
+    expect(screen.getByLabelText('Response Engine')).toHaveValue('minimax:MiniMax-M2.7');
+    expect(updateDraftConfig).not.toHaveBeenCalled();
+  });
+
+  it('normalizes only stale saved triage model fields', async () => {
+    const updateDraftConfig = vi.fn();
+    mockConfigContext({
+      activeTabId: 'triage',
+      draftConfig: createDraftConfig({
+        triage: { classifyModel: 'anthropic:claude-3-5-haiku', respondModel: undefined },
+      }),
+      updateDraftConfig,
+    });
+
+    render(<AiAutomationCategory />);
+
+    await waitFor(() => {
+      expect(updateDraftConfig).toHaveBeenCalled();
+    });
+
+    const updater = updateDraftConfig.mock.calls[0]?.[0] as (config: GuildConfig) => GuildConfig;
+    const nextConfig = updater({
+      triage: {
+        enabled: true,
+        classifyModel: 'anthropic:claude-3-5-haiku',
+        respondModel: undefined,
+      },
+    });
+
+    expect(nextConfig.triage?.classifyModel).toBe('minimax:MiniMax-M2.7');
+    expect(nextConfig.triage?.respondModel).toBeUndefined();
   });
 
   it('does not add unsupported saved models to triage model dropdowns', () => {
