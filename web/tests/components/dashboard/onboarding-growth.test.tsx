@@ -4,6 +4,131 @@ import { describe, expect, it, vi } from 'vitest';
 
 const mockUseConfigContext = vi.fn();
 
+vi.mock('@/components/ui/select', () => {
+  type SelectOption = { value: string; label: string };
+
+  function isMockElement(
+    value: unknown,
+  ): value is { type: unknown; props: Record<string, unknown> } {
+    return typeof value === 'object' && value !== null && 'type' in value && 'props' in value;
+  }
+
+  function textFromChildren(children: unknown): string {
+    if (typeof children === 'string' || typeof children === 'number') return String(children);
+    if (Array.isArray(children)) return children.map(textFromChildren).join('');
+    if (isMockElement(children)) return textFromChildren(children.props.children);
+    return '';
+  }
+
+  function readSelectChildren(children: unknown): { id?: string; options: SelectOption[] } {
+    const result: { id?: string; options: SelectOption[] } = { options: [] };
+    const stack = Array.isArray(children) ? [...children] : [children];
+
+    while (stack.length > 0) {
+      const child = stack.shift();
+      if (Array.isArray(child)) {
+        stack.push(...child);
+        continue;
+      }
+      if (!isMockElement(child)) continue;
+
+      if (
+        typeof child.type === 'function' &&
+        child.type.name === 'SelectTrigger' &&
+        typeof child.props.id === 'string'
+      ) {
+        result.id = child.props.id;
+      }
+
+      if (
+        typeof child.type === 'function' &&
+        child.type.name === 'SelectItem' &&
+        typeof child.props.value === 'string'
+      ) {
+        result.options.push({
+          value: child.props.value,
+          label: textFromChildren(child.props.children),
+        });
+      }
+
+      const nestedChildren = child.props.children;
+      if (Array.isArray(nestedChildren)) {
+        stack.push(...nestedChildren);
+      } else if (nestedChildren !== undefined) {
+        stack.push(nestedChildren);
+      }
+    }
+
+    return result;
+  }
+
+  function Select({
+    children,
+    disabled,
+    onValueChange,
+    value,
+  }: {
+    children: React.ReactNode;
+    disabled?: boolean;
+    onValueChange?: (value: string) => void;
+    value?: string;
+  }) {
+    const { id, options } = readSelectChildren(children);
+    return (
+      <select
+        id={id}
+        disabled={disabled}
+        value={value}
+        onChange={(event) => onValueChange?.(event.target.value)}
+      >
+        {options.length > 0 ? (
+          options.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))
+        ) : (
+          <option value="">No visible models configured</option>
+        )}
+      </select>
+    );
+  }
+
+  function SelectContent({ children }: { children: React.ReactNode }) {
+    return <>{children}</>;
+  }
+
+  function SelectGroup({ children }: { children: React.ReactNode }) {
+    return <>{children}</>;
+  }
+
+  function SelectItem({ children }: { children: React.ReactNode; value: string }) {
+    return <>{children}</>;
+  }
+
+  function SelectLabel({ children }: { children: React.ReactNode }) {
+    return <>{children}</>;
+  }
+
+  function SelectTrigger({ children }: { children: React.ReactNode; id?: string }) {
+    return <>{children}</>;
+  }
+
+  function SelectValue() {
+    return null;
+  }
+
+  return {
+    Select,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectLabel,
+    SelectTrigger,
+    SelectValue,
+  };
+});
+
 vi.mock('framer-motion', () => ({
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   motion: {
@@ -251,10 +376,14 @@ describe('OnboardingGrowthCategory', () => {
 
     render(<OnboardingGrowthCategory />);
 
-    expect(screen.getByLabelText('TL;DR Model').tagName).toBe('SELECT');
-    expect(screen.getByLabelText('TL;DR Model')).toHaveValue('moonshot:kimi-k2.6');
+    const modelSelect = screen.getByLabelText('TL;DR Model');
+    expect(modelSelect).toHaveValue('moonshot:kimi-k2.6');
+    expect(screen.getByRole('option', { name: 'Kimi K2.6' })).toHaveAttribute(
+      'value',
+      'moonshot:kimi-k2.6',
+    );
 
-    fireEvent.change(screen.getByLabelText('TL;DR Model'), {
+    fireEvent.change(modelSelect, {
       target: { value: 'openrouter:minimax/minimax-m2.5' },
     });
 
@@ -288,7 +417,15 @@ describe('OnboardingGrowthCategory', () => {
 
     render(<OnboardingGrowthCategory />);
 
-    expect(screen.getByLabelText('TL;DR Model')).toHaveValue('minimax:MiniMax-M2.7');
+    const modelSelect = screen.getByLabelText('TL;DR Model') as HTMLSelectElement;
+    expect(modelSelect).toHaveValue('minimax:MiniMax-M2.7');
+    expect(screen.getByRole('option', { name: 'MiniMax M2.7' })).toHaveAttribute(
+      'value',
+      'minimax:MiniMax-M2.7',
+    );
+    expect(Array.from(modelSelect.options, (option) => option.value)).not.toContain(
+      unsupportedModel,
+    );
     expect(screen.queryByText(`Custom: ${unsupportedModel}`)).not.toBeInTheDocument();
   });
 
