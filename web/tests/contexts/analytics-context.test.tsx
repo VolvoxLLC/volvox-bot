@@ -254,10 +254,9 @@ describe('AnalyticsProvider', () => {
     }
   });
 
-  it('skips fetching analytics when no guild is selected', async () => {
+  it('skips fetching analytics when no guild is selected', () => {
     mockUseGuildSelection.mockReturnValueOnce(undefined);
     renderProvider();
-    await act(async () => {});
     expect(fetch).not.toHaveBeenCalled();
   });
 });
