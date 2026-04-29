@@ -2,6 +2,7 @@
 import { copyFileSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { error, info } from '../src/logger.js';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const root = resolve(scriptDir, '..');
@@ -23,14 +24,14 @@ export function syncWebProviderCatalog() {
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   if (process.argv.includes('--check')) {
     if (!checkWebProviderCatalogSync()) {
-      console.error(
+      error(
         'web provider catalog snapshot is out of sync; run `pnpm providers:sync` and commit web/src/data/providers.json',
       );
       process.exit(1);
     }
-    console.log('web provider catalog snapshot is in sync');
+    info('web provider catalog snapshot is in sync');
   } else {
     syncWebProviderCatalog();
-    console.log('synced web/src/data/providers.json from src/data/providers.json');
+    info('synced web/src/data/providers.json from src/data/providers.json');
   }
 }

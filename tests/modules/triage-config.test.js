@@ -66,6 +66,10 @@ describe('triage-config', () => {
       // Bare string does not parse as provider:model → warn + fall back to default.
       expect(result.respondModel).toBe('minimax:MiniMax-M2.7');
       expect(result.respondBudget).toBe(0.5);
+      expect(warn).toHaveBeenCalledWith(
+        'Triage config contains an invalid model string — falling back',
+        expect.objectContaining({ origin: 'triage.model', value: 'legacy-bare-name' }),
+      );
     });
 
     it('should fall back to supported legacy models when configured models are unsupported', () => {

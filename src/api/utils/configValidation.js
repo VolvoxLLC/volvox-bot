@@ -181,6 +181,10 @@ const AI_AUTOMOD_CATEGORY_KEYS = [
 
 const AI_AUTOMOD_ACTION_TYPES = ['none', 'flag', 'delete', 'warn', 'timeout', 'kick', 'ban'];
 
+const CHANNEL_MODE_TYPES = ['off', 'mention', 'vibe'];
+
+const PERMISSION_LEVEL_TYPES = ['everyone', 'moderator', 'admin'];
+
 const AI_AUTOMOD_ACTION_VALUE_SCHEMA = {
   anyOf: [
     { type: 'string', enum: AI_AUTOMOD_ACTION_TYPES },
@@ -226,7 +230,10 @@ export const CONFIG_SCHEMA = {
           reuseWindowMinutes: { type: 'number', min: 1, max: 1440 },
         },
       },
-      channelModes: { type: 'object', openProperties: true },
+      channelModes: {
+        type: 'object',
+        openProperties: { type: 'string', enum: CHANNEL_MODE_TYPES },
+      },
       defaultChannelMode: { type: 'string', enum: ['off', 'mention', 'vibe'] },
     },
   },
@@ -484,7 +491,10 @@ export const CONFIG_SCHEMA = {
       moderatorRoleId: { type: 'string', nullable: true },
       modRoles: { type: 'array', items: { type: 'string' } },
       // allowedCommands is a freeform map of command → permission level — no fixed property list
-      allowedCommands: { type: 'object', openProperties: true },
+      allowedCommands: {
+        type: 'object',
+        openProperties: { type: 'string', enum: PERMISSION_LEVEL_TYPES },
+      },
     },
   },
   tldr: {
@@ -674,10 +684,13 @@ export function validateValue(value, schema, path) {
           }
         }
 
-        if (schema.properties) {
+        if (schema.properties || schema.openProperties) {
+          const properties = schema.properties ?? {};
           for (const [key, val] of Object.entries(value)) {
-            if (Object.hasOwn(schema.properties, key)) {
-              errors.push(...validateValue(val, schema.properties[key], `${path}.${key}`));
+            if (Object.hasOwn(properties, key)) {
+              errors.push(...validateValue(val, properties[key], `${path}.${key}`));
+            } else if (schema.openProperties && schema.openProperties !== true) {
+              errors.push(...validateValue(val, schema.openProperties, `${path}.${key}`));
             } else if (!schema.openProperties) {
               errors.push(`${path}.${key}: unknown config key`);
             }
@@ -718,8 +731,11 @@ function resolveSchemaForPath(path) {
     if (currentSchema.properties && Object.hasOwn(currentSchema.properties, segments[i])) {
       currentSchema = currentSchema.properties[segments[i]];
     } else if (currentSchema.openProperties) {
-      // Dynamic keys (e.g. channelModes.<channelId>) — validate as leaf value.
-      break;
+      // Dynamic map keys (e.g. channelModes.<channelId>) consume this path
+      // segment, then the remaining path (if any) resolves against the map's
+      // value schema. `openProperties: true` means the dynamic value is fully
+      // freeform and can only be validated as "allowed".
+      currentSchema = currentSchema.openProperties === true ? {} : currentSchema.openProperties;
     } else {
       return { status: 'unknown-path' };
     }
