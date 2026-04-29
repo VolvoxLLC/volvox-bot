@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 import { copyFileSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const root = resolve(new URL('..', import.meta.url).pathname);
+const scriptDir = dirname(fileURLToPath(import.meta.url));
+const root = resolve(scriptDir, '..');
 const sourcePath = resolve(root, 'src/data/providers.json');
 const snapshotPath = resolve(root, 'web/src/data/providers.json');
 

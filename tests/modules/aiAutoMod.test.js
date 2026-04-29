@@ -65,6 +65,7 @@ import { createWarning } from '../../src/modules/warningEngine.js';
 import { fetchChannelCached } from '../../src/utils/discordCache.js';
 import { isExempt } from '../../src/utils/modExempt.js';
 import { safeSend } from '../../src/utils/safeSend.js';
+import { DEFAULT_AI_MODEL } from '../../src/utils/supportedAiModels.js';
 
 // --- Helpers ---
 
@@ -120,6 +121,7 @@ function makeClaudeResponse(scores) {
   };
 }
 
+const INVALID_AI_MODEL_SENTINEL = 'invalid-provider:not-a-real-model';
 const defaultAiAutoModThresholds = { toxicity: 0.7, spam: 0.8, harassment: 0.7 };
 const defaultAiAutoModActions = { toxicity: 'flag', spam: 'delete', harassment: 'warn' };
 const moderationWarnConfig = {
@@ -177,11 +179,11 @@ describe('getAiAutoModConfig', () => {
   it('falls back to the default model when guild config references an unsupported detection model', () => {
     const cfg = getAiAutoModConfig({
       aiAutoMod: {
-        model: 'anthropic:claude-3-5-haiku',
+        model: INVALID_AI_MODEL_SENTINEL,
       },
     });
 
-    expect(cfg.model).toBe('minimax:MiniMax-M2.7');
+    expect(cfg.model).toBe(DEFAULT_AI_MODEL);
   });
 
   it('normalizes duplicate, none, and unsupported action entries', () => {
@@ -863,6 +865,10 @@ describe('checkAiAutoMod', () => {
 
     await checkAiAutoMod(message, client, guildConfig);
 
+    const expectedTarget = ['warn', 'timeout', 'kick', 'ban'].includes(configuredAction)
+      ? { targetType: 'member', targetId: 'user-1', targetTag: 'user#0001' }
+      : { targetType: 'message', targetId: 'msg-123', targetTag: 'user#0001' };
+
     expect(logAuditEvent).toHaveBeenCalledWith(
       mockPool,
       expect.objectContaining({
@@ -870,9 +876,7 @@ describe('checkAiAutoMod', () => {
         userId: 'bot-1',
         userTag: 'Bot#0001',
         action: auditAction,
-        targetType: 'member',
-        targetId: 'user-1',
-        targetTag: 'user#0001',
+        ...expectedTarget,
         details: expect.objectContaining({
           source: 'ai_auto_mod',
           action: configuredAction,

@@ -333,7 +333,28 @@ function getAuditPool() {
   }
 }
 
-async function logAiAutoModAuditEvent(
+const MEMBER_TARGET_ACTIONS = new Set(['warn', 'timeout', 'kick', 'ban']);
+
+function getAuditTarget(message, action) {
+  if (MEMBER_TARGET_ACTIONS.has(action)) {
+    const targetUser = message.member?.user ?? message.author;
+    if (targetUser?.id) {
+      return {
+        targetType: 'member',
+        targetId: targetUser.id,
+        targetTag: targetUser.tag ?? '',
+      };
+    }
+  }
+
+  return {
+    targetType: 'message',
+    targetId: message.id,
+    targetTag: message.author?.tag ?? '',
+  };
+}
+
+function logAiAutoModAuditEvent(
   message,
   result,
   autoModConfig,
@@ -347,16 +368,15 @@ async function logAiAutoModAuditEvent(
   const guildId = message.guild?.id;
   if (!guildId) return;
 
-  const targetId = message.member?.user?.id ?? message.author?.id;
-  const targetTag = message.member?.user?.tag ?? message.author?.tag ?? '';
+  const { targetType, targetId, targetTag } = getAuditTarget(message, action);
 
-  await logAuditEvent(getAuditPool(), {
+  logAuditEvent(getAuditPool(), {
     guildId,
     userId: botId,
     userTag: botTag,
     action: `ai_automod.${action}`,
-    targetType: targetId ? 'member' : 'message',
-    targetId: targetId ?? message.id,
+    targetType,
+    targetId,
     targetTag,
     details: {
       source: 'ai_auto_mod',
@@ -559,7 +579,7 @@ async function executeAction(message, client, result, autoModConfig, _guildConfi
   const actions = getAuditedActions(result, autoModConfig);
 
   if (actions.length === 0) {
-    await logAiAutoModAuditEvent(
+    logAiAutoModAuditEvent(
       message,
       result,
       autoModConfig,
@@ -583,7 +603,7 @@ async function executeAction(message, client, result, autoModConfig, _guildConfi
       autoModConfig,
       _guildConfig,
     );
-    await logAiAutoModAuditEvent(
+    logAiAutoModAuditEvent(
       message,
       result,
       autoModConfig,

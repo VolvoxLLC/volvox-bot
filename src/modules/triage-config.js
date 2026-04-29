@@ -51,6 +51,14 @@ function validSupportedModel(value, origin) {
   return normalizeSupportedAiModel(value);
 }
 
+function firstValidSupportedModel(candidates) {
+  for (const [value, origin] of candidates) {
+    const resolved = validSupportedModel(value, origin);
+    if (resolved) return resolved;
+  }
+  return undefined;
+}
+
 // ── Config resolution ───────────────────────────────────────────────────────
 
 /**
@@ -73,22 +81,20 @@ export function resolveTriageConfig(triageConfig) {
   // (original nested). Keep precedence stable so behaviour is predictable:
   //   classifyModel ← classifyModel → models.triage → model → models.default → default
   //   respondModel  ← respondModel  → model → models.default → default
-  const legacyModel = validSupportedModel(triageConfig.model, 'triage.model');
-  const legacyDefault = validSupportedModel(triageConfig.models?.default, 'triage.models.default');
-  const legacyTriage = validSupportedModel(triageConfig.models?.triage, 'triage.models.triage');
-
   const classifyModel =
-    validSupportedModel(triageConfig.classifyModel, 'triage.classifyModel') ??
-    legacyTriage ??
-    legacyModel ??
-    legacyDefault ??
-    DEFAULT_TRIAGE_MODEL;
+    firstValidSupportedModel([
+      [triageConfig.classifyModel, 'triage.classifyModel'],
+      [triageConfig.models?.triage, 'triage.models.triage'],
+      [triageConfig.model, 'triage.model'],
+      [triageConfig.models?.default, 'triage.models.default'],
+    ]) ?? DEFAULT_TRIAGE_MODEL;
 
   const respondModel =
-    validSupportedModel(triageConfig.respondModel, 'triage.respondModel') ??
-    legacyModel ??
-    legacyDefault ??
-    DEFAULT_TRIAGE_MODEL;
+    firstValidSupportedModel([
+      [triageConfig.respondModel, 'triage.respondModel'],
+      [triageConfig.model, 'triage.model'],
+      [triageConfig.models?.default, 'triage.models.default'],
+    ]) ?? DEFAULT_TRIAGE_MODEL;
 
   const classifyBudget = triageConfig.classifyBudget ?? 0.05;
 
