@@ -387,6 +387,22 @@ describe('AiAutomationCategory', () => {
     expect(nextConfig.aiAutoMod?.model).toBe('minimax:MiniMax-M2.7');
   });
 
+  it('repairs empty-string saved AI auto-moderation models before saving', async () => {
+    const updateDraftConfig = vi.fn();
+    mockAiAutoModContext(updateDraftConfig, createDraftConfig({ aiAutoMod: { model: '' } }));
+
+    render(<AiAutomationCategory />);
+
+    await waitFor(() => {
+      expect(updateDraftConfig).toHaveBeenCalled();
+    });
+
+    const updater = updateDraftConfig.mock.calls[0]?.[0] as (config: GuildConfig) => GuildConfig;
+    const nextConfig = updater(createDraftConfig({ aiAutoMod: { model: '' } }));
+
+    expect(nextConfig.aiAutoMod?.model).toBe('minimax:MiniMax-M2.7');
+  });
+
   it('does not persist a default AI auto-moderation model when the saved field is absent', () => {
     const updateDraftConfig = vi.fn();
     mockAiAutoModContext(updateDraftConfig, createDraftConfig({ aiAutoMod: { model: undefined } }));
@@ -503,6 +519,35 @@ describe('AiAutomationCategory', () => {
 
     expect(nextConfig.triage?.classifyModel).toBe('minimax:MiniMax-M2.7');
     expect(nextConfig.triage?.respondModel).toBeUndefined();
+  });
+
+  it('repairs empty-string saved triage model fields before saving', async () => {
+    const updateDraftConfig = vi.fn();
+    mockConfigContext({
+      activeTabId: 'triage',
+      draftConfig: createDraftConfig({
+        triage: { classifyModel: '', respondModel: '' },
+      }),
+      updateDraftConfig,
+    });
+
+    render(<AiAutomationCategory />);
+
+    await waitFor(() => {
+      expect(updateDraftConfig).toHaveBeenCalled();
+    });
+
+    const updater = updateDraftConfig.mock.calls[0]?.[0] as (config: GuildConfig) => GuildConfig;
+    const nextConfig = updater({
+      triage: {
+        enabled: true,
+        classifyModel: '',
+        respondModel: '',
+      },
+    });
+
+    expect(nextConfig.triage?.classifyModel).toBe('minimax:MiniMax-M2.7');
+    expect(nextConfig.triage?.respondModel).toBe('minimax:MiniMax-M2.7');
   });
 
   it('shows unsupported saved models as current triage selections', () => {

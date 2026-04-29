@@ -106,11 +106,12 @@ function findProviderModelOptionByValue(
 }
 
 export function isProviderModelId(value: unknown): value is string {
-  return (
-    typeof value === 'string' &&
-    /^[a-z0-9][a-z0-9._-]*:[^\s:]+$/i.test(value) &&
-    value === value.trim()
-  );
+  if (typeof value !== 'string' || value !== value.trim() || /\s/.test(value)) return false;
+
+  const separatorIndex = value.indexOf(':');
+  if (separatorIndex <= 0 || separatorIndex === value.length - 1) return false;
+
+  return /^[a-z0-9][a-z0-9._-]*$/i.test(value.slice(0, separatorIndex));
 }
 
 /**
