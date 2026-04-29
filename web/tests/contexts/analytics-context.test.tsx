@@ -103,7 +103,7 @@ function AnalyticsHarness() {
       <button type="button" onClick={() => analytics.setCompareMode(true)}>Compare</button>
       <button type="button" onClick={() => analytics.setChannelFilter('channel-1')}>Channel</button>
       <button type="button" onClick={() => analytics.setCustomRange('2026-02-03', '2026-02-04')}>Custom</button>
-      <button type="button" onClick={() => void analytics.refresh(true)}>Background refresh</button>
+      <button type="button" onClick={() => { analytics.refresh(true); }}>Background refresh</button>
       <button type="button" onClick={analytics.exportCsv}>Export CSV</button>
       <button type="button" onClick={analytics.exportPdf}>Export PDF</button>
     </div>
@@ -193,8 +193,9 @@ describe('AnalyticsProvider', () => {
       expect(latestUrl.searchParams.has('interval')).toBe(false);
     });
 
+    const fetchCallsBeforeBackgroundRefresh = vi.mocked(fetch).mock.calls.length;
     await user.click(screen.getByRole('button', { name: 'Background refresh' }));
-    await waitFor(() => expect(fetch).toHaveBeenCalled());
+    await waitFor(() => expect(vi.mocked(fetch).mock.calls.length).toBeGreaterThan(fetchCallsBeforeBackgroundRefresh));
 
     await user.click(screen.getByRole('button', { name: 'Export CSV' }));
     const exportedBlob = exportedBlobs.at(-1);
