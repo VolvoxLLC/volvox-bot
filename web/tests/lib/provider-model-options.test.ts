@@ -5,6 +5,7 @@ import {
   buildVisibleProviderModelOptions,
   getVisibleProviderModelValue,
   groupProviderModelOptions,
+  isProviderModelId,
 } from '@/lib/provider-model-options';
 
 const providerCatalog = {
@@ -93,6 +94,13 @@ describe('provider model options', () => {
     expect(getVisibleProviderModelValue('anthropic:claude-3-5-haiku', options)).toBe(
       'anthropic:claude-3-5-haiku',
     );
+  });
+
+  it('rejects extra-colon provider model IDs and falls back to the default option', () => {
+    const options = buildVisibleProviderModelOptions(providerCatalog);
+
+    expect(isProviderModelId('provider:model:extra')).toBe(false);
+    expect(getVisibleProviderModelValue('provider:model:extra', options)).toBe(options[0]?.value);
   });
 
   it('uses catalog order when falling back to the default model', () => {

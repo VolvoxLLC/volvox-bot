@@ -116,7 +116,7 @@ export function isProviderModelId(value: unknown): value is string {
 =======
   return (
     typeof value === 'string' &&
-    /^[a-z0-9][a-z0-9._-]*:[^\s:][^\s]*$/i.test(value) &&
+    /^[a-z0-9][a-z0-9._-]*:[^\s:]+$/i.test(value) &&
     value === value.trim()
   );
 >>>>>>> 3ae5e9a5 (fix: preserve saved dashboard model selections)

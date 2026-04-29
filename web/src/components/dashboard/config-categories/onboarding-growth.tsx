@@ -34,7 +34,7 @@ const STATIC_VARIABLE_DEFINITIONS = [
 const hasVisibleModelOptions = VISIBLE_PROVIDER_MODEL_OPTIONS.length > 0;
 
 function shouldNormalizeSavedModel(value: unknown, normalizedValue: string): value is string {
-  return typeof value === 'string' && value.length > 0 && normalizedValue !== value;
+  return typeof value === 'string' && normalizedValue !== value;
 }
 
 const DYNAMIC_VARIABLE_DEFINITIONS = [

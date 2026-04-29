@@ -340,6 +340,43 @@ describe('OnboardingGrowthCategory', () => {
     expect(nextConfig.tldr.model).toBe('minimax:MiniMax-M2.7');
   });
 
+  it('normalizes legacy empty-string saved TLDR models before saving', async () => {
+    const draftConfig = {
+      tldr: {
+        enabled: true,
+        model: '',
+        systemPrompt: '',
+        defaultMessages: 50,
+        maxMessages: 200,
+        cooldownSeconds: 300,
+      },
+      afk: { enabled: false },
+    };
+    const updateDraftConfig = vi.fn();
+
+    mockUseConfigContext.mockReturnValue({
+      draftConfig,
+      saving: false,
+      guildId: 'guild-1',
+      visibleFeatureIds: new Set(['tldr-afk']),
+      activeTabId: 'tldr-afk',
+      updateDraftConfig,
+    });
+
+    render(<OnboardingGrowthCategory />);
+
+    await waitFor(() => {
+      expect(updateDraftConfig).toHaveBeenCalled();
+    });
+
+    const updater = updateDraftConfig.mock.calls[0]?.[0] as (
+      config: typeof draftConfig,
+    ) => typeof draftConfig;
+    const nextConfig = updater(draftConfig);
+
+    expect(nextConfig.tldr.model).toBe('minimax:MiniMax-M2.7');
+  });
+
   it('does not persist a default TLDR model when the saved field is absent', () => {
     const draftConfig = {
       tldr: {
