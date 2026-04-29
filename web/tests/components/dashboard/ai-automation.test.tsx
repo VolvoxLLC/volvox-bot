@@ -30,16 +30,18 @@ const { visibleModelOptions } = vi.hoisted(() => ({
     },
     {
       value: 'openrouter:minimax/minimax-m2.5',
-      label: 'MiniMax M2.5 via OpenRouter',
+      label: 'MiniMax M2.5 (via OpenRouter)',
       providerName: 'openrouter',
       providerDisplayName: 'OpenRouter',
       modelName: 'minimax/minimax-m2.5',
-      modelDisplayName: 'MiniMax M2.5 via OpenRouter',
+      modelDisplayName: 'MiniMax M2.5 (via OpenRouter)',
     },
   ],
 }));
 
 const mockUseConfigContext = vi.fn();
+
+vi.mock('@/components/ui/select', () => import('../../helpers/mock-select'));
 
 vi.mock('@/components/dashboard/config-context', () => ({
   useConfigContext: () => mockUseConfigContext(),
@@ -76,7 +78,7 @@ vi.mock('@/components/dashboard/config-categories/config-category-layout', () =>
 }));
 
 vi.mock('@/components/dashboard/system-prompt-editor', () => ({
-  SystemPromptEditor: () => <textarea aria-label="system prompt" data-testid="system-prompt" />,
+  SystemPromptEditor: () => <textarea aria-label="system prompt" />,
 }));
 
 vi.mock('@/components/dashboard/toggle-switch', () => ({
@@ -104,7 +106,9 @@ vi.mock('@/components/dashboard/toggle-switch', () => ({
 }));
 
 vi.mock('@/components/ui/channel-selector', () => ({
-  ChannelSelector: ({ id }: { id?: string }) => <div data-testid={id ?? 'channel-selector'} />,
+  ChannelSelector: ({ id }: { id?: string }) => (
+    <div data-testid={id ? `channel-selector-${id}` : 'channel-selector'} />
+  ),
 }));
 
 vi.mock('@/components/ui/role-selector', () => ({
@@ -116,7 +120,7 @@ vi.mock('@/components/dashboard/config-sections/ChannelModeSection', () => ({
 }));
 
 vi.mock('@/lib/provider-model-options', () => ({
-  DEFAULT_AI_MODEL: visibleModelOptions[0].value,
+  DEFAULT_AI_MODEL: 'minimax:MiniMax-M2.7',
   VISIBLE_PROVIDER_MODEL_OPTION_GROUPS: [
     {
       providerName: 'minimax',
@@ -136,8 +140,16 @@ vi.mock('@/lib/provider-model-options', () => ({
   ],
   VISIBLE_PROVIDER_MODEL_OPTIONS: visibleModelOptions,
   getVisibleProviderModelValue: (value: string | null | undefined) => {
-    const match = visibleModelOptions.find((option) => option.value === value);
-    return match ? match.value : visibleModelOptions[0].value;
+    if (typeof value === 'string' && value) {
+      const match = visibleModelOptions.find(
+        (option) => option.value.toLowerCase() === value.toLowerCase(),
+      );
+      if (match) return match.value;
+      if (/^[a-z0-9][a-z0-9._-]*:[^\s:][^\s]*$/i.test(value) && value === value.trim()) {
+        return value;
+      }
+    }
+    return visibleModelOptions[0].value;
   },
 }));
 
@@ -172,17 +184,22 @@ function createDraftConfig(overrides: GuildConfig = {}): GuildConfig {
     },
     triage: {
       enabled: true,
-      classifyModel: visibleModelOptions[0].value,
-      respondModel: visibleModelOptions[0].value,
+      classifyModel: 'minimax:MiniMax-M2.7',
+      respondModel: 'minimax:MiniMax-M2.7',
     },
     memory: { enabled: true },
   };
 
+  const aiAutoMod = overrides.aiAutoMod
+    ? { ...config.aiAutoMod, ...overrides.aiAutoMod }
+    : config.aiAutoMod;
+  const triage = overrides.triage ? { ...config.triage, ...overrides.triage } : config.triage;
+
   return {
     ...config,
     ...overrides,
-    aiAutoMod: overrides.aiAutoMod ? { ...config.aiAutoMod, ...overrides.aiAutoMod } : config.aiAutoMod,
-    triage: overrides.triage ? { ...config.triage, ...overrides.triage } : config.triage,
+    aiAutoMod,
+    triage,
   };
 }
 
@@ -213,22 +230,6 @@ function mockAiAutoModContext(
   return mockConfigContext({ updateDraftConfig, draftConfig });
 }
 
-function createTriageContext(overrides: Partial<GuildConfig['triage']> = {}) {
-  const updateDraftConfig = vi.fn();
-  return mockConfigContext({
-    activeTabId: 'triage',
-    draftConfig: createDraftConfig({
-      triage: {
-        enabled: true,
-        classifyModel: visibleModelOptions[0].value,
-        respondModel: visibleModelOptions[0].value,
-        ...overrides,
-      },
-    }),
-    updateDraftConfig,
-  });
-}
-
 describe('AiAutomationCategory', () => {
   it('renders a model selector and expanded sensitivity matrix for AI auto-moderation', () => {
     mockAiAutoModContext();
@@ -256,44 +257,6 @@ describe('AiAutomationCategory', () => {
 
     expect(updateDraftConfig).toHaveBeenCalledTimes(1);
     expect(updateDraftConfig.mock.results[0]?.value.aiAutoMod.model).toBe('moonshot:kimi-k2.6');
-  });
-
-  it('renders triage models as visible-only dropdown options', () => {
-    createTriageContext();
-
-    render(<AiAutomationCategory />);
-
-    const classifierSelect = screen.getByLabelText('Classifier Engine');
-    const responseSelect = screen.getByLabelText('Response Engine');
-
-    expect(classifierSelect.tagName).toBe('SELECT');
-    expect(responseSelect.tagName).toBe('SELECT');
-    expect(classifierSelect).toHaveValue(visibleModelOptions[0].value);
-    expect(responseSelect).toHaveValue(visibleModelOptions[0].value);
-    expect(screen.getAllByRole('option', { name: 'MiniMax M2.7' })).toHaveLength(2);
-    expect(screen.queryByRole('option', { name: 'MiniMax M2.5' })).not.toBeInTheDocument();
-  });
-
-  it('normalizes hidden saved triage models to the first visible model', async () => {
-    const updateDraftConfig = createTriageContext({ classifyModel: 'minimax:MiniMax-M2.5' });
-
-    render(<AiAutomationCategory />);
-
-    await waitFor(() => {
-      expect(updateDraftConfig).toHaveBeenCalled();
-    });
-
-    const updater = updateDraftConfig.mock.calls[0]?.[0] as (config: GuildConfig) => GuildConfig;
-    const nextConfig = updater({
-      triage: {
-        enabled: true,
-        classifyModel: 'minimax:MiniMax-M2.5',
-        respondModel: visibleModelOptions[0].value,
-      },
-    } as GuildConfig);
-
-    expect(nextConfig.triage?.classifyModel).toBe(visibleModelOptions[0].value);
-    expect(nextConfig.triage?.respondModel).toBe(visibleModelOptions[0].value);
   });
 
   it('lets each violation keep multiple response actions', () => {
@@ -385,14 +348,68 @@ describe('AiAutomationCategory', () => {
     expect(nextConfig.aiAutoMod?.actions?.spam).toEqual(['flag', 'delete']);
   });
 
-  it('does not add unsupported saved models to the detection model dropdown', () => {
+  it('preserves unknown saved models in the detection model dropdown', () => {
     const unsupportedModel = 'anthropic:claude-3-5-haiku';
-    mockAiAutoModContext(vi.fn(), createDraftConfig({ aiAutoMod: { model: unsupportedModel } }));
+    const updateDraftConfig = vi.fn();
+    mockAiAutoModContext(
+      updateDraftConfig,
+      createDraftConfig({ aiAutoMod: { model: unsupportedModel } }),
+    );
+
+    render(<AiAutomationCategory />);
+
+    expect(screen.getByLabelText('Detection Model')).toHaveValue(unsupportedModel);
+    expect(
+      screen.getByRole('option', { name: `Current saved model: ${unsupportedModel}` }),
+    ).toHaveAttribute('value', unsupportedModel);
+    expect(updateDraftConfig).not.toHaveBeenCalled();
+  });
+
+  it('normalizes case-variant saved AI auto-moderation models before saving', async () => {
+    const updateDraftConfig = vi.fn();
+    mockAiAutoModContext(
+      updateDraftConfig,
+      createDraftConfig({ aiAutoMod: { model: 'MINIMAX:minimax-m2.7' } }),
+    );
+
+    render(<AiAutomationCategory />);
+
+    await waitFor(() => {
+      expect(updateDraftConfig).toHaveBeenCalled();
+    });
+
+    const updater = updateDraftConfig.mock.calls[0]?.[0] as (config: GuildConfig) => GuildConfig;
+    const nextConfig = updater(
+      createDraftConfig({ aiAutoMod: { model: 'MINIMAX:minimax-m2.7' } }),
+    );
+
+    expect(nextConfig.aiAutoMod?.model).toBe('minimax:MiniMax-M2.7');
+  });
+
+  it('repairs empty-string saved AI auto-moderation models before saving', async () => {
+    const updateDraftConfig = vi.fn();
+    mockAiAutoModContext(updateDraftConfig, createDraftConfig({ aiAutoMod: { model: '' } }));
+
+    render(<AiAutomationCategory />);
+
+    await waitFor(() => {
+      expect(updateDraftConfig).toHaveBeenCalled();
+    });
+
+    const updater = updateDraftConfig.mock.calls[0]?.[0] as (config: GuildConfig) => GuildConfig;
+    const nextConfig = updater(createDraftConfig({ aiAutoMod: { model: '' } }));
+
+    expect(nextConfig.aiAutoMod?.model).toBe('minimax:MiniMax-M2.7');
+  });
+
+  it('does not persist a default AI auto-moderation model when the saved field is absent', () => {
+    const updateDraftConfig = vi.fn();
+    mockAiAutoModContext(updateDraftConfig, createDraftConfig({ aiAutoMod: { model: undefined } }));
 
     render(<AiAutomationCategory />);
 
     expect(screen.getByLabelText('Detection Model')).toHaveValue('minimax:MiniMax-M2.7');
-    expect(screen.queryByText(`Custom: ${unsupportedModel}`)).not.toBeInTheDocument();
+    expect(updateDraftConfig).not.toHaveBeenCalled();
   });
 
   it('renders supported model dropdowns in triage engine setup', () => {
@@ -437,7 +454,7 @@ describe('AiAutomationCategory', () => {
     expect(updateDraftConfig.mock.results[1]?.value.triage.respondModel).toBe('moonshot:kimi-k2.5');
   });
 
-  it('normalizes hidden saved triage models to the first visible model', async () => {
+  it('preserves hidden and unknown saved triage models', () => {
     const updateDraftConfig = vi.fn();
     mockConfigContext({
       activeTabId: 'triage',
@@ -452,6 +469,40 @@ describe('AiAutomationCategory', () => {
 
     render(<AiAutomationCategory />);
 
+    expect(screen.getByLabelText('Classifier Engine')).toHaveValue('minimax:MiniMax-M2.5');
+    expect(screen.getByLabelText('Response Engine')).toHaveValue('anthropic:claude-3-5-haiku');
+    expect(updateDraftConfig).not.toHaveBeenCalled();
+  });
+
+  it('does not persist default triage models when saved fields are absent', () => {
+    const updateDraftConfig = vi.fn();
+    mockConfigContext({
+      activeTabId: 'triage',
+      draftConfig: createDraftConfig({
+        triage: { classifyModel: undefined, respondModel: undefined },
+      }),
+      updateDraftConfig,
+    });
+
+    render(<AiAutomationCategory />);
+
+    expect(screen.getByLabelText('Classifier Engine')).toHaveValue('minimax:MiniMax-M2.7');
+    expect(screen.getByLabelText('Response Engine')).toHaveValue('minimax:MiniMax-M2.7');
+    expect(updateDraftConfig).not.toHaveBeenCalled();
+  });
+
+  it('normalizes only case-variant saved triage model fields', async () => {
+    const updateDraftConfig = vi.fn();
+    mockConfigContext({
+      activeTabId: 'triage',
+      draftConfig: createDraftConfig({
+        triage: { classifyModel: 'MINIMAX:minimax-m2.7', respondModel: undefined },
+      }),
+      updateDraftConfig,
+    });
+
+    render(<AiAutomationCategory />);
+
     await waitFor(() => {
       expect(updateDraftConfig).toHaveBeenCalled();
     });
@@ -460,8 +511,37 @@ describe('AiAutomationCategory', () => {
     const nextConfig = updater({
       triage: {
         enabled: true,
-        classifyModel: 'minimax:MiniMax-M2.5',
-        respondModel: 'anthropic:claude-3-5-haiku',
+        classifyModel: 'MINIMAX:minimax-m2.7',
+        respondModel: undefined,
+      },
+    });
+
+    expect(nextConfig.triage?.classifyModel).toBe('minimax:MiniMax-M2.7');
+    expect(nextConfig.triage?.respondModel).toBeUndefined();
+  });
+
+  it('repairs empty-string saved triage model fields before saving', async () => {
+    const updateDraftConfig = vi.fn();
+    mockConfigContext({
+      activeTabId: 'triage',
+      draftConfig: createDraftConfig({
+        triage: { classifyModel: '', respondModel: '' },
+      }),
+      updateDraftConfig,
+    });
+
+    render(<AiAutomationCategory />);
+
+    await waitFor(() => {
+      expect(updateDraftConfig).toHaveBeenCalled();
+    });
+
+    const updater = updateDraftConfig.mock.calls[0]?.[0] as (config: GuildConfig) => GuildConfig;
+    const nextConfig = updater({
+      triage: {
+        enabled: true,
+        classifyModel: '',
+        respondModel: '',
       },
     });
 
@@ -469,7 +549,7 @@ describe('AiAutomationCategory', () => {
     expect(nextConfig.triage?.respondModel).toBe('minimax:MiniMax-M2.7');
   });
 
-  it('does not add unsupported saved models to triage model dropdowns', () => {
+  it('shows unsupported saved models as current triage selections', () => {
     const unsupportedModel = 'anthropic:claude-3-5-haiku';
     mockConfigContext({
       activeTabId: 'triage',
@@ -481,8 +561,10 @@ describe('AiAutomationCategory', () => {
 
     render(<AiAutomationCategory />);
 
-    expect(screen.getByLabelText('Classifier Engine')).toHaveValue('minimax:MiniMax-M2.7');
-    expect(screen.getByLabelText('Response Engine')).toHaveValue('minimax:MiniMax-M2.7');
-    expect(screen.queryByText(`Custom: ${unsupportedModel}`)).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Classifier Engine')).toHaveValue(unsupportedModel);
+    expect(screen.getByLabelText('Response Engine')).toHaveValue(unsupportedModel);
+    expect(
+      screen.getAllByRole('option', { name: `Current saved model: ${unsupportedModel}` }),
+    ).toHaveLength(2);
   });
 });
