@@ -98,6 +98,7 @@ describe('configValidation', () => {
       expect(validateSingleValue('triage.respondModel', 'openrouter:minimax/minimax-m2.5')).toEqual(
         [],
       );
+      expect(validateSingleValue('triage.classifyModel', 'MINIMAX:minimax-m2.5')).toEqual([]);
       expect(validateSingleValue('tldr.model', 'moonshot:kimi-k2.6')).toEqual([]);
       expect(validateSingleValue('aiAutoMod.thresholds.hateSpeech', 0.85)).toEqual([]);
       expect(validateSingleValue('aiAutoMod.actions.hateSpeech', 'timeout')).toEqual([]);

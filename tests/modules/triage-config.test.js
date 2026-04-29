@@ -72,6 +72,20 @@ describe('triage-config', () => {
       expect(result.classifyModel).toBe('moonshot:kimi-k2.6');
       expect(result.respondModel).toBe('openrouter:minimax/minimax-m2.5');
     });
+
+    it('should canonicalize supported legacy model casing through resolution', () => {
+      const result = resolveTriageConfig({
+        classifyModel: 'MINIMAX:minimax-m2.5',
+        respondModel: 'MINIMAX:minimax-m2.5',
+        models: {
+          triage: 'MOONSHOT:KIMI-K2.6',
+          default: 'OPENROUTER:MINIMAX/MINIMAX-M2.5',
+        },
+      });
+
+      expect(result.classifyModel).toBe('minimax:MiniMax-M2.5');
+      expect(result.respondModel).toBe('minimax:MiniMax-M2.5');
+    });
   });
 
   describe('isChannelEligible', () => {

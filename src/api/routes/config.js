@@ -12,7 +12,7 @@ import {
   SAFE_CONFIG_KEYS,
   stripMaskedWrites,
 } from '../utils/configAllowlist.js';
-import { CONFIG_SCHEMA, validateValue } from '../utils/configValidation.js';
+import { CONFIG_SCHEMA, normalizeSingleValue, validateValue } from '../utils/configValidation.js';
 import { DANGEROUS_KEYS } from '../utils/dangerousKeys.js';
 import { fireAndForgetWebhook } from '../utils/webhook.js';
 
@@ -205,7 +205,7 @@ router.put('/', requireGlobalAdmin, async (req, res) => {
     if (!SAFE_CONFIG_KEYS.has(section)) continue;
     const paths = flattenToLeafPaths(sectionValue, section);
     for (const [path, value] of paths) {
-      rawWrites.push({ path, value });
+      rawWrites.push({ path, value: normalizeSingleValue(path, value) });
     }
   }
 

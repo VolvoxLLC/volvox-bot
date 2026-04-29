@@ -1,7 +1,6 @@
 {
   "typesAndFrameworkGlue": [
     "src/types/**",
-    "src/app/**/page.tsx",
     "src/app/**/layout.tsx",
     "src/app/**/loading.tsx",
     "src/app/**/error.tsx",
@@ -10,6 +9,22 @@
     "src/app/opengraph-image.tsx",
     "src/app/robots.ts",
     "src/app/sitemap.ts"
+  ],
+  "appStaticAndFrameworkPageShells": [
+    "src/app/page.tsx",
+    "src/app/login/page.tsx",
+    "src/app/privacy/page.tsx",
+    "src/app/terms/page.tsx",
+    "src/app/dashboard/ai/page.tsx",
+    "src/app/dashboard/config/page.tsx",
+    "src/app/dashboard/conversations/page.tsx",
+    "src/app/dashboard/members/page.tsx",
+    "src/app/dashboard/moderation/page.tsx",
+    "src/app/dashboard/page.tsx",
+    "src/app/dashboard/performance/page.tsx",
+    "src/app/dashboard/settings/[category]/page.tsx",
+    "src/app/dashboard/settings/page.tsx",
+    "src/app/dashboard/tickets/page.tsx"
   ],
   "sharedUiShells": [
     "src/components/ui/**",

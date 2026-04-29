@@ -6,7 +6,11 @@
 import { MessageType } from 'discord.js';
 import { warn } from '../logger.js';
 import { parseProviderModel } from '../utils/modelString.js';
-import { DEFAULT_AI_MODEL, isSupportedAiModel } from '../utils/supportedAiModels.js';
+import {
+  DEFAULT_AI_MODEL,
+  isSupportedAiModel,
+  normalizeSupportedAiModel,
+} from '../utils/supportedAiModels.js';
 
 const DEFAULT_TRIAGE_MODEL = DEFAULT_AI_MODEL;
 
@@ -44,7 +48,7 @@ function validSupportedModel(value, origin) {
     return undefined;
   }
 
-  return value;
+  return normalizeSupportedAiModel(value);
 }
 
 // ── Config resolution ───────────────────────────────────────────────────────
