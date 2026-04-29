@@ -250,6 +250,7 @@ describe('Header', () => {
     await user.click(screen.getByRole('button', { name: /Refresh Metrics/i }));
 
     expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'refresh-performance' }));
+    dispatchSpy.mockRestore();
   });
 
   it.each([
@@ -295,18 +296,18 @@ describe('Header', () => {
     mockFetchCases.mockResolvedValueOnce('ok');
     const { rerender } = render(<Header />);
     await user.click(screen.getByRole('button', { name: /Refresh Mod Data/i }));
-    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/login'));
+    await waitFor(() => expect(mockReplace).toHaveBeenNthCalledWith(1, '/login'));
 
     mockUsePathname.mockReturnValue('/dashboard/members');
     mockRefreshMembers.mockResolvedValueOnce('unauthorized');
     rerender(<Header />);
     await user.click(screen.getByRole('button', { name: /Refresh Members/i }));
-    await waitFor(() => expect(mockReplace).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(mockReplace).toHaveBeenNthCalledWith(2, '/login'));
 
     mockUsePathname.mockReturnValue('/dashboard/tickets');
     mockRefreshTickets.mockResolvedValueOnce('unauthorized');
     rerender(<Header />);
     await user.click(screen.getByRole('button', { name: /Refresh Tickets/i }));
-    await waitFor(() => expect(mockReplace).toHaveBeenCalledTimes(3));
+    await waitFor(() => expect(mockReplace).toHaveBeenNthCalledWith(3, '/login'));
   });
 });

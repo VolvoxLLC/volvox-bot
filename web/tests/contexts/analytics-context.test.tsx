@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AnalyticsProvider, useAnalytics } from '@/contexts/analytics-context';
 import { exportAnalyticsPdf } from '@/lib/analytics-pdf';
+import { endOfDayIso, startOfDayIso } from '@/lib/analytics-utils';
 import type { DashboardAnalytics } from '@/types/analytics';
 
 const { mockUseGuildSelection } = vi.hoisted(() => ({
@@ -172,8 +173,8 @@ describe('AnalyticsProvider', () => {
     await waitFor(() => {
       const latestUrl = new URL(String(vi.mocked(fetch).mock.calls.at(-1)?.[0]), 'http://localhost');
       expect(latestUrl.searchParams.get('range')).toBe('custom');
-      expect(latestUrl.searchParams.get('from')).toBe(new Date(2026, 1, 3, 0, 0, 0, 0).toISOString());
-      expect(latestUrl.searchParams.get('to')).toBe(new Date(2026, 1, 4, 23, 59, 59, 999).toISOString());
+      expect(latestUrl.searchParams.get('from')).toBe(startOfDayIso('2026-02-03'));
+      expect(latestUrl.searchParams.get('to')).toBe(endOfDayIso('2026-02-04'));
       expect(latestUrl.searchParams.has('interval')).toBe(false);
     });
 
@@ -210,22 +211,22 @@ describe('AnalyticsProvider', () => {
     await waitFor(() => expect(window.location.href).toBe('/login'));
 
     await act(async () => {
-      await screen.getByRole('button', { name: 'Background refresh' }).click();
+      screen.getByRole('button', { name: 'Background refresh' }).click();
     });
     expect(screen.getByTestId('error')).toHaveTextContent('analytics down');
 
     await act(async () => {
-      await screen.getByRole('button', { name: 'Background refresh' }).click();
+      screen.getByRole('button', { name: 'Background refresh' }).click();
     });
     expect(screen.getByTestId('error')).toHaveTextContent('Invalid analytics payload from server');
 
     await act(async () => {
-      await screen.getByRole('button', { name: 'Background refresh' }).click();
+      screen.getByRole('button', { name: 'Background refresh' }).click();
     });
     expect(screen.getByTestId('error')).toHaveTextContent('Unknown error');
 
     await act(async () => {
-      await screen.getByRole('button', { name: 'Background refresh' }).click();
+      screen.getByRole('button', { name: 'Background refresh' }).click();
     });
     expect(screen.getByTestId('error')).toHaveTextContent('');
 
