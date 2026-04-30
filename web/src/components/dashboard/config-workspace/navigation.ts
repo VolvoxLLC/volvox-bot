@@ -6,6 +6,7 @@ import {
   Key,
   ListChecks,
   MessageSquare,
+  ScanText,
   ScrollText,
   ShieldAlert,
   Sparkles,
@@ -118,7 +119,7 @@ export const CONFIG_NAVIGATION: ConfigCategoryNav[] = [
       {
         id: 'ai-automod',
         label: 'Content Safety',
-        icon: ShieldAlert,
+        icon: ScanText,
         desc: 'Real-time message analysis & mitigation.',
       },
       {

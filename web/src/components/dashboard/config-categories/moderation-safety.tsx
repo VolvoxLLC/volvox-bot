@@ -17,11 +17,12 @@ import { AiAutomationCategory } from './ai-automation';
 import { ConfigCategoryLayout } from './config-category-layout';
 
 /**
- * Render the configuration UI for moderation, permissions, and audit-log feature categories.
+ * Render the configuration UI for moderation, Content Safety, permissions, and audit-log feature categories.
  *
  * Displays the controls for the currently active category obtained from the configuration context,
- * wiring feature enable toggles and handlers that update the draft configuration. Returns `null`
- * when the draft configuration or the active tab is not available.
+ * wiring feature enable toggles and handlers that update the draft configuration. Content Safety
+ * (`ai-automod`) routes to the AI automation category controls. Returns `null` when the draft
+ * configuration or the active tab is not available.
  *
  * @returns The rendered category UI element, or `null` if configuration or active tab is absent.
  */

@@ -36,16 +36,22 @@ describe('config workspace category helpers', () => {
   });
 
   it('places AI auto-moderation search results under moderation and safety', () => {
-    const contentSafetyResults = getMatchingSearchItems('ai automod');
-
-    expect(contentSafetyResults).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          featureId: 'ai-automod',
-          categoryId: 'moderation-safety',
-        }),
-      ]),
-    );
+    for (const query of [
+      'ai automod',
+      'ai-automod',
+      'ai auto-moderation',
+      'auto moderation',
+      'auto-moderation',
+    ]) {
+      expect(getMatchingSearchItems(query)).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            featureId: 'ai-automod',
+            categoryId: 'moderation-safety',
+          }),
+        ]),
+      );
+    }
   });
 
   it('matches search items by label, description, and keywords', () => {

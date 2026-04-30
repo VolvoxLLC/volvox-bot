@@ -175,6 +175,13 @@ function buildScoreObject(value = 0) {
   return Object.fromEntries(AI_AUTOMOD_CATEGORIES.map(({ key }) => [key, value]));
 }
 
+/**
+ * Normalize a provider response score for a moderation category.
+ *
+ * Top-level score keys intentionally take precedence over nested score containers. Nested
+ * containers such as `scores`, `score`, `ratings`, or `analysis` are fallbacks for providers that
+ * wrap category values instead of returning the requested flat JSON shape.
+ */
 function normalizeScore(parsed, categoryKey) {
   const candidateKeys = [categoryKey, ...(SCORE_ALIASES[categoryKey] ?? [])];
   const candidateObjects = [
