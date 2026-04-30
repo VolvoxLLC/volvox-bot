@@ -160,6 +160,7 @@ const dirtyCounts = {
 };
 
 const featureCategoryByTabId: Record<string, string> = {
+  'ai-automod': 'moderation-safety',
   moderation: 'moderation-safety',
   permissions: 'moderation-safety',
   'audit-log': 'moderation-safety',
@@ -187,6 +188,7 @@ function setConfigContext(activeTabId: string) {
 
 describe('dashboard config coverage smoke tests', () => {
   it.each([
+    ['ai-automod', ModerationSafetyCategory, 'Detection Model'],
     ['moderation', ModerationSafetyCategory, 'Moderation'],
     ['permissions', ModerationSafetyCategory, 'Permissions'],
     ['audit-log', ModerationSafetyCategory, 'Audit Log'],

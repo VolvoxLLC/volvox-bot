@@ -29,8 +29,22 @@ describe('config workspace category helpers', () => {
 
   it('finds the category that owns a feature id', () => {
     expect(getCategoryByFeature('welcome').id).toBe('onboarding-growth');
+    expect(getCategoryByFeature('ai-automod').id).toBe('moderation-safety');
     expect(getCategoryByFeature('unknown-feature' as Parameters<typeof getCategoryByFeature>[0]).id).toBe(
       DEFAULT_CONFIG_CATEGORY,
+    );
+  });
+
+  it('places AI auto-moderation search results under moderation and safety', () => {
+    const contentSafetyResults = getMatchingSearchItems('ai automod');
+
+    expect(contentSafetyResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          featureId: 'ai-automod',
+          categoryId: 'moderation-safety',
+        }),
+      ]),
     );
   });
 

@@ -13,6 +13,7 @@ import { InfoTip } from '@/components/ui/info-tip';
 import { RoleSelector } from '@/components/ui/role-selector';
 import { cn } from '@/lib/utils';
 import { ToggleSwitch } from '../toggle-switch';
+import { AiAutomationCategory } from './ai-automation';
 import { ConfigCategoryLayout } from './config-category-layout';
 
 /**
@@ -150,6 +151,7 @@ export function ModerationSafetyCategory() {
 
   if (!draftConfig) return null;
   if (!activeTab) return null;
+  if (activeTab === 'ai-automod') return <AiAutomationCategory />;
 
   let isCurrentFeatureEnabled = false;
   let handleToggleCurrentFeature = (_v: boolean) => {};

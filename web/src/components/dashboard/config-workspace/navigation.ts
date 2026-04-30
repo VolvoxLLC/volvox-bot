@@ -43,19 +43,13 @@ export const CONFIG_NAVIGATION: ConfigCategoryNav[] = [
     id: 'ai-automation',
     label: 'AI & Automation',
     icon: Sparkles,
-    description: 'AI chat, auto-moderation, triage, and memory behavior.',
+    description: 'AI chat, triage, and memory behavior.',
     tabs: [
       {
         id: 'ai-chat',
         label: 'AI Chat',
         icon: Bot,
         desc: 'Configure conversational AI models & behavior.',
-      },
-      {
-        id: 'ai-automod',
-        label: 'Content Safety',
-        icon: ShieldAlert,
-        desc: 'Real-time message analysis & mitigation.',
       },
       {
         id: 'triage',
@@ -119,8 +113,14 @@ export const CONFIG_NAVIGATION: ConfigCategoryNav[] = [
     id: 'moderation-safety',
     label: 'Moderation & Safety',
     icon: ShieldAlert,
-    description: 'Moderation actions, role permissions, and audit logging.',
+    description: 'Content safety, moderation actions, role permissions, and audit logging.',
     tabs: [
+      {
+        id: 'ai-automod',
+        label: 'Content Safety',
+        icon: ShieldAlert,
+        desc: 'Real-time message analysis & mitigation.',
+      },
       {
         id: 'moderation',
         label: 'Moderation',
