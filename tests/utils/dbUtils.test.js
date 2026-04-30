@@ -47,13 +47,12 @@ describe('dbUtils', () => {
   it('logs and returns an empty array when the query fails', async () => {
     const pool = { query: vi.fn().mockRejectedValue(new Error('boom')) };
     mockGetPool.mockReturnValue(pool);
+    const sql = 'SELECT '.padEnd(120, 'x');
 
-    await expect(queryWithLogging('SELECT '.padEnd(120, 'x'), [], 'load broken')).resolves.toEqual(
-      [],
-    );
+    await expect(queryWithLogging(sql, [], 'load broken')).resolves.toEqual([]);
     expect(mockLogError).toHaveBeenCalledWith('load broken', {
       error: 'boom',
-      sql: expect.stringMatching(/^SELECT x+/),
+      sql: sql.substring(0, 100),
     });
   });
 

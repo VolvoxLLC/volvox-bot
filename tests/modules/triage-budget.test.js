@@ -300,6 +300,34 @@ describe('triage budget gate', () => {
     );
   });
 
+  it('deduplicates budget exceeded audit events without a moderation log channel during cooldown', async () => {
+    mockCheckGuildBudget.mockResolvedValue({
+      status: 'exceeded',
+      spend: 10.5,
+      budget: 10,
+      pct: 1.05,
+    });
+
+    const mockPool = { query: vi.fn() };
+    getPool.mockReturnValue(mockPool);
+
+    await accumulateMessage(makeMessage('ch-budget', 'first over budget'), config);
+    await vi.runAllTimersAsync();
+
+    await vi.advanceTimersByTimeAsync(1_000);
+    await accumulateMessage(makeMessage('ch-budget', 'still over budget'), config);
+    await vi.runAllTimersAsync();
+
+    expect(safeSend).not.toHaveBeenCalled();
+    expect(logAuditEvent).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(60 * 60 * 1_000);
+    await accumulateMessage(makeMessage('ch-budget', 'over budget after cooldown'), config);
+    await vi.runAllTimersAsync();
+
+    expect(logAuditEvent).toHaveBeenCalledTimes(2);
+  });
+
   it('sends alert to moderation log channel when budget exceeded', async () => {
     mockCheckGuildBudget.mockResolvedValue({
       status: 'exceeded',

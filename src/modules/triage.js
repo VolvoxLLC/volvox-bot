@@ -123,12 +123,14 @@ function buildResponderConfig(evalConfig, resolved) {
   };
 }
 
-// ── Budget alert throttle ────────────────────────────────────────────────────
-// Track the last time a budget-exceeded alert was posted per guild so we don't
-// spam the moderation log channel on every evaluation attempt.
+// ── Budget alert/audit throttles ─────────────────────────────────────────────
+// Track the last time budget-exceeded side effects were recorded per guild so we
+// don't spam audit logs or moderation log channels on every evaluation attempt.
 /** @type {Map<string, number>} guildId → timestamp of last alert (ms) */
 const budgetAlertSentAt = new Map();
-/** Minimum gap between budget-exceeded alerts for the same guild (1 hour). */
+/** @type {Map<string, number>} guildId → timestamp of last audit row (ms) */
+const budgetExceededAuditRecordedAt = new Map();
+/** Minimum gap between budget-exceeded side effects for the same guild (1 hour). */
 const BUDGET_ALERT_COOLDOWN_MS = 60 * 60 * 1_000;
 
 // ── Two-step CLI evaluation ──────────────────────────────────────────────────
@@ -543,14 +545,18 @@ async function evaluateAndRespond(channelId, snapshot, evalConfig, evalClient, a
               budget: budget.budget,
             });
             const logChannelId = evalConfig.triage?.moderationLogChannel ?? null;
-            recordBudgetExceededAudit(evalClient, guildId, channelId, logChannelId, budget);
+            const now = Date.now();
+            const lastAudit = budgetExceededAuditRecordedAt.get(guildId);
+            if (lastAudit == null || now - lastAudit >= BUDGET_ALERT_COOLDOWN_MS) {
+              budgetExceededAuditRecordedAt.set(guildId, now);
+              recordBudgetExceededAudit(evalClient, guildId, channelId, logChannelId, budget);
+            }
 
             // Post a throttled alert to the moderation log channel — at most once per
             // BUDGET_ALERT_COOLDOWN_MS — to avoid spamming on every evaluation attempt.
             if (logChannelId) {
-              const now = Date.now();
-              const lastAlert = budgetAlertSentAt.get(guildId) ?? 0;
-              if (now - lastAlert >= BUDGET_ALERT_COOLDOWN_MS) {
+              const lastAlert = budgetAlertSentAt.get(guildId);
+              if (lastAlert == null || now - lastAlert >= BUDGET_ALERT_COOLDOWN_MS) {
                 budgetAlertSentAt.set(guildId, now);
                 fetchChannelCached(evalClient, logChannelId, guildId)
                   .then((logCh) => {
@@ -829,6 +835,7 @@ export function stopTriage() {
   client = null;
   config = null;
   healthMonitor = null;
+  budgetExceededAuditRecordedAt.clear();
   info('Triage module stopped');
 }
 
