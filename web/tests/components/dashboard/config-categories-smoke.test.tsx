@@ -3,6 +3,71 @@ import { describe, expect, it, vi } from 'vitest';
 import type { GuildConfig } from '@/components/dashboard/config-editor-utils';
 
 const mockUseConfigContext = vi.fn();
+const baseConfig: GuildConfig = {
+  ai: { enabled: true, systemPrompt: 'Be helpful', blockedChannelIds: [] },
+  moderation: {
+    enabled: true,
+    alertChannelId: 'reports',
+    autoDelete: true,
+    logging: { channels: { default: 'logs' } },
+    dmNotifications: { warn: true, timeout: true, kick: true, ban: true },
+    escalation: { enabled: true, thresholds: [] },
+  },
+  permissions: {
+    enabled: true,
+    adminRoleIds: ['admin'],
+    moderatorRoleIds: ['mod'],
+    modRoles: ['mod'],
+    usePermissions: true,
+    allowedCommands: {},
+  },
+  auditLog: { enabled: true, retentionDays: 90 },
+  tickets: {
+    enabled: true,
+    mode: 'thread',
+    category: 'tickets',
+    supportRole: 'support',
+    transcriptChannel: 'transcripts',
+    autoCloseHours: 48,
+    maxOpenPerUser: 3,
+  },
+  github: {
+    feed: {
+      enabled: true,
+      channelId: 'github',
+      repos: ['VolvoxLLC/volvox-bot'],
+      events: ['push'],
+      pollIntervalMinutes: 5,
+    },
+  },
+  starboard: {
+    enabled: true,
+    channelId: 'stars',
+    threshold: 3,
+    emoji: '⭐',
+    selfStarAllowed: false,
+    ignoredChannels: [],
+  },
+  botStatus: {
+    enabled: true,
+    rotation: { enabled: true, intervalMinutes: 30, messages: [{ text: 'Watching tests' }] },
+  },
+  showcase: { enabled: true },
+  memory: { enabled: true, maxContextMemories: 10, autoExtract: true },
+  engagement: {
+    enabled: true,
+    trackMessages: true,
+    trackReactions: true,
+    activityBadges: [{ days: 7, label: 'Regular' }],
+  },
+  challenges: {
+    enabled: true,
+    channelId: 'challenges',
+    postTime: '09:00',
+    timezone: 'America/New_York',
+  },
+};
+
 const updateDraftConfig = vi.fn((updater: (config: GuildConfig) => GuildConfig) => updater(baseConfig));
 
 vi.mock('@/components/dashboard/config-context', () => ({
@@ -85,71 +150,6 @@ import { TicketsSection } from '@/components/dashboard/config-sections/TicketsSe
 import { CategoryNavigation } from '@/components/dashboard/config-workspace/category-navigation';
 import { ConfigSearch } from '@/components/dashboard/config-workspace/config-search';
 import { SettingsFeatureCard } from '@/components/dashboard/config-workspace/settings-feature-card';
-
-const baseConfig: GuildConfig = {
-  ai: { enabled: true, systemPrompt: 'Be helpful', blockedChannelIds: [] },
-  moderation: {
-    enabled: true,
-    alertChannelId: 'reports',
-    autoDelete: true,
-    logging: { channels: { default: 'logs' } },
-    dmNotifications: { warn: true, timeout: true, kick: true, ban: true },
-    escalation: { enabled: true, thresholds: [] },
-  },
-  permissions: {
-    enabled: true,
-    adminRoleIds: ['admin'],
-    moderatorRoleIds: ['mod'],
-    modRoles: ['mod'],
-    usePermissions: true,
-    allowedCommands: {},
-  },
-  auditLog: { enabled: true, retentionDays: 90 },
-  tickets: {
-    enabled: true,
-    mode: 'thread',
-    category: 'tickets',
-    supportRole: 'support',
-    transcriptChannel: 'transcripts',
-    autoCloseHours: 48,
-    maxOpenPerUser: 3,
-  },
-  github: {
-    feed: {
-      enabled: true,
-      channelId: 'github',
-      repos: ['VolvoxLLC/volvox-bot'],
-      events: ['push'],
-      pollIntervalMinutes: 5,
-    },
-  },
-  starboard: {
-    enabled: true,
-    channelId: 'stars',
-    threshold: 3,
-    emoji: '⭐',
-    selfStarAllowed: false,
-    ignoredChannels: [],
-  },
-  botStatus: {
-    enabled: true,
-    rotation: { enabled: true, intervalMinutes: 30, messages: [{ text: 'Watching tests' }] },
-  },
-  showcase: { enabled: true },
-  memory: { enabled: true, maxContextMemories: 10, autoExtract: true },
-  engagement: {
-    enabled: true,
-    trackMessages: true,
-    trackReactions: true,
-    activityBadges: [{ days: 7, label: 'Regular' }],
-  },
-  challenges: {
-    enabled: true,
-    channelId: 'challenges',
-    postTime: '09:00',
-    timezone: 'America/New_York',
-  },
-};
 
 const dirtyCounts = {
   'ai-automation': 2,
