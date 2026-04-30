@@ -258,6 +258,16 @@ Use `PageHeader` for dashboard page introductions.
 
 Use `StableResponsiveContainer` for Recharts. Do not mount raw `ResponsiveContainer` directly in dashboard views.
 
+#### Overview dashboard KPIs and AI panel
+
+The analytics overview KPI strip uses a compact four-card grid: `grid gap-3 grid-cols-2 lg:grid-cols-4 stagger-fade-in`. Keep the overview focused on activity and adoption KPIs: Total messages, AI requests, Active users, and New members. Do not reintroduce AI spend as a top-level KPI; cost belongs in deeper reporting, not the first-scan operational overview.
+
+When analytics are loading and no previous payload is available, render four stable skeleton placeholders keyed `kpi-0` through `kpi-3`. The placeholders should preserve card height and grid rhythm so the overview does not shift while data loads.
+
+The AI detail panel should be titled `AI Usage Analysis`, with copy oriented around model requests and token volume. Keep this panel usage-forward instead of cost-forward: model distribution, prompt/completion token volume, and empty states that explain data appears after AI requests are processed.
+
+Reuse the existing dashboard surface tokens for this area: `border-border/40`, `bg-muted/20`, `bg-background/40`, `backdrop-blur-3xl`, `primary` accents, and chart colors from `useChartTheme()`. Exceptions should be limited to fixed chart palette colors and Discord-specific blue only when the action is explicitly Discord-branded. Future overview cards should follow the same compact KPI-card structure and be added only when they improve immediate operator scanning.
+
 Chart color source:
 
 - Use `useChartTheme()` for theme-aware chart colors.
