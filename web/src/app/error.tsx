@@ -1,5 +1,6 @@
 'use client';
 
+import * as Sentry from '@sentry/nextjs';
 import { useEffect } from 'react';
 import { ErrorCard } from '@/components/error-card';
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,7 @@ export default function RootError({
 }) {
   useEffect(() => {
     logger.error('[error-boundary]', error);
+    Sentry.captureException(error);
   }, [error]);
 
   return (

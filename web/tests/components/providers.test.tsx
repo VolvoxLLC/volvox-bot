@@ -1,8 +1,14 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 
 const { mockUseTheme } = vi.hoisted(() => ({
   mockUseTheme: vi.fn(),
+}));
+
+const { mockSetTag, mockUseGuildSelection, mockUsePathname } = vi.hoisted(() => ({
+  mockSetTag: vi.fn(),
+  mockUseGuildSelection: vi.fn(),
+  mockUsePathname: vi.fn(),
 }));
 
 // Mock next-auth/react
@@ -18,6 +24,18 @@ vi.mock('next-themes', () => ({
   useTheme: () => mockUseTheme(),
 }));
 
+vi.mock('next/navigation', () => ({
+  usePathname: () => mockUsePathname(),
+}));
+
+vi.mock('@sentry/nextjs', () => ({
+  setTag: mockSetTag,
+}));
+
+vi.mock('@/hooks/use-guild-selection', () => ({
+  useGuildSelection: () => mockUseGuildSelection(),
+}));
+
 vi.mock('@/components/theme-provider', () => ({
   ThemeProvider: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="theme-provider">{children}</div>
@@ -31,6 +49,12 @@ vi.mock('sonner', () => ({
 import { Providers } from '@/components/providers';
 
 describe('Providers', () => {
+  beforeEach(() => {
+    mockSetTag.mockClear();
+    mockUseGuildSelection.mockReturnValue(null);
+    mockUsePathname.mockReturnValue('/');
+  });
+
   it('wraps children in SessionProvider', () => {
     mockUseTheme.mockReturnValue({ resolvedTheme: 'dark' });
 
@@ -56,5 +80,20 @@ describe('Providers', () => {
     );
 
     expect(screen.getByTestId('toaster')).toHaveAttribute('data-theme', 'system');
+  });
+
+  it('sets Sentry route and guild context tags', () => {
+    mockUseTheme.mockReturnValue({ resolvedTheme: 'dark' });
+    mockUsePathname.mockReturnValue('/dashboard/settings');
+    mockUseGuildSelection.mockReturnValue('1234567890');
+
+    render(
+      <Providers>
+        <div>Dashboard</div>
+      </Providers>,
+    );
+
+    expect(mockSetTag).toHaveBeenCalledWith('route', '/dashboard/settings');
+    expect(mockSetTag).toHaveBeenCalledWith('guild.id', '1234567890');
   });
 });

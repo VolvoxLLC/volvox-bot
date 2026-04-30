@@ -38,6 +38,8 @@ Copy [`.env.example`](.env.example) to `.env` — it contains full documentation
 
 **Optional:** `REDIS_URL`, `SENTRY_DSN`, `BOT_API_SECRET`, `LOG_LEVEL`, `NEXT_PUBLIC_SITE_URL`, and more — see the file.
 
+Dashboard Sentry capture is enabled when `NEXT_PUBLIC_SENTRY_DSN` is set for browser errors and `SENTRY_DSN` is set for server/edge errors. Use `SENTRY_ENVIRONMENT` / `NEXT_PUBLIC_SENTRY_ENVIRONMENT` to separate development, preview, staging, and production. Use `SENTRY_RELEASE` / `NEXT_PUBLIC_SENTRY_RELEASE` for release grouping, and set `SENTRY_ORG`, `SENTRY_PROJECT`, and `SENTRY_AUTH_TOKEN` in CI only if source maps should be uploaded.
+
 ## Commands
 
 ```bash

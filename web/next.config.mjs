@@ -1,5 +1,6 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { withSentryConfig } from "@sentry/nextjs";
 import packageJson from "./package.json" with { type: "json" };
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -31,7 +32,7 @@ const securityHeaders = [
       `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV !== "production" ? " 'unsafe-eval'" : ""}`,
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' cdn.discordapp.com data:",
-      "connect-src 'self'",
+      "connect-src 'self' https://*.ingest.sentry.io https://*.ingest.us.sentry.io",
       "font-src 'self'",
       "frame-ancestors 'none'",
     ].join("; "),
@@ -70,4 +71,10 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: !process.env.CI,
+  widenClientFileUpload: Boolean(process.env.SENTRY_AUTH_TOKEN),
+});
