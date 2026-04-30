@@ -24,8 +24,40 @@ import { POST as publishWelcome } from '@/app/api/guilds/[guildId]/welcome/publi
 import { POST as publishWelcomePanel } from '@/app/api/guilds/[guildId]/welcome/publish/[panelType]/route';
 import { GET as getWelcomeStatus } from '@/app/api/guilds/[guildId]/welcome/status/route';
 
-function createRequest(url = 'https://localhost:3000/api/guilds/guild-1/welcome/status') {
-  return new NextRequest(new URL(url));
+const BOT_API_BASE_URL = 'https://bot.internal:3001/api/v1';
+const BOT_API_SECRET = 'bot-secret';
+const GUILD_ID = 'guild-1';
+
+type ProxyExpectation = {
+  failureMessage: string;
+  proxyOptions?: { method: 'POST' };
+  routeLabel: string;
+  upstreamPath: string;
+};
+
+function createRequest(path = '/api/guilds/guild-1/welcome/status') {
+  return new NextRequest(new URL(path, 'https://localhost:3000'));
+}
+
+function expectWelcomeProxy({
+  failureMessage,
+  proxyOptions,
+  routeLabel,
+  upstreamPath,
+}: ProxyExpectation) {
+  expect(mockAuthorizeGuildAdmin).toHaveBeenCalledWith(
+    expect.any(NextRequest),
+    GUILD_ID,
+    routeLabel,
+  );
+  expect(mockBuildUpstreamUrl).toHaveBeenCalledWith(BOT_API_BASE_URL, upstreamPath, routeLabel);
+  expect(mockProxyToBotApi).toHaveBeenCalledWith(
+    new URL(`${BOT_API_BASE_URL}${upstreamPath}`),
+    BOT_API_SECRET,
+    routeLabel,
+    failureMessage,
+    ...(proxyOptions ? [proxyOptions] : []),
+  );
 }
 
 describe('welcome API routes', () => {
@@ -33,8 +65,8 @@ describe('welcome API routes', () => {
     vi.clearAllMocks();
     mockAuthorizeGuildAdmin.mockResolvedValue(null);
     mockGetBotApiConfig.mockReturnValue({
-      baseUrl: 'https://bot.internal:3001/api/v1',
-      secret: 'bot-secret',
+      baseUrl: BOT_API_BASE_URL,
+      secret: BOT_API_SECRET,
     });
     mockBuildUpstreamUrl.mockImplementation(
       (baseUrl: string, path: string) => new URL(`${baseUrl}${path}`),
@@ -42,99 +74,54 @@ describe('welcome API routes', () => {
     mockProxyToBotApi.mockResolvedValue(NextResponse.json({ ok: true }, { status: 200 }));
   });
 
-  it('proxies welcome status requests for guild admins', async () => {
-    const response = await getWelcomeStatus(createRequest(), {
-      params: Promise.resolve({ guildId: 'guild-1' }),
+  for (const routeCase of [
+    {
+      name: 'status',
+      invoke: () =>
+        getWelcomeStatus(createRequest(), { params: Promise.resolve({ guildId: GUILD_ID }) }),
+      failureMessage: 'Failed to fetch welcome publish status',
+      routeLabel: '[api/guilds/:guildId/welcome/status]',
+      upstreamPath: '/guilds/guild-1/welcome/status',
+    },
+    {
+      name: 'publish',
+      invoke: () =>
+        publishWelcome(createRequest('/api/guilds/guild-1/welcome/publish'), {
+          params: Promise.resolve({ guildId: GUILD_ID }),
+        }),
+      failureMessage: 'Failed to publish welcome',
+      proxyOptions: { method: 'POST' } as const,
+      routeLabel: '[api/guilds/:guildId/welcome/publish]',
+      upstreamPath: '/guilds/guild-1/welcome/publish',
+    },
+    {
+      name: 'panel publish',
+      invoke: () =>
+        publishWelcomePanel(createRequest('/api/guilds/guild-1/welcome/publish/rules'), {
+          params: Promise.resolve({ guildId: GUILD_ID, panelType: 'rules' }),
+        }),
+      failureMessage: 'Failed to publish welcome panel',
+      proxyOptions: { method: 'POST' } as const,
+      routeLabel: '[api/guilds/:guildId/welcome/publish/:panelType]',
+      upstreamPath: '/guilds/guild-1/welcome/publish/rules',
+    },
+    {
+      name: 'unknown panel publish',
+      invoke: () =>
+        publishWelcomePanel(createRequest('/api/guilds/guild-1/welcome/publish/intro'), {
+          params: Promise.resolve({ guildId: GUILD_ID, panelType: 'intro' }),
+        }),
+      failureMessage: 'Failed to publish welcome panel',
+      proxyOptions: { method: 'POST' } as const,
+      routeLabel: '[api/guilds/:guildId/welcome/publish/:panelType]',
+      upstreamPath: '/guilds/guild-1/welcome/publish/intro',
+    },
+  ]) {
+    it(`proxies welcome ${routeCase.name} requests for guild admins`, async () => {
+      const response = await routeCase.invoke();
+
+      expectWelcomeProxy(routeCase);
+      expect(response.status).toBe(200);
     });
-
-    expect(mockAuthorizeGuildAdmin).toHaveBeenCalledWith(
-      expect.any(NextRequest),
-      'guild-1',
-      '[api/guilds/:guildId/welcome/status]',
-    );
-    expect(mockBuildUpstreamUrl).toHaveBeenCalledWith(
-      'https://bot.internal:3001/api/v1',
-      '/guilds/guild-1/welcome/status',
-      '[api/guilds/:guildId/welcome/status]',
-    );
-    expect(mockProxyToBotApi).toHaveBeenCalledWith(
-      new URL('https://bot.internal:3001/api/v1/guilds/guild-1/welcome/status'),
-      'bot-secret',
-      '[api/guilds/:guildId/welcome/status]',
-      'Failed to fetch welcome publish status',
-    );
-    expect(response.status).toBe(200);
-  });
-
-  it('proxies welcome publish requests with POST', async () => {
-    const response = await publishWelcome(
-      createRequest('https://localhost:3000/api/guilds/guild-1/welcome/publish'),
-      { params: Promise.resolve({ guildId: 'guild-1' }) },
-    );
-
-    expect(mockAuthorizeGuildAdmin).toHaveBeenCalledWith(
-      expect.any(NextRequest),
-      'guild-1',
-      '[api/guilds/:guildId/welcome/publish]',
-    );
-    expect(mockBuildUpstreamUrl).toHaveBeenCalledWith(
-      'https://bot.internal:3001/api/v1',
-      '/guilds/guild-1/welcome/publish',
-      '[api/guilds/:guildId/welcome/publish]',
-    );
-    expect(mockProxyToBotApi).toHaveBeenCalledWith(
-      new URL('https://bot.internal:3001/api/v1/guilds/guild-1/welcome/publish'),
-      'bot-secret',
-      '[api/guilds/:guildId/welcome/publish]',
-      'Failed to publish welcome',
-      { method: 'POST' },
-    );
-    expect(response.status).toBe(200);
-  });
-
-  it('proxies individual welcome panel publish requests with POST', async () => {
-    const response = await publishWelcomePanel(
-      createRequest('https://localhost:3000/api/guilds/guild-1/welcome/publish/rules'),
-      { params: Promise.resolve({ guildId: 'guild-1', panelType: 'rules' }) },
-    );
-
-    expect(mockAuthorizeGuildAdmin).toHaveBeenCalledWith(
-      expect.any(NextRequest),
-      'guild-1',
-      '[api/guilds/:guildId/welcome/publish/:panelType]',
-    );
-    expect(mockBuildUpstreamUrl).toHaveBeenCalledWith(
-      'https://bot.internal:3001/api/v1',
-      '/guilds/guild-1/welcome/publish/rules',
-      '[api/guilds/:guildId/welcome/publish/:panelType]',
-    );
-    expect(mockProxyToBotApi).toHaveBeenCalledWith(
-      new URL('https://bot.internal:3001/api/v1/guilds/guild-1/welcome/publish/rules'),
-      'bot-secret',
-      '[api/guilds/:guildId/welcome/publish/:panelType]',
-      'Failed to publish welcome panel',
-      { method: 'POST' },
-    );
-    expect(response.status).toBe(200);
-  });
-
-  it('proxies unknown panel types to the bot API for canonical validation', async () => {
-    const response = await publishWelcomePanel(
-      createRequest('https://localhost:3000/api/guilds/guild-1/welcome/publish/intro'),
-      { params: Promise.resolve({ guildId: 'guild-1', panelType: 'intro' }) },
-    );
-
-    expect(mockAuthorizeGuildAdmin).toHaveBeenCalledWith(
-      expect.any(NextRequest),
-      'guild-1',
-      '[api/guilds/:guildId/welcome/publish/:panelType]',
-    );
-    expect(mockBuildUpstreamUrl).toHaveBeenCalledWith(
-      'https://bot.internal:3001/api/v1',
-      '/guilds/guild-1/welcome/publish/intro',
-      '[api/guilds/:guildId/welcome/publish/:panelType]',
-    );
-    expect(mockProxyToBotApi).toHaveBeenCalled();
-    expect(response.status).toBe(200);
-  });
+  }
 });

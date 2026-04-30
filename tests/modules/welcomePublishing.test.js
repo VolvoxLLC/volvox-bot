@@ -35,10 +35,18 @@ import {
 import { fetchChannelCached } from '../../src/utils/discordCache.js';
 import { safeEditMessage, safeSend } from '../../src/utils/safeSend.js';
 
+const GUILD_ID = 'guild-1';
+const OLD_CHANNEL = 'old-channel';
+const OLD_MESSAGE = 'old-message';
+const RULES_CHANNEL = 'rules-channel';
+const SENT_MESSAGE = 'sent-message';
+const STORED_AT = '2026-01-01T00:00:00.000Z';
+const STATE_WARNING = 'Published to Discord but failed to save publication state.';
+
 function createWelcomeConfig(overrides = {}) {
   return {
     enabled: true,
-    rulesChannel: 'rules-channel',
+    rulesChannel: RULES_CHANNEL,
     roleMenuChannel: 'roles-channel',
     rulesMessage: 'Accept these rules.',
     roleMenu: {
@@ -61,30 +69,116 @@ function createTextChannel(overrides = {}) {
   };
 }
 
+function createStoredPublication(overrides = {}) {
+  return {
+    panel_type: 'rules',
+    channel_id: RULES_CHANNEL,
+    message_id: 'existing-message',
+    config_hash: 'old-hash',
+    status: 'posted',
+    last_published_at: STORED_AT,
+    last_error: null,
+    ...overrides,
+  };
+}
+
+function createSavedPublication(params) {
+  return {
+    panel_type: params[1],
+    channel_id: params[2],
+    message_id: params[3],
+    config_hash: params[4],
+    status: params[5],
+    last_error: params[6],
+  };
+}
+
 function mockPool(query) {
   const pool = { query: vi.fn(query) };
   getPool.mockReturnValue(pool);
   return pool;
 }
 
-describe('welcomePublishing module', () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-    getPool.mockReturnValue(null);
-    getConfig.mockReturnValue({ welcome: createWelcomeConfig() });
+function mockPublicationPool({ selectRows = [], writeError = null, writeRows = null } = {}) {
+  return mockPool(async (sql, params) => {
+    if (sql.includes('SELECT')) {
+      return { rows: typeof selectRows === 'function' ? selectRows(params) : selectRows };
+    }
+    if (writeError) throw writeError;
+    const rows = typeof writeRows === 'function' ? writeRows(params) : writeRows;
+    return { rows: rows ?? [createSavedPublication(params)] };
   });
+}
+
+function resetDefaultMocks() {
+  vi.resetAllMocks();
+  getPool.mockReturnValue(null);
+  getConfig.mockReturnValue({ welcome: createWelcomeConfig() });
+}
+
+function publishRules(actor) {
+  return publishWelcomePanel({}, GUILD_ID, 'rules', actor);
+}
+
+function resolveRulesChannel(channel = createTextChannel({ id: RULES_CHANNEL })) {
+  fetchChannelCached.mockResolvedValue(channel);
+  return channel;
+}
+
+function mockSuccessfulSend(message = { id: SENT_MESSAGE }) {
+  safeSend.mockResolvedValue(message);
+}
+
+function expectPublicationUpsert(pool, params) {
+  expect(pool.query).toHaveBeenCalledWith(
+    expect.stringContaining('INSERT INTO welcome_publications'),
+    expect.arrayContaining(params),
+  );
+}
+
+function arrangeChangedChannel({
+  deleteLookupFails = false,
+  persistFails = false,
+  sendFails = false,
+} = {}) {
+  const previousMessage = { id: OLD_MESSAGE, delete: vi.fn().mockResolvedValue(undefined) };
+  const previousChannel = createTextChannel({
+    id: OLD_CHANNEL,
+    messages: { fetch: vi.fn().mockResolvedValue(previousMessage) },
+  });
+  const nextChannel = createTextChannel({ id: RULES_CHANNEL });
+
+  fetchChannelCached.mockResolvedValueOnce(nextChannel);
+  if (deleteLookupFails) {
+    fetchChannelCached.mockRejectedValueOnce(new Error('delete lookup failed'));
+  } else {
+    fetchChannelCached.mockResolvedValueOnce(previousChannel);
+  }
+  if (sendFails) {
+    safeSend.mockRejectedValue(new Error('discord rejected'));
+  } else {
+    safeSend.mockResolvedValue({ id: 'new-message' });
+  }
+  mockPublicationPool({
+    selectRows: [createStoredPublication({ channel_id: OLD_CHANNEL, message_id: OLD_MESSAGE })],
+    writeError: persistFails ? new Error('insert failed') : null,
+  });
+
+  return { previousMessage };
+}
+
+describe('welcomePublishing module', () => {
+  beforeEach(resetDefaultMocks);
 
   it('builds configured panel payloads and stable config hashes', () => {
     const config = createWelcomeConfig();
-    const rulesPayload = getWelcomePanelPayload('rules', config);
-    const rolePayload = getWelcomePanelPayload('role_menu', config);
 
-    expect(rulesPayload).toMatchObject({
+    expect(getWelcomePanelPayload('rules', config)).toMatchObject({
       panelType: 'rules',
-      channelId: 'rules-channel',
+      channelId: RULES_CHANNEL,
       configured: true,
     });
-    expect(rolePayload).toMatchObject({
+    expect(getWelcomePanelPayload('role_menu', config)).toMatchObject({
       panelType: 'role_menu',
       channelId: 'roles-channel',
       configured: true,
@@ -96,26 +190,20 @@ describe('welcomePublishing module', () => {
   });
 
   it('returns null for disabled or unconfigured panels and rejects unknown panel types', () => {
-    expect(getWelcomePanelPayload('rules', createWelcomeConfig({ enabled: false }))).toBeNull();
-    expect(getWelcomePanelPayload('rules', createWelcomeConfig({ rulesChannel: null }))).toBeNull();
-    expect(
-      getWelcomePanelPayload(
-        'role_menu',
-        createWelcomeConfig({
-          roleMenuChannel: null,
-        }),
-      ),
-    ).toBeNull();
+    for (const [panelType, config] of [
+      ['rules', createWelcomeConfig({ enabled: false })],
+      ['rules', createWelcomeConfig({ rulesChannel: null })],
+      ['role_menu', createWelcomeConfig({ roleMenuChannel: null })],
+    ]) {
+      expect(getWelcomePanelPayload(panelType, config)).toBeNull();
+    }
     expect(() => getWelcomePanelPayload('bogus', {})).toThrow('Unknown welcome panel type');
   });
 
   it('uses the welcome message channel as the legacy role menu channel fallback', () => {
     const payload = getWelcomePanelPayload(
       'role_menu',
-      createWelcomeConfig({
-        channelId: 'legacy-welcome-channel',
-        roleMenuChannel: null,
-      }),
+      createWelcomeConfig({ channelId: 'legacy-welcome-channel', roleMenuChannel: null }),
     );
 
     expect(payload).toMatchObject({
@@ -138,21 +226,13 @@ describe('welcomePublishing module', () => {
 
   it('marks stored messages stale when welcome publishing is disabled', async () => {
     getConfig.mockReturnValue({ welcome: createWelcomeConfig({ enabled: false }) });
-    mockPool(async () => ({
-      rows: [
-        {
-          panel_type: 'rules',
-          channel_id: 'old-rules',
-          message_id: 'rules-message',
-          config_hash: 'old-hash',
-          status: 'posted',
-          last_published_at: '2026-01-01T00:00:00.000Z',
-          last_error: null,
-        },
+    mockPublicationPool({
+      selectRows: [
+        createStoredPublication({ channel_id: 'old-rules', message_id: 'rules-message' }),
       ],
-    }));
+    });
 
-    const status = await getWelcomePublicationStatus('guild-1');
+    const status = await getWelcomePublicationStatus(GUILD_ID);
 
     expect(status.panels.rules).toMatchObject({
       configured: false,
@@ -163,33 +243,22 @@ describe('welcomePublishing module', () => {
   });
 
   it('serializes publication status with stale detection', async () => {
-    getConfig.mockReturnValue({ welcome: createWelcomeConfig() });
-    mockPool(async (_sql, params) => ({
-      rows:
+    mockPublicationPool({
+      selectRows: (params) =>
         params[1] === 'rules'
-          ? [
-              {
-                panel_type: 'rules',
-                channel_id: 'old-rules',
-                message_id: 'rules-message',
-                config_hash: 'old-hash',
-                status: 'posted',
-                last_published_at: '2026-01-01T00:00:00.000Z',
-                last_error: null,
-              },
-            ]
+          ? [createStoredPublication({ channel_id: 'old-rules', message_id: 'rules-message' })]
           : [],
-    }));
+    });
 
-    const status = await getWelcomePublicationStatus('guild-1');
+    const status = await getWelcomePublicationStatus(GUILD_ID);
 
-    expect(status.guildId).toBe('guild-1');
+    expect(status.guildId).toBe(GUILD_ID);
     expect(status.panels.rules).toMatchObject({
       configured: true,
       status: 'posted',
       stale: true,
       channelId: 'old-rules',
-      configuredChannelId: 'rules-channel',
+      configuredChannelId: RULES_CHANNEL,
     });
     expect(status.panels.role_menu).toMatchObject({
       configured: true,
@@ -203,42 +272,24 @@ describe('welcomePublishing module', () => {
     getPool.mockImplementationOnce(() => {
       throw new Error('pool unavailable');
     });
-    const noPoolStatus = await getWelcomePublicationStatus('guild-1');
+    const noPoolStatus = await getWelcomePublicationStatus(GUILD_ID);
     expect(noPoolStatus.panels.rules.status).toBe('missing');
 
     mockPool(async () => {
       throw new Error('select failed');
     });
-    const failedStatus = await getWelcomePublicationStatus('guild-1');
-    expect(failedStatus.panels.rules).toMatchObject({
-      configured: true,
-      status: 'missing',
-    });
+    const failedStatus = await getWelcomePublicationStatus(GUILD_ID);
+    expect(failedStatus.panels.rules).toMatchObject({ configured: true, status: 'missing' });
   });
 
   it('publishes a new panel and persists its message id', async () => {
-    const channel = createTextChannel({ id: 'rules-channel' });
-    fetchChannelCached.mockResolvedValue(channel);
-    safeSend.mockResolvedValue({ id: 'sent-message' });
-    const pool = mockPool(async (sql, params) => {
-      if (sql.includes('SELECT')) return { rows: [] };
-      return {
-        rows: [
-          {
-            panel_type: params[1],
-            channel_id: params[2],
-            message_id: params[3],
-            config_hash: params[4],
-            status: params[5],
-            last_error: params[6],
-          },
-        ],
-      };
-    });
+    const channel = resolveRulesChannel();
+    mockSuccessfulSend();
+    const pool = mockPublicationPool();
 
-    const result = await publishWelcomePanel({}, 'guild-1', 'rules', { userId: 'user-1' });
+    const result = await publishRules({ userId: 'user-1' });
 
-    expect(fetchChannelCached).toHaveBeenCalledWith({}, 'rules-channel', 'guild-1');
+    expect(fetchChannelCached).toHaveBeenCalledWith({}, RULES_CHANNEL, GUILD_ID);
     expect(safeSend).toHaveBeenCalledWith(
       channel,
       expect.objectContaining({ content: 'Accept these rules.' }),
@@ -246,10 +297,10 @@ describe('welcomePublishing module', () => {
     expect(pool.query).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO welcome_publications'),
       [
-        'guild-1',
+        GUILD_ID,
         'rules',
-        'rules-channel',
-        'sent-message',
+        RULES_CHANNEL,
+        SENT_MESSAGE,
         expect.any(String),
         'posted',
         null,
@@ -258,52 +309,32 @@ describe('welcomePublishing module', () => {
     );
     expect(result).toMatchObject({
       status: 'posted',
-      messageId: 'sent-message',
+      messageId: SENT_MESSAGE,
       action: 'created',
       persistWarning: false,
     });
   });
 
   it('uses the first sent message when safeSend returns split results', async () => {
-    const channel = createTextChannel({ id: 'rules-channel' });
-    fetchChannelCached.mockResolvedValue(channel);
-    safeSend.mockResolvedValue([{ id: 'first-message' }, { id: 'second-message' }]);
-    mockPool(async (sql, params) => {
-      if (sql.includes('SELECT')) return { rows: [] };
-      return { rows: [{ channel_id: params[2], message_id: params[3], status: params[5] }] };
-    });
+    resolveRulesChannel();
+    mockSuccessfulSend([{ id: 'first-message' }, { id: 'second-message' }]);
+    mockPublicationPool();
 
-    const result = await publishWelcomePanel({}, 'guild-1', 'rules');
-
-    expect(result.messageId).toBe('first-message');
+    await expect(publishRules()).resolves.toMatchObject({ messageId: 'first-message' });
   });
 
   it('edits an existing message when the tracked message is still present', async () => {
     const existingMessage = { id: 'existing-message', edit: vi.fn() };
-    const channel = createTextChannel({
-      id: 'rules-channel',
-      messages: { fetch: vi.fn().mockResolvedValue(existingMessage) },
-    });
-    fetchChannelCached.mockResolvedValue(channel);
+    const channel = resolveRulesChannel(
+      createTextChannel({
+        id: RULES_CHANNEL,
+        messages: { fetch: vi.fn().mockResolvedValue(existingMessage) },
+      }),
+    );
     safeEditMessage.mockResolvedValue(existingMessage);
-    mockPool(async (sql, params) => {
-      if (sql.includes('SELECT')) {
-        return {
-          rows: [
-            {
-              panel_type: params[1],
-              channel_id: 'rules-channel',
-              message_id: 'existing-message',
-              config_hash: 'old-hash',
-              status: 'posted',
-            },
-          ],
-        };
-      }
-      return { rows: [{ channel_id: params[2], message_id: params[3], status: params[5] }] };
-    });
+    mockPublicationPool({ selectRows: [createStoredPublication()] });
 
-    const result = await publishWelcomePanel({}, 'guild-1', 'rules');
+    const result = await publishRules();
 
     expect(channel.messages.fetch).toHaveBeenCalledWith('existing-message');
     expect(safeEditMessage).toHaveBeenCalledWith(
@@ -315,126 +346,32 @@ describe('welcomePublishing module', () => {
   });
 
   it('deletes a stale tracked message after a panel changes channels and persists', async () => {
-    const previousMessage = { id: 'old-message', delete: vi.fn().mockResolvedValue(undefined) };
-    const previousChannel = createTextChannel({
-      id: 'old-channel',
-      messages: { fetch: vi.fn().mockResolvedValue(previousMessage) },
-    });
-    const nextChannel = createTextChannel({ id: 'rules-channel' });
-    fetchChannelCached.mockResolvedValueOnce(nextChannel).mockResolvedValueOnce(previousChannel);
-    safeSend.mockResolvedValue({ id: 'new-message' });
-    mockPool(async (sql, params) => {
-      if (sql.includes('SELECT')) {
-        return {
-          rows: [
-            {
-              panel_type: params[1],
-              channel_id: 'old-channel',
-              message_id: 'old-message',
-              config_hash: 'old-hash',
-              status: 'posted',
-            },
-          ],
-        };
-      }
-      return { rows: [{ channel_id: params[2], message_id: params[3], status: params[5] }] };
-    });
+    const { previousMessage } = arrangeChangedChannel();
 
-    await publishWelcomePanel({}, 'guild-1', 'rules');
+    await publishRules();
 
-    expect(fetchChannelCached).toHaveBeenNthCalledWith(2, {}, 'old-channel', 'guild-1');
+    expect(fetchChannelCached).toHaveBeenNthCalledWith(2, {}, OLD_CHANNEL, GUILD_ID);
     expect(safeSend.mock.invocationCallOrder[0]).toBeLessThan(
       previousMessage.delete.mock.invocationCallOrder[0],
     );
     expect(previousMessage.delete).toHaveBeenCalled();
   });
 
-  it('does not delete the previous panel when publishing to the new channel fails', async () => {
-    const previousMessage = { id: 'old-message', delete: vi.fn().mockResolvedValue(undefined) };
-    const previousChannel = createTextChannel({
-      id: 'old-channel',
-      messages: { fetch: vi.fn().mockResolvedValue(previousMessage) },
-    });
-    const nextChannel = createTextChannel({ id: 'rules-channel' });
-    fetchChannelCached.mockResolvedValueOnce(nextChannel).mockResolvedValueOnce(previousChannel);
-    safeSend.mockRejectedValue(new Error('discord rejected'));
-    mockPool(async (sql, params) => {
-      if (sql.includes('SELECT')) {
-        return {
-          rows: [
-            {
-              panel_type: params[1],
-              channel_id: 'old-channel',
-              message_id: 'old-message',
-              config_hash: 'old-hash',
-              status: 'posted',
-            },
-          ],
-        };
-      }
-      return { rows: [{ channel_id: params[2], message_id: params[3], status: params[5] }] };
-    });
+  it('does not delete stale tracked messages unless the replacement publish persists', async () => {
+    for (const setup of [{ sendFails: true }, { persistFails: true }]) {
+      resetDefaultMocks();
+      const { previousMessage } = arrangeChangedChannel(setup);
 
-    await publishWelcomePanel({}, 'guild-1', 'rules');
+      await publishRules();
 
-    expect(previousMessage.delete).not.toHaveBeenCalled();
-  });
-
-  it('does not delete the previous panel when publication state fails to persist', async () => {
-    const previousMessage = { id: 'old-message', delete: vi.fn().mockResolvedValue(undefined) };
-    const previousChannel = createTextChannel({
-      id: 'old-channel',
-      messages: { fetch: vi.fn().mockResolvedValue(previousMessage) },
-    });
-    const nextChannel = createTextChannel({ id: 'rules-channel' });
-    fetchChannelCached.mockResolvedValueOnce(nextChannel).mockResolvedValueOnce(previousChannel);
-    safeSend.mockResolvedValue({ id: 'new-message' });
-    mockPool(async (sql, params) => {
-      if (sql.includes('SELECT')) {
-        return {
-          rows: [
-            {
-              panel_type: params[1],
-              channel_id: 'old-channel',
-              message_id: 'old-message',
-              config_hash: 'old-hash',
-              status: 'posted',
-            },
-          ],
-        };
-      }
-      throw new Error('insert failed');
-    });
-
-    await publishWelcomePanel({}, 'guild-1', 'rules');
-
-    expect(previousMessage.delete).not.toHaveBeenCalled();
+      expect(previousMessage.delete).not.toHaveBeenCalled();
+    }
   });
 
   it('continues publishing when stale message deletion fails', async () => {
-    const nextChannel = createTextChannel({ id: 'rules-channel' });
-    fetchChannelCached
-      .mockResolvedValueOnce(nextChannel)
-      .mockRejectedValueOnce(new Error('delete lookup failed'));
-    safeSend.mockResolvedValue({ id: 'new-message' });
-    mockPool(async (sql, params) => {
-      if (sql.includes('SELECT')) {
-        return {
-          rows: [
-            {
-              panel_type: params[1],
-              channel_id: 'old-channel',
-              message_id: 'old-message',
-              config_hash: 'old-hash',
-              status: 'posted',
-            },
-          ],
-        };
-      }
-      return { rows: [{ channel_id: params[2], message_id: params[3], status: params[5] }] };
-    });
+    arrangeChangedChannel({ deleteLookupFails: true });
 
-    await expect(publishWelcomePanel({}, 'guild-1', 'rules')).resolves.toMatchObject({
+    await expect(publishRules()).resolves.toMatchObject({
       status: 'posted',
       messageId: 'new-message',
     });
@@ -442,125 +379,65 @@ describe('welcomePublishing module', () => {
 
   it('returns failed status for invalid channels and oversized panel content', async () => {
     fetchChannelCached.mockResolvedValue({ isTextBased: () => false });
-    const failedPool = mockPool(async () => ({ rows: [] }));
+    const failedPool = mockPublicationPool({ selectRows: [] });
 
-    await expect(publishWelcomePanel({}, 'guild-1', 'bogus')).rejects.toThrow(
+    await expect(publishWelcomePanel({}, GUILD_ID, 'bogus')).rejects.toThrow(
       'Unknown welcome panel type',
     );
+    await expect(publishRules()).resolves.toMatchObject({ status: 'failed', action: 'failed' });
+    expectPublicationUpsert(failedPool, [GUILD_ID, 'rules', RULES_CHANNEL, null]);
 
-    const invalidChannel = await publishWelcomePanel({}, 'guild-1', 'rules');
-    expect(invalidChannel).toMatchObject({ status: 'failed', action: 'failed' });
-    expect(failedPool.query).toHaveBeenCalledWith(
-      expect.stringContaining('INSERT INTO welcome_publications'),
-      expect.arrayContaining(['guild-1', 'rules', 'rules-channel', null]),
-    );
     const insertSql = failedPool.query.mock.calls.find(([sql]) =>
       sql.includes('INSERT INTO welcome_publications'),
     )?.[0];
     expect(insertSql).toContain("CASE WHEN $6 = 'posted' THEN NOW() ELSE NULL END");
     expect(insertSql).toContain("WHEN EXCLUDED.status = 'posted' THEN EXCLUDED.last_published_at");
 
-    getConfig.mockReturnValue({
-      welcome: createWelcomeConfig({ rulesMessage: 'x'.repeat(2001) }),
-    });
-    const oversized = await publishWelcomePanel({}, 'guild-1', 'rules');
-    expect(oversized).toMatchObject({
+    getConfig.mockReturnValue({ welcome: createWelcomeConfig({ rulesMessage: 'x'.repeat(2001) }) });
+    await expect(publishRules()).resolves.toMatchObject({
       status: 'failed',
       lastError: expect.stringContaining('2000 character'),
     });
   });
 
   it('preserves tracked publication ids when early validation failures are recorded', async () => {
-    fetchChannelCached.mockResolvedValue({ isTextBased: () => false });
-    const invalidChannelPool = mockPool(async (sql, params) => {
-      if (sql.includes('SELECT')) {
-        return {
-          rows: [
-            {
-              panel_type: params[1],
-              channel_id: 'old-channel',
-              message_id: 'old-message',
-              config_hash: 'old-hash',
-              status: 'posted',
-            },
-          ],
-        };
-      }
-      return { rows: [{ channel_id: params[2], message_id: params[3], status: params[5] }] };
-    });
+    for (const validationCase of [
+      () => fetchChannelCached.mockResolvedValue({ isTextBased: () => false }),
+      () =>
+        getConfig.mockReturnValue({
+          welcome: createWelcomeConfig({ rulesMessage: 'x'.repeat(2001) }),
+        }),
+    ]) {
+      resetDefaultMocks();
+      validationCase();
+      const pool = mockPublicationPool({
+        selectRows: [createStoredPublication({ channel_id: OLD_CHANNEL, message_id: OLD_MESSAGE })],
+      });
 
-    const invalidChannel = await publishWelcomePanel({}, 'guild-1', 'rules');
+      const result = await publishRules();
 
-    expect(invalidChannel).toMatchObject({
-      status: 'failed',
-      channelId: 'old-channel',
-      messageId: 'old-message',
-    });
-    expect(invalidChannelPool.query).toHaveBeenCalledWith(
-      expect.stringContaining('INSERT INTO welcome_publications'),
-      expect.arrayContaining(['guild-1', 'rules', 'old-channel', 'old-message']),
-    );
-
-    vi.clearAllMocks();
-    getConfig.mockReturnValue({
-      welcome: createWelcomeConfig({ rulesMessage: 'x'.repeat(2001) }),
-    });
-    const oversizedPool = mockPool(async (sql, params) => {
-      if (sql.includes('SELECT')) {
-        return {
-          rows: [
-            {
-              panel_type: params[1],
-              channel_id: 'old-channel',
-              message_id: 'old-message',
-              config_hash: 'old-hash',
-              status: 'posted',
-            },
-          ],
-        };
-      }
-      return { rows: [{ channel_id: params[2], message_id: params[3], status: params[5] }] };
-    });
-
-    const oversized = await publishWelcomePanel({}, 'guild-1', 'rules');
-
-    expect(oversized).toMatchObject({
-      status: 'failed',
-      channelId: 'old-channel',
-      messageId: 'old-message',
-    });
-    expect(oversizedPool.query).toHaveBeenCalledWith(
-      expect.stringContaining('INSERT INTO welcome_publications'),
-      expect.arrayContaining(['guild-1', 'rules', 'old-channel', 'old-message']),
-    );
+      expect(result).toMatchObject({
+        status: 'failed',
+        channelId: OLD_CHANNEL,
+        messageId: OLD_MESSAGE,
+      });
+      expectPublicationUpsert(pool, [GUILD_ID, 'rules', OLD_CHANNEL, OLD_MESSAGE]);
+    }
   });
 
   it('still returns failed statuses when failure-state persistence fails', async () => {
     fetchChannelCached.mockResolvedValue({ isTextBased: () => false });
-    mockPool(async () => {
-      throw new Error('insert failed');
-    });
-    await expect(publishWelcomePanel({}, 'guild-1', 'rules')).resolves.toMatchObject({
-      status: 'failed',
-      action: 'failed',
-    });
+    mockPublicationPool({ writeError: new Error('insert failed') });
+    await expect(publishRules()).resolves.toMatchObject({ status: 'failed', action: 'failed' });
 
-    getConfig.mockReturnValue({
-      welcome: createWelcomeConfig({ rulesMessage: 'x'.repeat(2001) }),
-    });
-    await expect(publishWelcomePanel({}, 'guild-1', 'rules')).resolves.toMatchObject({
-      status: 'failed',
-      action: 'failed',
-    });
+    getConfig.mockReturnValue({ welcome: createWelcomeConfig({ rulesMessage: 'x'.repeat(2001) }) });
+    await expect(publishRules()).resolves.toMatchObject({ status: 'failed', action: 'failed' });
 
     getConfig.mockReturnValue({ welcome: createWelcomeConfig() });
-    fetchChannelCached.mockResolvedValue(createTextChannel({ id: 'rules-channel' }));
+    resolveRulesChannel();
     safeSend.mockRejectedValue(new Error('discord rejected'));
-    mockPool(async (sql) => {
-      if (sql.includes('SELECT')) return { rows: [] };
-      throw new Error('insert failed');
-    });
-    await expect(publishWelcomePanel({}, 'guild-1', 'rules')).resolves.toMatchObject({
+    mockPublicationPool({ writeError: new Error('insert failed') });
+    await expect(publishRules()).resolves.toMatchObject({
       status: 'failed',
       messageId: null,
       lastError: 'discord rejected',
@@ -568,87 +445,58 @@ describe('welcomePublishing module', () => {
   });
 
   it('posts a panel when there is no tracked message id to fetch', async () => {
-    const channel = createTextChannel({ id: 'rules-channel' });
-    fetchChannelCached.mockResolvedValue(channel);
-    safeSend.mockResolvedValue({ id: 'sent-message' });
-    mockPool(async (sql, params) => {
-      if (sql.includes('SELECT')) {
-        return { rows: [{ channel_id: 'rules-channel', message_id: null, status: 'missing' }] };
-      }
-      return { rows: [{ channel_id: params[2], message_id: params[3], status: params[5] }] };
+    resolveRulesChannel();
+    mockSuccessfulSend();
+    mockPublicationPool({
+      selectRows: [createStoredPublication({ message_id: null, status: 'missing' })],
     });
 
-    await expect(publishWelcomePanel({}, 'guild-1', 'rules')).resolves.toMatchObject({
+    await expect(publishRules()).resolves.toMatchObject({
       status: 'posted',
       action: 'created',
-      messageId: 'sent-message',
+      messageId: SENT_MESSAGE,
     });
   });
 
   it('surfaces persistence warnings after Discord publish succeeds', async () => {
-    const channel = createTextChannel({ id: 'rules-channel' });
-    fetchChannelCached.mockResolvedValue(channel);
-    safeSend.mockResolvedValue({ id: 'sent-message' });
-    mockPool(async (sql) => {
-      if (sql.includes('SELECT')) return { rows: [] };
-      throw new Error('db down');
-    });
+    resolveRulesChannel();
+    mockSuccessfulSend();
+    mockPublicationPool({ writeError: new Error('db down') });
 
-    const result = await publishWelcomePanel({}, 'guild-1', 'rules');
-
-    expect(result).toMatchObject({
+    await expect(publishRules()).resolves.toMatchObject({
       status: 'posted',
-      messageId: 'sent-message',
+      messageId: SENT_MESSAGE,
       persistWarning: true,
-      lastError: 'Published to Discord but failed to save publication state.',
+      lastError: STATE_WARNING,
     });
   });
 
   it('surfaces persistence warnings when the database pool is unavailable', async () => {
-    const channel = createTextChannel({ id: 'rules-channel' });
-    fetchChannelCached.mockResolvedValue(channel);
-    safeSend.mockResolvedValue({ id: 'sent-message' });
+    resolveRulesChannel();
+    mockSuccessfulSend();
     getPool.mockImplementation(() => {
       throw new Error('pool unavailable');
     });
 
-    const result = await publishWelcomePanel({}, 'guild-1', 'rules');
-
-    expect(result).toMatchObject({
+    await expect(publishRules()).resolves.toMatchObject({
       status: 'posted',
-      messageId: 'sent-message',
+      messageId: SENT_MESSAGE,
       persistWarning: true,
-      lastError: 'Published to Discord but failed to save publication state.',
+      lastError: STATE_WARNING,
     });
   });
 
   it('records failed status when Discord publish throws', async () => {
-    const channel = createTextChannel({
-      id: 'rules-channel',
-      messages: { fetch: vi.fn().mockRejectedValue(new Error('missing message')) },
-    });
-    fetchChannelCached.mockResolvedValue(channel);
+    resolveRulesChannel(
+      createTextChannel({
+        id: RULES_CHANNEL,
+        messages: { fetch: vi.fn().mockRejectedValue(new Error('missing message')) },
+      }),
+    );
     safeSend.mockRejectedValue(new Error('discord rejected'));
-    mockPool(async (sql, params) => {
-      if (sql.includes('SELECT')) {
-        return {
-          rows: [
-            {
-              panel_type: params[1],
-              channel_id: 'rules-channel',
-              message_id: 'existing-message',
-              config_hash: 'old-hash',
-              status: 'posted',
-            },
-          ],
-        };
-      }
-      return { rows: [{ channel_id: params[2], message_id: params[3], status: params[5] }] };
-    });
+    mockPublicationPool({ selectRows: [createStoredPublication()] });
 
-    const result = await publishWelcomePanel({}, 'guild-1', 'rules');
-
-    expect(result).toMatchObject({
+    await expect(publishRules()).resolves.toMatchObject({
       status: 'failed',
       messageId: 'existing-message',
       lastError: 'discord rejected',
@@ -657,18 +505,18 @@ describe('welcomePublishing module', () => {
 
   it('skips unconfigured panels and publishes all panel types', async () => {
     getConfig.mockReturnValue({ welcome: createWelcomeConfig({ rulesChannel: null }) });
-    await expect(publishWelcomePanel({}, 'guild-1', 'rules')).resolves.toMatchObject({
+    await expect(publishRules()).resolves.toMatchObject({
       status: 'unconfigured',
       action: 'skipped',
       configured: false,
     });
 
     getConfig.mockReturnValue({ welcome: createWelcomeConfig() });
-    fetchChannelCached.mockResolvedValue(createTextChannel());
-    safeSend.mockResolvedValue({ id: 'sent-message' });
+    resolveRulesChannel();
+    mockSuccessfulSend();
 
-    const result = await publishWelcomePanels({}, 'guild-1');
-    expect(result.guildId).toBe('guild-1');
+    const result = await publishWelcomePanels({}, GUILD_ID);
+    expect(result.guildId).toBe(GUILD_ID);
     expect(result.results.map((panel) => panel.panelType)).toEqual(['rules', 'role_menu']);
   });
 });
