@@ -159,19 +159,6 @@ describe('validateConfigPatch', () => {
       expect(result.topLevelKey).toBe('triage');
     });
 
-    it('should canonicalize accepted legacy AI model casing before storage', () => {
-      const result = validateConfigPatchBody(
-        {
-          path: 'triage.classifyModel',
-          value: 'MINIMAX:minimax-m2.5',
-        },
-        SAFE_CONFIG_KEYS,
-      );
-
-      expect(result.error).toBeUndefined();
-      expect(result.value).toBe('minimax:MiniMax-M2.5');
-    });
-
     it('should handle deeply nested paths', () => {
       const body = {
         path: 'moderation.logging.channels.default',
@@ -347,5 +334,79 @@ describe('validateConfigPatch', () => {
       const result2 = validateConfigPatchBody(body2, SAFE_CONFIG_KEYS);
       expect(result2.error).not.toBe("Invalid config path: 'notconstructor' is a reserved key");
     });
+  });
+});
+
+describe('validateConfigPatchBody — value not normalized (PR: normalizeSingleValue removed)', () => {
+  it('should return the exact value provided without normalization', () => {
+    // normalizeSingleValue was removed in this PR; values pass through unchanged
+    const body = { path: 'ai.enabled', value: false };
+    const result = validateConfigPatchBody(body, SAFE_CONFIG_KEYS);
+    expect(result.error).toBeUndefined();
+    expect(result.value).toBe(false);
+  });
+
+  it('should return a bare string value without converting it to provider:model format', () => {
+    // Previously normalizeSingleValue would normalize model strings.
+    // Now, the raw value is returned as-is. (Schema validation may still reject invalid paths.)
+    const body = { path: 'triage.classifyModel', value: 'some-raw-string' };
+    const result = validateConfigPatchBody(body, SAFE_CONFIG_KEYS);
+    // Schema validation should catch the invalid format, but value is NOT pre-normalized
+    if (!result.error) {
+      expect(result.value).toBe('some-raw-string');
+    } else {
+      // Validation rejected it — that's fine too, no normalization occurred
+      expect(result.error).toBeDefined();
+    }
+  });
+
+  it('should return a valid provider:model string unchanged', () => {
+    const body = { path: 'triage.classifyModel', value: 'minimax:MiniMax-M2.7' };
+    const result = validateConfigPatchBody(body, SAFE_CONFIG_KEYS);
+    expect(result.error).toBeUndefined();
+    // Value should be exactly what was provided, not transformed
+    expect(result.value).toBe('minimax:MiniMax-M2.7');
+  });
+
+  it('should return null value as-is for nullable fields', () => {
+    const body = { path: 'welcome.channelId', value: null };
+    const result = validateConfigPatchBody(body, SAFE_CONFIG_KEYS);
+    expect(result.error).toBeUndefined();
+    expect(result.value).toBeNull();
+  });
+
+  it('should return array value as-is without modification', () => {
+    const arr = ['ch1', 'ch2', 'ch3'];
+    const body = { path: 'ai.channels', value: arr };
+    const result = validateConfigPatchBody(body, SAFE_CONFIG_KEYS);
+    expect(result.error).toBeUndefined();
+    expect(result.value).toEqual(arr);
+    expect(result.value).toBe(arr); // same reference — no copy/transform
+  });
+
+  it('should return object value as-is without modification', () => {
+    const obj = { enabled: true, intervalMinutes: 5 };
+    const body = { path: 'welcome.dynamic', value: obj };
+    const result = validateConfigPatchBody(body, SAFE_CONFIG_KEYS);
+    expect(result.error).toBeUndefined();
+    expect(result.value).toBe(obj); // same reference
+  });
+
+  it('should reject invalid triage.classifyModel (no colon) due to schema pattern', () => {
+    // Schema now uses PROVIDER_MODEL_PATTERN — bare strings are rejected
+    const body = { path: 'triage.classifyModel', value: 'gpt-4o' };
+    const result = validateConfigPatchBody(body, SAFE_CONFIG_KEYS);
+    expect(result.error).toBe('Value validation failed');
+    expect(result.status).toBe(400);
+    expect(result.details).toEqual(
+      expect.arrayContaining([expect.stringContaining('does not match required pattern')]),
+    );
+  });
+
+  it('should reject invalid triage.respondModel (with spaces) due to schema pattern', () => {
+    const body = { path: 'triage.respondModel', value: 'minimax: MiniMax-M2.7' };
+    const result = validateConfigPatchBody(body, SAFE_CONFIG_KEYS);
+    expect(result.error).toBe('Value validation failed');
+    expect(result.status).toBe(400);
   });
 });

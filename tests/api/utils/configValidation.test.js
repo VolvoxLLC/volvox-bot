@@ -30,40 +30,6 @@ describe('configValidation', () => {
       expect(errors[0]).toContain('must not be null');
     });
 
-    it('should accept values matching any anyOf candidate', () => {
-      const schema = { anyOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }] };
-
-      expect(validateValue('delete', schema, 'test')).toEqual([]);
-      expect(validateValue(['flag', 'timeout'], schema, 'test')).toEqual([]);
-    });
-
-    it('should reject values that match no anyOf candidates', () => {
-      const schema = { anyOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }] };
-      const errors = validateValue(123, schema, 'test');
-
-      expect(errors).toEqual(expect.arrayContaining([expect.stringContaining('expected string')]));
-      expect(errors).toEqual(expect.arrayContaining([expect.stringContaining('expected array')]));
-    });
-
-    it('should honor nullable anyOf candidates', () => {
-      const schema = { anyOf: [{ type: 'string' }, { type: 'object', nullable: true }] };
-
-      expect(validateValue(null, schema, 'test')).toEqual([]);
-    });
-
-    it('should accept null when the parent anyOf schema is nullable', () => {
-      const schema = { nullable: true, anyOf: [{ type: 'string' }, { type: 'object' }] };
-
-      expect(validateValue(null, schema, 'test')).toEqual([]);
-    });
-
-    it('should reject null when neither parent nor anyOf candidates are nullable', () => {
-      const schema = { anyOf: [{ type: 'string' }, { type: 'object' }] };
-      const errors = validateValue(null, schema, 'test');
-
-      expect(errors).toEqual(['test: must not be null', 'test: must not be null']);
-    });
-
     it('should reject unknown keys in objects', () => {
       const schema = { type: 'object', properties: { enabled: { type: 'boolean' } } };
       const errors = validateValue({ enabled: true, fake: 'bad' }, schema, 'test');
@@ -126,49 +92,6 @@ describe('configValidation', () => {
       expect(errors[0]).toContain('expected finite number');
     });
 
-    it('should validate aiAutoMod model, thresholds, and actions', () => {
-      expect(validateSingleValue('aiAutoMod.model', 'minimax:MiniMax-M2.7')).toEqual([]);
-      expect(validateSingleValue('triage.classifyModel', 'moonshot:kimi-k2.6')).toEqual([]);
-      expect(validateSingleValue('triage.respondModel', 'openrouter:minimax/minimax-m2.5')).toEqual(
-        [],
-      );
-      expect(validateSingleValue('triage.classifyModel', 'MINIMAX:minimax-m2.5')).toEqual([]);
-      expect(validateSingleValue('tldr.model', 'moonshot:kimi-k2.6')).toEqual([]);
-      expect(validateSingleValue('aiAutoMod.thresholds.hateSpeech', 0.85)).toEqual([]);
-      expect(validateSingleValue('aiAutoMod.actions.hateSpeech', 'timeout')).toEqual([]);
-      expect(validateSingleValue('aiAutoMod.actions.hateSpeech', 'none')).toEqual([]);
-      expect(validateSingleValue('aiAutoMod.actions.hateSpeech', ['flag', 'timeout'])).toEqual([]);
-      expect(validateSingleValue('aiAutoMod.actions.hateSpeech', [])).toEqual([]);
-      expect(validateSingleValue('aiAutoMod.exemptRoleIds', ['role-1'])).toEqual([]);
-    });
-
-    it('should reject invalid aiAutoMod model, threshold, and action values', () => {
-      expect(validateSingleValue('aiAutoMod.model', 'MiniMax-M2.7')).toEqual(
-        expect.arrayContaining([expect.stringContaining('must be one of')]),
-      );
-      expect(validateSingleValue('aiAutoMod.thresholds.toxicity', 1.1)).toEqual(
-        expect.arrayContaining([expect.stringContaining('<= 1')]),
-      );
-      expect(validateSingleValue('aiAutoMod.actions.spam', 'obliterate')).toEqual(
-        expect.arrayContaining([expect.stringContaining('must be one of')]),
-      );
-      expect(validateSingleValue('aiAutoMod.model', 'anthropic:claude-3-5-haiku')).toEqual(
-        expect.arrayContaining([expect.stringContaining('must be one of')]),
-      );
-      expect(validateSingleValue('triage.classifyModel', 'anthropic:claude-3-5-haiku')).toEqual(
-        expect.arrayContaining([expect.stringContaining('must be one of')]),
-      );
-      expect(validateSingleValue('triage.respondModel', 'MiniMax-M2.7')).toEqual(
-        expect.arrayContaining([expect.stringContaining('must be one of')]),
-      );
-      expect(validateSingleValue('tldr.model', 'anthropic:claude-3-5-haiku')).toEqual(
-        expect.arrayContaining([expect.stringContaining('must be one of')]),
-      );
-      expect(validateSingleValue('aiAutoMod.actions.spam', ['delete', 'obliterate'])).toEqual(
-        expect.arrayContaining([expect.stringContaining('must be one of')]),
-      );
-    });
-
     it('should validate new welcome onboarding fields', () => {
       expect(validateSingleValue('welcome.rulesChannel', null)).toEqual([]);
       expect(validateSingleValue('welcome.verifiedRole', '123')).toEqual([]);
@@ -219,7 +142,6 @@ describe('configValidation', () => {
           'spam',
           'moderation',
           'triage',
-          'aiAutoMod',
           'auditLog',
           'botStatus',
           'xp',
@@ -327,28 +249,12 @@ describe('configValidation', () => {
 
     it('should validate ai.channelModes as open-properties', () => {
       expect(validateSingleValue('ai.channelModes', { 12345: 'vibe' })).toEqual([]);
-      expect(validateSingleValue('ai.channelModes', { 12345: 'loud' })).toEqual(
-        expect.arrayContaining([expect.stringContaining('must be one of')]),
-      );
     });
 
     it('should resolve nested dynamic keys in validateSingleValue (channelModes path)', () => {
-      // channelModes has schema-backed openProperties — any channel-ID sub-key is dynamic;
-      // the value is validated against the map's ChannelMode leaf schema.
-      expect(validateSingleValue('ai.channelModes.12345', 'vibe')).toEqual([]);
-      expect(validateSingleValue('ai.channelModes.12345', { mode: 'vibe' })).toEqual(
-        expect.arrayContaining([expect.stringContaining('expected string')]),
-      );
-      expect(validateSingleValue('ai.channelModes.12345', 'loud')).toEqual(
-        expect.arrayContaining([expect.stringContaining('must be one of')]),
-      );
-    });
-
-    it('should resolve nested dynamic keys in validateSingleValue (allowedCommands path)', () => {
-      expect(validateSingleValue('permissions.allowedCommands.tldr', 'everyone')).toEqual([]);
-      expect(validateSingleValue('permissions.allowedCommands.tldr', 'owner')).toEqual(
-        expect.arrayContaining([expect.stringContaining('must be one of')]),
-      );
+      // channelModes has openProperties — any channel-ID sub-key is dynamic;
+      // the value is validated against the parent object schema, so an object passes
+      expect(validateSingleValue('ai.channelModes.12345', { mode: 'vibe' })).toEqual([]);
     });
   });
 
@@ -725,6 +631,182 @@ describe('configValidation', () => {
       const errors = validateSingleValue('xp', { enabled: true, badKey: 'nope' });
       expect(errors).toHaveLength(1);
       expect(errors[0]).toContain('unknown config key');
+    });
+  });
+
+  describe('triage model pattern validation (PR: PROVIDER_MODEL_PATTERN)', () => {
+    it('should accept valid provider:model for triage.classifyModel', () => {
+      expect(validateSingleValue('triage.classifyModel', 'minimax:MiniMax-M2.7')).toEqual([]);
+      expect(validateSingleValue('triage.classifyModel', 'anthropic:claude-3-5-haiku')).toEqual([]);
+      expect(validateSingleValue('triage.classifyModel', 'openai:gpt-4o')).toEqual([]);
+    });
+
+    it('should accept valid provider:model for triage.respondModel', () => {
+      expect(validateSingleValue('triage.respondModel', 'minimax:MiniMax-M2.7')).toEqual([]);
+      expect(validateSingleValue('triage.respondModel', 'anthropic:claude-3-opus')).toEqual([]);
+    });
+
+    it('should reject bare model string (no colon) for triage.classifyModel', () => {
+      const errors = validateSingleValue('triage.classifyModel', 'gpt-4o');
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain('does not match required pattern');
+    });
+
+    it('should reject bare model string (no colon) for triage.respondModel', () => {
+      const errors = validateSingleValue('triage.respondModel', 'claude-3-haiku');
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain('does not match required pattern');
+    });
+
+    it('should reject model string with space before colon', () => {
+      const errors = validateSingleValue('triage.classifyModel', 'minimax :MiniMax-M2.7');
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain('does not match required pattern');
+    });
+
+    it('should reject model string with space after colon', () => {
+      const errors = validateSingleValue('triage.classifyModel', 'minimax: MiniMax-M2.7');
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain('does not match required pattern');
+    });
+
+    it('should reject model string with whitespace in provider part', () => {
+      const errors = validateSingleValue('triage.respondModel', ' minimax:MiniMax-M2.7');
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain('does not match required pattern');
+    });
+
+    it('should reject empty string for triage.classifyModel', () => {
+      const errors = validateSingleValue('triage.classifyModel', '');
+      // empty string — pattern check fails (no colon)
+      expect(errors.length).toBeGreaterThan(0);
+    });
+
+    it('should reject non-string for triage.classifyModel', () => {
+      const errors = validateSingleValue('triage.classifyModel', 42);
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain('expected string');
+    });
+  });
+
+  describe('tldr schema changes (PR: model removed)', () => {
+    it('should accept valid tldr.enabled boolean', () => {
+      expect(validateSingleValue('tldr.enabled', true)).toEqual([]);
+      expect(validateSingleValue('tldr.enabled', false)).toEqual([]);
+    });
+
+    it('should accept valid tldr numeric fields', () => {
+      expect(validateSingleValue('tldr.defaultMessages', 50)).toEqual([]);
+      expect(validateSingleValue('tldr.maxMessages', 200)).toEqual([]);
+      expect(validateSingleValue('tldr.cooldownSeconds', 300)).toEqual([]);
+    });
+
+    it('should return unknown path error for tldr.model (removed in PR)', () => {
+      // tldr.model was removed from the schema in this PR
+      const errors = validateSingleValue('tldr.model', 'minimax:MiniMax-M2.7');
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain('Unknown config path');
+    });
+
+    it('should still validate tldr.systemPrompt', () => {
+      expect(validateSingleValue('tldr.systemPrompt', 'You are a summarizer')).toEqual([]);
+      expect(validateSingleValue('tldr.systemPrompt', 'x'.repeat(4001))).toEqual(
+        expect.arrayContaining([expect.stringContaining('max length')]),
+      );
+    });
+  });
+
+  describe('aiAutoMod schema removed (PR: section deleted)', () => {
+    it('should return empty array for aiAutoMod.enabled (unknown section)', () => {
+      // aiAutoMod was removed from CONFIG_SCHEMA in this PR — unknown sections pass through
+      const errors = validateSingleValue('aiAutoMod.enabled', true);
+      expect(errors).toEqual([]);
+    });
+
+    it('should return empty array for aiAutoMod.model (unknown section)', () => {
+      const errors = validateSingleValue('aiAutoMod.model', 'minimax:MiniMax-M2.7');
+      expect(errors).toEqual([]);
+    });
+
+    it('should not include aiAutoMod in CONFIG_SCHEMA', () => {
+      expect(Object.keys(CONFIG_SCHEMA)).not.toContain('aiAutoMod');
+    });
+  });
+
+  describe('channelModes and allowedCommands open-properties (PR: freeform maps)', () => {
+    it('should allow any value in ai.channelModes (fully open map)', () => {
+      // Previously validated as enum; now fully open
+      expect(validateSingleValue('ai.channelModes', { '12345': 'vibe' })).toEqual([]);
+      expect(validateSingleValue('ai.channelModes', { '12345': 'off' })).toEqual([]);
+      expect(validateSingleValue('ai.channelModes', { '12345': 'someArbitraryValue' })).toEqual([]);
+    });
+
+    it('should allow any value in permissions.allowedCommands (fully open map)', () => {
+      // Previously validated values against enum; now fully open
+      expect(
+        validateSingleValue('permissions.allowedCommands', { tldr: 'everyone' }),
+      ).toEqual([]);
+      expect(
+        validateSingleValue('permissions.allowedCommands', { tldr: 'someArbitraryLevel' }),
+      ).toEqual([]);
+    });
+
+    it('should allow dynamic channel-id paths under ai.channelModes', () => {
+      expect(validateSingleValue('ai.channelModes.123456789', 'vibe')).toEqual([]);
+      expect(validateSingleValue('ai.channelModes.123456789', { mode: 'anything' })).toEqual([]);
+    });
+  });
+
+  describe('validateValue null-before-undefined check order (PR: logic reorder)', () => {
+    it('should error for null on non-nullable schema even with anyOf', () => {
+      // In the old code, anyOf was checked before null, which could cause null to
+      // pass through anyOf branch unexpectedly. Now null is checked first.
+      const schema = {
+        anyOf: [
+          { type: 'string' },
+          { type: 'number' },
+        ],
+      };
+      // null without nullable — should error (nullable not set)
+      const errors = validateValue(null, schema, 'test.field');
+      expect(errors.length).toBeGreaterThan(0);
+    });
+
+    it('should allow null when schema has nullable: true, even with anyOf', () => {
+      const schema = {
+        nullable: true,
+        anyOf: [
+          { type: 'string' },
+          { type: 'number' },
+        ],
+      };
+      const errors = validateValue(null, schema, 'test.field');
+      expect(errors).toEqual([]);
+    });
+
+    it('should return empty errors for undefined value regardless of schema', () => {
+      // undefined means "not provided" — always passes through
+      const errors = validateValue(undefined, { type: 'string' }, 'test.field');
+      expect(errors).toEqual([]);
+    });
+
+    it('should error for null on non-nullable boolean field', () => {
+      const errors = validateValue(null, { type: 'boolean' }, 'test.field');
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain('must not be null');
+    });
+
+    it('should error for null on non-nullable number field', () => {
+      const errors = validateValue(null, { type: 'number', min: 0 }, 'test.field');
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain('must not be null');
+    });
+  });
+
+  describe('normalizeSingleValue removed (PR: no longer exported)', () => {
+    it('should not export normalizeSingleValue from configValidation', async () => {
+      const module = await import('../../../src/api/utils/configValidation.js');
+      expect(module.normalizeSingleValue).toBeUndefined();
     });
   });
 });
