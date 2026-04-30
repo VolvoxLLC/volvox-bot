@@ -137,4 +137,28 @@ describe('DashboardShowcase', () => {
     render(<DashboardShowcase />);
     expect(screen.getByText('LIVE')).toBeInTheDocument();
   });
+
+  it('should render server activity dates from ISO API timestamps', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ...mockStats,
+        dailyActivity: [
+          {
+            date: '2026-04-30T00:00:00.000Z',
+            messages: 4,
+            aiRequests: 1,
+          },
+        ],
+      }),
+    } as Response);
+
+    render(<DashboardShowcase />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Messages (4)')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Thu')).toBeInTheDocument();
+    expect(screen.queryByText('Invalid Date')).not.toBeInTheDocument();
+  });
 });
