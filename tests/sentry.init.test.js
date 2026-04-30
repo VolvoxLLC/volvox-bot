@@ -41,6 +41,16 @@ describe('sentry.js — init branch coverage', () => {
     expect(cfg.tracesSampleRate).toBe(0.5);
   });
 
+  it('should enable Sentry default PII collection while relying on beforeSend scrubbing', async () => {
+    vi.stubEnv('SENTRY_DSN', 'https://key@o0.ingest.sentry.io/0');
+
+    await import('../src/sentry.js');
+
+    expect(initSpy).toHaveBeenCalledTimes(1);
+    const cfg = initSpy.mock.calls[0][0];
+    expect(cfg.sendDefaultPii).toBe(true);
+  });
+
   it('should accept SENTRY_TRACES_RATE=0 to disable tracing', async () => {
     vi.stubEnv('SENTRY_DSN', 'https://key@o0.ingest.sentry.io/0');
     vi.stubEnv('SENTRY_TRACES_RATE', '0');

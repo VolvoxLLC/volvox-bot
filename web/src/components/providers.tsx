@@ -1,10 +1,13 @@
 'use client';
 
+import * as Sentry from '@sentry/nextjs';
+import { usePathname } from 'next/navigation';
 import { SessionProvider } from 'next-auth/react';
 import { useTheme } from 'next-themes';
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect } from 'react';
 import { Toaster } from 'sonner';
 import { ThemeProvider } from '@/components/theme-provider';
+import { useGuildSelection } from '@/hooks/use-guild-selection';
 
 /**
  * Render a global Toaster whose visual theme follows the resolved app theme.
@@ -22,6 +25,19 @@ function ThemedToaster() {
   );
 }
 
+function SentryContextBridge() {
+  const pathname = usePathname();
+  const guildId = useGuildSelection();
+
+  useEffect(() => {
+    Sentry.setTag('route', pathname || 'unknown');
+
+    Sentry.setTag('guild.id', guildId || 'none');
+  }, [guildId, pathname]);
+
+  return null;
+}
+
 /**
  * Wraps application UI with NextAuth session context, theme provider, and a global toast container.
  *
@@ -37,6 +53,7 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <SessionProvider>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+        <SentryContextBridge />
         {children}
         <ThemedToaster />
       </ThemeProvider>

@@ -92,6 +92,11 @@ describe("next.config security headers", () => {
       expect(cspValue).toContain("connect-src 'self'");
     });
 
+    it("should allow Sentry ingest endpoints for browser error capture", () => {
+      expect(cspValue).toContain("https://*.ingest.sentry.io");
+      expect(cspValue).toContain("https://*.ingest.us.sentry.io");
+    });
+
     it("should restrict font-src to self", () => {
       expect(cspValue).toContain("font-src 'self'");
     });
