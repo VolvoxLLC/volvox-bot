@@ -37,6 +37,7 @@ import { safeEditMessage, safeSend } from '../../src/utils/safeSend.js';
 
 function createWelcomeConfig(overrides = {}) {
   return {
+    enabled: true,
     rulesChannel: 'rules-channel',
     roleMenuChannel: 'roles-channel',
     rulesMessage: 'Accept these rules.',
@@ -94,7 +95,8 @@ describe('welcomePublishing module', () => {
     );
   });
 
-  it('returns null for unconfigured panels and rejects unknown panel types', () => {
+  it('returns null for disabled or unconfigured panels and rejects unknown panel types', () => {
+    expect(getWelcomePanelPayload('rules', createWelcomeConfig({ enabled: false }))).toBeNull();
     expect(getWelcomePanelPayload('rules', createWelcomeConfig({ rulesChannel: null }))).toBeNull();
     expect(
       getWelcomePanelPayload(
@@ -132,6 +134,32 @@ describe('welcomePublishing module', () => {
         createWelcomeConfig({ channelId: 'channel-b', roleMenuChannel: null }),
       ),
     );
+  });
+
+  it('marks stored messages stale when welcome publishing is disabled', async () => {
+    getConfig.mockReturnValue({ welcome: createWelcomeConfig({ enabled: false }) });
+    mockPool(async () => ({
+      rows: [
+        {
+          panel_type: 'rules',
+          channel_id: 'old-rules',
+          message_id: 'rules-message',
+          config_hash: 'old-hash',
+          status: 'posted',
+          last_published_at: '2026-01-01T00:00:00.000Z',
+          last_error: null,
+        },
+      ],
+    }));
+
+    const status = await getWelcomePublicationStatus('guild-1');
+
+    expect(status.panels.rules).toMatchObject({
+      configured: false,
+      status: 'unconfigured',
+      messageId: 'rules-message',
+      stale: true,
+    });
   });
 
   it('serializes publication status with stale detection', async () => {

@@ -10,8 +10,6 @@ import {
 export const dynamic = 'force-dynamic';
 
 const LOG_PREFIX = '[api/guilds/:guildId/welcome/publish/:panelType]';
-// Keep this mirrored with WELCOME_PANEL_TYPES in src/modules/welcomePublishing.js.
-const PANEL_TYPES = new Set(['rules', 'role_menu']);
 
 export async function POST(
   request: NextRequest,
@@ -21,10 +19,6 @@ export async function POST(
   if (!guildId) {
     return NextResponse.json({ error: 'Missing guildId' }, { status: 400 });
   }
-  if (!PANEL_TYPES.has(panelType)) {
-    return NextResponse.json({ error: 'Invalid welcome panel type' }, { status: 400 });
-  }
-
   const authError = await authorizeGuildAdmin(request, guildId, LOG_PREFIX);
   if (authError) return authError;
 

@@ -25,6 +25,11 @@ function stableStringify(value) {
 }
 
 export function getWelcomePanelPayload(panelType, welcomeConfig) {
+  if (!WELCOME_PANEL_TYPES.has(panelType)) {
+    throw new Error(`Unknown welcome panel type: ${panelType}`);
+  }
+  if (welcomeConfig?.enabled !== true) return null;
+
   if (panelType === 'rules') {
     const onboarding = normalizeWelcomeOnboardingConfig(welcomeConfig);
     if (!onboarding.rulesChannel) return null;
@@ -135,7 +140,7 @@ function serializePublication(panelType, payload, stored) {
       status: 'unconfigured',
       channelId: stored?.channel_id ?? null,
       messageId: stored?.message_id ?? null,
-      stale: false,
+      stale: Boolean(stored?.message_id),
       lastPublishedAt: stored?.last_published_at ?? null,
       lastError: stored?.last_error ?? null,
     };
@@ -166,22 +171,22 @@ function getPayloadContentLength(messagePayload) {
 
 export async function getWelcomePublicationStatus(guildId) {
   const config = getConfig(guildId);
-  const panels = {};
-
-  for (const panelType of WELCOME_PANEL_TYPES) {
-    const payload = getWelcomePanelPayload(panelType, config?.welcome);
-    const stored = await getStoredPublication(guildId, panelType).catch((err) => {
-      warn('Failed to read welcome publication status', {
-        guildId,
-        panelType,
-        error: err.message,
+  const panelEntries = await Promise.all(
+    Array.from(WELCOME_PANEL_TYPES, async (panelType) => {
+      const payload = getWelcomePanelPayload(panelType, config?.welcome);
+      const stored = await getStoredPublication(guildId, panelType).catch((err) => {
+        warn('Failed to read welcome publication status', {
+          guildId,
+          panelType,
+          error: err.message,
+        });
+        return null;
       });
-      return null;
-    });
-    panels[panelType] = serializePublication(panelType, payload, stored);
-  }
+      return [panelType, serializePublication(panelType, payload, stored)];
+    }),
+  );
 
-  return { guildId, panels };
+  return { guildId, panels: Object.fromEntries(panelEntries) };
 }
 
 async function fetchExistingMessage(channel, messageId) {
@@ -375,6 +380,8 @@ export async function publishWelcomePanel(client, guildId, panelType, actor = {}
 
 export async function publishWelcomePanels(client, guildId, actor = {}) {
   const results = [];
+  // Publish panels sequentially so Discord writes stay ordered, rate-limit friendly,
+  // and each result can report its own persistence or channel error without racing.
   for (const panelType of WELCOME_PANEL_TYPES) {
     results.push(await publishWelcomePanel(client, guildId, panelType, actor));
   }

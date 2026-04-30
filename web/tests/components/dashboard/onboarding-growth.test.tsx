@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { toast } from 'sonner';
 
 const mockUseConfigContext = vi.fn();
 
@@ -628,6 +629,19 @@ describe('OnboardingGrowthCategory', () => {
     expect(updateDraftConfig.mock.results[0]?.value.welcome.channelId).toBe('new-channel');
   });
 
+  it('shows publish setup actions before message editing with operational copy', async () => {
+    mockWelcomeContext({ draftConfig: createWelcomeDraftConfig({ dynamic: { enabled: false } }) });
+
+    render(<OnboardingGrowthCategory />);
+
+    const publishHeading = await screen.findByText('Publish setup actions');
+    const messageHeading = screen.getByText('Welcome message');
+    expect(publishHeading.compareDocumentPosition(messageHeading)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(screen.getByText(/What this does: posts or updates the rules agreement/)).toBeInTheDocument();
+  });
+
   it('shows published panel channel names with copy id actions', async () => {
     mockWelcomeContext({ draftConfig: createWelcomeDraftConfig({ dynamic: { enabled: false } }) });
 
@@ -636,6 +650,50 @@ describe('OnboardingGrowthCategory', () => {
     expect(await screen.findByText('#rules')).toBeInTheDocument();
     expect(await screen.findByText('#welcome')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Copy Rules Agreement channel ID' })).toBeInTheDocument();
+  });
+
+  it('uses an info toast instead of success when a single panel is unconfigured', async () => {
+    const user = userEvent.setup();
+    const statusResponse = {
+      guildId: 'guild-1',
+      panels: {
+        rules: {
+          status: 'unconfigured',
+          configured: false,
+          channelId: null,
+          configuredChannelId: null,
+          messageId: null,
+          stale: false,
+        },
+        role_menu: {
+          status: 'missing',
+          configured: true,
+          channelId: 'welcome-channel',
+          configuredChannelId: 'welcome-channel',
+          messageId: null,
+          stale: false,
+        },
+      },
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(Response.json(statusResponse))
+        .mockResolvedValueOnce(Response.json({ panelType: 'rules', status: 'unconfigured' }))
+        .mockResolvedValueOnce(Response.json(statusResponse)),
+    );
+    mockWelcomeContext({ draftConfig: createWelcomeDraftConfig({ dynamic: { enabled: false } }) });
+
+    render(<OnboardingGrowthCategory />);
+
+    await screen.findByText('No channel configured');
+    await user.click(screen.getAllByRole('button', { name: 'Publish' })[0]);
+
+    await waitFor(() => {
+      expect(toast.info).toHaveBeenCalledWith('Panel is not configured — set a channel first.');
+    });
+    expect(toast.success).not.toHaveBeenCalledWith('Welcome panel published');
   });
 
   it('mounts the level-up actions editor from the xp-level-actions tab', () => {

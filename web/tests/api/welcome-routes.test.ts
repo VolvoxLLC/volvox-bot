@@ -118,15 +118,23 @@ describe('welcome API routes', () => {
     expect(response.status).toBe(200);
   });
 
-  it('rejects invalid welcome panel types before authorization', async () => {
+  it('proxies unknown panel types to the bot API for canonical validation', async () => {
     const response = await publishWelcomePanel(
       createRequest('http://localhost:3000/api/guilds/guild-1/welcome/publish/intro'),
       { params: Promise.resolve({ guildId: 'guild-1', panelType: 'intro' }) },
     );
 
-    expect(response.status).toBe(400);
-    await expect(response.json()).resolves.toEqual({ error: 'Invalid welcome panel type' });
-    expect(mockAuthorizeGuildAdmin).not.toHaveBeenCalled();
-    expect(mockProxyToBotApi).not.toHaveBeenCalled();
+    expect(mockAuthorizeGuildAdmin).toHaveBeenCalledWith(
+      expect.any(NextRequest),
+      'guild-1',
+      '[api/guilds/:guildId/welcome/publish/:panelType]',
+    );
+    expect(mockBuildUpstreamUrl).toHaveBeenCalledWith(
+      'http://bot.internal:3001/api/v1',
+      '/guilds/guild-1/welcome/publish/intro',
+      '[api/guilds/:guildId/welcome/publish/:panelType]',
+    );
+    expect(mockProxyToBotApi).toHaveBeenCalled();
+    expect(response.status).toBe(200);
   });
 });

@@ -130,6 +130,17 @@ function getWelcomePublishFailureMessage(
   return 'No welcome panels were published. Check that channels are configured.';
 }
 
+function getWelcomePublishInfoMessage(
+  data: (WelcomePublishResult & WelcomeBulkPublishResult) | null,
+  panelType?: 'rules' | 'role_menu',
+) {
+  if (panelType && data?.status === 'unconfigured') {
+    return 'Panel is not configured — set a channel first.';
+  }
+
+  return null;
+}
+
 /**
  * Renders the Onboarding & Growth configuration category UI that allows editing multiple feature sections based on the active tab.
  *
@@ -306,7 +317,12 @@ export function OnboardingGrowthCategory() {
         if (failureMessage) {
           throw new Error(failureMessage);
         }
-        toast.success(panelType ? 'Welcome panel published' : 'Welcome panels published');
+        const infoMessage = getWelcomePublishInfoMessage(data, panelType);
+        if (infoMessage) {
+          toast.info(infoMessage);
+        } else {
+          toast.success(panelType ? 'Welcome panel published' : 'Welcome panels published');
+        }
         await fetchWelcomeStatus();
       } catch (error) {
         toast.error('Failed to publish welcome panel', {
@@ -441,6 +457,125 @@ export function OnboardingGrowthCategory() {
       {/* Welcome Layout */}
       {activeTab === 'welcome' && (
         <div className="space-y-6">
+          <div className="p-4 sm:p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Info className="h-3.5 w-3.5 text-primary" />
+                  <h3 className="text-sm font-bold text-foreground/90">Publish setup actions</h3>
+                </div>
+                <p className="text-[11px] text-muted-foreground/60 font-medium">
+                  What this does: posts or updates the rules agreement and self-assign role menu in
+                  Discord. Set the channels below first, then publish when you are ready.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={welcomeStatusLoading || welcomePublishing !== null}
+                  onClick={() => void fetchWelcomeStatus()}
+                  className="h-8 gap-2 text-[10px] uppercase tracking-widest font-bold border border-border/40 rounded-xl"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Refresh
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={saving || welcomePublishing !== null}
+                  onClick={() => void publishWelcomePanel()}
+                  className="h-8 gap-2 text-[10px] uppercase tracking-widest font-bold rounded-xl"
+                >
+                  <Send className="h-3.5 w-3.5" />
+                  Publish All
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {[
+                { key: 'rules' as const, label: 'Rules Agreement' },
+                { key: 'role_menu' as const, label: 'Self-Assign Roles' },
+              ].map((panel) => {
+                const status = welcomePanels?.[panel.key];
+                const statusText = status?.stale
+                  ? 'stale'
+                  : (status?.status ?? (welcomeStatusLoading ? 'loading' : 'unknown'));
+                const channelId = status?.configuredChannelId ?? status?.channelId;
+                const channelName = channelId ? channelNameById.get(channelId) : null;
+
+                return (
+                  <div
+                    key={panel.key}
+                    className="rounded-2xl border border-border/40 bg-background/60 p-4 space-y-3"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="text-xs font-bold text-foreground/90">{panel.label}</div>
+                        <div className="flex min-h-5 flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground/70">
+                          {channelId ? (
+                            <>
+                              <span>
+                                Channel:{' '}
+                                <span className="font-semibold text-foreground/80">
+                                  #{channelName ?? 'unknown-channel'}
+                                </span>
+                              </span>
+                              <button
+                                type="button"
+                                className="inline-flex h-5 items-center gap-1 rounded-lg border border-border/40 px-1.5 font-mono text-[10px] text-muted-foreground hover:border-primary/30 hover:text-primary"
+                                aria-label={`Copy ${panel.label} channel ID`}
+                                title={`Copy channel ID ${channelId}`}
+                                onClick={() => void copyChannelId(channelId)}
+                              >
+                                <Copy className="h-3 w-3" />
+                                ID
+                              </button>
+                            </>
+                          ) : (
+                            'No channel configured'
+                          )}
+                        </div>
+                      </div>
+                      <span
+                        className={cn(
+                          'rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider',
+                          statusText === 'posted'
+                            ? 'border-primary/30 text-primary bg-primary/10'
+                            : statusText === 'failed'
+                              ? 'border-destructive/30 text-destructive bg-destructive/10'
+                              : 'border-border/50 text-muted-foreground bg-muted/30',
+                        )}
+                      >
+                        {statusText}
+                      </span>
+                    </div>
+                    {status?.messageId && (
+                      <div className="text-[11px] font-mono text-muted-foreground/70">
+                        Message: {status.messageId}
+                      </div>
+                    )}
+                    {status?.lastError && (
+                      <div className="text-[11px] text-destructive">{status.lastError}</div>
+                    )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={saving || welcomePublishing !== null}
+                      onClick={() => void publishWelcomePanel(panel.key)}
+                      className="h-8 w-full gap-2 text-[10px] uppercase tracking-widest font-bold text-primary hover:bg-primary/5 border border-primary/20 rounded-xl"
+                    >
+                      <Send className="h-3.5 w-3.5" />
+                      {status?.messageId ? 'Publish Changes' : 'Publish'}
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
           <div className="p-4 sm:p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-6">
             <div className="space-y-2">
               <span className="block text-sm font-bold tracking-tight text-foreground/80">
@@ -629,122 +764,6 @@ export function OnboardingGrowthCategory() {
                   filter="text"
                 />
               </div>
-            </div>
-          </div>
-
-          <div className="p-4 sm:p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="space-y-0.5">
-                <h3 className="text-sm font-bold text-foreground/90">Published Panels</h3>
-                <p className="text-[11px] text-muted-foreground/60 font-medium">
-                  Publish updates the existing Discord messages when possible.
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  disabled={welcomeStatusLoading || welcomePublishing !== null}
-                  onClick={() => void fetchWelcomeStatus()}
-                  className="h-8 gap-2 text-[10px] uppercase tracking-widest font-bold border border-border/40 rounded-xl"
-                >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  Refresh
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={saving || welcomePublishing !== null}
-                  onClick={() => void publishWelcomePanel()}
-                  className="h-8 gap-2 text-[10px] uppercase tracking-widest font-bold rounded-xl"
-                >
-                  <Send className="h-3.5 w-3.5" />
-                  Publish All
-                </Button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {[
-                { key: 'rules' as const, label: 'Rules Agreement' },
-                { key: 'role_menu' as const, label: 'Self-Assign Roles' },
-              ].map((panel) => {
-                const status = welcomePanels?.[panel.key];
-                const statusText = status?.stale
-                  ? 'stale'
-                  : (status?.status ?? (welcomeStatusLoading ? 'loading' : 'unknown'));
-                const channelId = status?.configuredChannelId ?? status?.channelId;
-                const channelName = channelId ? channelNameById.get(channelId) : null;
-
-                return (
-                  <div
-                    key={panel.key}
-                    className="rounded-2xl border border-border/40 bg-background/60 p-4 space-y-3"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="space-y-1">
-                        <div className="text-xs font-bold text-foreground/90">{panel.label}</div>
-                        <div className="flex min-h-5 flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground/70">
-                          {channelId ? (
-                            <>
-                              <span>
-                                Channel:{' '}
-                                <span className="font-semibold text-foreground/80">
-                                  #{channelName ?? 'unknown-channel'}
-                                </span>
-                              </span>
-                              <button
-                                type="button"
-                                className="inline-flex h-5 items-center gap-1 rounded-lg border border-border/40 px-1.5 font-mono text-[10px] text-muted-foreground hover:border-primary/30 hover:text-primary"
-                                aria-label={`Copy ${panel.label} channel ID`}
-                                title={`Copy channel ID ${channelId}`}
-                                onClick={() => void copyChannelId(channelId)}
-                              >
-                                <Copy className="h-3 w-3" />
-                                ID
-                              </button>
-                            </>
-                          ) : (
-                            'No channel configured'
-                          )}
-                        </div>
-                      </div>
-                      <span
-                        className={cn(
-                          'rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider',
-                          statusText === 'posted'
-                            ? 'border-primary/30 text-primary bg-primary/10'
-                            : statusText === 'failed'
-                              ? 'border-destructive/30 text-destructive bg-destructive/10'
-                              : 'border-border/50 text-muted-foreground bg-muted/30',
-                        )}
-                      >
-                        {statusText}
-                      </span>
-                    </div>
-                    {status?.messageId && (
-                      <div className="text-[11px] font-mono text-muted-foreground/70">
-                        Message: {status.messageId}
-                      </div>
-                    )}
-                    {status?.lastError && (
-                      <div className="text-[11px] text-destructive">{status.lastError}</div>
-                    )}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={saving || welcomePublishing !== null}
-                      onClick={() => void publishWelcomePanel(panel.key)}
-                      className="h-8 w-full gap-2 text-[10px] uppercase tracking-widest font-bold text-primary hover:bg-primary/5 border border-primary/20 rounded-xl"
-                    >
-                      <Send className="h-3.5 w-3.5" />
-                      {status?.messageId ? 'Publish Changes' : 'Publish'}
-                    </Button>
-                  </div>
-                );
-              })}
             </div>
           </div>
 
