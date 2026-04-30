@@ -628,7 +628,7 @@ describe('checkAiAutoMod', () => {
     );
   });
 
-  it('does not audit flag actions when flagChannelId is not configured', async () => {
+  it('audits fallback none when flagChannelId is not configured for a flag action', async () => {
     mockGenerate.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.9, spam: 0.1, harassment: 0.1, reason: 'toxic' }),
     );
@@ -639,7 +639,15 @@ describe('checkAiAutoMod', () => {
     expect(result).toMatchObject({ flagged: true, action: 'none', actions: [] });
     expect(fetchChannelCached).not.toHaveBeenCalled();
     expect(safeSend).not.toHaveBeenCalled();
-    expect(logAuditEvent).not.toHaveBeenCalled();
+    expectFallbackNoneAudit(['flag']);
+    expect(logAuditEvent).toHaveBeenCalledWith(
+      mockPool,
+      expect.objectContaining({
+        action: 'ai_automod.none',
+        details: expect.objectContaining({ skippedActions: ['flag'] }),
+      }),
+    );
+    expectNoSuccessfulActionAudit('flag');
     expect(logWarn).toHaveBeenCalledWith(
       'AI auto-mod: flag action skipped because flagChannelId is not configured',
       expect.objectContaining({ guildId: 'guild-1', messageId: 'msg-123' }),
@@ -676,7 +684,25 @@ describe('checkAiAutoMod', () => {
       'AI auto-mod: flag action skipped because flagChannelId is not configured',
       expect.objectContaining({ guildId: 'guild-warn-once', messageId: 'msg-warn-once-2' }),
     );
-    expect(logAuditEvent).not.toHaveBeenCalled();
+    expect(logAuditEvent).toHaveBeenCalledTimes(2);
+    expect(logAuditEvent).toHaveBeenNthCalledWith(
+      1,
+      mockPool,
+      expect.objectContaining({
+        action: 'ai_automod.none',
+        targetId: 'msg-warn-once-1',
+        details: expect.objectContaining({ actions: ['flag'], skippedActions: ['flag'] }),
+      }),
+    );
+    expect(logAuditEvent).toHaveBeenNthCalledWith(
+      2,
+      mockPool,
+      expect.objectContaining({
+        action: 'ai_automod.none',
+        targetId: 'msg-warn-once-2',
+        details: expect.objectContaining({ actions: ['flag'], skippedActions: ['flag'] }),
+      }),
+    );
   });
 
   it('does not audit flag actions when the configured flag channel is unusable', async () => {

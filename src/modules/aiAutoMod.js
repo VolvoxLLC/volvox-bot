@@ -403,7 +403,7 @@ function getAuditTarget(message, action) {
 }
 
 function logAiAutoModAuditEvent(message, result, autoModConfig, options = {}) {
-  const { caseData, reason, botId, botTag, action, auditedActions } = options;
+  const { caseData, reason, botId, botTag, action, auditedActions, skippedActions } = options;
   const guildId = message.guild?.id;
   if (!guildId) return;
 
@@ -421,6 +421,7 @@ function logAiAutoModAuditEvent(message, result, autoModConfig, options = {}) {
       source: 'ai_auto_mod',
       action,
       actions: auditedActions ?? result.actions ?? [],
+      ...(skippedActions?.length ? { skippedActions } : {}),
       actionsByCategory: result.actionsByCategory ?? {},
       model: autoModConfig.model ?? DEFAULTS.model,
       messageId: message.id,
@@ -724,16 +725,16 @@ async function executeAction(message, client, result, autoModConfig, _guildConfi
   const successfulAuditEvents = [];
 
   if (actions.length === 0) {
-    if (skippedImpossibleActions.length === 0) {
-      logAiAutoModAuditEvent(message, result, autoModConfig, {
-        caseData: null,
-        reason,
-        botId,
-        botTag,
-        action: 'none',
-        auditedActions: executedActions,
-      });
-    }
+    logAiAutoModAuditEvent(message, result, autoModConfig, {
+      caseData: null,
+      reason,
+      botId,
+      botTag,
+      action: 'none',
+      auditedActions:
+        skippedImpossibleActions.length > 0 ? skippedImpossibleActions : executedActions,
+      skippedActions: skippedImpossibleActions,
+    });
     return executedActions;
   }
 
