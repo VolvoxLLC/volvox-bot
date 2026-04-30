@@ -1,6 +1,8 @@
+/// <reference types="vite/client" />
+
 import { describe, expect, it } from 'vitest';
 
-const focusedProxyRouteSuites = [
+const expectedFocusedProxyRouteSuites = [
   'guilds-ai-feedback.test.ts',
   'guilds-config-roles-audit.test.ts',
   'guilds-conversations.test.ts',
@@ -10,9 +12,10 @@ const focusedProxyRouteSuites = [
   'stats-temp-roles.test.ts',
 ] as const;
 
+const discoveredApiSuites = Object.keys(import.meta.glob('./*.test.ts')).map((suitePath) => suitePath.replace('./', ''));
+
 describe('proxy route test coverage inventory', () => {
   it('keeps proxy route behavior covered by focused suites', () => {
-    expect(focusedProxyRouteSuites).toHaveLength(7);
-    expect(focusedProxyRouteSuites.every((suite) => suite.endsWith('.test.ts'))).toBe(true);
+    expect(discoveredApiSuites).toEqual(expect.arrayContaining([...expectedFocusedProxyRouteSuites]));
   });
 });

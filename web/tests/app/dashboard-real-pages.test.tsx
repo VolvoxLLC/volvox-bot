@@ -2,6 +2,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const NativeURL = globalThis.URL;
+
 const {
   mockBack,
   mockPush,
@@ -247,11 +249,20 @@ beforeEach(() => {
     configurable: true,
     value: { writeText: vi.fn().mockResolvedValue(undefined) },
   });
-  vi.stubGlobal('URL', {
-    ...URL,
-    createObjectURL: vi.fn(() => 'blob:members'),
-    revokeObjectURL: vi.fn(),
+  class TestURL extends NativeURL {}
+
+  Object.defineProperties(TestURL, {
+    createObjectURL: {
+      configurable: true,
+      value: vi.fn(() => 'blob:members'),
+    },
+    revokeObjectURL: {
+      configurable: true,
+      value: vi.fn(),
+    },
   });
+
+  vi.stubGlobal('URL', TestURL);
 });
 
 describe('previously unexcluded app pages', () => {
