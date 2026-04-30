@@ -2,8 +2,7 @@
  * Memory Module
  * Integrates mem0 for persistent user memory across conversations.
  *
- * Uses the official mem0ai SDK with the hosted platform (api.mem0.ai)
- * and graph memory enabled for entity relationship tracking.
+ * Uses the official mem0ai SDK with the hosted platform (api.mem0.ai).
  *
  * All operations are scoped per-user (Discord ID) and namespaced
  * with app_id="volvox-bot" to isolate from other consumers.
@@ -280,8 +279,10 @@ export async function checkMem0Health({ signal } = {}) {
 
     // Verify SDK connectivity with a lightweight search against the platform
     await c.search('health-check', {
-      user_id: '__health_check__',
-      app_id: APP_ID,
+      filters: {
+        user_id: '__health_check__',
+        app_id: APP_ID,
+      },
       limit: 1,
     });
 
@@ -301,7 +302,7 @@ export async function checkMem0Health({ signal } = {}) {
 }
 
 /**
- * Store a memory for a user and enable graph relationships for automatic entity linking.
+ * Store a memory for a user.
  *
  * Persists the provided text and optional metadata under the user's namespace while respecting per-guild memory configuration and availability.
  * @param {string} userId - Discord user ID to associate the memory with.
@@ -322,7 +323,6 @@ export async function addMemory(userId, text, metadata = {}, guildId) {
       user_id: userId,
       app_id: APP_ID,
       metadata,
-      enable_graph: true,
     });
 
     const entries = Array.isArray(result) ? result : result?.results || [];
@@ -362,13 +362,14 @@ export async function searchMemories(userId, query, limit, guildId) {
     if (!c) return { memories: [], relations: [] };
 
     const result = await c.search(query, {
-      user_id: userId,
-      app_id: APP_ID,
+      filters: {
+        user_id: userId,
+        app_id: APP_ID,
+      },
       limit: maxResults,
-      enable_graph: true,
     });
 
-    // SDK returns { results: [...], relations: [...] } with graph enabled
+    // SDK returns { results: [...] }; tolerate relations if older data is returned.
     const rawMemories = Array.isArray(result) ? result : result?.results || [];
     const relations = result?.relations || [];
 
@@ -402,7 +403,6 @@ export async function getMemories(userId, guildId) {
     const result = await c.getAll({
       user_id: userId,
       app_id: APP_ID,
-      enable_graph: true,
     });
 
     const memories = Array.isArray(result) ? result : result?.results || [];
@@ -559,7 +559,6 @@ export async function extractAndStoreMemories(
       user_id: userId,
       app_id: APP_ID,
       metadata: { username },
-      enable_graph: true,
     });
 
     const entries = Array.isArray(result) ? result : result?.results || [];

@@ -25,7 +25,36 @@
  * });
  */
 
+import { getPool } from '../db.js';
 import { info, error as logError, warn } from '../logger.js';
+
+/**
+ * Resolve the shared audit-log database pool without throwing when the DB has
+ * not been initialized yet.
+ *
+ * @returns {import('pg').Pool|null}
+ */
+export function getAuditPool() {
+  try {
+    return getPool();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Resolve a stable bot identity for audit rows, even before Discord has fully
+ * hydrated client.user.
+ *
+ * @param {import('discord.js').Client|null|undefined} client - Discord client.
+ * @returns {{userId: string, userTag: string}}
+ */
+export function getBotIdentity(client) {
+  return {
+    userId: client?.user?.id ?? 'volvox-bot',
+    userTag: client?.user?.tag ?? client?.user?.username ?? 'Volvox.Bot',
+  };
+}
 
 /**
  * @typedef {Object} AuditEventOptions

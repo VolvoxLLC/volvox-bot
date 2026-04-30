@@ -11,6 +11,7 @@ import { parseProviderModel } from '../utils/modelString.js';
 import { safeSend } from '../utils/safeSend.js';
 import { splitMessage } from '../utils/splitMessage.js';
 import { addToHistory } from './ai.js';
+import { getAuditPool, getBotIdentity, logAuditEvent } from './auditLogger.js';
 import { isProtectedTarget } from './moderation.js';
 import { isMessageTypeEligible } from './triage-config.js';
 import { resolveMessageId, sanitizeText } from './triage-filter.js';
@@ -150,13 +151,144 @@ export async function fetchChannelContext(channelId, client, bufferSnapshot, lim
 
 // ── Moderation audit log ─────────────────────────────────────────────────────
 
+function resolveModerationTargets(classification, snapshot) {
+  const explicitTargetMessageIds = Array.isArray(classification.targetMessageIds)
+    ? classification.targetMessageIds.filter(Boolean)
+    : [];
+  const fallbackMessageId = snapshot.at(-1)?.messageId;
+  const targetMessageIds =
+    explicitTargetMessageIds.length > 0
+      ? explicitTargetMessageIds
+      : fallbackMessageId
+        ? [fallbackMessageId]
+        : [];
+  const snapshotMessageIds = new Set(snapshot.map((m) => m.messageId));
+
+  return {
+    targetMessageIds,
+    targets: snapshot.filter((m) => targetMessageIds.includes(m.messageId)),
+    unresolvedTargetMessageIds: explicitTargetMessageIds.filter(
+      (id) => !snapshotMessageIds.has(id),
+    ),
+  };
+}
+
+function recordTriageModerationAudit(
+  client,
+  classification,
+  targets,
+  channelId,
+  logChannelId,
+  guildId,
+) {
+  if (!guildId) return;
+
+  const targetMessageIds =
+    classification.targetMessageIds ?? targets.map((target) => target.messageId);
+  const primaryTarget = targets[0] ?? null;
+  const botIdentity = getBotIdentity(client);
+
+  logAuditEvent(getAuditPool(), {
+    guildId,
+    userId: botIdentity.userId,
+    userTag: botIdentity.userTag,
+    action: 'triage.moderation_flag',
+    targetType: 'message',
+    targetId: primaryTarget?.messageId ?? targetMessageIds[0] ?? null,
+    targetTag: primaryTarget?.author ?? null,
+    details: {
+      sourceChannelId: channelId,
+      logChannelId,
+      recommendedAction: classification.recommendedAction ?? null,
+      violatedRule: classification.violatedRule ?? null,
+      reasoning: classification.reasoning ?? null,
+      targetMessageIds,
+      targets: targets.map((target) => ({
+        messageId: target.messageId,
+        userId: target.userId,
+        author: target.author,
+        content: target.content?.slice(0, 1000) ?? '',
+      })),
+    },
+  });
+}
+
+async function resolveModerationProtectionGuild(client, guildId, logChannel) {
+  if (logChannel?.guild) return logChannel.guild;
+  if (!guildId) return null;
+
+  const cachedGuild = client.guilds?.cache?.get?.(guildId);
+  if (cachedGuild) return cachedGuild;
+
+  try {
+    return (await client.guilds?.fetch?.(guildId)) ?? null;
+  } catch (err) {
+    warn('Failed to fetch guild for protected-role moderation audit check', {
+      guildId,
+      error: err.message,
+    });
+    return null;
+  }
+}
+
+async function hasProtectedModerationTarget(targets, guild, config, guildId, channelId) {
+  if (!config.moderation?.protectRoles?.enabled) return false;
+  if (!guild) {
+    warn('Skipping moderation log because protected-role guild lookup failed', {
+      guildId,
+      channelId,
+    });
+    return true;
+  }
+
+  for (const t of targets) {
+    let member = null;
+    try {
+      member = (await guild.members?.fetch?.(t.userId)) ?? null;
+    } catch (err) {
+      warn('Skipping moderation log because protected-role member lookup failed', {
+        guildId,
+        channelId,
+        userId: t.userId,
+        error: err.message,
+      });
+      return true;
+    }
+
+    if (!member) {
+      warn('Skipping moderation log because protected-role member lookup returned no member', {
+        guildId,
+        channelId,
+        userId: t.userId,
+      });
+      return true;
+    }
+
+    if (isProtectedTarget(member, guild)) {
+      warn('Skipping moderation log for protected role target', {
+        guildId,
+        channelId,
+        userId: t.userId,
+      });
+      return true;
+    }
+  }
+
+  return false;
+}
+
 /**
  * Send a moderation audit embed to the configured moderation log channel
  * summarizing the classification and flagged messages.
  *
- * If no moderation log channel is configured or the channel cannot be fetched,
- * the function exits without action. Errors encountered while sending the embed
- * are caught and ignored so the triage flow continues.
+ * If no moderation log channel is configured, the Discord log send is skipped
+ * while the database audit event is still recorded when guild context is
+ * available. If the channel cannot be fetched, the Discord log send is skipped
+ * while the database audit event is still recorded when guild context is
+ * available. If role protections are enabled and the protected-role lookup
+ * cannot complete, or explicit targets are missing from the snapshot, both the
+ * Discord log and database audit are skipped to fail closed. Errors encountered
+ * while sending the embed are caught and ignored so the triage flow continues.
  *
  * @param {import('discord.js').Client} client - Discord client used to fetch the log channel.
  * @param {Object} classification - Classifier output containing fields such as `recommendedAction`, `violatedRule`, `reasoning`, and `targetMessageIds`.
@@ -173,30 +305,71 @@ export async function sendModerationLog(
   config,
   guildId,
 ) {
-  const logChannelId = config.triage?.moderationLogChannel;
-  if (!logChannelId) return;
+  const logChannelId = config.triage?.moderationLogChannel ?? null;
+
+  // Find target messages from the snapshot before any Discord log-channel work
+  // so the DB audit is not coupled to channel fetch success. When the classifier
+  // omits targets, fall back to the most recent buffered message (the existing
+  // reply-resolution convention) so audits and protection checks have a real target.
+  const { targetMessageIds, targets, unresolvedTargetMessageIds } = resolveModerationTargets(
+    classification,
+    snapshot,
+  );
+  const auditClassification = { ...classification, targetMessageIds };
+
+  if (config.moderation?.protectRoles?.enabled && unresolvedTargetMessageIds.length > 0) {
+    warn('Skipping moderation log because explicit targets were missing from snapshot', {
+      guildId,
+      channelId,
+      targetMessageIds: unresolvedTargetMessageIds,
+    });
+    return;
+  }
+
+  let logChannel = null;
+  if (logChannelId) {
+    try {
+      logChannel = await fetchChannelCached(client, logChannelId, guildId);
+    } catch (err) {
+      warn('Failed to fetch moderation audit log channel', {
+        guildId,
+        channelId,
+        error: err.message,
+      });
+    }
+  }
+
+  let protectionGuild = null;
+  if (config.moderation?.protectRoles?.enabled) {
+    protectionGuild = await resolveModerationProtectionGuild(client, guildId, logChannel);
+    if (await hasProtectedModerationTarget(targets, protectionGuild, config, guildId, channelId)) {
+      return;
+    }
+  }
+
+  const auditGuildId = guildId ?? logChannel?.guild?.id ?? protectionGuild?.id ?? null;
+
+  if (!logChannel) {
+    recordTriageModerationAudit(
+      client,
+      auditClassification,
+      targets,
+      channelId,
+      logChannelId,
+      auditGuildId,
+    );
+    return;
+  }
 
   try {
-    const logChannel = await fetchChannelCached(client, logChannelId, guildId);
-    if (!logChannel) return;
-
-    // Find target messages from the snapshot
-    const targets = snapshot.filter((m) => classification.targetMessageIds?.includes(m.messageId));
-
-    // Skip if any target is a protected role (admin/mod)
-    if (config.moderation?.protectRoles?.enabled && logChannel.guild) {
-      for (const t of targets) {
-        const member = await logChannel.guild.members.fetch(t.userId).catch(() => null);
-        if (member && isProtectedTarget(member, logChannel.guild)) {
-          warn('Skipping moderation log for protected role target', {
-            guildId,
-            channelId,
-            userId: t.userId,
-          });
-          return;
-        }
-      }
-    }
+    recordTriageModerationAudit(
+      client,
+      auditClassification,
+      targets,
+      channelId,
+      logChannelId,
+      auditGuildId,
+    );
 
     const actionLabels = {
       warn: '\u26A0\uFE0F Warn',

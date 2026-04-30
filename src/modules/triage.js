@@ -23,6 +23,7 @@ import { fetchChannelCached } from '../utils/discordCache.js';
 import { AIClientError } from '../utils/errors.js';
 import { checkGuildBudget } from '../utils/guildSpend.js';
 import { safeSend } from '../utils/safeSend.js';
+import { getAuditPool, getBotIdentity, logAuditEvent } from './auditLogger.js';
 import { buildMemoryContext, extractAndStoreMemories } from './memory.js';
 
 // ── Sub-module imports ───────────────────────────────────────────────────────
@@ -122,12 +123,14 @@ function buildResponderConfig(evalConfig, resolved) {
   };
 }
 
-// ── Budget alert throttle ────────────────────────────────────────────────────
-// Track the last time a budget-exceeded alert was posted per guild so we don't
-// spam the moderation log channel on every evaluation attempt.
+// ── Budget alert/audit throttles ─────────────────────────────────────────────
+// Track the last time budget-exceeded side effects were recorded per guild so we
+// don't spam audit logs or moderation log channels on every evaluation attempt.
 /** @type {Map<string, number>} guildId → timestamp of last alert (ms) */
 const budgetAlertSentAt = new Map();
-/** Minimum gap between budget-exceeded alerts for the same guild (1 hour). */
+/** @type {Map<string, number>} guildId → timestamp of last audit row (ms) */
+const budgetExceededAuditRecordedAt = new Map();
+/** Minimum gap between budget-exceeded side effects for the same guild (1 hour). */
 const BUDGET_ALERT_COOLDOWN_MS = 60 * 60 * 1_000;
 
 // ── Two-step CLI evaluation ──────────────────────────────────────────────────
@@ -541,13 +544,19 @@ async function evaluateAndRespond(channelId, snapshot, evalConfig, evalClient, a
               spend: budget.spend,
               budget: budget.budget,
             });
+            const logChannelId = evalConfig.triage?.moderationLogChannel ?? null;
+            const now = Date.now();
+            const lastAudit = budgetExceededAuditRecordedAt.get(guildId);
+            if (lastAudit == null || now - lastAudit >= BUDGET_ALERT_COOLDOWN_MS) {
+              budgetExceededAuditRecordedAt.set(guildId, now);
+              recordBudgetExceededAudit(evalClient, guildId, channelId, logChannelId, budget);
+            }
+
             // Post a throttled alert to the moderation log channel — at most once per
             // BUDGET_ALERT_COOLDOWN_MS — to avoid spamming on every evaluation attempt.
-            const logChannelId = evalConfig.triage?.moderationLogChannel;
             if (logChannelId) {
-              const now = Date.now();
-              const lastAlert = budgetAlertSentAt.get(guildId) ?? 0;
-              if (now - lastAlert >= BUDGET_ALERT_COOLDOWN_MS) {
+              const lastAlert = budgetAlertSentAt.get(guildId);
+              if (lastAlert == null || now - lastAlert >= BUDGET_ALERT_COOLDOWN_MS) {
                 budgetAlertSentAt.set(guildId, now);
                 fetchChannelCached(evalClient, logChannelId, guildId)
                   .then((logCh) => {
@@ -826,6 +835,7 @@ export function stopTriage() {
   client = null;
   config = null;
   healthMonitor = null;
+  budgetExceededAuditRecordedAt.clear();
   info('Triage module stopped');
 }
 
@@ -935,6 +945,26 @@ export async function accumulateMessage(message, msgConfig) {
 }
 
 const MAX_REEVAL_DEPTH = 3;
+
+function recordBudgetExceededAudit(evalClient, guildId, channelId, logChannelId, budget) {
+  const botIdentity = getBotIdentity(evalClient);
+
+  logAuditEvent(getAuditPool(), {
+    guildId,
+    userId: botIdentity.userId,
+    userTag: botIdentity.userTag,
+    action: 'triage.budget_exceeded',
+    targetType: 'guild',
+    targetId: guildId,
+    details: {
+      sourceChannelId: channelId,
+      logChannelId,
+      spend: budget.spend,
+      budget: budget.budget,
+      pct: budget.pct,
+    },
+  });
+}
 
 /**
  * Run an immediate triage evaluation of the buffered messages for the given channel.

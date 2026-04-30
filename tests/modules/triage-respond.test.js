@@ -59,12 +59,30 @@ vi.mock('../../src/modules/moderation.js', () => ({
   isProtectedTarget: vi.fn().mockReturnValue(false),
 }));
 
+vi.mock('../../src/db.js', () => ({
+  getPool: vi.fn(),
+}));
+
+vi.mock('../../src/modules/auditLogger.js', async () => {
+  const actual = await vi.importActual('../../src/modules/auditLogger.js');
+  return {
+    ...actual,
+    logAuditEvent: vi.fn(),
+  };
+});
+
+import { getPool } from '../../src/db.js';
 import { warn } from '../../src/logger.js';
+import { getBotIdentity, logAuditEvent } from '../../src/modules/auditLogger.js';
 import { isProtectedTarget } from '../../src/modules/moderation.js';
 import { safeSend } from '../../src/utils/safeSend.js';
 
 beforeEach(() => {
   vi.clearAllMocks();
+  isProtectedTarget.mockReturnValue(false);
+  getPool.mockImplementation(() => {
+    throw new Error('Database not initialized');
+  });
 });
 
 describe('triage-respond', () => {
@@ -327,12 +345,57 @@ describe('triage-respond', () => {
   });
 
   describe('sendModerationLog', () => {
+    const useMockAuditPool = () => {
+      const mockPool = { query: vi.fn() };
+      getPool.mockReturnValue(mockPool);
+      return mockPool;
+    };
+
+    const createModerationClassification = ({
+      recommendedAction = 'warn',
+      violatedRule = 'Rule 1: Be respectful',
+      reasoning = 'User was rude',
+      targetMessageIds = ['msg1'],
+    } = {}) => ({
+      recommendedAction,
+      violatedRule,
+      reasoning,
+      targetMessageIds,
+    });
+
+    const createModerationSnapshot = ({
+      messageId = 'msg1',
+      author = 'BadUser',
+      userId = 'user1',
+      content = 'Offensive content',
+    } = {}) => [{ messageId, author, userId, content }];
+
+    const createModerationLogConfig = (overrides = {}) => ({
+      ...overrides,
+      triage: { moderationLogChannel: 'log-channel', ...overrides.triage },
+    });
+
+    const createModerationLogClient = ({
+      logChannel = { id: 'log-channel' },
+      user = { id: 'bot1', tag: 'Volvox.Bot#0001' },
+      fetchLogChannel = async (id) => (id === 'log-channel' ? logChannel : null),
+    } = {}) => ({
+      user,
+      channels: {
+        fetch: vi.fn(fetchLogChannel),
+      },
+    });
+
     it('should send moderation embed to log channel', async () => {
       const mockLogChannel = {
         id: 'log-channel',
       };
 
+      const mockPool = { query: vi.fn() };
+      getPool.mockReturnValue(mockPool);
+
       const mockClient = {
+        user: { id: 'bot1', tag: 'Volvox.Bot#0001' },
         channels: {
           fetch: vi.fn(async (id) => (id === 'log-channel' ? mockLogChannel : null)),
         },
@@ -360,7 +423,34 @@ describe('triage-respond', () => {
         },
       };
 
-      await sendModerationLog(mockClient, classification, snapshot, 'channel1', config);
+      await sendModerationLog(mockClient, classification, snapshot, 'channel1', config, 'guild1');
+
+      expect(logAuditEvent).toHaveBeenCalledWith(
+        mockPool,
+        expect.objectContaining({
+          guildId: 'guild1',
+          userId: 'bot1',
+          userTag: 'Volvox.Bot#0001',
+          action: 'triage.moderation_flag',
+          targetType: 'message',
+          targetId: 'msg1',
+          targetTag: 'BadUser',
+          details: expect.objectContaining({
+            sourceChannelId: 'channel1',
+            logChannelId: 'log-channel',
+            recommendedAction: 'warn',
+            violatedRule: 'Rule 1: Be respectful',
+            targetMessageIds: ['msg1'],
+          }),
+        }),
+      );
+
+      expect(logAuditEvent.mock.calls[0][1].details.targets).toEqual([
+        expect.objectContaining({
+          messageId: 'msg1',
+          content: 'Offensive content',
+        }),
+      ]);
 
       expect(safeSend).toHaveBeenCalledWith(
         mockLogChannel,
@@ -374,6 +464,383 @@ describe('triage-respond', () => {
           ]),
         }),
       );
+    });
+
+    it('writes DB audit for old-style callers using the log channel guild id', async () => {
+      const mockLogChannel = {
+        id: 'log-channel',
+        guild: { id: 'guild-from-log-channel' },
+      };
+      const mockPool = useMockAuditPool();
+      const mockClient = createModerationLogClient({ logChannel: mockLogChannel });
+
+      await sendModerationLog(
+        mockClient,
+        createModerationClassification(),
+        createModerationSnapshot(),
+        'channel1',
+        createModerationLogConfig(),
+      );
+
+      expect(logAuditEvent).toHaveBeenCalledWith(
+        mockPool,
+        expect.objectContaining({
+          guildId: 'guild-from-log-channel',
+          action: 'triage.moderation_flag',
+          targetId: 'msg1',
+        }),
+      );
+      expect(safeSend).toHaveBeenCalledWith(mockLogChannel, expect.any(Object));
+    });
+
+    it('writes DB audit for protected-role checks using the log channel guild id', async () => {
+      isProtectedTarget.mockReturnValue(false);
+
+      const mockPool = useMockAuditPool();
+      const mockMember = { id: 'user1' };
+      const mockGuild = {
+        id: 'guild-from-protection-log-channel',
+        members: { fetch: vi.fn().mockResolvedValue(mockMember) },
+      };
+      const mockLogChannel = { id: 'log-channel', guild: mockGuild };
+      const mockClient = createModerationLogClient({
+        logChannel: mockLogChannel,
+        user: { id: 'bot1', username: 'Volvox.Bot' },
+        fetchLogChannel: async () => mockLogChannel,
+      });
+
+      await sendModerationLog(
+        mockClient,
+        createModerationClassification({
+          recommendedAction: 'timeout',
+          violatedRule: 'Rule 2',
+          reasoning: 'Needs moderation review',
+          targetMessageIds: ['msg-protection-check'],
+        }),
+        createModerationSnapshot({ messageId: 'msg-protection-check', content: 'msg' }),
+        'source-channel',
+        createModerationLogConfig({ moderation: { protectRoles: { enabled: true } } }),
+      );
+
+      expect(mockGuild.members.fetch).toHaveBeenCalledWith('user1');
+      expect(isProtectedTarget).toHaveBeenCalledWith(mockMember, mockGuild);
+      expect(logAuditEvent).toHaveBeenCalledWith(
+        mockPool,
+        expect.objectContaining({
+          guildId: 'guild-from-protection-log-channel',
+          action: 'triage.moderation_flag',
+          targetId: 'msg-protection-check',
+        }),
+      );
+      expect(safeSend).toHaveBeenCalledWith(mockLogChannel, expect.any(Object));
+    });
+
+    it('writes the DB audit even when the moderation log channel cannot be fetched', async () => {
+      const mockPool = { query: vi.fn() };
+      getPool.mockReturnValue(mockPool);
+
+      const mockClient = {
+        user: { id: 'bot1', username: 'Volvox.Bot' },
+        channels: {
+          fetch: vi.fn(async () => null),
+        },
+      };
+
+      const classification = {
+        recommendedAction: 'timeout',
+        violatedRule: 'Rule 2',
+        reasoning: 'Escalating abuse',
+        targetMessageIds: ['msg-missing-channel'],
+      };
+      const snapshot = [
+        {
+          messageId: 'msg-missing-channel',
+          author: 'BadUser',
+          userId: 'user1',
+          content: 'Bad content',
+        },
+      ];
+      const config = {
+        triage: { moderationLogChannel: 'missing-log-channel' },
+      };
+
+      await sendModerationLog(
+        mockClient,
+        classification,
+        snapshot,
+        'source-channel',
+        config,
+        'guild1',
+      );
+
+      expect(logAuditEvent).toHaveBeenCalledWith(
+        mockPool,
+        expect.objectContaining({
+          guildId: 'guild1',
+          action: 'triage.moderation_flag',
+          targetId: 'msg-missing-channel',
+          details: expect.objectContaining({
+            sourceChannelId: 'source-channel',
+            logChannelId: 'missing-log-channel',
+          }),
+        }),
+      );
+      expect(safeSend).not.toHaveBeenCalled();
+    });
+
+    it('writes the DB audit without Discord send when no moderation log channel is configured', async () => {
+      const mockPool = { query: vi.fn() };
+      getPool.mockReturnValue(mockPool);
+
+      const mockClient = {
+        user: { id: 'bot1', username: 'Volvox.Bot' },
+        channels: { fetch: vi.fn() },
+      };
+      const classification = {
+        recommendedAction: 'timeout',
+        violatedRule: 'Rule 2',
+        reasoning: 'Escalating abuse',
+        targetMessageIds: ['msg-no-log-channel'],
+      };
+      const snapshot = [
+        {
+          messageId: 'msg-no-log-channel',
+          author: 'BadUser',
+          userId: 'user1',
+          content: 'Bad content',
+        },
+      ];
+
+      await sendModerationLog(
+        mockClient,
+        classification,
+        snapshot,
+        'source-channel',
+        { triage: {} },
+        'guild1',
+      );
+
+      expect(mockClient.channels.fetch).not.toHaveBeenCalled();
+      expect(logAuditEvent).toHaveBeenCalledWith(
+        mockPool,
+        expect.objectContaining({
+          guildId: 'guild1',
+          action: 'triage.moderation_flag',
+          targetId: 'msg-no-log-channel',
+          details: expect.objectContaining({
+            sourceChannelId: 'source-channel',
+            logChannelId: null,
+            targetMessageIds: ['msg-no-log-channel'],
+          }),
+        }),
+      );
+      expect(safeSend).not.toHaveBeenCalled();
+    });
+
+    it('skips fallback DB audit for protected targets when the moderation log channel fetch fails', async () => {
+      isProtectedTarget.mockReturnValueOnce(true);
+
+      const mockPool = { query: vi.fn() };
+      getPool.mockReturnValue(mockPool);
+
+      const mockMember = { id: 'user1' };
+      const mockGuild = {
+        id: 'guild1',
+        members: { fetch: vi.fn().mockResolvedValue(mockMember) },
+      };
+      const mockClient = {
+        user: { id: 'bot1', username: 'Volvox.Bot' },
+        channels: {
+          fetch: vi.fn(async () => {
+            throw new Error('Missing access');
+          }),
+        },
+        guilds: {
+          fetch: vi.fn().mockResolvedValue(mockGuild),
+        },
+      };
+
+      const classification = {
+        recommendedAction: 'ban',
+        violatedRule: 'Rule 1',
+        reasoning: 'Protected target flagged',
+        targetMessageIds: ['msg-protected'],
+      };
+      const snapshot = [
+        { messageId: 'msg-protected', author: 'AdminUser', userId: 'user1', content: 'msg' },
+      ];
+      const config = {
+        triage: { moderationLogChannel: 'missing-log-channel' },
+        moderation: { protectRoles: { enabled: true, includeAdmins: true } },
+      };
+
+      await sendModerationLog(
+        mockClient,
+        classification,
+        snapshot,
+        'source-channel',
+        config,
+        'guild1',
+      );
+
+      expect(mockClient.channels.fetch).toHaveBeenCalledWith('missing-log-channel');
+      expect(mockClient.guilds.fetch).toHaveBeenCalledWith('guild1');
+      expect(mockGuild.members.fetch).toHaveBeenCalledWith('user1');
+      expect(isProtectedTarget).toHaveBeenCalledWith(mockMember, mockGuild);
+      expect(logAuditEvent).not.toHaveBeenCalled();
+      expect(safeSend).not.toHaveBeenCalled();
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('protected role'),
+        expect.objectContaining({
+          guildId: 'guild1',
+          channelId: 'source-channel',
+          userId: 'user1',
+        }),
+      );
+    });
+
+    it('truncates stored moderation target content in audit details', async () => {
+      const mockLogChannel = { id: 'log-channel' };
+      const mockPool = { query: vi.fn() };
+      getPool.mockReturnValue(mockPool);
+
+      const mockClient = {
+        user: { id: 'bot1', tag: 'Volvox.Bot#0001' },
+        channels: { fetch: vi.fn(async () => mockLogChannel) },
+      };
+
+      const longContent = 'x'.repeat(1200);
+      const classification = {
+        recommendedAction: 'warn',
+        violatedRule: 'Rule 1',
+        reasoning: 'Long abusive content',
+        targetMessageIds: ['msg-long'],
+      };
+      const snapshot = [
+        { messageId: 'msg-long', author: 'BadUser', userId: 'user1', content: longContent },
+      ];
+      const config = { triage: { moderationLogChannel: 'log-channel' } };
+
+      await sendModerationLog(mockClient, classification, snapshot, 'channel1', config, 'guild1');
+
+      const auditDetails = logAuditEvent.mock.calls[0][1].details;
+      expect(auditDetails.targets[0].content).toHaveLength(1000);
+      expect(auditDetails.targets[0].content).toBe(longContent.slice(0, 1000));
+    });
+
+    it('falls back to the most recent snapshot message for DB audit when targetMessageIds is missing', async () => {
+      const mockPool = useMockAuditPool();
+      const mockLogChannel = { id: 'log-channel' };
+      const mockClient = createModerationLogClient({ logChannel: mockLogChannel });
+
+      const classification = createModerationClassification();
+      delete classification.targetMessageIds;
+      const snapshot = [
+        { messageId: 'older-msg', author: 'EarlierUser', userId: 'user-old', content: 'Earlier' },
+        { messageId: 'recent-msg', author: 'RecentUser', userId: 'user-recent', content: 'Recent' },
+      ];
+
+      await sendModerationLog(
+        mockClient,
+        classification,
+        snapshot,
+        'channel1',
+        createModerationLogConfig(),
+        'guild1',
+      );
+
+      expect(logAuditEvent).toHaveBeenCalledWith(
+        mockPool,
+        expect.objectContaining({
+          targetId: 'recent-msg',
+          targetTag: 'RecentUser',
+          details: expect.objectContaining({
+            targetMessageIds: ['recent-msg'],
+            targets: [
+              expect.objectContaining({
+                messageId: 'recent-msg',
+                userId: 'user-recent',
+                author: 'RecentUser',
+              }),
+            ],
+          }),
+        }),
+      );
+      expect(safeSend).toHaveBeenCalledWith(mockLogChannel, expect.any(Object));
+    });
+
+    it('uses fallback targets for protected-role checks when targetMessageIds is empty', async () => {
+      isProtectedTarget.mockReturnValueOnce(true);
+
+      const mockMember = { id: 'user-recent' };
+      const mockGuild = {
+        id: 'guild1',
+        members: { fetch: vi.fn().mockResolvedValue(mockMember) },
+      };
+      const mockLogChannel = { id: 'log-channel', guild: mockGuild };
+      const mockClient = createModerationLogClient({ logChannel: mockLogChannel });
+
+      await sendModerationLog(
+        mockClient,
+        createModerationClassification({ targetMessageIds: [] }),
+        [
+          { messageId: 'older-msg', author: 'EarlierUser', userId: 'user-old', content: 'Earlier' },
+          {
+            messageId: 'recent-msg',
+            author: 'RecentUser',
+            userId: 'user-recent',
+            content: 'Recent',
+          },
+        ],
+        'channel1',
+        createModerationLogConfig({ moderation: { protectRoles: { enabled: true } } }),
+        'guild1',
+      );
+
+      expect(mockGuild.members.fetch).toHaveBeenCalledWith('user-recent');
+      expect(isProtectedTarget).toHaveBeenCalledWith(mockMember, mockGuild);
+      expect(logAuditEvent).not.toHaveBeenCalled();
+      expect(safeSend).not.toHaveBeenCalled();
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('protected role'),
+        expect.objectContaining({ userId: 'user-recent' }),
+      );
+    });
+
+    it('skips moderation audit and send when protected-role checks have unresolved explicit targets', async () => {
+      useMockAuditPool();
+      const mockLogChannel = { id: 'log-channel' };
+      const mockClient = createModerationLogClient({ logChannel: mockLogChannel });
+
+      await sendModerationLog(
+        mockClient,
+        createModerationClassification({ targetMessageIds: ['missing-msg'] }),
+        [{ messageId: 'other-msg', author: 'OtherUser', userId: 'user-other', content: 'Other' }],
+        'channel1',
+        createModerationLogConfig({ moderation: { protectRoles: { enabled: true } } }),
+        'guild1',
+      );
+
+      expect(mockClient.channels.fetch).not.toHaveBeenCalled();
+      expect(isProtectedTarget).not.toHaveBeenCalled();
+      expect(logAuditEvent).not.toHaveBeenCalled();
+      expect(safeSend).not.toHaveBeenCalled();
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('explicit targets were missing from snapshot'),
+        expect.objectContaining({
+          guildId: 'guild1',
+          channelId: 'channel1',
+          targetMessageIds: ['missing-msg'],
+        }),
+      );
+    });
+
+    it('resolves fallback bot identity for audit helpers', () => {
+      expect(getBotIdentity({ user: { id: 'bot-id', username: 'Volvox' } })).toEqual({
+        userId: 'bot-id',
+        userTag: 'Volvox',
+      });
+      expect(getBotIdentity({})).toEqual({ userId: 'volvox-bot', userTag: 'Volvox.Bot' });
     });
 
     it('should do nothing if log channel not configured', async () => {
@@ -438,8 +905,9 @@ describe('triage-respond', () => {
         moderation: { protectRoles: { enabled: true, includeAdmins: true } },
       };
 
-      await sendModerationLog(mockClient, classification, snapshot, 'channel1', config);
+      await sendModerationLog(mockClient, classification, snapshot, 'channel1', config, 'guild1');
 
+      expect(logAuditEvent).not.toHaveBeenCalled();
       expect(safeSend).not.toHaveBeenCalled();
       expect(warn).toHaveBeenCalledWith(
         expect.stringContaining('protected role'),
@@ -474,6 +942,137 @@ describe('triage-respond', () => {
       await sendModerationLog(mockClient, classification, snapshot, 'channel1', config);
 
       expect(safeSend).toHaveBeenCalled();
+    });
+
+    it('does not resolve the guild for role protection when protectRoles is disabled', async () => {
+      const mockLogChannel = { id: 'log-channel' };
+      const mockClient = {
+        channels: { fetch: vi.fn().mockResolvedValue(mockLogChannel) },
+        guilds: { fetch: vi.fn().mockRejectedValue(new Error('should not fetch guild')) },
+      };
+
+      const classification = {
+        recommendedAction: 'warn',
+        violatedRule: 'Rule 1',
+        reasoning: 'Rude message',
+        targetMessageIds: ['msg1'],
+      };
+      const snapshot = [{ messageId: 'msg1', author: 'BadUser', userId: 'user1', content: 'msg' }];
+      const config = {
+        triage: { moderationLogChannel: 'log-channel' },
+        moderation: { protectRoles: { enabled: false } },
+      };
+
+      await sendModerationLog(mockClient, classification, snapshot, 'channel1', config, 'guild1');
+
+      expect(mockClient.guilds.fetch).not.toHaveBeenCalled();
+      expect(isProtectedTarget).not.toHaveBeenCalled();
+      expect(safeSend).toHaveBeenCalledWith(mockLogChannel, expect.any(Object));
+    });
+
+    it('skips moderation audit and send when protected-role guild lookup fails', async () => {
+      const mockPool = { query: vi.fn() };
+      getPool.mockReturnValue(mockPool);
+
+      const mockClient = {
+        user: { id: 'bot1', username: 'Volvox.Bot' },
+        channels: {
+          fetch: vi.fn(async () => {
+            throw new Error('Missing access');
+          }),
+        },
+        guilds: {
+          fetch: vi.fn().mockRejectedValue(new Error('Guild fetch failed')),
+        },
+      };
+
+      const classification = {
+        recommendedAction: 'ban',
+        violatedRule: 'Rule 1',
+        reasoning: 'Protected target could not be checked',
+        targetMessageIds: ['msg-protection-unknown'],
+      };
+      const snapshot = [
+        {
+          messageId: 'msg-protection-unknown',
+          author: 'MaybeAdmin',
+          userId: 'user1',
+          content: 'msg',
+        },
+      ];
+      const config = {
+        triage: { moderationLogChannel: 'missing-log-channel' },
+        moderation: { protectRoles: { enabled: true } },
+      };
+
+      await sendModerationLog(
+        mockClient,
+        classification,
+        snapshot,
+        'source-channel',
+        config,
+        'guild1',
+      );
+
+      expect(mockClient.channels.fetch).toHaveBeenCalledWith('missing-log-channel');
+      expect(mockClient.guilds.fetch).toHaveBeenCalledWith('guild1');
+      expect(logAuditEvent).not.toHaveBeenCalled();
+      expect(safeSend).not.toHaveBeenCalled();
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('protected-role guild lookup failed'),
+        expect.objectContaining({ guildId: 'guild1', channelId: 'source-channel' }),
+      );
+    });
+
+    it('skips moderation audit and send when protected-role member lookup returns no member', async () => {
+      const mockPool = { query: vi.fn() };
+      getPool.mockReturnValue(mockPool);
+
+      const mockGuild = {
+        id: 'guild1',
+        members: { fetch: vi.fn().mockResolvedValue(null) },
+      };
+      const mockLogChannel = { id: 'log-channel', guild: mockGuild };
+      const mockClient = {
+        user: { id: 'bot1', username: 'Volvox.Bot' },
+        channels: { fetch: vi.fn().mockResolvedValue(mockLogChannel) },
+      };
+
+      const classification = {
+        recommendedAction: 'ban',
+        violatedRule: 'Rule 1',
+        reasoning: 'Protected target could not be checked',
+        targetMessageIds: ['msg-missing-member'],
+      };
+      const snapshot = [
+        { messageId: 'msg-missing-member', author: 'MaybeAdmin', userId: 'user1', content: 'msg' },
+      ];
+      const config = {
+        triage: { moderationLogChannel: 'log-channel' },
+        moderation: { protectRoles: { enabled: true } },
+      };
+
+      await sendModerationLog(
+        mockClient,
+        classification,
+        snapshot,
+        'source-channel',
+        config,
+        'guild1',
+      );
+
+      expect(mockGuild.members.fetch).toHaveBeenCalledWith('user1');
+      expect(isProtectedTarget).not.toHaveBeenCalled();
+      expect(logAuditEvent).not.toHaveBeenCalled();
+      expect(safeSend).not.toHaveBeenCalled();
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('protected-role member lookup returned no member'),
+        expect.objectContaining({
+          guildId: 'guild1',
+          channelId: 'source-channel',
+          userId: 'user1',
+        }),
+      );
     });
 
     it('should skip the protected-role fetch loop when protectRoles is explicitly disabled', async () => {
