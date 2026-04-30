@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest, NextResponse } from 'next/server';
+import { expectJsonResponse, expectStatus } from './test-utils';
 
 const {
   mockAuthorizeGuildAdmin,
@@ -41,8 +42,7 @@ describe('GET /api/bot-health', () => {
   it('returns 400 when guildId is missing', async () => {
     const response = await GET(createRequest('http://localhost:3000/api/bot-health'));
 
-    expect(response.status).toBe(400);
-    await expect(response.json()).resolves.toEqual({ error: 'Missing guildId' });
+    await expectJsonResponse(response, 400, { error: 'Missing guildId' });
     expect(mockAuthorizeGuildAdmin).not.toHaveBeenCalled();
   });
 
@@ -53,8 +53,7 @@ describe('GET /api/bot-health', () => {
 
     const response = await GET(createRequest());
 
-    expect(response.status).toBe(403);
-    await expect(response.json()).resolves.toEqual({ error: 'Forbidden' });
+    await expectJsonResponse(response, 403, { error: 'Forbidden' });
   });
 
   it('proxies health requests for authorized guild admins', async () => {
@@ -66,6 +65,6 @@ describe('GET /api/bot-health', () => {
       '[api/bot-health]',
     );
     expect(mockProxyToBotApi).toHaveBeenCalled();
-    expect(response.status).toBe(200);
+    expectStatus(response, 200);
   });
 });

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import { expectJsonErrorContaining, expectJsonResponse, expectStatus } from "./test-utils";
 
 const { mockGetToken, mockGetMutualGuilds } = vi.hoisted(() => ({
   mockGetToken: vi.fn(),
@@ -62,8 +63,7 @@ describe("GET /api/guilds/[guildId]/analytics", () => {
       params: Promise.resolve({ guildId: "guild-1" }),
     });
 
-    expect(response.status).toBe(401);
-    await expect(response.json()).resolves.toEqual({ error: "Unauthorized" });
+    await expectJsonResponse(response, 401, { error: "Unauthorized" });
   });
 
   it("returns 403 when user does not have admin access to requested guild", async () => {
@@ -80,8 +80,7 @@ describe("GET /api/guilds/[guildId]/analytics", () => {
       params: Promise.resolve({ guildId: "guild-1" }),
     });
 
-    expect(response.status).toBe(403);
-    await expect(response.json()).resolves.toEqual({ error: "Forbidden" });
+    await expectJsonResponse(response, 403, { error: "Forbidden" });
   });
 
   it("returns 403 when requested guild is not in user's mutual guilds", async () => {
@@ -98,8 +97,7 @@ describe("GET /api/guilds/[guildId]/analytics", () => {
       params: Promise.resolve({ guildId: "guild-1" }),
     });
 
-    expect(response.status).toBe(403);
-    await expect(response.json()).resolves.toEqual({ error: "Forbidden" });
+    await expectJsonResponse(response, 403, { error: "Forbidden" });
   });
 
   it("allows guild owner access even without ADMINISTRATOR permission bit", async () => {
@@ -123,7 +121,7 @@ describe("GET /api/guilds/[guildId]/analytics", () => {
       params: Promise.resolve({ guildId: "guild-1" }),
     });
 
-    expect(response.status).toBe(200);
+    expectStatus(response, 200);
   });
 
   it("returns 502 when guild permission verification fails", async () => {
@@ -134,8 +132,7 @@ describe("GET /api/guilds/[guildId]/analytics", () => {
       params: Promise.resolve({ guildId: "guild-1" }),
     });
 
-    expect(response.status).toBe(502);
-    await expect(response.json()).resolves.toEqual({
+    await expectJsonResponse(response, 502, {
       error: "Failed to verify guild permissions",
     });
   });
@@ -148,9 +145,7 @@ describe("GET /api/guilds/[guildId]/analytics", () => {
       params: Promise.resolve({ guildId: "guild-1" }),
     });
 
-    expect(response.status).toBe(500);
-    const body = await response.json();
-    expect(body.error).toMatch(/not configured/i);
+    await expectJsonErrorContaining(response, 500, /not configured/i);
   });
 
   it("returns 500 when BOT_API_SECRET is missing", async () => {
@@ -161,9 +156,7 @@ describe("GET /api/guilds/[guildId]/analytics", () => {
       params: Promise.resolve({ guildId: "guild-1" }),
     });
 
-    expect(response.status).toBe(500);
-    const body = await response.json();
-    expect(body.error).toMatch(/not configured/i);
+    await expectJsonErrorContaining(response, 500, /not configured/i);
   });
 
   it("returns 500 when BOT_API_URL is malformed", async () => {
@@ -174,8 +167,7 @@ describe("GET /api/guilds/[guildId]/analytics", () => {
       params: Promise.resolve({ guildId: "guild-1" }),
     });
 
-    expect(response.status).toBe(500);
-    await expect(response.json()).resolves.toEqual({
+    await expectJsonResponse(response, 500, {
       error: "Bot API is not configured correctly",
     });
   });
@@ -194,7 +186,7 @@ describe("GET /api/guilds/[guildId]/analytics", () => {
       params: Promise.resolve({ guildId: "guild-1" }),
     });
 
-    expect(response.status).toBe(200);
+    expectStatus(response, 200);
     expect(fetchSpy).toHaveBeenCalledWith(
       expect.stringContaining(
         "http://bot.internal:3001/api/v1/guilds/guild-1/analytics?range=week",
@@ -224,7 +216,7 @@ describe("GET /api/guilds/[guildId]/analytics", () => {
       },
     );
 
-    expect(response.status).toBe(200);
+    expectStatus(response, 200);
     const calledUrl = String(fetchSpy.mock.calls[0]?.[0]);
     expect(calledUrl).toContain("compare=1");
     expect(calledUrl).toContain("channelId=123");
@@ -244,7 +236,6 @@ describe("GET /api/guilds/[guildId]/analytics", () => {
       params: Promise.resolve({ guildId: "guild-1" }),
     });
 
-    expect(response.status).toBe(404);
-    await expect(response.json()).resolves.toEqual({ error: "Guild not found" });
+    await expectJsonResponse(response, 404, { error: "Guild not found" });
   });
 });

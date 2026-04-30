@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { NextRequest } from "next/server";
+import { expectJsonErrorContaining, expectJsonResponse, expectStatus } from "./test-utils";
 
 // Mock next-auth/providers/discord
 vi.mock("next-auth/providers/discord", () => ({
@@ -71,9 +72,7 @@ describe("GET /api/guilds", () => {
 
     const response = await GET(createMockRequest());
 
-    expect(response.status).toBe(401);
-    const body = await response.json();
-    expect(body.error).toBe("Unauthorized");
+    await expectJsonResponse(response, 401, { error: "Unauthorized" });
   });
 
   it("returns 401 when token has no access token", async () => {
@@ -85,7 +84,7 @@ describe("GET /api/guilds", () => {
 
     const response = await GET(createMockRequest());
 
-    expect(response.status).toBe(401);
+    expectStatus(response, 401);
   });
 
   it("returns guilds when authenticated with valid token", async () => {
@@ -104,9 +103,7 @@ describe("GET /api/guilds", () => {
 
     const response = await GET(createMockRequest());
 
-    expect(response.status).toBe(200);
-    const body = await response.json();
-    expect(body).toEqual(mockGuilds);
+    await expectJsonResponse(response, 200, mockGuilds);
     expect(mockGetMutualGuilds).toHaveBeenCalledWith(
       "valid-discord-token",
       expect.any(AbortSignal),
@@ -123,9 +120,7 @@ describe("GET /api/guilds", () => {
 
     const response = await GET(createMockRequest());
 
-    expect(response.status).toBe(401);
-    const body = await response.json();
-    expect(body.error).toMatch(/sign in/i);
+    await expectJsonErrorContaining(response, 401, /sign in/i);
     expect(mockGetMutualGuilds).not.toHaveBeenCalled();
   });
 
@@ -141,9 +136,7 @@ describe("GET /api/guilds", () => {
 
     const response = await GET(createMockRequest());
 
-    expect(response.status).toBe(500);
-    const body = await response.json();
-    expect(body.error).toBe("Failed to fetch guilds");
+    await expectJsonResponse(response, 500, { error: "Failed to fetch guilds" });
   });
 
   it("augments guilds with bot-evaluated access levels when bot api is configured", async () => {
@@ -175,10 +168,8 @@ describe("GET /api/guilds", () => {
     ]);
 
     const response = await GET(createMockRequest());
-    const body = await response.json();
 
-    expect(response.status).toBe(200);
-    expect(body).toEqual([
+    await expectJsonResponse(response, 200, [
       expect.objectContaining({
         id: "1",
         access: "moderator",
@@ -222,10 +213,8 @@ describe("GET /api/guilds", () => {
     ]);
 
     const response = await GET(createMockRequest());
-    const body = await response.json();
 
-    expect(response.status).toBe(200);
-    expect(body).toEqual([
+    await expectJsonResponse(response, 200, [
       expect.objectContaining({
         id: "1",
         access: "viewer",
@@ -265,7 +254,7 @@ describe("GET /api/guilds", () => {
 
     const response = await GET(createMockRequest());
 
-    expect(response.status).toBe(200);
+    expectStatus(response, 200);
     expect(globalThis.fetch).toHaveBeenCalledTimes(3);
 
     const urls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.map(

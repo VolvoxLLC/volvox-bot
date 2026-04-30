@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
+import { expectJsonErrorContaining, expectStatus } from './test-utils';
 
 // ─── Hoisted mocks ────────────────────────────────────────────────────────────
 
@@ -64,23 +65,17 @@ describe('POST /api/guilds/:guildId/members/:userId/xp', () => {
 
   it('rejects amount = 0', async () => {
     const res = await POST(makeRequest({ amount: 0 }), makeParams());
-    expect(res.status).toBe(400);
-    const json = await res.json();
-    expect(json.error).toContain('must not be zero');
+    await expectJsonErrorContaining(res, 400, 'must not be zero');
   });
 
   it('rejects amount exceeding positive bound', async () => {
     const res = await POST(makeRequest({ amount: 1_000_001 }), makeParams());
-    expect(res.status).toBe(400);
-    const json = await res.json();
-    expect(json.error).toContain('between');
+    await expectJsonErrorContaining(res, 400, 'between');
   });
 
   it('rejects amount exceeding negative bound', async () => {
     const res = await POST(makeRequest({ amount: -1_000_001 }), makeParams());
-    expect(res.status).toBe(400);
-    const json = await res.json();
-    expect(json.error).toContain('between');
+    await expectJsonErrorContaining(res, 400, 'between');
   });
 
   it('rejects reason longer than 500 characters', async () => {
@@ -88,9 +83,7 @@ describe('POST /api/guilds/:guildId/members/:userId/xp', () => {
       makeRequest({ amount: 10, reason: 'x'.repeat(501) }),
       makeParams(),
     );
-    expect(res.status).toBe(400);
-    const json = await res.json();
-    expect(json.error).toContain('500 characters');
+    await expectJsonErrorContaining(res, 400, '500 characters');
   });
 
   it('accepts valid positive amount', async () => {
@@ -118,23 +111,17 @@ describe('POST /api/guilds/:guildId/members/:userId/xp', () => {
 
   it('rejects non-integer amount', async () => {
     const res = await POST(makeRequest({ amount: 1.5 }), makeParams());
-    expect(res.status).toBe(400);
-    const json = await res.json();
-    expect(json.error).toContain('finite integer');
+    await expectJsonErrorContaining(res, 400, 'finite integer');
   });
 
   it('rejects missing amount', async () => {
     const res = await POST(makeRequest({ reason: 'test' }), makeParams());
-    expect(res.status).toBe(400);
-    const json = await res.json();
-    expect(json.error).toContain('Missing required field');
+    await expectJsonErrorContaining(res, 400, 'Missing required field');
   });
 
   it('rejects non-string reason', async () => {
     const res = await POST(makeRequest({ amount: 10, reason: 123 }), makeParams());
-    expect(res.status).toBe(400);
-    const json = await res.json();
-    expect(json.error).toContain('must be a string');
+    await expectJsonErrorContaining(res, 400, 'must be a string');
   });
 
   it('rejects non-object body', async () => {
@@ -144,9 +131,7 @@ describe('POST /api/guilds/:guildId/members/:userId/xp', () => {
       body: JSON.stringify([1, 2, 3]),
     });
     const res = await POST(req, makeParams());
-    expect(res.status).toBe(400);
-    const json = await res.json();
-    expect(json.error).toContain('JSON object');
+    await expectJsonErrorContaining(res, 400, 'JSON object');
   });
 
   it('rejects invalid JSON', async () => {
@@ -156,16 +141,12 @@ describe('POST /api/guilds/:guildId/members/:userId/xp', () => {
       body: 'not json',
     });
     const res = await POST(req, makeParams());
-    expect(res.status).toBe(400);
-    const json = await res.json();
-    expect(json.error).toContain('Invalid JSON');
+    await expectJsonErrorContaining(res, 400, 'Invalid JSON');
   });
 
   it('returns 400 when guildId or userId is missing', async () => {
     const res = await POST(makeRequest({ amount: 10 }), makeParams('', 'u1'));
-    expect(res.status).toBe(400);
-    const json = await res.json();
-    expect(json.error).toContain('Missing guildId or userId');
+    await expectJsonErrorContaining(res, 400, 'Missing guildId or userId');
   });
 
   it('strips unknown fields from the forwarded body', async () => {
@@ -192,7 +173,7 @@ describe('POST /api/guilds/:guildId/members/:userId/xp', () => {
 
     const res = await POST(makeRequest({ amount: 10 }), makeParams());
 
-    expect(res.status).toBe(200);
+    expectStatus(res, 200);
     expect(mockProxyToBotApi).toHaveBeenCalled();
     expect(mockProxyToBotApi.mock.calls[0][4].headers).toMatchObject({
       'x-discord-user-id': 'nextauth-sub-only',
@@ -204,7 +185,7 @@ describe('POST /api/guilds/:guildId/members/:userId/xp', () => {
 
     const res = await POST(makeRequest({ amount: 10 }), makeParams());
 
-    expect(res.status).toBe(401);
+    expectStatus(res, 401);
     expect(mockProxyToBotApi).not.toHaveBeenCalled();
   });
 });

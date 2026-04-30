@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest, NextResponse } from 'next/server';
+import { expectJsonResponse, expectStatus } from './test-utils';
 
 const {
   mockAuthorizeGuildAdmin,
@@ -43,8 +44,7 @@ describe('GET /api/guilds/[guildId]/roles', () => {
   it('returns 400 when guildId is missing', async () => {
     const response = await GET(createRequest(), { params: Promise.resolve({ guildId: '' }) });
 
-    expect(response.status).toBe(400);
-    await expect(response.json()).resolves.toEqual({ error: 'Missing guildId' });
+    await expectJsonResponse(response, 400, { error: 'Missing guildId' });
     expect(mockAuthorizeGuildAdmin).not.toHaveBeenCalled();
   });
 
@@ -68,6 +68,6 @@ describe('GET /api/guilds/[guildId]/roles', () => {
       'Failed to fetch roles',
     );
     expect(mockProxyToBotApi.mock.calls[0]).toHaveLength(4);
-    expect(response.status).toBe(200);
+    expectStatus(response, 200);
   });
 });
