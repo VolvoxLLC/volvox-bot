@@ -14,6 +14,11 @@ const diagnostics = [
   ['LAST_SEEN', '#probably-somewhere'],
 ];
 
+/**
+ * Renders the 404 "Page not found" interface for a missing channel, including navigation actions and a diagnostic inspector.
+ *
+ * @returns The React element for the not-found page layout.
+ */
 export default function NotFoundPage() {
   return (
     <main
