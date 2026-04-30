@@ -20,6 +20,38 @@ export const DEFAULT_INTRODUCTION_MESSAGE =
 
 const MAX_ROLE_MENU_OPTIONS = 25;
 
+function getTrimmedString(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function getOptionalString(value) {
+  return getTrimmedString(value) || null;
+}
+
+function getStringOrDefault(value, fallback) {
+  return getTrimmedString(value) || fallback;
+}
+
+function normalizeRoleMenuOptions(options) {
+  if (!Array.isArray(options)) return [];
+
+  return options
+    .filter((opt) => opt && typeof opt === 'object')
+    .map((opt) => ({
+      label: String(opt.label || '').trim(),
+      roleId: String(opt.roleId || '').trim(),
+      ...(opt.description ? { description: String(opt.description).trim() } : {}),
+    }))
+    .filter((opt) => opt.label && opt.roleId)
+    .slice(0, MAX_ROLE_MENU_OPTIONS);
+}
+
+function normalizeDmSteps(steps) {
+  if (!Array.isArray(steps)) return [];
+
+  return steps.map((step) => String(step || '').trim()).filter(Boolean);
+}
+
 /**
  * Normalize welcome onboarding settings and apply safe defaults.
  *
@@ -36,64 +68,23 @@ const MAX_ROLE_MENU_OPTIONS = 25;
  * }}
  */
 export function normalizeWelcomeOnboardingConfig(welcomeConfig = {}) {
-  const legacyRoleMenuChannel =
-    typeof welcomeConfig?.channelId === 'string' && welcomeConfig.channelId.trim()
-      ? welcomeConfig.channelId.trim()
-      : null;
-
-  const roleMenuOptions = Array.isArray(welcomeConfig?.roleMenu?.options)
-    ? welcomeConfig.roleMenu.options
-        .filter((opt) => opt && typeof opt === 'object')
-        .map((opt) => ({
-          label: String(opt.label || '').trim(),
-          roleId: String(opt.roleId || '').trim(),
-          ...(opt.description ? { description: String(opt.description).trim() } : {}),
-        }))
-        .filter((opt) => opt.label && opt.roleId)
-        .slice(0, MAX_ROLE_MENU_OPTIONS)
-    : [];
-
-  const dmSteps = Array.isArray(welcomeConfig?.dmSequence?.steps)
-    ? welcomeConfig.dmSequence.steps.map((step) => String(step || '').trim()).filter(Boolean)
-    : [];
+  const legacyRoleMenuChannel = getOptionalString(welcomeConfig?.channelId);
 
   return {
-    rulesChannel:
-      typeof welcomeConfig?.rulesChannel === 'string' && welcomeConfig.rulesChannel.trim()
-        ? welcomeConfig.rulesChannel.trim()
-        : null,
-    roleMenuChannel:
-      typeof welcomeConfig?.roleMenuChannel === 'string' && welcomeConfig.roleMenuChannel.trim()
-        ? welcomeConfig.roleMenuChannel.trim()
-        : legacyRoleMenuChannel,
-    verifiedRole:
-      typeof welcomeConfig?.verifiedRole === 'string' && welcomeConfig.verifiedRole.trim()
-        ? welcomeConfig.verifiedRole.trim()
-        : null,
-    introChannel:
-      typeof welcomeConfig?.introChannel === 'string' && welcomeConfig.introChannel.trim()
-        ? welcomeConfig.introChannel.trim()
-        : null,
-    rulesMessage:
-      typeof welcomeConfig?.rulesMessage === 'string' && welcomeConfig.rulesMessage.trim()
-        ? welcomeConfig.rulesMessage.trim()
-        : DEFAULT_RULES_AGREEMENT_MESSAGE,
+    rulesChannel: getOptionalString(welcomeConfig?.rulesChannel),
+    roleMenuChannel: getOptionalString(welcomeConfig?.roleMenuChannel) ?? legacyRoleMenuChannel,
+    verifiedRole: getOptionalString(welcomeConfig?.verifiedRole),
+    introChannel: getOptionalString(welcomeConfig?.introChannel),
+    rulesMessage: getStringOrDefault(welcomeConfig?.rulesMessage, DEFAULT_RULES_AGREEMENT_MESSAGE),
     roleMenu: {
       enabled: welcomeConfig?.roleMenu?.enabled === true,
-      message:
-        typeof welcomeConfig?.roleMenu?.message === 'string' &&
-        welcomeConfig.roleMenu.message.trim()
-          ? welcomeConfig.roleMenu.message.trim()
-          : DEFAULT_ROLE_MENU_MESSAGE,
-      options: roleMenuOptions,
+      message: getStringOrDefault(welcomeConfig?.roleMenu?.message, DEFAULT_ROLE_MENU_MESSAGE),
+      options: normalizeRoleMenuOptions(welcomeConfig?.roleMenu?.options),
     },
-    introMessage:
-      typeof welcomeConfig?.introMessage === 'string' && welcomeConfig.introMessage.trim()
-        ? welcomeConfig.introMessage.trim()
-        : DEFAULT_INTRODUCTION_MESSAGE,
+    introMessage: getStringOrDefault(welcomeConfig?.introMessage, DEFAULT_INTRODUCTION_MESSAGE),
     dmSequence: {
       enabled: welcomeConfig?.dmSequence?.enabled === true,
-      steps: dmSteps,
+      steps: normalizeDmSteps(welcomeConfig?.dmSequence?.steps),
     },
   };
 }

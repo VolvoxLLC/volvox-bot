@@ -8,10 +8,10 @@ describe('scrollToLandingSection', () => {
   });
 
   it('scrolls to an element by id', () => {
-    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
-    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 });
-    Object.defineProperty(window, 'scrollY', { configurable: true, value: 25 });
-    vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: false } as MediaQueryList);
+    vi.spyOn(globalThis, 'scrollTo').mockImplementation(() => {});
+    Object.defineProperty(globalThis, 'innerWidth', { configurable: true, value: 1024 });
+    Object.defineProperty(globalThis, 'scrollY', { configurable: true, value: 25 });
+    vi.spyOn(globalThis, 'matchMedia').mockReturnValue({ matches: false } as MediaQueryList);
 
     const section = document.createElement('section');
     section.id = 'features';
@@ -29,14 +29,14 @@ describe('scrollToLandingSection', () => {
     document.body.append(section);
 
     expect(scrollToLandingSection('#features')).toBe(true);
-    expect(window.scrollTo).toHaveBeenCalledWith({ top: 245, behavior: 'smooth' });
+    expect(globalThis.scrollTo).toHaveBeenCalledWith({ top: 245, behavior: 'smooth' });
   });
 
   it('uses nested scroll content and reduced-motion behavior', () => {
-    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
-    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 375 });
-    Object.defineProperty(window, 'scrollY', { configurable: true, value: 10 });
-    vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList);
+    vi.spyOn(globalThis, 'scrollTo').mockImplementation(() => {});
+    Object.defineProperty(globalThis, 'innerWidth', { configurable: true, value: 375 });
+    Object.defineProperty(globalThis, 'scrollY', { configurable: true, value: 10 });
+    vi.spyOn(globalThis, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList);
 
     const section = document.createElement('section');
     const content = document.createElement('div');
@@ -55,7 +55,7 @@ describe('scrollToLandingSection', () => {
     section.append(content);
 
     expect(scrollToLandingSection(section)).toBe(true);
-    expect(window.scrollTo).toHaveBeenCalledWith({ top: 138, behavior: 'auto' });
+    expect(globalThis.scrollTo).toHaveBeenCalledWith({ top: 138, behavior: 'auto' });
   });
 
   it('returns false when the target does not exist', () => {

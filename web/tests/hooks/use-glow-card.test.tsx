@@ -10,7 +10,7 @@ describe('useGlowCard', () => {
 
   it('updates glow-card pointer CSS variables', () => {
     const requestAnimationFrameSpy = vi
-      .spyOn(window, 'requestAnimationFrame')
+      .spyOn(globalThis, 'requestAnimationFrame')
       .mockImplementation((callback) => {
         callback(0);
         return 1;

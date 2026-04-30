@@ -141,6 +141,21 @@ function getWelcomePublishInfoMessage(
   return null;
 }
 
+function getWelcomePanelStatusText(
+  status: WelcomePanelStatus | undefined,
+  welcomeStatusLoading: boolean,
+) {
+  if (status?.stale) return 'stale';
+  if (status?.status) return status.status;
+  return welcomeStatusLoading ? 'loading' : 'unknown';
+}
+
+function getWelcomePanelStatusClassName(statusText: string) {
+  if (statusText === 'posted') return 'border-primary/30 text-primary bg-primary/10';
+  if (statusText === 'failed') return 'border-destructive/30 text-destructive bg-destructive/10';
+  return 'border-border/50 text-muted-foreground bg-muted/30';
+}
+
 /**
  * Renders the Onboarding & Growth configuration category UI that allows editing multiple feature sections based on the active tab.
  *
@@ -294,7 +309,7 @@ export function OnboardingGrowthCategory() {
   }, [guildId]);
 
   useEffect(() => {
-    void fetchWelcomeStatus();
+    fetchWelcomeStatus().catch(() => undefined);
   }, [fetchWelcomeStatus]);
 
   const publishWelcomePanel = useCallback(
@@ -335,6 +350,21 @@ export function OnboardingGrowthCategory() {
     [fetchWelcomeStatus, guildId],
   );
 
+  const handleRefreshWelcomeStatus = useCallback(() => {
+    fetchWelcomeStatus().catch(() => undefined);
+  }, [fetchWelcomeStatus]);
+
+  const handlePublishAllWelcomePanels = useCallback(() => {
+    publishWelcomePanel().catch(() => undefined);
+  }, [publishWelcomePanel]);
+
+  const handlePublishWelcomePanel = useCallback(
+    (panelType: 'rules' | 'role_menu') => {
+      publishWelcomePanel(panelType).catch(() => undefined);
+    },
+    [publishWelcomePanel],
+  );
+
   const welcomeRoleOptions = useMemo(
     () =>
       (draftConfig?.welcome?.roleMenu?.options ?? []).map((option) => ({
@@ -356,6 +386,13 @@ export function OnboardingGrowthCategory() {
       toast.error('Failed to copy channel ID');
     }
   }, []);
+
+  const handleCopyChannelId = useCallback(
+    (channelId: string) => {
+      copyChannelId(channelId).catch(() => undefined);
+    },
+    [copyChannelId],
+  );
 
   useEffect(() => {
     if (!draftConfig) return;
@@ -475,7 +512,7 @@ export function OnboardingGrowthCategory() {
                   variant="ghost"
                   size="sm"
                   disabled={welcomeStatusLoading || welcomePublishing !== null}
-                  onClick={() => void fetchWelcomeStatus()}
+                  onClick={handleRefreshWelcomeStatus}
                   className="h-8 gap-2 text-[10px] uppercase tracking-widest font-bold border border-border/40 rounded-xl"
                 >
                   <RefreshCw className="h-3.5 w-3.5" />
@@ -485,7 +522,7 @@ export function OnboardingGrowthCategory() {
                   type="button"
                   size="sm"
                   disabled={saving || welcomePublishing !== null}
-                  onClick={() => void publishWelcomePanel()}
+                  onClick={handlePublishAllWelcomePanels}
                   className="h-8 gap-2 text-[10px] uppercase tracking-widest font-bold rounded-xl"
                 >
                   <Send className="h-3.5 w-3.5" />
@@ -500,9 +537,7 @@ export function OnboardingGrowthCategory() {
                 { key: 'role_menu' as const, label: 'Self-Assign Roles' },
               ].map((panel) => {
                 const status = welcomePanels?.[panel.key];
-                const statusText = status?.stale
-                  ? 'stale'
-                  : (status?.status ?? (welcomeStatusLoading ? 'loading' : 'unknown'));
+                const statusText = getWelcomePanelStatusText(status, welcomeStatusLoading);
                 const channelId = status?.configuredChannelId ?? status?.channelId;
                 const channelName = channelId ? channelNameById.get(channelId) : null;
 
@@ -528,7 +563,7 @@ export function OnboardingGrowthCategory() {
                                 className="inline-flex h-5 items-center gap-1 rounded-lg border border-border/40 px-1.5 font-mono text-[10px] text-muted-foreground hover:border-primary/30 hover:text-primary"
                                 aria-label={`Copy ${panel.label} channel ID`}
                                 title={`Copy channel ID ${channelId}`}
-                                onClick={() => void copyChannelId(channelId)}
+                                onClick={() => handleCopyChannelId(channelId)}
                               >
                                 <Copy className="h-3 w-3" />
                                 ID
@@ -542,11 +577,7 @@ export function OnboardingGrowthCategory() {
                       <span
                         className={cn(
                           'rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider',
-                          statusText === 'posted'
-                            ? 'border-primary/30 text-primary bg-primary/10'
-                            : statusText === 'failed'
-                              ? 'border-destructive/30 text-destructive bg-destructive/10'
-                              : 'border-border/50 text-muted-foreground bg-muted/30',
+                          getWelcomePanelStatusClassName(statusText),
                         )}
                       >
                         {statusText}
@@ -565,7 +596,7 @@ export function OnboardingGrowthCategory() {
                       variant="ghost"
                       size="sm"
                       disabled={saving || welcomePublishing !== null}
-                      onClick={() => void publishWelcomePanel(panel.key)}
+                      onClick={() => handlePublishWelcomePanel(panel.key)}
                       className="h-8 w-full gap-2 text-[10px] uppercase tracking-widest font-bold text-primary hover:bg-primary/5 border border-primary/20 rounded-xl"
                     >
                       <Send className="h-3.5 w-3.5" />
