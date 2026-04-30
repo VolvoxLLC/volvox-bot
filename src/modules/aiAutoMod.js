@@ -507,178 +507,199 @@ function getExecutableActions(result, autoModConfig, message) {
   };
 }
 
-async function executeSingleAction(
+async function executeFlagAction({
   action,
   message,
   client,
   result,
+  autoModConfig,
+  auditedActions,
+}) {
+  const success = await sendFlagEmbed(
+    message,
+    client,
+    { ...result, action, actions: auditedActions },
+    autoModConfig,
+  ).catch((err) => {
+    logError('AI auto-mod: sendFlagEmbed failed', { error: err?.message });
+    return false;
+  });
+  return { success, caseData: null };
+}
+
+async function executeWarnAction({ message, client, reason, guildConfig, botId, botTag }) {
+  const { member, guild } = message;
+  if (!member || !guild) return { success: false, caseData: null };
+
+  const persistedWarn = await createWarnCaseWithWarning(
+    guild.id,
+    {
+      targetId: member.user.id,
+      targetTag: member.user.tag,
+      moderatorId: botId,
+      moderatorTag: botTag,
+      reason,
+    },
+    {
+      userId: member.user.id,
+      moderatorId: botId,
+      moderatorTag: botTag,
+      reason,
+      severity: 'low',
+    },
+    guildConfig,
+  ).catch((err) => {
+    logError('AI auto-mod: createWarnCaseWithWarning failed', {
+      userId: member.user.id,
+      error: err?.message,
+    });
+    return null;
+  });
+
+  if (!persistedWarn?.caseData) return { success: false, caseData: null };
+  const caseData = persistedWarn.caseData;
+
+  if (shouldSendDm(guildConfig, 'warn')) {
+    await sendDmNotification(member, 'warn', reason, guild.name ?? guild.id).catch((err) =>
+      logError('AI auto-mod: sendDmNotification (warn) failed', {
+        userId: member.user.id,
+        error: err?.message,
+      }),
+    );
+  }
+
+  await sendCaseModLogEmbed(client, guildConfig, caseData, 'warn');
+
+  await checkEscalation(client, guild.id, member.user.id, botId, botTag, guildConfig).catch((err) =>
+    logError('AI auto-mod: checkEscalation failed', {
+      userId: member.user.id,
+      error: err?.message,
+    }),
+  );
+  return { success: true, caseData };
+}
+
+async function executeTimeoutAction({
+  message,
+  client,
   reason,
   autoModConfig,
-  _guildConfig,
-  auditedActions = result.actions,
-) {
+  guildConfig,
+  botId,
+  botTag,
+}) {
   const { member, guild } = message;
-  const botId = client.user?.id ?? 'bot';
-  const botTag = client.user?.tag ?? 'Bot#0000';
+  if (!member || !guild) return { success: false, caseData: null };
 
-  let caseData = null;
+  const durationMs = autoModConfig.timeoutDurationMs ?? DEFAULTS.timeoutDurationMs;
+  const timedOut = await member
+    .timeout(durationMs, reason)
+    .then(() => true)
+    .catch((err) => {
+      logError('AI auto-mod: timeout failed', { userId: member.user.id, error: err?.message });
+      return false;
+    });
+  if (!timedOut) return { success: false, caseData: null };
 
-  switch (action) {
-    case 'flag': {
-      const success = await sendFlagEmbed(
-        message,
-        client,
-        { ...result, action, actions: auditedActions },
-        autoModConfig,
-      ).catch((err) => {
-        logError('AI auto-mod: sendFlagEmbed failed', { error: err?.message });
-        return false;
-      });
-      return { success, caseData: null };
-    }
+  const caseData = await createCase(guild.id, {
+    action: 'timeout',
+    targetId: member.user.id,
+    targetTag: member.user.tag,
+    moderatorId: botId,
+    moderatorTag: botTag,
+    reason,
+    duration: `${String(durationMs)}ms`,
+  }).catch((err) => {
+    logError('AI auto-mod: createCase (timeout) failed', { error: err?.message });
+    return null;
+  });
+  await sendCaseModLogEmbed(client, guildConfig, caseData, 'timeout');
+  return { success: true, caseData };
+}
 
-    case 'warn': {
-      if (!member || !guild) return { success: false, caseData: null };
-      const persistedWarn = await createWarnCaseWithWarning(
-        guild.id,
-        {
-          targetId: member.user.id,
-          targetTag: member.user.tag,
-          moderatorId: botId,
-          moderatorTag: botTag,
-          reason,
-        },
-        {
-          userId: member.user.id,
-          moderatorId: botId,
-          moderatorTag: botTag,
-          reason,
-          severity: 'low',
-        },
-        _guildConfig,
-      ).catch((err) => {
-        logError('AI auto-mod: createWarnCaseWithWarning failed', {
-          userId: member.user.id,
-          error: err?.message,
-        });
-        return null;
-      });
+async function executeKickAction({ message, client, reason, guildConfig, botId, botTag }) {
+  const { member, guild } = message;
+  if (!member || !guild) return { success: false, caseData: null };
 
-      if (!persistedWarn?.caseData) return { success: false, caseData: null };
-      caseData = persistedWarn.caseData;
+  const kicked = await member
+    .kick(reason)
+    .then(() => true)
+    .catch((err) => {
+      logError('AI auto-mod: kick failed', { userId: member.user.id, error: err?.message });
+      return false;
+    });
+  if (!kicked) return { success: false, caseData: null };
 
-      if (shouldSendDm(_guildConfig, 'warn')) {
-        await sendDmNotification(member, 'warn', reason, guild.name ?? guild.id).catch((err) =>
-          logError('AI auto-mod: sendDmNotification (warn) failed', {
-            userId: member.user.id,
-            error: err?.message,
-          }),
-        );
-      }
+  const caseData = await createCase(guild.id, {
+    action: 'kick',
+    targetId: member.user.id,
+    targetTag: member.user.tag,
+    moderatorId: botId,
+    moderatorTag: botTag,
+    reason,
+  }).catch((err) => {
+    logError('AI auto-mod: createCase (kick) failed', { error: err?.message });
+    return null;
+  });
+  await sendCaseModLogEmbed(client, guildConfig, caseData, 'kick');
+  return { success: true, caseData };
+}
 
-      await sendCaseModLogEmbed(client, _guildConfig, caseData, 'warn');
+async function executeBanAction({ message, client, reason, guildConfig, botId, botTag }) {
+  const { member, guild } = message;
+  if (!member || !guild) return { success: false, caseData: null };
 
-      await checkEscalation(client, guild.id, member.user.id, botId, botTag, _guildConfig).catch(
-        (err) =>
-          logError('AI auto-mod: checkEscalation failed', {
-            userId: member.user.id,
-            error: err?.message,
-          }),
-      );
-      return { success: true, caseData };
-    }
+  const banned = await guild.members
+    .ban(member.user.id, { reason, deleteMessageSeconds: 0 })
+    .then(() => true)
+    .catch((err) => {
+      logError('AI auto-mod: ban failed', { userId: member.user.id, error: err?.message });
+      return false;
+    });
+  if (!banned) return { success: false, caseData: null };
 
-    case 'timeout': {
-      if (!member || !guild) return { success: false, caseData: null };
-      const durationMs = autoModConfig.timeoutDurationMs ?? DEFAULTS.timeoutDurationMs;
-      const timedOut = await member
-        .timeout(durationMs, reason)
-        .then(() => true)
-        .catch((err) => {
-          logError('AI auto-mod: timeout failed', { userId: member.user.id, error: err?.message });
-          return false;
-        });
-      if (!timedOut) return { success: false, caseData: null };
+  const caseData = await createCase(guild.id, {
+    action: 'ban',
+    targetId: member.user.id,
+    targetTag: member.user.tag,
+    moderatorId: botId,
+    moderatorTag: botTag,
+    reason,
+  }).catch((err) => {
+    logError('AI auto-mod: createCase (ban) failed', { error: err?.message });
+    return null;
+  });
+  await sendCaseModLogEmbed(client, guildConfig, caseData, 'ban');
+  return { success: true, caseData };
+}
 
-      caseData = await createCase(guild.id, {
-        action: 'timeout',
-        targetId: member.user.id,
-        targetTag: member.user.tag,
-        moderatorId: botId,
-        moderatorTag: botTag,
-        reason,
-        duration: `${String(durationMs)}ms`,
-      }).catch((err) => {
-        logError('AI auto-mod: createCase (timeout) failed', { error: err?.message });
-        return null;
-      });
-      await sendCaseModLogEmbed(client, _guildConfig, caseData, 'timeout');
-      return { success: true, caseData };
-    }
+async function executeDeleteAction({ message }) {
+  const success = await message
+    .delete()
+    .then(() => true)
+    .catch(() => false);
+  return { success, caseData: null };
+}
 
-    case 'kick': {
-      if (!member || !guild) return { success: false, caseData: null };
-      const kicked = await member
-        .kick(reason)
-        .then(() => true)
-        .catch((err) => {
-          logError('AI auto-mod: kick failed', { userId: member.user.id, error: err?.message });
-          return false;
-        });
-      if (!kicked) return { success: false, caseData: null };
+const ACTION_EXECUTORS = Object.freeze({
+  flag: executeFlagAction,
+  warn: executeWarnAction,
+  timeout: executeTimeoutAction,
+  kick: executeKickAction,
+  ban: executeBanAction,
+  delete: executeDeleteAction,
+});
 
-      caseData = await createCase(guild.id, {
-        action: 'kick',
-        targetId: member.user.id,
-        targetTag: member.user.tag,
-        moderatorId: botId,
-        moderatorTag: botTag,
-        reason,
-      }).catch((err) => {
-        logError('AI auto-mod: createCase (kick) failed', { error: err?.message });
-        return null;
-      });
-      await sendCaseModLogEmbed(client, _guildConfig, caseData, 'kick');
-      return { success: true, caseData };
-    }
+async function executeSingleAction(context) {
+  const executor = ACTION_EXECUTORS[context.action];
+  if (!executor) return { success: false, caseData: null };
 
-    case 'ban': {
-      if (!member || !guild) return { success: false, caseData: null };
-      const banned = await guild.members
-        .ban(member.user.id, { reason, deleteMessageSeconds: 0 })
-        .then(() => true)
-        .catch((err) => {
-          logError('AI auto-mod: ban failed', { userId: member.user.id, error: err?.message });
-          return false;
-        });
-      if (!banned) return { success: false, caseData: null };
-
-      caseData = await createCase(guild.id, {
-        action: 'ban',
-        targetId: member.user.id,
-        targetTag: member.user.tag,
-        moderatorId: botId,
-        moderatorTag: botTag,
-        reason,
-      }).catch((err) => {
-        logError('AI auto-mod: createCase (ban) failed', { error: err?.message });
-        return null;
-      });
-      await sendCaseModLogEmbed(client, _guildConfig, caseData, 'ban');
-      return { success: true, caseData };
-    }
-
-    case 'delete': {
-      const success = await message
-        .delete()
-        .then(() => true)
-        .catch(() => false);
-      return { success, caseData: null };
-    }
-
-    default:
-      return { success: false, caseData: null };
-  }
+  return executor({
+    ...context,
+    auditedActions: context.auditedActions ?? context.result.actions,
+    botId: context.botId ?? context.client.user?.id ?? 'bot',
+    botTag: context.botTag ?? context.client.user?.tag ?? 'Bot#0000',
+  });
 }
 
 /**
@@ -717,16 +738,18 @@ async function executeAction(message, client, result, autoModConfig, _guildConfi
   }
 
   for (const action of actions) {
-    const { success, caseData } = await executeSingleAction(
+    const { success, caseData } = await executeSingleAction({
       action,
       message,
       client,
       result,
       reason,
       autoModConfig,
-      _guildConfig,
-      actions,
-    );
+      guildConfig: _guildConfig,
+      auditedActions: actions,
+      botId,
+      botTag,
+    });
 
     if (!success) continue;
 
