@@ -187,6 +187,44 @@ describe('execute — default 50 message fetch', () => {
       expect.objectContaining({ embeds: expect.any(Array) }),
     );
   });
+
+  it('uses the configured TLDR model for summary generation', async () => {
+    getConfig.mockReturnValue({
+      tldr: {
+        enabled: true,
+        model: 'moonshot:kimi-k2.6',
+        defaultMessages: 50,
+        maxMessages: 200,
+        cooldownSeconds: 300,
+      },
+    });
+
+    const interaction = createInteraction();
+    await execute(interaction);
+
+    expect(mockGenerate).toHaveBeenCalledWith(
+      expect.objectContaining({ model: 'moonshot:kimi-k2.6' }),
+    );
+  });
+
+  it('falls back to the default model when TLDR config references an unsupported model', async () => {
+    getConfig.mockReturnValue({
+      tldr: {
+        enabled: true,
+        model: 'anthropic:claude-3-5-haiku',
+        defaultMessages: 50,
+        maxMessages: 200,
+        cooldownSeconds: 300,
+      },
+    });
+
+    const interaction = createInteraction();
+    await execute(interaction);
+
+    expect(mockGenerate).toHaveBeenCalledWith(
+      expect.objectContaining({ model: 'minimax:MiniMax-M2.7' }),
+    );
+  });
 });
 
 describe('execute — count option', () => {

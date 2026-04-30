@@ -30,6 +30,40 @@ describe('configValidation', () => {
       expect(errors[0]).toContain('must not be null');
     });
 
+    it('should accept values matching any anyOf candidate', () => {
+      const schema = { anyOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }] };
+
+      expect(validateValue('delete', schema, 'test')).toEqual([]);
+      expect(validateValue(['flag', 'timeout'], schema, 'test')).toEqual([]);
+    });
+
+    it('should reject values that match no anyOf candidates', () => {
+      const schema = { anyOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }] };
+      const errors = validateValue(123, schema, 'test');
+
+      expect(errors).toEqual(expect.arrayContaining([expect.stringContaining('expected string')]));
+      expect(errors).toEqual(expect.arrayContaining([expect.stringContaining('expected array')]));
+    });
+
+    it('should honor nullable anyOf candidates', () => {
+      const schema = { anyOf: [{ type: 'string' }, { type: 'object', nullable: true }] };
+
+      expect(validateValue(null, schema, 'test')).toEqual([]);
+    });
+
+    it('should accept null when the parent anyOf schema is nullable', () => {
+      const schema = { nullable: true, anyOf: [{ type: 'string' }, { type: 'object' }] };
+
+      expect(validateValue(null, schema, 'test')).toEqual([]);
+    });
+
+    it('should reject null when neither parent nor anyOf candidates are nullable', () => {
+      const schema = { anyOf: [{ type: 'string' }, { type: 'object' }] };
+      const errors = validateValue(null, schema, 'test');
+
+      expect(errors).toEqual(['test: must not be null', 'test: must not be null']);
+    });
+
     it('should reject unknown keys in objects', () => {
       const schema = { type: 'object', properties: { enabled: { type: 'boolean' } } };
       const errors = validateValue({ enabled: true, fake: 'bad' }, schema, 'test');
@@ -92,6 +126,49 @@ describe('configValidation', () => {
       expect(errors[0]).toContain('expected finite number');
     });
 
+    it('should validate aiAutoMod model, thresholds, and actions', () => {
+      expect(validateSingleValue('aiAutoMod.model', 'minimax:MiniMax-M2.7')).toEqual([]);
+      expect(validateSingleValue('triage.classifyModel', 'moonshot:kimi-k2.6')).toEqual([]);
+      expect(validateSingleValue('triage.respondModel', 'openrouter:minimax/minimax-m2.5')).toEqual(
+        [],
+      );
+      expect(validateSingleValue('triage.classifyModel', 'MINIMAX:minimax-m2.5')).toEqual([]);
+      expect(validateSingleValue('tldr.model', 'moonshot:kimi-k2.6')).toEqual([]);
+      expect(validateSingleValue('aiAutoMod.thresholds.hateSpeech', 0.85)).toEqual([]);
+      expect(validateSingleValue('aiAutoMod.actions.hateSpeech', 'timeout')).toEqual([]);
+      expect(validateSingleValue('aiAutoMod.actions.hateSpeech', 'none')).toEqual([]);
+      expect(validateSingleValue('aiAutoMod.actions.hateSpeech', ['flag', 'timeout'])).toEqual([]);
+      expect(validateSingleValue('aiAutoMod.actions.hateSpeech', [])).toEqual([]);
+      expect(validateSingleValue('aiAutoMod.exemptRoleIds', ['role-1'])).toEqual([]);
+    });
+
+    it('should reject invalid aiAutoMod model, threshold, and action values', () => {
+      expect(validateSingleValue('aiAutoMod.model', 'MiniMax-M2.7')).toEqual(
+        expect.arrayContaining([expect.stringContaining('must be one of')]),
+      );
+      expect(validateSingleValue('aiAutoMod.thresholds.toxicity', 1.1)).toEqual(
+        expect.arrayContaining([expect.stringContaining('<= 1')]),
+      );
+      expect(validateSingleValue('aiAutoMod.actions.spam', 'obliterate')).toEqual(
+        expect.arrayContaining([expect.stringContaining('must be one of')]),
+      );
+      expect(validateSingleValue('aiAutoMod.model', 'anthropic:claude-3-5-haiku')).toEqual(
+        expect.arrayContaining([expect.stringContaining('must be one of')]),
+      );
+      expect(validateSingleValue('triage.classifyModel', 'anthropic:claude-3-5-haiku')).toEqual(
+        expect.arrayContaining([expect.stringContaining('must be one of')]),
+      );
+      expect(validateSingleValue('triage.respondModel', 'MiniMax-M2.7')).toEqual(
+        expect.arrayContaining([expect.stringContaining('must be one of')]),
+      );
+      expect(validateSingleValue('tldr.model', 'anthropic:claude-3-5-haiku')).toEqual(
+        expect.arrayContaining([expect.stringContaining('must be one of')]),
+      );
+      expect(validateSingleValue('aiAutoMod.actions.spam', ['delete', 'obliterate'])).toEqual(
+        expect.arrayContaining([expect.stringContaining('must be one of')]),
+      );
+    });
+
     it('should validate new welcome onboarding fields', () => {
       expect(validateSingleValue('welcome.rulesChannel', null)).toEqual([]);
       expect(validateSingleValue('welcome.verifiedRole', '123')).toEqual([]);
@@ -142,6 +219,7 @@ describe('configValidation', () => {
           'spam',
           'moderation',
           'triage',
+          'aiAutoMod',
           'auditLog',
           'botStatus',
           'xp',
@@ -249,12 +327,28 @@ describe('configValidation', () => {
 
     it('should validate ai.channelModes as open-properties', () => {
       expect(validateSingleValue('ai.channelModes', { 12345: 'vibe' })).toEqual([]);
+      expect(validateSingleValue('ai.channelModes', { 12345: 'loud' })).toEqual(
+        expect.arrayContaining([expect.stringContaining('must be one of')]),
+      );
     });
 
     it('should resolve nested dynamic keys in validateSingleValue (channelModes path)', () => {
-      // channelModes has openProperties — any channel-ID sub-key is dynamic;
-      // the value is validated against the parent object schema, so an object passes
-      expect(validateSingleValue('ai.channelModes.12345', { mode: 'vibe' })).toEqual([]);
+      // channelModes has schema-backed openProperties — any channel-ID sub-key is dynamic;
+      // the value is validated against the map's ChannelMode leaf schema.
+      expect(validateSingleValue('ai.channelModes.12345', 'vibe')).toEqual([]);
+      expect(validateSingleValue('ai.channelModes.12345', { mode: 'vibe' })).toEqual(
+        expect.arrayContaining([expect.stringContaining('expected string')]),
+      );
+      expect(validateSingleValue('ai.channelModes.12345', 'loud')).toEqual(
+        expect.arrayContaining([expect.stringContaining('must be one of')]),
+      );
+    });
+
+    it('should resolve nested dynamic keys in validateSingleValue (allowedCommands path)', () => {
+      expect(validateSingleValue('permissions.allowedCommands.tldr', 'everyone')).toEqual([]);
+      expect(validateSingleValue('permissions.allowedCommands.tldr', 'owner')).toEqual(
+        expect.arrayContaining([expect.stringContaining('must be one of')]),
+      );
     });
   });
 

@@ -11,7 +11,7 @@ The `/tldr` command uses AI to summarize recent channel messages into a structur
 
 - **Instant summaries** — Use `/tldr` to summarize the last 50 messages (configurable)
 - **Time-based** — Use `/tldr hours:24` to summarize the last 24 hours
-- **AI-powered** — Claude extracts key topics, decisions, action items, and links
+- **AI-powered** — Your selected model extracts key topics, decisions, action items, and links
 - **Rich embeds** — Beautiful formatted summaries right in Discord
 - **Configurable** — Custom system prompts, cooldowns, and message limits
 
@@ -38,6 +38,7 @@ Using `/tldr hours:2` in a busy channel:
 | Setting | Description | Default |
 |---------|-------------|---------|
 | Enabled | Toggle the /tldr command | On |
+| Model | Supported provider/model used for summaries | `minimax:MiniMax-M2.7` |
 | Default messages | Messages to summarize | 50 |
 | Max messages | Hard cap on message count | 200 |
 | Cooldown (seconds) | Per-channel cooldown | 300 |

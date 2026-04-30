@@ -1,5 +1,5 @@
 import { isMasked, SENSITIVE_FIELDS } from './configAllowlist.js';
-import { validateSingleValue } from './configValidation.js';
+import { normalizeSingleValue, validateSingleValue } from './configValidation.js';
 import { DANGEROUS_KEYS } from './dangerousKeys.js';
 
 /**
@@ -85,5 +85,5 @@ export function validateConfigPatchBody(body, SAFE_CONFIG_KEYS) {
   // For full coverage, add a per-key JSON schema registry (one schema per top-level config
   // section) and run deep validation against it here before accepting the patch.
 
-  return { path, value, topLevelKey };
+  return { path, value: normalizeSingleValue(path, value), topLevelKey };
 }

@@ -24,6 +24,7 @@ import {
   getCapabilities,
   getModelConfig,
   getProviderConfig,
+  listProviderModelTypes,
   listProviders,
   normaliseModelId,
   onRegistryRebuild,
@@ -200,6 +201,46 @@ describe('listProviders', () => {
     a.push('hacked');
     const b = listProviders();
     expect(b).not.toContain('hacked');
+  });
+});
+
+describe('listProviderModelTypes', () => {
+  it('returns provider:model identifiers for every catalog model in order', () => {
+    expect(listProviderModelTypes()).toEqual([
+      'minimax:MiniMax-M2.7',
+      'minimax:MiniMax-M2.7-highspeed',
+      'minimax:MiniMax-M2.5',
+      'minimax:MiniMax-M2.5-highspeed',
+      'minimax:MiniMax-M2.1',
+      'minimax:MiniMax-M2.1-highspeed',
+      'minimax:MiniMax-M2',
+      'minimax:MiniMax-M2-stable',
+      'moonshot:kimi-k2.6',
+      'moonshot:kimi-k2.5',
+      'moonshot:kimi-k2-thinking',
+      'openrouter:minimax/minimax-m2.5',
+      'openrouter:minimax/minimax-m2.5:free',
+      'openrouter:moonshotai/kimi-k2.6',
+      'openrouter:moonshotai/kimi-k2.5',
+      'openrouter:moonshotai/kimi-k2-thinking',
+      'openrouter:moonshotai/kimi-k2-0905',
+      'openrouter:moonshotai/kimi-k2',
+    ]);
+  });
+
+  it('can limit results to visible models', () => {
+    const allModels = listProviderModelTypes();
+    const visibleModels = listProviderModelTypes({ visibleOnly: true });
+    const allModelSet = new Set(allModels);
+
+    expect(visibleModels.length).toBeLessThanOrEqual(allModels.length);
+    expect(visibleModels.every((modelType) => allModelSet.has(modelType))).toBe(true);
+  });
+
+  it('returns a fresh array per call', () => {
+    const a = listProviderModelTypes();
+    a.push('hacked');
+    expect(listProviderModelTypes()).not.toContain('hacked');
   });
 });
 

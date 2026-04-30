@@ -88,7 +88,7 @@ const minimalConfig = {
   aiAutoMod: {
     enabled: false,
     thresholds: { toxicity: 0.7, spam: 0.7, harassment: 0.7 },
-    actions: { toxicity: 'flag', spam: 'flag', harassment: 'flag' },
+    actions: { toxicity: ['flag'], spam: ['flag'], harassment: ['flag'] },
     flagChannelId: null,
     autoDelete: true,
   },

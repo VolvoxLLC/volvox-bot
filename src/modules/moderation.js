@@ -12,6 +12,7 @@ import { parseDuration } from '../utils/duration.js';
 import { mergeRoleIds } from '../utils/permissions.js';
 import { safeSend } from '../utils/safeSend.js';
 import { getConfig } from './config.js';
+import { calculateExpiry, getSeverityPoints } from './warningEngine.js';
 import { fireEvent } from './webhookNotifier.js';
 
 /**
@@ -161,6 +162,139 @@ export async function createCase(guildId, data) {
     }).catch(() => {});
 
     return createdCase;
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Atomically create a warn moderation case and linked warning record.
+ * The moderation.action webhook is fired only after both records commit, so warning persistence
+ * failures cannot leave dashboard/history/webhook state claiming a warn succeeded.
+ * @param {string} guildId - Discord guild ID
+ * @param {Object} caseData - Moderation case data
+ * @param {string} caseData.targetId - Target user ID
+ * @param {string} caseData.targetTag - Target user tag
+ * @param {string} caseData.moderatorId - Moderator user ID
+ * @param {string} caseData.moderatorTag - Moderator user tag
+ * @param {string} [caseData.reason] - Reason for action
+ * @param {Object} warningData - Warning data
+ * @param {string} warningData.userId - Target user ID
+ * @param {string} warningData.moderatorId - Moderator user ID
+ * @param {string} warningData.moderatorTag - Moderator display tag
+ * @param {string} [warningData.reason] - Reason for the warning
+ * @param {string} [warningData.severity='low'] - Warning severity
+ * @param {Object} [config] - Bot configuration used to determine warning points and expiry
+ * @returns {Promise<{caseData: Object, warning: Object}>} Created case and warning rows
+ */
+export async function createWarnCaseWithWarning(guildId, caseData, warningData, config) {
+  const pool = getPool();
+  const client = await pool.connect();
+  const severity = warningData.severity || 'low';
+  const points = getSeverityPoints(config, severity);
+  const expiresAt = calculateExpiry(config);
+
+  try {
+    await client.query('BEGIN');
+
+    // Serialize case-number generation per guild to prevent race conditions.
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [guildId]);
+
+    const { rows: caseRows } = await client.query(
+      `INSERT INTO mod_cases
+        (
+          guild_id,
+          case_number,
+          action,
+          target_id,
+          target_tag,
+          moderator_id,
+          moderator_tag,
+          reason,
+          duration,
+          expires_at
+        )
+      VALUES (
+        $1,
+        COALESCE((SELECT MAX(case_number) FROM mod_cases WHERE guild_id = $1), 0) + 1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7,
+        $8,
+        $9
+      )
+      RETURNING *`,
+      [
+        guildId,
+        'warn',
+        caseData.targetId,
+        caseData.targetTag,
+        caseData.moderatorId,
+        caseData.moderatorTag,
+        caseData.reason || null,
+        null,
+        null,
+      ],
+    );
+
+    const createdCase = caseRows[0];
+
+    const { rows: warningRows } = await client.query(
+      `INSERT INTO warnings
+        (guild_id, user_id, moderator_id, moderator_tag, reason, severity, points, expires_at, case_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING *`,
+      [
+        guildId,
+        warningData.userId,
+        warningData.moderatorId,
+        warningData.moderatorTag,
+        warningData.reason || null,
+        severity,
+        points,
+        expiresAt,
+        createdCase.id,
+      ],
+    );
+
+    await client.query('COMMIT');
+
+    const warning = warningRows[0];
+
+    info('Moderation case created', {
+      guildId,
+      caseNumber: createdCase.case_number,
+      action: 'warn',
+      target: caseData.targetTag,
+      moderator: caseData.moderatorTag,
+    });
+
+    info('Warning created', {
+      guildId,
+      warningId: warning.id,
+      userId: warningData.userId,
+      severity,
+      points,
+      expiresAt: expiresAt?.toISOString() || null,
+    });
+
+    fireEvent('moderation.action', guildId, {
+      action: 'warn',
+      caseNumber: createdCase.case_number,
+      targetId: caseData.targetId,
+      targetTag: caseData.targetTag,
+      moderatorId: caseData.moderatorId,
+      moderatorTag: caseData.moderatorTag,
+      reason: caseData.reason || null,
+    }).catch(() => {});
+
+    return { caseData: createdCase, warning };
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
     throw err;

@@ -244,9 +244,9 @@ describe('Header', () => {
   it('dispatches the performance refresh event', async () => {
     mockUsePathname.mockReturnValue('/dashboard/performance');
     const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
-    const user = userEvent.setup();
 
     try {
+      const user = userEvent.setup();
       render(<Header />);
 
       await user.click(screen.getByRole('button', { name: /Refresh Metrics/i }));
@@ -261,9 +261,11 @@ describe('Header', () => {
     [
       '/dashboard/moderation',
       /Refresh Mod Data/i,
-      () => {
-        expect(mockFetchStats).toHaveBeenCalledWith('guild-1', expect.any(Object));
-        expect(mockFetchCases).toHaveBeenCalledWith('guild-1', expect.any(Object));
+      async () => {
+        await waitFor(() => {
+          expect(mockFetchStats).toHaveBeenCalledWith('guild-1', expect.any(Object));
+          expect(mockFetchCases).toHaveBeenCalledWith('guild-1', expect.any(Object));
+        });
       },
     ],
     ['/dashboard/members', /Refresh Members/i, () => expect(mockRefreshMembers).toHaveBeenCalledWith('guild-1')],
@@ -279,7 +281,7 @@ describe('Header', () => {
 
     await user.click(screen.getByRole('button', { name: buttonName }));
 
-    assertion();
+    await assertion();
   });
 
   it.each([
@@ -299,34 +301,27 @@ describe('Header', () => {
     expect(screen.getByRole('button', { name: buttonName })).toBeDisabled();
   });
 
-  it.each([
-    [
-      '/dashboard/moderation',
-      /Refresh Mod Data/i,
-      () => {
-        mockFetchStats.mockResolvedValueOnce('unauthorized');
-        mockFetchCases.mockResolvedValueOnce('ok');
-      },
-    ],
-    [
-      '/dashboard/members',
-      /Refresh Members/i,
-      () => mockRefreshMembers.mockResolvedValueOnce('unauthorized'),
-    ],
-    [
-      '/dashboard/tickets',
-      /Refresh Tickets/i,
-      () => mockRefreshTickets.mockResolvedValueOnce('unauthorized'),
-    ],
-  ] as const)('redirects to login when %s refresh is unauthorized', async (pathname, buttonName, setupUnauthorized) => {
-    mockUsePathname.mockReturnValue(pathname);
-    setupUnauthorized();
+  it('redirects to login when moderation, members, or tickets refreshes are unauthorized', async () => {
     const user = userEvent.setup();
 
-    render(<Header />);
-    await user.click(screen.getByRole('button', { name: buttonName }));
+    mockUsePathname.mockReturnValue('/dashboard/moderation');
+    mockFetchStats.mockResolvedValueOnce('unauthorized');
+    mockFetchCases.mockResolvedValueOnce('ok');
+    const { rerender } = render(<Header />);
+    await user.click(screen.getByRole('button', { name: /Refresh Mod Data/i }));
+    await waitFor(() => expect(mockReplace).toHaveBeenNthCalledWith(1, '/login'));
 
-    await waitFor(() => expect(mockReplace).toHaveBeenCalledTimes(1));
-    expect(mockReplace).toHaveBeenCalledWith('/login');
+    mockUsePathname.mockReturnValue('/dashboard/members');
+    mockRefreshMembers.mockResolvedValueOnce('unauthorized');
+    rerender(<Header />);
+    await user.click(screen.getByRole('button', { name: /Refresh Members/i }));
+    await waitFor(() => expect(mockReplace).toHaveBeenNthCalledWith(2, '/login'));
+
+    mockUsePathname.mockReturnValue('/dashboard/tickets');
+    mockRefreshTickets.mockResolvedValueOnce('unauthorized');
+    rerender(<Header />);
+    await user.click(screen.getByRole('button', { name: /Refresh Tickets/i }));
+    await waitFor(() => expect(mockReplace).toHaveBeenNthCalledWith(3, '/login'));
+    expect(mockReplace).toHaveBeenCalledTimes(3);
   });
 });

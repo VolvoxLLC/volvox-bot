@@ -6,6 +6,11 @@
  * truth without creating an inverted dependency (utils → routes).
  */
 
+import {
+  isSupportedAiModel,
+  normalizeSupportedAiModel,
+  SUPPORTED_AI_MODEL_TYPES,
+} from '../../utils/supportedAiModels.js';
 import { validateUrlForSsrfSync } from './ssrfProtection.js';
 
 /** Module-level cache for compiled regex patterns used during validation. */
@@ -164,13 +169,44 @@ const XP_LEVEL_ACTION_ENTRY_SCHEMA = {
   },
 };
 
-/**
- * Provider-qualified model string: `<provider>:<model>` with no whitespace on
- * either side of the colon. Hoisted via `String.raw` to avoid doubled-up
- * backslash escaping (keeps SonarCloud quiet) and to keep the two schema
- * entries (classifyModel, respondModel) in sync.
- */
-const PROVIDER_MODEL_PATTERN = String.raw`^[^:\s]+:[^\s]+$`;
+const AI_AUTOMOD_CATEGORY_KEYS = [
+  'toxicity',
+  'spam',
+  'harassment',
+  'hateSpeech',
+  'sexualContent',
+  'violence',
+  'selfHarm',
+];
+
+const AI_AUTOMOD_ACTION_TYPES = ['none', 'flag', 'delete', 'warn', 'timeout', 'kick', 'ban'];
+
+const CHANNEL_MODE_TYPES = ['off', 'mention', 'vibe'];
+
+const PERMISSION_LEVEL_TYPES = ['everyone', 'moderator', 'admin'];
+
+const AI_AUTOMOD_ACTION_VALUE_SCHEMA = {
+  anyOf: [
+    { type: 'string', enum: AI_AUTOMOD_ACTION_TYPES },
+    { type: 'array', items: { type: 'string', enum: AI_AUTOMOD_ACTION_TYPES } },
+  ],
+};
+
+const AI_MODEL_VALUE_SCHEMA = { type: 'string', aiModel: true };
+
+const AI_AUTOMOD_THRESHOLD_SCHEMA = {
+  type: 'object',
+  properties: Object.fromEntries(
+    AI_AUTOMOD_CATEGORY_KEYS.map((category) => [category, { type: 'number', min: 0, max: 1 }]),
+  ),
+};
+
+const AI_AUTOMOD_ACTION_SCHEMA = {
+  type: 'object',
+  properties: Object.fromEntries(
+    AI_AUTOMOD_CATEGORY_KEYS.map((category) => [category, AI_AUTOMOD_ACTION_VALUE_SCHEMA]),
+  ),
+};
 
 /**
  * Schema definitions for writable config sections.
@@ -194,7 +230,10 @@ export const CONFIG_SCHEMA = {
           reuseWindowMinutes: { type: 'number', min: 1, max: 1440 },
         },
       },
-      channelModes: { type: 'object', openProperties: true },
+      channelModes: {
+        type: 'object',
+        openProperties: { type: 'string', enum: CHANNEL_MODE_TYPES },
+      },
       defaultChannelMode: { type: 'string', enum: ['off', 'mention', 'vibe'] },
     },
   },
@@ -337,12 +376,9 @@ export const CONFIG_SCHEMA = {
       botAllowlist: { type: 'array', items: { type: 'string' } },
       triggerWords: { type: 'array' },
       moderationKeywords: { type: 'array' },
-      // Model fields must be in `provider:model` format (see issue #553 D1) —
-      // `parseProviderModel` throws on bare strings at runtime. Catching it
-      // at the API boundary turns a silent-dispatch-crash into a clear 400.
-      classifyModel: { type: 'string', pattern: PROVIDER_MODEL_PATTERN },
+      classifyModel: AI_MODEL_VALUE_SCHEMA,
       classifyBudget: { type: 'number', min: 0, max: 100000 },
-      respondModel: { type: 'string', pattern: PROVIDER_MODEL_PATTERN },
+      respondModel: AI_MODEL_VALUE_SCHEMA,
       respondBudget: { type: 'number', min: 0, max: 100000 },
       thinkingTokens: { type: 'number', min: 0, max: 100000 },
       classifyBaseUrl: { type: 'string', nullable: true },
@@ -363,6 +399,19 @@ export const CONFIG_SCHEMA = {
       dailyBudgetUsd: { type: 'number', min: 0, nullable: true },
       confidenceThreshold: { type: 'number', min: 0, max: 1, nullable: true },
       responseCooldownMs: { type: 'number', min: 0, nullable: true },
+    },
+  },
+  aiAutoMod: {
+    type: 'object',
+    properties: {
+      enabled: { type: 'boolean' },
+      model: AI_MODEL_VALUE_SCHEMA,
+      thresholds: AI_AUTOMOD_THRESHOLD_SCHEMA,
+      actions: AI_AUTOMOD_ACTION_SCHEMA,
+      timeoutDurationMs: { type: 'number', min: 1000, max: 2419200000 },
+      flagChannelId: { type: 'string', nullable: true },
+      autoDelete: { type: 'boolean' },
+      exemptRoleIds: { type: 'array', items: { type: 'string' } },
     },
   },
   auditLog: {
@@ -442,13 +491,17 @@ export const CONFIG_SCHEMA = {
       moderatorRoleId: { type: 'string', nullable: true },
       modRoles: { type: 'array', items: { type: 'string' } },
       // allowedCommands is a freeform map of command → permission level — no fixed property list
-      allowedCommands: { type: 'object', openProperties: true },
+      allowedCommands: {
+        type: 'object',
+        openProperties: { type: 'string', enum: PERMISSION_LEVEL_TYPES },
+      },
     },
   },
   tldr: {
     type: 'object',
     properties: {
       enabled: { type: 'boolean' },
+      model: AI_MODEL_VALUE_SCHEMA,
       systemPrompt: { type: 'string', maxLength: 4000 },
       defaultMessages: { type: 'number', min: 1, max: 200 },
       maxMessages: { type: 'number', min: 1, max: 200 },
@@ -514,14 +567,11 @@ export const CONFIG_SCHEMA = {
 export function validateValue(value, schema, path) {
   const errors = [];
 
-  if (value === null) {
-    if (!schema.nullable) {
-      errors.push(`${path}: must not be null`);
-    }
+  if (value === undefined) {
     return errors;
   }
 
-  if (value === undefined) {
+  if (value === null && schema.nullable) {
     return errors;
   }
 
@@ -532,6 +582,11 @@ export function validateValue(value, schema, path) {
       return success;
     }
     return results.flat();
+  }
+
+  if (value === null) {
+    errors.push(`${path}: must not be null`);
+    return errors;
   }
 
   switch (schema.type) {
@@ -547,7 +602,13 @@ export function validateValue(value, schema, path) {
         if (typeof schema.minLength === 'number' && value.length < schema.minLength) {
           errors.push(`${path}: must be at least ${schema.minLength} characters`);
         }
-        if (schema.enum && !schema.enum.includes(value)) {
+        if (schema.aiModel) {
+          if (!isSupportedAiModel(value)) {
+            errors.push(
+              `${path}: must be one of [${SUPPORTED_AI_MODEL_TYPES.join(', ')}], got "${value}"`,
+            );
+          }
+        } else if (schema.enum && !schema.enum.includes(value)) {
           errors.push(`${path}: must be one of [${schema.enum.join(', ')}], got "${value}"`);
         }
         if (schema.maxLength != null && value.length > schema.maxLength) {
@@ -623,10 +684,13 @@ export function validateValue(value, schema, path) {
           }
         }
 
-        if (schema.properties) {
+        if (schema.properties || schema.openProperties) {
+          const properties = schema.properties ?? {};
           for (const [key, val] of Object.entries(value)) {
-            if (Object.hasOwn(schema.properties, key)) {
-              errors.push(...validateValue(val, schema.properties[key], `${path}.${key}`));
+            if (Object.hasOwn(properties, key)) {
+              errors.push(...validateValue(val, properties[key], `${path}.${key}`));
+            } else if (schema.openProperties && schema.openProperties !== true) {
+              errors.push(...validateValue(val, schema.openProperties, `${path}.${key}`));
             } else if (!schema.openProperties) {
               errors.push(`${path}.${key}: unknown config key`);
             }
@@ -651,25 +715,62 @@ export function validateValue(value, schema, path) {
  * @param {*} value - The value to validate for the given path.
  * @returns {string[]} Array of validation error messages (empty if valid).
  */
-export function validateSingleValue(path, value) {
+function resolveSchemaForPath(path) {
   const segments = path.split('.');
   const section = segments[0];
 
   const schema = CONFIG_SCHEMA[section];
-  if (!schema) return []; // unknown section — let SAFE_CONFIG_KEYS guard handle it
+  if (!schema) {
+    // Unknown section — let SAFE_CONFIG_KEYS guard handle it.
+    return { status: 'unknown-section' };
+  }
 
-  // Walk the schema tree to find the leaf schema for this path
+  // Walk the schema tree to find the leaf schema for this path.
   let currentSchema = schema;
   for (let i = 1; i < segments.length; i++) {
     if (currentSchema.properties && Object.hasOwn(currentSchema.properties, segments[i])) {
       currentSchema = currentSchema.properties[segments[i]];
     } else if (currentSchema.openProperties) {
-      // Dynamic keys (e.g. channelModes.<channelId>) — validate as leaf value
-      break;
+      // Dynamic map keys (e.g. channelModes.<channelId>) consume this path
+      // segment, then the remaining path (if any) resolves against the map's
+      // value schema. `openProperties: true` means the dynamic value is fully
+      // freeform and can only be validated as "allowed".
+      currentSchema = currentSchema.openProperties === true ? {} : currentSchema.openProperties;
     } else {
-      return [`Unknown config path: ${path}`];
+      return { status: 'unknown-path' };
     }
   }
 
-  return validateValue(value, currentSchema, path);
+  return { status: 'found', schema: currentSchema };
+}
+
+/**
+ * Validate a single configuration path and its value against the writable config schema.
+ *
+ * @param {string} path - Dot-notation config path (e.g. "ai.enabled").
+ * @param {*} value - The value to validate for the given path.
+ * @returns {string[]} Array of validation error messages (empty if valid).
+ */
+export function validateSingleValue(path, value) {
+  const resolved = resolveSchemaForPath(path);
+  if (resolved.status === 'unknown-path') return [`Unknown config path: ${path}`];
+  if (resolved.status === 'unknown-section') return [];
+
+  return validateValue(value, resolved.schema, path);
+}
+
+/**
+ * Return the canonical runtime value for config leaves that support legacy aliases
+ * or case-insensitive inputs. Unknown paths and ordinary values pass through.
+ *
+ * @param {string} path
+ * @param {*} value
+ * @returns {*}
+ */
+export function normalizeSingleValue(path, value) {
+  const resolved = resolveSchemaForPath(path);
+  if (resolved.schema?.aiModel && isSupportedAiModel(value)) {
+    return normalizeSupportedAiModel(value);
+  }
+  return value;
 }

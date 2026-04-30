@@ -1,24 +1,132 @@
 'use client';
 import { useCallback, useEffect } from 'react';
+import { AiModelSelect } from '@/components/dashboard/ai-model-select';
 import { useConfigContext } from '@/components/dashboard/config-context';
-import { inputClasses, parseNumberInput } from '@/components/dashboard/config-editor-utils';
+import {
+  type GuildConfig,
+  inputClasses,
+  parseNumberInput,
+} from '@/components/dashboard/config-editor-utils';
 import { ChannelModeSection } from '@/components/dashboard/config-sections/ChannelModeSection';
 import type { ConfigFeatureId } from '@/components/dashboard/config-workspace/types';
 import { ChannelSelector } from '@/components/ui/channel-selector';
 import { RoleSelector } from '@/components/ui/role-selector';
 import {
+  AI_AUTOMOD_ACTION_OPTIONS,
+  AI_AUTOMOD_CATEGORIES,
+  type SelectableAiAutoModAction,
+} from '@/data/ai-automod-catalog';
+import {
   getVisibleProviderModelValue,
-  VISIBLE_PROVIDER_MODEL_OPTION_GROUPS,
   VISIBLE_PROVIDER_MODEL_OPTIONS,
 } from '@/lib/provider-model-options';
 import { cn } from '@/lib/utils';
-import type { ChannelMode } from '@/types/config';
+import type { AiAutoModCategory, ChannelMode } from '@/types/config';
 import { SYSTEM_PROMPT_MAX_LENGTH } from '@/types/config';
 import { SystemPromptEditor } from '../system-prompt-editor';
 import { ToggleSwitch } from '../toggle-switch';
 import { ConfigCategoryLayout } from './config-category-layout';
 
+type AiAutoModDraft = NonNullable<GuildConfig['aiAutoMod']>;
+type AiAutoModFieldUpdater<K extends keyof AiAutoModDraft> =
+  | AiAutoModDraft[K]
+  | ((previousValue: AiAutoModDraft[K], previousAiAutoMod: AiAutoModDraft) => AiAutoModDraft[K]);
+
+const AI_AUTOMOD_ACTION_ORDER = AI_AUTOMOD_ACTION_OPTIONS.map((option) => option.value);
+
+function isSelectableAiAutoModAction(value: unknown): value is SelectableAiAutoModAction {
+  return (
+    typeof value === 'string' &&
+    AI_AUTOMOD_ACTION_ORDER.includes(value as SelectableAiAutoModAction)
+  );
+}
+
+function sortAiAutoModActions(
+  actions: readonly SelectableAiAutoModAction[],
+): SelectableAiAutoModAction[] {
+  const selected = new Set(actions);
+  return AI_AUTOMOD_ACTION_ORDER.filter((action) => selected.has(action));
+}
+
+function normalizeAiAutoModActions(
+  value: unknown,
+  fallback: readonly SelectableAiAutoModAction[],
+): SelectableAiAutoModAction[] {
+  if (value === 'none') return [];
+
+  let rawActions: readonly unknown[];
+  if (Array.isArray(value)) {
+    rawActions = value;
+  } else if (isSelectableAiAutoModAction(value)) {
+    rawActions = [value];
+  } else {
+    rawActions = fallback;
+  }
+  const uniqueActions = rawActions.filter(
+    (action, index, allActions): action is SelectableAiAutoModAction =>
+      isSelectableAiAutoModAction(action) && allActions.indexOf(action) === index,
+  );
+
+  return sortAiAutoModActions(uniqueActions);
+}
+
+function toggleAiAutoModCategoryAction(
+  previousActions: AiAutoModDraft['actions'],
+  categoryKey: AiAutoModCategory,
+  fallbackActions: readonly SelectableAiAutoModAction[],
+  action: SelectableAiAutoModAction,
+  checked: boolean,
+): NonNullable<AiAutoModDraft['actions']> {
+  const previousActionMap = previousActions ?? {};
+  const previousCategoryActions = normalizeAiAutoModActions(
+    previousActionMap[categoryKey],
+    fallbackActions,
+  );
+  const nextActions = checked
+    ? sortAiAutoModActions([...previousCategoryActions, action])
+    : previousCategoryActions.filter((selectedAction) => selectedAction !== action);
+
+  return {
+    ...previousActionMap,
+    [categoryKey]: nextActions,
+  };
+}
+
+function AiAutoModActionToggle({
+  categoryLabel,
+  option,
+  checked,
+  disabled,
+  onToggle,
+}: Readonly<{
+  categoryLabel: string;
+  option: (typeof AI_AUTOMOD_ACTION_OPTIONS)[number];
+  checked: boolean;
+  disabled: boolean;
+  onToggle: (checked: boolean) => void;
+}>) {
+  return (
+    <label className="cursor-pointer">
+      <input
+        type="checkbox"
+        aria-label={`${categoryLabel} ${option.label}`}
+        checked={checked}
+        onChange={(event) => onToggle(event.target.checked)}
+        disabled={disabled}
+        className="peer sr-only"
+      />
+      <span className="block rounded-lg border border-border/40 bg-background/70 px-3 py-2 text-[11px] font-bold text-foreground/60 transition-colors peer-checked:border-primary/60 peer-checked:bg-primary/15 peer-checked:text-foreground peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary">
+        {option.label}
+      </span>
+    </label>
+  );
+}
+
 const hasVisibleModelOptions = VISIBLE_PROVIDER_MODEL_OPTIONS.length > 0;
+
+function shouldNormalizeSavedModel(value: unknown, normalizedValue: string): value is string {
+  return typeof value === 'string' && normalizedValue !== value;
+}
 
 /**
  * Render the AI & Automation configuration UI for the chat, automod, triage, and memory feature tabs.
@@ -107,13 +215,46 @@ export function AiAutomationCategory() {
   }, [updateDraftConfig]);
 
   const updateAiAutoModField = useCallback(
-    (field: string, value: unknown) => {
-      updateDraftConfig((prev) => ({
-        ...prev,
-        aiAutoMod: { ...prev.aiAutoMod, [field]: value },
-      }));
+    <K extends keyof AiAutoModDraft>(field: K, value: AiAutoModFieldUpdater<K>) => {
+      updateDraftConfig((prev) => {
+        const previousAiAutoMod = (prev.aiAutoMod ?? {}) as AiAutoModDraft;
+        const nextValue =
+          typeof value === 'function'
+            ? (
+                value as (
+                  previousValue: AiAutoModDraft[K],
+                  previousAiAutoMod: AiAutoModDraft,
+                ) => AiAutoModDraft[K]
+              )(previousAiAutoMod[field], previousAiAutoMod)
+            : value;
+
+        return {
+          ...prev,
+          aiAutoMod: { ...previousAiAutoMod, [field]: nextValue },
+        };
+      });
     },
     [updateDraftConfig],
+  );
+
+  const updateAiAutoModAction = useCallback(
+    (
+      categoryKey: AiAutoModCategory,
+      fallbackActions: readonly SelectableAiAutoModAction[],
+      action: SelectableAiAutoModAction,
+      checked: boolean,
+    ) => {
+      updateAiAutoModField('actions', (previousActions) =>
+        toggleAiAutoModCategoryAction(
+          previousActions,
+          categoryKey,
+          fallbackActions,
+          action,
+          checked,
+        ),
+      );
+    },
+    [updateAiAutoModField],
   );
 
   const updateTriageField = useCallback(
@@ -137,25 +278,66 @@ export function AiAutomationCategory() {
   );
 
   const hasDraftConfig = draftConfig !== null;
+  const currentAiAutoModModel = draftConfig?.aiAutoMod?.model;
   const currentClassifyModel = draftConfig?.triage?.classifyModel;
   const currentRespondModel = draftConfig?.triage?.respondModel;
+  const aiAutoModModelValue = getVisibleProviderModelValue(currentAiAutoModModel);
   const classifyModelValue = getVisibleProviderModelValue(currentClassifyModel);
   const respondModelValue = getVisibleProviderModelValue(currentRespondModel);
 
   useEffect(() => {
-    if (!hasDraftConfig || activeTab !== 'triage' || !hasVisibleModelOptions) return;
-    if (classifyModelValue === currentClassifyModel && respondModelValue === currentRespondModel) {
-      return;
-    }
+    if (!hasDraftConfig || activeTab !== 'ai-automod' || !hasVisibleModelOptions) return;
+    if (!shouldNormalizeSavedModel(currentAiAutoModModel, aiAutoModModelValue)) return;
 
-    updateDraftConfig((prev) => ({
-      ...prev,
-      triage: {
-        ...prev.triage,
-        classifyModel: getVisibleProviderModelValue(prev.triage?.classifyModel),
-        respondModel: getVisibleProviderModelValue(prev.triage?.respondModel),
-      },
-    }));
+    updateDraftConfig((prev) => {
+      const previousModel = prev.aiAutoMod?.model;
+      const normalizedModel = getVisibleProviderModelValue(previousModel);
+      if (!shouldNormalizeSavedModel(previousModel, normalizedModel)) return prev;
+
+      return {
+        ...prev,
+        aiAutoMod: {
+          ...prev.aiAutoMod,
+          model: normalizedModel,
+        },
+      };
+    });
+  }, [activeTab, aiAutoModModelValue, currentAiAutoModModel, hasDraftConfig, updateDraftConfig]);
+
+  useEffect(() => {
+    if (!hasDraftConfig || activeTab !== 'triage' || !hasVisibleModelOptions) return;
+    const shouldNormalizeClassifyModel = shouldNormalizeSavedModel(
+      currentClassifyModel,
+      classifyModelValue,
+    );
+    const shouldNormalizeRespondModel = shouldNormalizeSavedModel(
+      currentRespondModel,
+      respondModelValue,
+    );
+    if (!shouldNormalizeClassifyModel && !shouldNormalizeRespondModel) return;
+
+    updateDraftConfig((prev) => {
+      const previousTriage = prev.triage ?? {};
+      const normalizedTriageModels: Record<string, string> = {};
+      const normalizedClassifyModel = getVisibleProviderModelValue(previousTriage.classifyModel);
+      const normalizedRespondModel = getVisibleProviderModelValue(previousTriage.respondModel);
+
+      if (shouldNormalizeSavedModel(previousTriage.classifyModel, normalizedClassifyModel)) {
+        normalizedTriageModels.classifyModel = normalizedClassifyModel;
+      }
+      if (shouldNormalizeSavedModel(previousTriage.respondModel, normalizedRespondModel)) {
+        normalizedTriageModels.respondModel = normalizedRespondModel;
+      }
+      if (Object.keys(normalizedTriageModels).length === 0) return prev;
+
+      return {
+        ...prev,
+        triage: {
+          ...previousTriage,
+          ...normalizedTriageModels,
+        },
+      };
+    });
   }, [
     activeTab,
     classifyModelValue,
@@ -255,6 +437,14 @@ export function AiAutomationCategory() {
               </p>
             </div>
             <div className="space-y-6">
+              <AiModelSelect
+                id="ai-automod-model"
+                label="Detection Model"
+                value={aiAutoModModelValue}
+                onChange={(value) => updateAiAutoModField('model', value)}
+                disabled={saving}
+              />
+
               <div className="space-y-3">
                 <label
                   htmlFor="ai-automod-flag-channel"
@@ -307,93 +497,104 @@ export function AiAutomationCategory() {
               </p>
             </div>
 
-            <div className="grid lg:grid-cols-2 gap-8">
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="h-1 w-1 rounded-full bg-primary" />
-                  <span className="text-[11px] font-black uppercase tracking-[0.2em] text-foreground/50">
-                    Thresholds
-                  </span>
-                </div>
-                <div className="grid gap-4">
-                  {(['toxicity', 'spam', 'harassment'] as const).map((cat) => (
-                    <div key={cat} className="flex items-center justify-between gap-6">
-                      <span className="text-sm font-bold text-foreground/80 capitalize">{cat}</span>
-                      <div className="relative">
-                        <input
-                          id={`ai-threshold-${cat}`}
-                          type="number"
-                          min={0}
-                          max={100}
-                          step={5}
-                          value={Math.round(
-                            ((draftConfig.aiAutoMod?.thresholds as Record<string, number>)?.[cat] ??
-                              0.7) * 100,
-                          )}
-                          onChange={(e) => {
-                            const raw = Number(e.target.value);
-                            const v = Number.isNaN(raw) ? 0 : Math.min(1, Math.max(0, raw / 100));
-                            updateAiAutoModField('thresholds', {
-                              ...((draftConfig.aiAutoMod?.thresholds as Record<string, number>) ??
-                                {}),
-                              [cat]: v,
-                            });
-                          }}
-                          onFocus={(e) => e.target.select()}
-                          disabled={saving}
-                          className={cn(
-                            inputClasses,
-                            'w-24 text-right pr-8 font-mono font-semibold',
-                          )}
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground">
-                          %
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+            <div className="overflow-hidden rounded-2xl border border-border/30 bg-background/30">
+              <div className="hidden grid-cols-[minmax(10rem,1fr)_8rem_minmax(14rem,2fr)] gap-4 border-b border-border/30 px-4 py-3 sm:grid">
+                <span className="text-[11px] font-black uppercase tracking-[0.2em] text-foreground/50">
+                  Category
+                </span>
+                <span className="text-right text-[11px] font-black uppercase tracking-[0.2em] text-foreground/50">
+                  Threshold
+                </span>
+                <span className="text-[11px] font-black uppercase tracking-[0.2em] text-foreground/50">
+                  Response
+                </span>
               </div>
+              <div className="divide-y divide-border/20">
+                {AI_AUTOMOD_CATEGORIES.map((category) => {
+                  const selectedActions = normalizeAiAutoModActions(
+                    (
+                      draftConfig.aiAutoMod?.actions as
+                        | Partial<Record<AiAutoModCategory, unknown>>
+                        | undefined
+                    )?.[category.key],
+                    category.defaultActions,
+                  );
 
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="h-1 w-1 rounded-full bg-primary" />
-                  <span className="text-[11px] font-black uppercase tracking-[0.2em] text-foreground/50">
-                    Response
-                  </span>
-                </div>
-                <div className="grid gap-4">
-                  {(['toxicity', 'spam', 'harassment'] as const).map((cat) => (
-                    <div key={cat} className="flex items-center justify-between gap-4">
-                      <span className="text-sm font-bold text-foreground/80 capitalize lg:hidden">
-                        {cat}
-                      </span>
-                      <select
-                        id={`ai-action-${cat}`}
-                        value={
-                          (draftConfig.aiAutoMod?.actions as Record<string, string>)?.[cat] ??
-                          'flag'
-                        }
-                        onChange={(e) => {
-                          updateAiAutoModField('actions', {
-                            ...((draftConfig.aiAutoMod?.actions as Record<string, string>) ?? {}),
-                            [cat]: e.target.value,
-                          });
-                        }}
-                        disabled={saving}
-                        className={cn(inputClasses, 'w-full min-w-[140px] font-semibold')}
-                      >
-                        <option value="none">Ignore</option>
-                        <option value="delete">Hard Delete</option>
-                        <option value="flag">Flag & Log</option>
-                        <option value="warn">Issue Warning</option>
-                        <option value="timeout">Temporary Timeout</option>
-                        <option value="kick">Server Kick</option>
-                        <option value="ban">Permanent Ban</option>
-                      </select>
+                  return (
+                    <div
+                      key={category.key}
+                      className="grid gap-3 px-4 py-4 sm:grid-cols-[minmax(10rem,1fr)_8rem_minmax(14rem,2fr)] sm:items-center sm:gap-4 sm:py-3"
+                    >
+                      <span className="text-sm font-bold text-foreground/80">{category.label}</span>
+                      <div className="grid gap-1.5 sm:block">
+                        <span className="text-[10px] font-black uppercase tracking-[0.18em] text-foreground/40 sm:hidden">
+                          Threshold
+                        </span>
+                        <div className="relative w-full sm:ml-auto sm:w-28">
+                          <input
+                            id={`ai-threshold-${category.key}`}
+                            aria-label={`${category.label} Threshold`}
+                            type="number"
+                            min={0}
+                            max={100}
+                            step={5}
+                            value={Math.round(
+                              (draftConfig.aiAutoMod?.thresholds?.[category.key] ??
+                                category.defaultThreshold) * 100,
+                            )}
+                            onChange={(e) => {
+                              const raw = Number(e.target.value);
+                              const v = Number.isNaN(raw) ? 0 : Math.min(1, Math.max(0, raw / 100));
+                              updateAiAutoModField('thresholds', (previousThresholds) => ({
+                                ...previousThresholds,
+                                [category.key]: v,
+                              }));
+                            }}
+                            onFocus={(e) => e.target.select()}
+                            disabled={saving}
+                            className={cn(
+                              inputClasses,
+                              'w-full text-right pr-8 font-mono font-semibold',
+                            )}
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground">
+                            %
+                          </span>
+                        </div>
+                      </div>
+                      <fieldset className="grid min-w-0 gap-1.5">
+                        <legend className="sr-only">{category.label} Actions</legend>
+                        <span className="text-[10px] font-black uppercase tracking-[0.18em] text-foreground/40 sm:hidden">
+                          Response
+                        </span>
+                        <div className="flex flex-wrap gap-2">
+                          {AI_AUTOMOD_ACTION_OPTIONS.map((option) => (
+                            <AiAutoModActionToggle
+                              key={option.value}
+                              categoryLabel={category.label}
+                              option={option}
+                              checked={selectedActions.includes(option.value)}
+                              disabled={saving}
+                              onToggle={(checked) =>
+                                updateAiAutoModAction(
+                                  category.key,
+                                  category.defaultActions,
+                                  option.value,
+                                  checked,
+                                )
+                              }
+                            />
+                          ))}
+                          {selectedActions.length === 0 && (
+                            <span className="rounded-lg border border-dashed border-border/40 px-3 py-2 text-[11px] font-bold text-muted-foreground">
+                              No response actions
+                            </span>
+                          )}
+                        </div>
+                      </fieldset>
                     </div>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -414,64 +615,24 @@ export function AiAutomationCategory() {
             </div>
             <div className="grid gap-6">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <label
-                    htmlFor="classify-model"
-                    className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground ml-1"
-                  >
-                    Classifier Engine
-                  </label>
-                  <select
-                    id="classify-model"
-                    value={classifyModelValue}
-                    onChange={(e) => updateTriageField('classifyModel', e.target.value)}
-                    disabled={saving || !hasVisibleModelOptions}
-                    className={inputClasses}
-                  >
-                    {hasVisibleModelOptions ? (
-                      VISIBLE_PROVIDER_MODEL_OPTION_GROUPS.map((group) => (
-                        <optgroup key={group.providerName} label={group.providerDisplayName}>
-                          {group.options.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </optgroup>
-                      ))
-                    ) : (
-                      <option value="">No visible models configured</option>
-                    )}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label
-                    htmlFor="respond-model"
-                    className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground ml-1"
-                  >
-                    Response Engine
-                  </label>
-                  <select
-                    id="respond-model"
-                    value={respondModelValue}
-                    onChange={(e) => updateTriageField('respondModel', e.target.value)}
-                    disabled={saving || !hasVisibleModelOptions}
-                    className={inputClasses}
-                  >
-                    {hasVisibleModelOptions ? (
-                      VISIBLE_PROVIDER_MODEL_OPTION_GROUPS.map((group) => (
-                        <optgroup key={group.providerName} label={group.providerDisplayName}>
-                          {group.options.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </optgroup>
-                      ))
-                    ) : (
-                      <option value="">No visible models configured</option>
-                    )}
-                  </select>
-                </div>
+                <AiModelSelect
+                  id="classify-model"
+                  label="Classifier Engine"
+                  value={classifyModelValue}
+                  onChange={(value) => updateTriageField('classifyModel', value)}
+                  disabled={saving}
+                  wrapperClassName="space-y-2"
+                  labelClassName="ml-1 text-[11px] uppercase tracking-wider text-muted-foreground"
+                />
+                <AiModelSelect
+                  id="respond-model"
+                  label="Response Engine"
+                  value={respondModelValue}
+                  onChange={(value) => updateTriageField('respondModel', value)}
+                  disabled={saving}
+                  wrapperClassName="space-y-2"
+                  labelClassName="ml-1 text-[11px] uppercase tracking-wider text-muted-foreground"
+                />
               </div>
 
               <div className="space-y-2">

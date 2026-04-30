@@ -28,16 +28,17 @@ const minimalConfig = {
   memory: { enabled: false },
 };
 
-function configResponse(body: unknown, init: Partial<Response> = {}) {
+type FetchMock = ReturnType<typeof vi.fn>;
+
+function configResponse(body: unknown, status = 200) {
   return {
-    ok: true,
-    status: 200,
+    ok: status >= 200 && status < 300,
+    status,
     json: () => Promise.resolve(body),
-    ...init,
   };
 }
 
-function mockConfigFetch(config: unknown = minimalConfig) {
+function stubConfigFetch(config: unknown = minimalConfig): FetchMock {
   const fetchMock = vi.fn().mockResolvedValue(configResponse(config));
   vi.stubGlobal('fetch', fetchMock);
   return fetchMock;
@@ -53,78 +54,34 @@ async function renderConfigContext() {
   return renderHook(() => useConfigContext(), { wrapper });
 }
 
-function mockWindowLocation(href = '') {
-  const originalLocation = globalThis.location;
+async function renderLoadedConfigContext() {
+  const view = await renderConfigContext();
+  await waitFor(() => expect(view.result.current.draftConfig).not.toBeNull());
+  return view;
+}
+
+async function withMockLocation<T>(callback: () => Promise<T> | T): Promise<T> {
+  const originalLocation = window.location;
   // @ts-expect-error jsdom location replacement for redirect assertion
-  delete globalThis.location;
+  delete window.location;
   // @ts-expect-error minimal location mock for href assignment
-  globalThis.location = { href };
+  window.location = { href: '' };
 
-  return () => {
-    globalThis.location = originalLocation;
-  };
-}
-
-type ConfigContextResult = Awaited<ReturnType<typeof renderConfigContext>>['result'];
-
-function dispatchGuildSelection(guildId: string, { cancel = false } = {}) {
-  const event = new CustomEvent<string>('volvox-bot:guild-selected', {
-    detail: guildId,
-    cancelable: cancel,
-  });
-  if (cancel) {
-    event.preventDefault();
+  try {
+    return await callback();
+  } finally {
+    // @ts-expect-error restore jsdom location
+    window.location = originalLocation;
   }
-
-  act(() => globalThis.dispatchEvent(event));
-}
-
-function dispatchSelectedGuildStorage(newValue: string | null) {
-  act(() => {
-    globalThis.dispatchEvent(
-      new StorageEvent('storage', { key: 'volvox-bot-selected-guild', newValue }),
-    );
-  });
-}
-
-async function expectGuildSelectionFlow({
-  result,
-  initialGuildId,
-  eventGuildId,
-  storageGuildId,
-  fetchMock,
-}: {
-  result: ConfigContextResult;
-  initialGuildId: string;
-  eventGuildId: string;
-  storageGuildId: string | null;
-  fetchMock?: ReturnType<typeof vi.fn>;
-}) {
-  await waitFor(() => expect(result.current.guildId).toBe(initialGuildId));
-
-  dispatchGuildSelection('guild-cancelled', { cancel: true });
-  expect(result.current.guildId).toBe(initialGuildId);
-
-  dispatchGuildSelection(eventGuildId);
-  await waitFor(() => expect(result.current.guildId).toBe(eventGuildId));
-
-  if (fetchMock) {
-    await waitFor(() =>
-      expect(fetchMock).toHaveBeenCalledWith(`/api/guilds/${eventGuildId}/config`, expect.any(Object)),
-    );
-  }
-
-  dispatchSelectedGuildStorage(storageGuildId);
-  await waitFor(() => expect(result.current.guildId).toBe(storageGuildId ?? ''));
 }
 
 describe('ConfigProvider', () => {
   beforeEach(() => {
     vi.resetModules();
-    vi.clearAllMocks();
     localStorage.clear();
     localStorage.setItem('volvox-bot-selected-guild', 'guild-123');
     mockPathname.mockReturnValue('/dashboard/settings');
+    mockPush.mockClear();
   });
 
   afterEach(() => {
@@ -134,8 +91,7 @@ describe('ConfigProvider', () => {
   });
 
   it('provides config after fetch', async () => {
-    const fetchMock = mockConfigFetch();
-
+    stubConfigFetch();
     const { result } = await renderConfigContext();
 
     await waitFor(() => {
@@ -148,11 +104,8 @@ describe('ConfigProvider', () => {
   });
 
   it('updateDraftConfig marks hasChanges', async () => {
-    mockConfigFetch();
-
-    const { result } = await renderConfigContext();
-
-    await waitFor(() => expect(result.current.draftConfig).not.toBeNull());
+    stubConfigFetch();
+    const { result } = await renderLoadedConfigContext();
     act(() => {
       result.current.updateDraftConfig((prev) => ({
         ...prev,
@@ -163,11 +116,8 @@ describe('ConfigProvider', () => {
   });
 
   it('discardChanges resets draft to saved', async () => {
-    mockConfigFetch();
-
-    const { result } = await renderConfigContext();
-
-    await waitFor(() => expect(result.current.draftConfig).not.toBeNull());
+    stubConfigFetch();
+    const { result } = await renderLoadedConfigContext();
     act(() => {
       result.current.updateDraftConfig((prev) => ({
         ...prev,
@@ -188,40 +138,28 @@ describe('ConfigProvider', () => {
 
   it('derives activeCategoryId as null on landing page', async () => {
     mockPathname.mockReturnValue('/dashboard/settings');
-    mockConfigFetch();
-
-    const { result } = await renderConfigContext();
-
-    await waitFor(() => expect(result.current.draftConfig).not.toBeNull());
+    stubConfigFetch();
+    const { result } = await renderLoadedConfigContext();
     expect(result.current.activeCategoryId).toBeNull();
   });
 
   it('derives activeCategoryId from pathname', async () => {
     mockPathname.mockReturnValue('/dashboard/settings/ai-automation');
-    mockConfigFetch();
-
-    const { result } = await renderConfigContext();
-
-    await waitFor(() => expect(result.current.draftConfig).not.toBeNull());
+    stubConfigFetch();
+    const { result } = await renderLoadedConfigContext();
     expect(result.current.activeCategoryId).toBe('ai-automation');
   });
 
   it('returns empty visibleFeatureIds when activeCategoryId is null', async () => {
     mockPathname.mockReturnValue('/dashboard/settings');
-    mockConfigFetch();
-
-    const { result } = await renderConfigContext();
-
-    await waitFor(() => expect(result.current.draftConfig).not.toBeNull());
+    stubConfigFetch();
+    const { result } = await renderLoadedConfigContext();
     expect(result.current.visibleFeatureIds.size).toBe(0);
   });
 
   it('handleSearchSelect navigates to the category page', async () => {
-    mockConfigFetch();
-
-    const { result } = await renderConfigContext();
-
-    await waitFor(() => expect(result.current.draftConfig).not.toBeNull());
+    stubConfigFetch();
+    const { result } = await renderLoadedConfigContext();
     act(() => {
       result.current.handleSearchSelect({
         id: 'ai-chat-enabled',
@@ -237,16 +175,32 @@ describe('ConfigProvider', () => {
   });
 
   it('handles guild selection, storage updates, and cancelled guild switches', async () => {
-    mockConfigFetch();
-
+    stubConfigFetch();
     const { result } = await renderConfigContext();
 
-    await expectGuildSelectionFlow({
-      result,
-      initialGuildId: 'guild-123',
-      eventGuildId: 'guild-456',
-      storageGuildId: null,
+    await waitFor(() => expect(result.current.guildId).toBe('guild-123'));
+
+    act(() => {
+      const cancelled = new CustomEvent('volvox-bot:guild-selected', {
+        detail: 'blocked-guild',
+        cancelable: true,
+      });
+      cancelled.preventDefault();
+      window.dispatchEvent(cancelled);
     });
+    expect(result.current.guildId).toBe('guild-123');
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent('volvox-bot:guild-selected', { detail: 'guild-456' }));
+    });
+    await waitFor(() => expect(result.current.guildId).toBe('guild-456'));
+
+    act(() => {
+      window.dispatchEvent(
+        new StorageEvent('storage', { key: 'volvox-bot-selected-guild', newValue: null }),
+      );
+    });
+    await waitFor(() => expect(result.current.guildId).toBe(''));
   });
 
   it('normalizes role menu option ids and reports fetch failures', async () => {
@@ -260,7 +214,7 @@ describe('ConfigProvider', () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(configResponse(configWithMissingRoleId))
-      .mockResolvedValueOnce(configResponse({ error: 'Nope' }, { ok: false, status: 500 }));
+      .mockResolvedValueOnce(configResponse({ error: 'Nope' }, 500));
     vi.stubGlobal('fetch', fetchMock);
 
     const { result } = await renderConfigContext();
@@ -275,154 +229,6 @@ describe('ConfigProvider', () => {
     expect(toast.error).toHaveBeenCalledWith('Failed to load config', { description: 'Nope' });
   });
 
-  it('tracks validation errors, search filtering, active tabs, and search keyboard shortcuts', async () => {
-    mockPathname.mockReturnValue('/dashboard/settings/onboarding-growth');
-    mockConfigFetch();
-
-    const { result } = await renderConfigContext();
-
-    await waitFor(() => expect(result.current.activeCategoryId).toBe('onboarding-growth'));
-    await waitFor(() => expect(result.current.activeTabId).toBe('welcome'));
-
-    act(() => result.current.handleSearchChange('role menu'));
-    expect(result.current.searchResults.map((item) => item.id)).toContain('welcome-role-menu');
-    expect(result.current.visibleFeatureIds.has('welcome')).toBe(true);
-
-    act(() => {
-      result.current.handleSearchSelect({
-        id: 'welcome-role-menu',
-        featureId: 'welcome',
-        categoryId: 'onboarding-growth',
-        label: 'Welcome Role Menu',
-        description: 'Configure role menu options.',
-        keywords: ['role menu'],
-        isAdvanced: true,
-      });
-    });
-    expect(result.current.forceOpenAdvancedFeatureId).toBe('welcome');
-
-    act(() => {
-      result.current.updateDraftConfig((prev) => ({
-        ...prev,
-        welcome: {
-          ...prev.welcome,
-          roleMenu: { enabled: true, options: [{ id: '1', label: '', roleId: '' }] },
-        },
-      }));
-    });
-    expect(result.current.hasValidationErrors).toBe(true);
-
-    act(() => result.current.openDiffModal());
-    expect(toast.error).toHaveBeenCalledWith('Cannot save', {
-      description: 'Fix validation errors before saving.',
-    });
-
-    const input = document.createElement('input');
-    input.id = 'config-search';
-    document.body.append(input);
-    const focusSpy = vi.spyOn(input, 'focus');
-    act(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: '/', bubbles: true })));
-    expect(focusSpy).toHaveBeenCalled();
-
-    act(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
-    expect(result.current.searchQuery).toBe('');
-  });
-
-  it('opens the diff modal with changes and supports keyboard save shortcuts', async () => {
-    mockConfigFetch();
-
-    const { result } = await renderConfigContext();
-
-    await waitFor(() => expect(result.current.draftConfig).not.toBeNull());
-    act(() => result.current.openDiffModal());
-    expect(toast.info).toHaveBeenCalledWith('No changes to save.');
-
-    act(() => {
-      result.current.updateDraftConfig((prev) => ({ ...prev, ai: { ...prev.ai, enabled: true } }));
-    });
-    act(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true })));
-    expect(result.current.showDiffModal).toBe(true);
-
-    act(() => result.current.setShowDiffModal(false));
-    const input = document.createElement('input');
-    document.body.append(input);
-    act(() => {
-      input.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true, bubbles: true }));
-    });
-    expect(result.current.showDiffModal).toBe(false);
-  });
-
-  it('saves patches, refreshes config, reverts sections, and undoes the last save', async () => {
-    const savedAgain = { ...minimalConfig, ai: { ...minimalConfig.ai, enabled: true } };
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(configResponse(minimalConfig))
-      .mockResolvedValueOnce(configResponse({ ok: true }))
-      .mockResolvedValueOnce(configResponse(savedAgain));
-    vi.stubGlobal('fetch', fetchMock);
-
-    const { result } = await renderConfigContext();
-
-    await waitFor(() => expect(result.current.draftConfig).not.toBeNull());
-    act(() => {
-      result.current.updateDraftConfig((prev) => ({ ...prev, ai: { ...prev.ai, enabled: true } }));
-    });
-
-    await act(async () => {
-      await result.current.executeSave();
-    });
-
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      2,
-      '/api/guilds/guild-123/config',
-      expect.objectContaining({ method: 'PUT', body: expect.stringContaining('ai.enabled') }),
-    );
-    expect(toast.success).toHaveBeenCalledWith('Config saved successfully!');
-    expect(result.current.prevSavedConfig?.guildId).toBe('guild-123');
-
-    act(() => result.current.undoLastSave());
-    expect(result.current.prevSavedConfig).toBeNull();
-    expect(toast.info).toHaveBeenCalledWith('Reverted to previous saved state. Save again to apply.');
-
-    act(() => result.current.revertSection('ai'));
-    expect(toast.success).toHaveBeenCalledWith('Reverted ai changes.');
-  });
-
-  it('surfaces save validation, no-op, unauthorized, and detailed API failures', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(configResponse(minimalConfig))
-      .mockResolvedValueOnce(configResponse({ error: 'Bad config', details: ['bad path'] }, { ok: false, status: 400 }))
-      .mockResolvedValueOnce(configResponse({}, { ok: false, status: 401 }));
-    vi.stubGlobal('fetch', fetchMock);
-    const restoreLocation = mockWindowLocation();
-
-    try {
-      const { result } = await renderConfigContext();
-
-      await waitFor(() => expect(result.current.draftConfig).not.toBeNull());
-      await act(async () => {
-        await result.current.executeSave();
-      });
-      expect(toast.info).toHaveBeenCalledWith('No changes to save.');
-
-      act(() => result.current.updateDraftConfig((prev) => ({ ...prev, ai: { ...prev.ai, enabled: true } })));
-      await act(async () => {
-        await result.current.executeSave();
-      });
-      expect(toast.error).toHaveBeenCalledWith('Failed to save config', {
-        description: 'Bad config: bad path',
-      });
-
-      await act(async () => {
-        await result.current.executeSave();
-      });
-      expect(globalThis.location.href).toBe('/login');
-    } finally {
-      restoreLocation();
-    }
-  });
-
   it('reacts to guild selection and storage events while respecting cancelled switches', async () => {
     const getItemSpy = vi
       .spyOn(Storage.prototype, 'getItem')
@@ -430,32 +236,53 @@ describe('ConfigProvider', () => {
         throw new Error('storage blocked');
       })
       .mockImplementation((key) => (key === 'volvox-bot-selected-guild' ? 'guild-storage' : null));
-    const fetchMock = mockConfigFetch();
-
+    const fetchMock = stubConfigFetch();
     const { result } = await renderConfigContext();
 
-    try {
-      await waitFor(() => expect(result.current.guildId).toBe(''));
-      expect(fetchMock).not.toHaveBeenCalled();
+    await waitFor(() => expect(result.current.guildId).toBe(''));
+    expect(fetchMock).not.toHaveBeenCalled();
 
-      await expectGuildSelectionFlow({
-        result,
-        initialGuildId: '',
-        eventGuildId: 'guild-event',
-        storageGuildId: 'guild-from-storage',
-        fetchMock,
-      });
-    } finally {
-      getItemSpy.mockRestore();
-    }
+    const cancelled = new CustomEvent<string>('volvox-bot:guild-selected', {
+      detail: 'guild-cancelled',
+      cancelable: true,
+    });
+    cancelled.preventDefault();
+    act(() => window.dispatchEvent(cancelled));
+    expect(result.current.guildId).toBe('');
+
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent<string>('volvox-bot:guild-selected', { detail: 'guild-event' }),
+      );
+    });
+    await waitFor(() => expect(result.current.guildId).toBe('guild-event'));
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith('/api/guilds/guild-event/config', expect.any(Object)),
+    );
+
+    act(() => {
+      window.dispatchEvent(
+        new StorageEvent('storage', {
+          key: 'volvox-bot-selected-guild',
+          newValue: 'guild-from-storage',
+        }),
+      );
+    });
+    await waitFor(() => expect(result.current.guildId).toBe('guild-from-storage'));
+
+    getItemSpy.mockRestore();
   });
 
   it('handles fetch redirects, invalid payloads, API errors, and role menu id backfill', async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce(configResponse(null, { ok: false, status: 401, json: vi.fn() }))
+      .mockResolvedValueOnce(configResponse({}, 401))
       .mockResolvedValueOnce(configResponse({ nope: true }))
-      .mockResolvedValueOnce(configResponse({ error: 'temporarily unavailable' }, { ok: false, status: 503 }))
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        json: () => Promise.resolve({ error: 'temporarily unavailable' }),
+      })
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
@@ -473,9 +300,7 @@ describe('ConfigProvider', () => {
       });
     vi.stubGlobal('fetch', fetchMock);
 
-    const restoreLocation = mockWindowLocation();
-
-    try {
+    await withMockLocation(async () => {
       const { result } = await renderConfigContext();
 
       await waitFor(() => expect(window.location.href).toBe('/login'));
@@ -492,14 +317,12 @@ describe('ConfigProvider', () => {
 
       await act(async () => result.current.fetchConfig('guild-ok'));
       await waitFor(() => expect(result.current.draftConfig?.welcome?.roleMenu?.options?.[0]?.id).toBeTruthy());
-    } finally {
-      restoreLocation();
-    }
+    });
   });
 
   it('derives search, active tabs, dirty counts, focus behavior, and category navigation', async () => {
     mockPathname.mockReturnValue('/dashboard/settings/onboarding-growth');
-    mockConfigFetch();
+    stubConfigFetch();
     const rafSpy = vi
       .spyOn(window, 'requestAnimationFrame')
       .mockImplementation((callback: FrameRequestCallback) => {
@@ -531,6 +354,7 @@ describe('ConfigProvider', () => {
     expect(roleMenuResult).toBeDefined();
     act(() => result.current.handleSearchSelect(roleMenuResult!));
 
+    expect(result.current.forceOpenAdvancedFeatureId).toBe('welcome');
     expect(mockPush).toHaveBeenCalledWith('/dashboard/settings/onboarding-growth');
     expect(result.current.activeTabId).toBe('welcome');
     expect(feature.scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
@@ -561,11 +385,8 @@ describe('ConfigProvider', () => {
   });
 
   it('opens the diff modal from save actions and blocks invalid or unchanged saves', async () => {
-    mockConfigFetch();
-
-    const { result } = await renderConfigContext();
-
-    await waitFor(() => expect(result.current.draftConfig).not.toBeNull());
+    stubConfigFetch();
+    const { result } = await renderLoadedConfigContext();
 
     act(() => result.current.openDiffModal());
     expect(toast.info).toHaveBeenCalledWith('No changes to save.');
@@ -626,13 +447,11 @@ describe('ConfigProvider', () => {
       .mockResolvedValueOnce(configResponse(minimalConfig))
       .mockResolvedValueOnce(configResponse({}))
       .mockResolvedValueOnce(configResponse(savedAfterPut))
-      .mockResolvedValueOnce(configResponse({ details: ['bad patch'] }, { ok: false, status: 400 }))
-      .mockResolvedValueOnce(configResponse({}, { ok: false, status: 401 }));
+      .mockResolvedValueOnce(configResponse({ details: ['bad patch'] }, 400))
+      .mockResolvedValueOnce(configResponse({}, 401));
     vi.stubGlobal('fetch', fetchMock);
 
-    const restoreLocation = mockWindowLocation();
-
-    try {
+    await withMockLocation(async () => {
       const { result } = await renderConfigContext();
 
       await waitFor(() => expect(result.current.draftConfig).not.toBeNull());
@@ -646,7 +465,7 @@ describe('ConfigProvider', () => {
       await act(async () => result.current.executeSave());
       expect(fetchMock).toHaveBeenCalledWith(
         '/api/guilds/guild-123/config',
-        expect.objectContaining({ method: 'PUT', body: expect.any(String) }),
+        expect.objectContaining({ method: 'PUT', body: expect.stringContaining('ai.enabled') }),
       );
       expect(toast.success).toHaveBeenCalledWith('Config saved successfully!');
       expect(result.current.prevSavedConfig?.guildId).toBe('guild-123');
@@ -669,13 +488,11 @@ describe('ConfigProvider', () => {
 
       await act(async () => result.current.executeSave());
       expect(window.location.href).toBe('/login');
-    } finally {
-      restoreLocation();
-    }
+    });
   });
 
   it('handles keyboard search shortcuts and beforeunload only when changes exist', async () => {
-    mockConfigFetch();
+    stubConfigFetch();
     const searchInput = document.createElement('input');
     searchInput.id = 'config-search';
     document.body.append(searchInput);

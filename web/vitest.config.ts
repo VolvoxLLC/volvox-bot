@@ -21,6 +21,7 @@ export default defineConfig({
       include: ['src/**/*.{ts,tsx}'],
       // Single editable source of truth: edit web/coverage-exclusions.json, not this list.
       exclude: Object.values(coverageExclusionGroups).flat(),
+      excludeAfterRemap: true,
       thresholds: {
         statements: 85,
         branches: 85,

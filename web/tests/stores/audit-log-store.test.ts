@@ -114,4 +114,72 @@ describe('useAuditLogStore', () => {
     expect(useAuditLogStore.getState().entries).toHaveLength(1);
     expect(useAuditLogStore.getState().total).toBe(5);
   });
+
+  it('builds filter query params and refreshes with the stored filters', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ entries: [entry(3, 'ban')], total: 1 }),
+    } as Response);
+
+    useAuditLogStore.getState().setFilters({
+      action: 'ban',
+      userId: 'user-1',
+      startDate: '2026-04-01',
+      endDate: '2026-04-30',
+      offset: 50,
+    });
+
+    await useAuditLogStore.getState().refresh('guild/1');
+
+    const requestUrl = String(fetchSpy.mock.calls[0]?.[0]);
+    expect(requestUrl).toContain('/api/guilds/guild%2F1/audit-log?');
+    expect(requestUrl).toContain('limit=25');
+    expect(requestUrl).toContain('offset=50');
+    expect(requestUrl).toContain('action=ban');
+    expect(requestUrl).toContain('userId=user-1');
+    expect(requestUrl).toContain('startDate=2026-04-01');
+    expect(requestUrl).toContain('endDate=2026-04-30');
+    expect(useAuditLogStore.getState().entries).toEqual([entry(3, 'ban')]);
+  });
+
+  it('surfaces fetch failures and unknown thrown values', async () => {
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce({ ok: false, status: 503, json: async () => ({}) } as Response)
+      .mockRejectedValueOnce('bad network');
+
+    await useAuditLogStore.getState().fetch('guild-1', defaultFilters);
+    expect(useAuditLogStore.getState().error).toBe('Failed to fetch audit log (503)');
+    expect(useAuditLogStore.getState().loading).toBe(false);
+
+    await useAuditLogStore.getState().fetch('guild-1', defaultFilters);
+    expect(useAuditLogStore.getState().error).toBe('Failed to fetch audit log');
+  });
+
+  it('aborts in-flight requests when requested and when resetting', async () => {
+    const abortListeners: Array<() => void> = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation((_input, init) => {
+      const signal = init && typeof init === 'object' && 'signal' in init ? init.signal : undefined;
+      signal?.addEventListener('abort', () => {
+        abortListeners.forEach((listener) => listener());
+      });
+      return new Promise<Response>((_resolve, reject) => {
+        abortListeners.push(() => reject(new DOMException('Aborted', 'AbortError')));
+      });
+    });
+
+    const pending = useAuditLogStore.getState().fetch('guild-1', defaultFilters);
+    useAuditLogStore.getState().abortInFlight();
+    await expect(pending).resolves.toBeUndefined();
+
+    useAuditLogStore.setState({ entries: [entry(4, 'kick')], total: 4, error: 'oops' });
+    useAuditLogStore.getState().reset();
+
+    expect(useAuditLogStore.getState()).toMatchObject({
+      entries: [],
+      total: 0,
+      error: null,
+      filters: defaultFilters,
+    });
+  });
 });
