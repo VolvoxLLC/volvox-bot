@@ -225,12 +225,12 @@ describe('AnalyticsProvider', () => {
       await act(async () => {
         screen.getByRole('button', { name: 'Background refresh' }).click();
       });
-      expect(screen.getByTestId('error')).toHaveTextContent('analytics down');
+      await waitFor(() => expect(screen.getByTestId('error')).toHaveTextContent('analytics down'));
 
       await act(async () => {
         screen.getByRole('button', { name: 'Background refresh' }).click();
       });
-      expect(screen.getByTestId('error')).toHaveTextContent('Invalid analytics payload from server');
+      await waitFor(() => expect(screen.getByTestId('error')).toHaveTextContent('Invalid analytics payload from server'));
 
       await act(async () => {
         screen.getByRole('button', { name: 'Background refresh' }).click();
