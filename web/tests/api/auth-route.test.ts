@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { expectJsonResponse } from './test-utils';
 
 const { mockGetAuthOptions, mockNextAuth, mockWarn } = vi.hoisted(() => ({
   mockGetAuthOptions: vi.fn(),
@@ -50,8 +51,7 @@ describe('auth route fallback handling', () => {
     const { GET } = await importRouteModule();
     const response = await GET(createRequest('/api/auth/session'), createContext(['session']));
 
-    expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({});
+    await expectJsonResponse(response, 200, {});
     expect(mockWarn).toHaveBeenCalledWith(
       '[auth] Auth route requested without valid environment configuration',
       expect.objectContaining({ pathname: '/api/auth/session', error: 'missing auth env' }),
@@ -69,8 +69,7 @@ describe('auth route fallback handling', () => {
       createContext(['providers']),
     );
 
-    expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({});
+    await expectJsonResponse(response, 200, {});
   });
 
   it('stringifies non-Error throws in fallback logging metadata', async () => {
@@ -84,8 +83,7 @@ describe('auth route fallback handling', () => {
       createContext(['providers']),
     );
 
-    expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({});
+    await expectJsonResponse(response, 200, {});
     expect(mockWarn).toHaveBeenCalledWith(
       '[auth] Auth route requested without valid environment configuration',
       expect.objectContaining({ pathname: '/api/auth/providers', error: 'missing auth env' }),
@@ -100,8 +98,7 @@ describe('auth route fallback handling', () => {
     const { GET } = await importRouteModule();
     const response = await GET(createRequest('/api/auth/csrf'), createContext(['csrf']));
 
-    expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({ csrfToken: '' });
+    await expectJsonResponse(response, 200, { csrfToken: '' });
   });
 
   it('delegates to NextAuth when auth env is valid', async () => {
@@ -117,8 +114,7 @@ describe('auth route fallback handling', () => {
 
     expect(mockNextAuth).toHaveBeenCalledWith({ providers: [] });
     expect(handler).toHaveBeenCalledWith(request, context);
-    expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({ ok: true });
+    await expectJsonResponse(response, 200, { ok: true });
   });
 
   it('reuses the cached NextAuth handler after the first successful request', async () => {
@@ -149,8 +145,7 @@ describe('auth route fallback handling', () => {
     const { POST } = await importRouteModule();
     const response = await POST(createRequest('/api/auth/csrf'), createContext(['csrf']));
 
-    expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({ csrfToken: '' });
+    await expectJsonResponse(response, 200, { csrfToken: '' });
     expect(mockWarn).toHaveBeenCalledWith(
       '[auth] Auth route requested without valid environment configuration',
       expect.objectContaining({ pathname: '/api/auth/csrf', error: 'missing auth env' }),
@@ -168,8 +163,7 @@ describe('auth route fallback handling', () => {
     const { GET } = await importRouteModule();
 
     const failedResponse = await GET(createRequest('/api/auth/session'), createContext(['session']));
-    expect(failedResponse.status).toBe(200);
-    await expect(failedResponse.json()).resolves.toEqual({});
+    await expectJsonResponse(failedResponse, 200, {});
     expect(mockNextAuth).toHaveBeenCalledTimes(1);
     expect(firstHandler).toHaveBeenCalledTimes(1);
 
@@ -180,8 +174,7 @@ describe('auth route fallback handling', () => {
 
     expect(mockNextAuth).toHaveBeenCalledTimes(2);
     expect(secondHandler).toHaveBeenCalledTimes(1);
-    expect(recoveredResponse.status).toBe(200);
-    await expect(recoveredResponse.json()).resolves.toEqual({ ok: true });
+    await expectJsonResponse(recoveredResponse, 200, { ok: true });
     expect(mockWarn).toHaveBeenCalledWith(
       '[auth] Auth route requested without valid environment configuration',
       expect.objectContaining({ pathname: '/api/auth/session', error: 'cached handler failed' }),
@@ -199,7 +192,6 @@ describe('auth route fallback handling', () => {
       createContext(['callback', 'discord']),
     );
 
-    expect(response.status).toBe(503);
-    await expect(response.json()).resolves.toEqual({ error: 'AuthUnavailable' });
+    await expectJsonResponse(response, 503, { error: 'AuthUnavailable' });
   });
 });
