@@ -1,8 +1,42 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const NativeURL = globalThis.URL;
+const nativeClipboardDescriptor = Object.getOwnPropertyDescriptor(globalThis.navigator, 'clipboard');
+
+function createTestURL() {
+  class TestURL extends NativeURL {}
+
+  const nativeStaticDescriptors = Object.fromEntries(
+    Object.entries(Object.getOwnPropertyDescriptors(NativeURL)).filter(
+      ([key]) => !['length', 'name', 'prototype', 'createObjectURL', 'revokeObjectURL'].includes(key),
+    ),
+  );
+
+  Object.defineProperties(TestURL, {
+    ...nativeStaticDescriptors,
+    createObjectURL: {
+      configurable: true,
+      value: vi.fn(() => 'blob:members'),
+    },
+    revokeObjectURL: {
+      configurable: true,
+      value: vi.fn(),
+    },
+  });
+
+  return TestURL;
+}
+
+function restoreClipboard() {
+  if (nativeClipboardDescriptor) {
+    Object.defineProperty(globalThis.navigator, 'clipboard', nativeClipboardDescriptor);
+    return;
+  }
+
+  Reflect.deleteProperty(globalThis.navigator, 'clipboard');
+}
 
 const {
   mockBack,
@@ -249,20 +283,13 @@ beforeEach(() => {
     configurable: true,
     value: { writeText: vi.fn().mockResolvedValue(undefined) },
   });
-  class TestURL extends NativeURL {}
+  vi.stubGlobal('URL', createTestURL());
+});
 
-  Object.defineProperties(TestURL, {
-    createObjectURL: {
-      configurable: true,
-      value: vi.fn(() => 'blob:members'),
-    },
-    revokeObjectURL: {
-      configurable: true,
-      value: vi.fn(),
-    },
-  });
-
-  vi.stubGlobal('URL', TestURL);
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+  restoreClipboard();
 });
 
 describe('previously unexcluded app pages', () => {
