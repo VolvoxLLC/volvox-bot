@@ -130,6 +130,7 @@ describe('provider model options', () => {
       '',
       ':orphan-model',
       'provider:',
+      'provider::free',
       'bare-model',
       'provider:has whitespace',
       ' provider:model',

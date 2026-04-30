@@ -10,14 +10,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  DEFAULT_AI_MODEL,
   getVisibleProviderModelValue,
   VISIBLE_PROVIDER_MODEL_OPTION_GROUPS,
   VISIBLE_PROVIDER_MODEL_OPTIONS,
 } from '@/lib/provider-model-options';
-import { cn } from '@/lib/utils';
 
-export { DEFAULT_AI_MODEL };
+export { DEFAULT_AI_MODEL } from '@/lib/provider-model-options';
+
+import { cn } from '@/lib/utils';
 
 const hasVisibleModelOptions = VISIBLE_PROVIDER_MODEL_OPTIONS.length > 0;
 

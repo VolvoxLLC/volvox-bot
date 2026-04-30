@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -19,7 +20,22 @@ type BackendAiAutoModModule = {
 };
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
-const repoRoot = path.resolve(testDirectory, '../../..');
+
+function findRepoRoot(startDirectory: string) {
+  let currentDirectory = startDirectory;
+
+  while (currentDirectory !== path.dirname(currentDirectory)) {
+    if (existsSync(path.join(currentDirectory, 'src/modules/aiAutoMod.js'))) {
+      return currentDirectory;
+    }
+
+    currentDirectory = path.dirname(currentDirectory);
+  }
+
+  throw new Error('Could not find repository root for backend AI auto-mod module');
+}
+
+const repoRoot = findRepoRoot(testDirectory);
 const backendAiAutoModModuleUrl = pathToFileURL(path.join(repoRoot, 'src/modules/aiAutoMod.js')).href;
 
 async function loadBackendAiAutoModModule() {

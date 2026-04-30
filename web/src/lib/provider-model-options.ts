@@ -110,6 +110,7 @@ export function isProviderModelId(value: unknown): value is string {
 
   const separatorIndex = value.indexOf(':');
   if (separatorIndex <= 0 || separatorIndex === value.length - 1) return false;
+  if (value[separatorIndex + 1] === ':') return false;
 
   return /^[a-z0-9][a-z0-9._-]*$/i.test(value.slice(0, separatorIndex));
 }

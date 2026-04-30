@@ -98,13 +98,13 @@ function AiAutoModActionToggle({
   checked,
   disabled,
   onToggle,
-}: {
+}: Readonly<{
   categoryLabel: string;
   option: (typeof AI_AUTOMOD_ACTION_OPTIONS)[number];
   checked: boolean;
   disabled: boolean;
   onToggle: (checked: boolean) => void;
-}) {
+}>) {
   return (
     <label className="cursor-pointer">
       <input
