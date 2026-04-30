@@ -454,12 +454,11 @@ describe('welcomePublishing module', () => {
       expect.stringContaining('INSERT INTO welcome_publications'),
       expect.arrayContaining(['guild-1', 'rules', 'rules-channel', null]),
     );
-    expect(failedPool.query.mock.calls[0][0]).toContain(
-      "CASE WHEN $6 = 'posted' THEN NOW() ELSE NULL END",
-    );
-    expect(failedPool.query.mock.calls[0][0]).toContain(
-      "WHEN EXCLUDED.status = 'posted' THEN EXCLUDED.last_published_at",
-    );
+    const insertSql = failedPool.query.mock.calls.find(([sql]) =>
+      sql.includes('INSERT INTO welcome_publications'),
+    )?.[0];
+    expect(insertSql).toContain("CASE WHEN $6 = 'posted' THEN NOW() ELSE NULL END");
+    expect(insertSql).toContain("WHEN EXCLUDED.status = 'posted' THEN EXCLUDED.last_published_at");
 
     getConfig.mockReturnValue({
       welcome: createWelcomeConfig({ rulesMessage: 'x'.repeat(2001) }),
@@ -469,6 +468,71 @@ describe('welcomePublishing module', () => {
       status: 'failed',
       lastError: expect.stringContaining('2000 character'),
     });
+  });
+
+  it('preserves tracked publication ids when early validation failures are recorded', async () => {
+    fetchChannelCached.mockResolvedValue({ isTextBased: () => false });
+    const invalidChannelPool = mockPool(async (sql, params) => {
+      if (sql.includes('SELECT')) {
+        return {
+          rows: [
+            {
+              panel_type: params[1],
+              channel_id: 'old-channel',
+              message_id: 'old-message',
+              config_hash: 'old-hash',
+              status: 'posted',
+            },
+          ],
+        };
+      }
+      return { rows: [{ channel_id: params[2], message_id: params[3], status: params[5] }] };
+    });
+
+    const invalidChannel = await publishWelcomePanel({}, 'guild-1', 'rules');
+
+    expect(invalidChannel).toMatchObject({
+      status: 'failed',
+      channelId: 'old-channel',
+      messageId: 'old-message',
+    });
+    expect(invalidChannelPool.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO welcome_publications'),
+      expect.arrayContaining(['guild-1', 'rules', 'old-channel', 'old-message']),
+    );
+
+    vi.clearAllMocks();
+    getConfig.mockReturnValue({
+      welcome: createWelcomeConfig({ rulesMessage: 'x'.repeat(2001) }),
+    });
+    const oversizedPool = mockPool(async (sql, params) => {
+      if (sql.includes('SELECT')) {
+        return {
+          rows: [
+            {
+              panel_type: params[1],
+              channel_id: 'old-channel',
+              message_id: 'old-message',
+              config_hash: 'old-hash',
+              status: 'posted',
+            },
+          ],
+        };
+      }
+      return { rows: [{ channel_id: params[2], message_id: params[3], status: params[5] }] };
+    });
+
+    const oversized = await publishWelcomePanel({}, 'guild-1', 'rules');
+
+    expect(oversized).toMatchObject({
+      status: 'failed',
+      channelId: 'old-channel',
+      messageId: 'old-message',
+    });
+    expect(oversizedPool.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO welcome_publications'),
+      expect.arrayContaining(['guild-1', 'rules', 'old-channel', 'old-message']),
+    );
   });
 
   it('still returns failed statuses when failure-state persistence fails', async () => {

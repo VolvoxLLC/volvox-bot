@@ -239,11 +239,15 @@ export async function publishWelcomePanel(client, guildId, panelType, actor = {}
     };
   }
 
+  const stored = await getStoredPublication(guildId, panelType).catch(() => null);
+  const storedChannelId = stored?.channel_id ?? payload.channelId;
+  const storedMessageId = stored?.message_id ?? null;
+
   if (getPayloadContentLength(payload.message) > DISCORD_MAX_LENGTH) {
     const lastError = `Welcome panel content exceeds Discord's ${DISCORD_MAX_LENGTH} character message limit`;
     await upsertPublication(guildId, panelType, {
-      channelId: payload.channelId,
-      messageId: null,
+      channelId: storedChannelId,
+      messageId: storedMessageId,
       configHash: payload.configHash,
       status: 'failed',
       lastError,
@@ -253,8 +257,8 @@ export async function publishWelcomePanel(client, guildId, panelType, actor = {}
       panelType,
       status: 'failed',
       configured: true,
-      channelId: payload.channelId,
-      messageId: null,
+      channelId: storedChannelId,
+      messageId: storedMessageId,
       action: 'failed',
       lastError,
     };
@@ -264,8 +268,8 @@ export async function publishWelcomePanel(client, guildId, panelType, actor = {}
   if (!channel?.isTextBased?.()) {
     const lastError = `Configured channel ${payload.channelId} was not found or is not text-based`;
     await upsertPublication(guildId, panelType, {
-      channelId: payload.channelId,
-      messageId: null,
+      channelId: storedChannelId,
+      messageId: storedMessageId,
       configHash: payload.configHash,
       status: 'failed',
       lastError,
@@ -275,14 +279,13 @@ export async function publishWelcomePanel(client, guildId, panelType, actor = {}
       panelType,
       status: 'failed',
       configured: true,
-      channelId: payload.channelId,
-      messageId: null,
+      channelId: storedChannelId,
+      messageId: storedMessageId,
       action: 'failed',
       lastError,
     };
   }
 
-  const stored = await getStoredPublication(guildId, panelType).catch(() => null);
   const existing =
     stored?.channel_id === payload.channelId
       ? await fetchExistingMessage(channel, stored?.message_id)
