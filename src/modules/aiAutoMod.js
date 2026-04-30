@@ -83,6 +83,7 @@ const ACTION_PRIORITY = Object.freeze({
   flag: 1,
   none: -1,
 });
+const missingFlagChannelWarningKeys = new Set();
 
 /** Default config when none is provided */
 const DEFAULTS = {
@@ -179,6 +180,13 @@ function normalizeScore(parsed, categoryKey) {
   const score = Number(rawValue);
   if (!Number.isFinite(score)) return 0;
   return Math.min(1, Math.max(0, score));
+}
+
+function normalizeReason(reason) {
+  if (typeof reason !== 'string') return 'No reason provided';
+
+  const trimmedReason = reason.trim();
+  return trimmedReason.length > 0 ? trimmedReason : 'No reason provided';
 }
 
 /**
@@ -285,7 +293,7 @@ ${responseShape}
     flagged,
     scores,
     categories: triggeredCategories,
-    reason: parsed.reason ?? 'No reason provided',
+    reason: normalizeReason(parsed.reason),
     action,
     actions,
     actionsByCategory,
@@ -471,6 +479,34 @@ function getAuditedActions(result, autoModConfig) {
   return auditedActions;
 }
 
+function warnMissingFlagChannelOnce(message) {
+  const guildId = message.guild?.id ?? 'unknown-guild';
+  const warningKey = `${guildId}:missing-flag-channel`;
+
+  if (missingFlagChannelWarningKeys.has(warningKey)) return;
+
+  missingFlagChannelWarningKeys.add(warningKey);
+  warn('AI auto-mod: flag action skipped because flagChannelId is not configured', {
+    guildId: message.guild?.id,
+    messageId: message.id,
+  });
+}
+
+function getExecutableActions(result, autoModConfig, message) {
+  const actions = getAuditedActions(result, autoModConfig);
+
+  if (autoModConfig.flagChannelId || !actions.includes('flag')) {
+    return { actions, skippedImpossibleActions: [] };
+  }
+
+  warnMissingFlagChannelOnce(message);
+
+  return {
+    actions: actions.filter((action) => action !== 'flag'),
+    skippedImpossibleActions: ['flag'],
+  };
+}
+
 async function executeSingleAction(
   action,
   message,
@@ -517,15 +553,6 @@ async function executeSingleAction(
 
       if (!caseData) return { success: false, caseData: null };
 
-      if (shouldSendDm(_guildConfig, 'warn')) {
-        await sendDmNotification(member, 'warn', reason, guild.name ?? guild.id).catch((err) =>
-          logError('AI auto-mod: sendDmNotification (warn) failed', {
-            userId: member.user.id,
-            error: err?.message,
-          }),
-        );
-      }
-
       if (
         !(await createWarning(
           guild.id,
@@ -549,6 +576,15 @@ async function executeSingleAction(
           }))
       ) {
         return { success: false, caseData: null };
+      }
+
+      if (shouldSendDm(_guildConfig, 'warn')) {
+        await sendDmNotification(member, 'warn', reason, guild.name ?? guild.id).catch((err) =>
+          logError('AI auto-mod: sendDmNotification (warn) failed', {
+            userId: member.user.id,
+            error: err?.message,
+          }),
+        );
       }
 
       await sendCaseModLogEmbed(client, _guildConfig, caseData, 'warn');
@@ -668,19 +704,25 @@ async function executeAction(message, client, result, autoModConfig, _guildConfi
   const reason = `AI Auto-Mod: ${result.categories.join(', ')} — ${result.reason}`;
   const botId = client.user?.id ?? 'bot';
   const botTag = client.user?.tag ?? 'Bot#0000';
-  const actions = getAuditedActions(result, autoModConfig);
+  const { actions, skippedImpossibleActions } = getExecutableActions(
+    result,
+    autoModConfig,
+    message,
+  );
   const executedActions = [];
   const successfulAuditEvents = [];
 
   if (actions.length === 0) {
-    logAiAutoModAuditEvent(message, result, autoModConfig, {
-      caseData: null,
-      reason,
-      botId,
-      botTag,
-      action: 'none',
-      auditedActions: executedActions,
-    });
+    if (skippedImpossibleActions.length === 0) {
+      logAiAutoModAuditEvent(message, result, autoModConfig, {
+        caseData: null,
+        reason,
+        botId,
+        botTag,
+        action: 'none',
+        auditedActions: executedActions,
+      });
+    }
     return executedActions;
   }
 
@@ -700,6 +742,18 @@ async function executeAction(message, client, result, autoModConfig, _guildConfi
 
     executedActions.push(action);
     successfulAuditEvents.push({ action, caseData });
+  }
+
+  if (successfulAuditEvents.length === 0) {
+    logAiAutoModAuditEvent(message, result, autoModConfig, {
+      caseData: null,
+      reason,
+      botId,
+      botTag,
+      action: 'none',
+      auditedActions: actions,
+    });
+    return executedActions;
   }
 
   for (const { action, caseData } of successfulAuditEvents) {

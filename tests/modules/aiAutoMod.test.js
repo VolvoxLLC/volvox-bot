@@ -148,6 +148,26 @@ function makeAiAutoModGuildConfig(aiAutoModOverrides = {}, guildOverrides = {}) 
   };
 }
 
+function expectFallbackNoneAudit(attemptedActions) {
+  expect(logAuditEvent).toHaveBeenCalledWith(
+    mockPool,
+    expect.objectContaining({
+      action: 'ai_automod.none',
+      details: expect.objectContaining({
+        action: 'none',
+        actions: attemptedActions,
+      }),
+    }),
+  );
+}
+
+function expectNoSuccessfulActionAudit(action) {
+  expect(logAuditEvent).not.toHaveBeenCalledWith(
+    mockPool,
+    expect.objectContaining({ action: `ai_automod.${action}` }),
+  );
+}
+
 // --- Tests ---
 
 describe('getAiAutoModConfig', () => {
@@ -239,6 +259,27 @@ describe('analyzeMessage', () => {
     expect(result.categories).toContain('toxicity');
     expect(result.scores.toxicity).toBe(0.9);
     expect(result.reason).toBe('hate speech');
+  });
+
+  it.each([
+    null,
+    42,
+    true,
+    { label: 'object reason' },
+    ['array reason'],
+    '',
+    '   ',
+  ])('normalizes invalid reason value %j to a safe fallback', async (reason) => {
+    mockGenerate.mockResolvedValue({
+      ...makeClaudeResponse({ toxicity: 0.9, spam: 0.1, harassment: 0.1 }),
+      text: JSON.stringify({ toxicity: 0.9, spam: 0.1, harassment: 0.1, reason }),
+    });
+    const cfg = getAiAutoModConfig({});
+
+    const result = await analyzeMessage('offensive content here', cfg);
+
+    expect(result.flagged).toBe(true);
+    expect(result.reason).toBe('No reason provided');
   });
 
   it('flags spam when score exceeds threshold', async () => {
@@ -602,6 +643,39 @@ describe('checkAiAutoMod', () => {
     );
   });
 
+  it('warns only once per guild when flag is impossible because flagChannelId is missing', async () => {
+    const guildConfig = makeAiAutoModGuildConfig();
+    const firstMessage = makeMessage({
+      id: 'msg-warn-once-1',
+      guild: { id: 'guild-warn-once', members: { ban: vi.fn().mockResolvedValue(undefined) } },
+    });
+    const secondMessage = makeMessage({
+      id: 'msg-warn-once-2',
+      guild: { id: 'guild-warn-once', members: { ban: vi.fn().mockResolvedValue(undefined) } },
+    });
+    mockGenerate
+      .mockResolvedValueOnce(
+        makeClaudeResponse({ toxicity: 0.9, spam: 0.1, harassment: 0.1, reason: 'toxic' }),
+      )
+      .mockResolvedValueOnce(
+        makeClaudeResponse({ toxicity: 0.9, spam: 0.1, harassment: 0.1, reason: 'toxic' }),
+      );
+
+    await checkAiAutoMod(firstMessage, client, guildConfig);
+    await checkAiAutoMod(secondMessage, client, guildConfig);
+
+    expect(logWarn).toHaveBeenCalledTimes(3);
+    expect(logWarn).toHaveBeenCalledWith(
+      'AI auto-mod: flag action skipped because flagChannelId is not configured',
+      expect.objectContaining({ guildId: 'guild-warn-once', messageId: 'msg-warn-once-1' }),
+    );
+    expect(logWarn).not.toHaveBeenCalledWith(
+      'AI auto-mod: flag action skipped because flagChannelId is not configured',
+      expect.objectContaining({ guildId: 'guild-warn-once', messageId: 'msg-warn-once-2' }),
+    );
+    expect(logAuditEvent).not.toHaveBeenCalled();
+  });
+
   it('does not audit flag actions when the configured flag channel is unusable', async () => {
     fetchChannelCached.mockResolvedValue(null);
     mockGenerate.mockResolvedValue(
@@ -614,7 +688,8 @@ describe('checkAiAutoMod', () => {
     expect(result).toMatchObject({ flagged: true, action: 'none', actions: [] });
     expect(fetchChannelCached).toHaveBeenCalledWith(client, 'missing-channel', 'guild-1');
     expect(safeSend).not.toHaveBeenCalled();
-    expect(logAuditEvent).not.toHaveBeenCalled();
+    expectFallbackNoneAudit(['flag']);
+    expectNoSuccessfulActionAudit('flag');
     expect(logWarn).toHaveBeenCalledWith(
       'AI auto-mod: flag action skipped because flag channel was not found or inaccessible',
       expect.objectContaining({ guildId: 'guild-1', channelId: 'missing-channel' }),
@@ -632,7 +707,7 @@ describe('checkAiAutoMod', () => {
     expect(message.delete).toHaveBeenCalled();
   });
 
-  it('does not audit delete actions when Discord deletion fails', async () => {
+  it('audits fallback none with attempted delete when Discord deletion fails', async () => {
     message.delete.mockRejectedValueOnce(new Error('Missing Permissions'));
     mockGenerate.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.1, spam: 0.95, harassment: 0.1, reason: 'spam' }),
@@ -643,7 +718,8 @@ describe('checkAiAutoMod', () => {
 
     expect(result).toMatchObject({ flagged: true, action: 'none', actions: [] });
     expect(message.delete).toHaveBeenCalledTimes(1);
-    expect(logAuditEvent).not.toHaveBeenCalled();
+    expectFallbackNoneAudit(['delete']);
+    expectNoSuccessfulActionAudit('delete');
   });
 
   it('creates a warn case when action is warn', async () => {
@@ -736,7 +812,8 @@ describe('checkAiAutoMod', () => {
     expect(result).toMatchObject({ flagged: true, action: 'none', actions: [] });
     expect(createCase).not.toHaveBeenCalled();
     expect(sendDmNotification).not.toHaveBeenCalled();
-    expect(logAuditEvent).not.toHaveBeenCalled();
+    expectFallbackNoneAudit(['warn']);
+    expectNoSuccessfulActionAudit('warn');
   });
 
   it('does not DM or create warning records when warn case creation fails', async () => {
@@ -756,7 +833,8 @@ describe('checkAiAutoMod', () => {
     expect(createWarning).not.toHaveBeenCalled();
     expect(sendModLogEmbed).not.toHaveBeenCalled();
     expect(checkEscalation).not.toHaveBeenCalled();
-    expect(logAuditEvent).not.toHaveBeenCalled();
+    expectFallbackNoneAudit(['warn']);
+    expectNoSuccessfulActionAudit('warn');
   });
 
   it('does not treat warn as successful when warning creation fails', async () => {
@@ -780,7 +858,8 @@ describe('checkAiAutoMod', () => {
     );
     expect(sendModLogEmbed).not.toHaveBeenCalled();
     expect(checkEscalation).not.toHaveBeenCalled();
-    expect(logAuditEvent).not.toHaveBeenCalled();
+    expectFallbackNoneAudit(['warn']);
+    expectNoSuccessfulActionAudit('warn');
   });
 
   it('continues warn persistence and escalation when warn DM notification fails', async () => {
@@ -1012,7 +1091,7 @@ describe('checkAiAutoMod', () => {
     'timeout',
     'kick',
     'ban',
-  ])('does not audit %s actions when Discord moderation fails', async (action) => {
+  ])('audits fallback none with attempted %s when Discord moderation fails', async (action) => {
     if (action === 'timeout') {
       message.member.timeout.mockRejectedValueOnce(new Error('Missing Permissions'));
     } else if (action === 'kick') {
@@ -1042,7 +1121,29 @@ describe('checkAiAutoMod', () => {
       );
     }
     expect(createCase).not.toHaveBeenCalled();
-    expect(logAuditEvent).not.toHaveBeenCalled();
+    expectFallbackNoneAudit([action]);
+    expectNoSuccessfulActionAudit(action);
+  });
+
+  it('audits fallback none with the full attempted queue when every queued action fails', async () => {
+    message.delete.mockRejectedValueOnce(new Error('Missing Permissions'));
+    message.member.timeout.mockRejectedValueOnce(new Error('Missing Permissions'));
+    mockGenerate.mockResolvedValue(
+      makeClaudeResponse({ toxicity: 0.9, spam: 0.1, harassment: 0.1, reason: 'toxic' }),
+    );
+    const guildConfig = makeAiAutoModGuildConfig({
+      actions: { toxicity: ['delete', 'timeout'] },
+      timeoutDurationMs: 300000,
+    });
+
+    const result = await checkAiAutoMod(message, client, guildConfig);
+
+    expect(result).toMatchObject({ flagged: true, action: 'none', actions: [] });
+    expect(message.delete).toHaveBeenCalledTimes(1);
+    expect(message.member.timeout).toHaveBeenCalledWith(300000, expect.any(String));
+    expectFallbackNoneAudit(['delete', 'timeout']);
+    expectNoSuccessfulActionAudit('delete');
+    expectNoSuccessfulActionAudit('timeout');
   });
 
   it('kicks member when action is kick', async () => {
