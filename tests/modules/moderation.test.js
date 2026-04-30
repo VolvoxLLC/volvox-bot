@@ -46,6 +46,10 @@ vi.mock('../../src/utils/safeSend.js', () => ({
   }),
 }));
 
+vi.mock('../../src/modules/webhookNotifier.js', () => ({
+  fireEvent: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock('../../src/utils/duration.js', () => ({
   parseDuration: vi.fn().mockReturnValue(3600000),
   formatDuration: vi.fn().mockReturnValue('1 hour'),
@@ -58,6 +62,7 @@ import {
   checkEscalation,
   checkHierarchy,
   createCase,
+  createWarnCaseWithWarning,
   isProtectedTarget,
   scheduleAction,
   sendDmNotification,
@@ -66,6 +71,7 @@ import {
   startTempbanScheduler,
   stopTempbanScheduler,
 } from '../../src/modules/moderation.js';
+import { fireEvent } from '../../src/modules/webhookNotifier.js';
 import { safeSend } from '../../src/utils/safeSend.js';
 
 describe('moderation module', () => {
@@ -156,6 +162,73 @@ describe('moderation module', () => {
       ).rejects.toThrow('insert failed');
 
       expect(mockConnection.query).toHaveBeenCalledWith('ROLLBACK');
+      expect(mockConnection.release).toHaveBeenCalled();
+    });
+  });
+
+  describe('createWarnCaseWithWarning', () => {
+    const caseInput = {
+      targetId: 'user1',
+      targetTag: 'User#0001',
+      moderatorId: 'mod1',
+      moderatorTag: 'Mod#0001',
+      reason: 'test reason',
+    };
+    const warningInput = {
+      userId: 'user1',
+      moderatorId: 'mod1',
+      moderatorTag: 'Mod#0001',
+      reason: 'test reason',
+      severity: 'low',
+    };
+
+    it('should atomically create a linked warn case and warning before firing moderation.action', async () => {
+      const createdCase = {
+        id: 1,
+        guild_id: 'guild1',
+        case_number: 4,
+        action: 'warn',
+        target_id: 'user1',
+        target_tag: 'User#0001',
+        moderator_id: 'mod1',
+        moderator_tag: 'Mod#0001',
+        reason: 'test reason',
+      };
+      const warning = { id: 10, case_id: 1, user_id: 'user1', severity: 'low', points: 1 };
+
+      mockConnection.query
+        .mockResolvedValueOnce({}) // BEGIN
+        .mockResolvedValueOnce({}) // advisory lock
+        .mockResolvedValueOnce({ rows: [createdCase] })
+        .mockResolvedValueOnce({ rows: [warning] })
+        .mockResolvedValueOnce({}); // COMMIT
+
+      const result = await createWarnCaseWithWarning('guild1', caseInput, warningInput, {});
+
+      expect(result).toEqual({ caseData: createdCase, warning });
+      expect(mockConnection.query).toHaveBeenCalledWith('COMMIT');
+      expect(fireEvent).toHaveBeenCalledWith(
+        'moderation.action',
+        'guild1',
+        expect.objectContaining({ action: 'warn', caseNumber: 4, targetId: 'user1' }),
+      );
+    });
+
+    it('should rollback and not fire moderation.action when warning persistence fails', async () => {
+      mockConnection.query
+        .mockResolvedValueOnce({}) // BEGIN
+        .mockResolvedValueOnce({}) // advisory lock
+        .mockResolvedValueOnce({ rows: [{ id: 1, case_number: 4 }] })
+        .mockRejectedValueOnce(new Error('warning insert failed'))
+        .mockResolvedValueOnce({}); // ROLLBACK
+
+      await expect(
+        createWarnCaseWithWarning('guild1', caseInput, warningInput, {}),
+      ).rejects.toThrow('warning insert failed');
+
+      expect(mockConnection.query).toHaveBeenCalledWith('ROLLBACK');
+      expect(mockConnection.query).not.toHaveBeenCalledWith('COMMIT');
+      expect(fireEvent).not.toHaveBeenCalled();
       expect(mockConnection.release).toHaveBeenCalled();
     });
   });

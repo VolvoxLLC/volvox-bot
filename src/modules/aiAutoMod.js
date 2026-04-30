@@ -16,11 +16,11 @@ import { logAuditEvent } from './auditLogger.js';
 import {
   checkEscalation,
   createCase,
+  createWarnCaseWithWarning,
   sendDmNotification,
   sendModLogEmbed,
   shouldSendDm,
 } from './moderation.js';
-import { createWarning } from './warningEngine.js';
 
 export const AI_AUTOMOD_CATEGORIES = Object.freeze([
   {
@@ -537,46 +537,35 @@ async function executeSingleAction(
       return { success, caseData: null };
     }
 
-    case 'warn':
+    case 'warn': {
       if (!member || !guild) return { success: false, caseData: null };
-      caseData = await createCase(guild.id, {
-        action: 'warn',
-        targetId: member.user.id,
-        targetTag: member.user.tag,
-        moderatorId: botId,
-        moderatorTag: botTag,
-        reason,
-      }).catch((err) => {
-        logError('AI auto-mod: createCase (warn) failed', { error: err?.message });
+      const persistedWarn = await createWarnCaseWithWarning(
+        guild.id,
+        {
+          targetId: member.user.id,
+          targetTag: member.user.tag,
+          moderatorId: botId,
+          moderatorTag: botTag,
+          reason,
+        },
+        {
+          userId: member.user.id,
+          moderatorId: botId,
+          moderatorTag: botTag,
+          reason,
+          severity: 'low',
+        },
+        _guildConfig,
+      ).catch((err) => {
+        logError('AI auto-mod: createWarnCaseWithWarning failed', {
+          userId: member.user.id,
+          error: err?.message,
+        });
         return null;
       });
 
-      if (!caseData) return { success: false, caseData: null };
-
-      if (
-        !(await createWarning(
-          guild.id,
-          {
-            userId: member.user.id,
-            moderatorId: botId,
-            moderatorTag: botTag,
-            reason,
-            severity: 'low',
-            caseId: caseData.id,
-          },
-          _guildConfig,
-        )
-          .then(() => true)
-          .catch((err) => {
-            logError('AI auto-mod: createWarning failed', {
-              userId: member.user.id,
-              error: err?.message,
-            });
-            return false;
-          }))
-      ) {
-        return { success: false, caseData: null };
-      }
+      if (!persistedWarn?.caseData) return { success: false, caseData: null };
+      caseData = persistedWarn.caseData;
 
       if (shouldSendDm(_guildConfig, 'warn')) {
         await sendDmNotification(member, 'warn', reason, guild.name ?? guild.id).catch((err) =>
@@ -597,6 +586,7 @@ async function executeSingleAction(
           }),
       );
       return { success: true, caseData };
+    }
 
     case 'timeout': {
       if (!member || !guild) return { success: false, caseData: null };

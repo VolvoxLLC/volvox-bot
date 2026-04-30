@@ -23,13 +23,13 @@ vi.mock('../../src/utils/modExempt.js', () => ({
 vi.mock('../../src/modules/moderation.js', () => ({
   checkEscalation: vi.fn().mockResolvedValue(null),
   createCase: vi.fn().mockResolvedValue({ id: 1, caseNumber: 42 }),
+  createWarnCaseWithWarning: vi.fn().mockResolvedValue({
+    caseData: { id: 1, case_number: 42 },
+    warning: { id: 10, severity: 'low', points: 1 },
+  }),
   sendDmNotification: vi.fn().mockResolvedValue(undefined),
   sendModLogEmbed: vi.fn().mockResolvedValue(null),
   shouldSendDm: vi.fn().mockReturnValue(true),
-}));
-
-vi.mock('../../src/modules/warningEngine.js', () => ({
-  createWarning: vi.fn().mockResolvedValue({ id: 10, severity: 'low', points: 1 }),
 }));
 
 const { mockGenerate, mockGetPool, mockPool } = vi.hoisted(() => ({
@@ -58,11 +58,11 @@ import { logAuditEvent } from '../../src/modules/auditLogger.js';
 import {
   checkEscalation,
   createCase,
+  createWarnCaseWithWarning,
   sendDmNotification,
   sendModLogEmbed,
   shouldSendDm,
 } from '../../src/modules/moderation.js';
-import { createWarning } from '../../src/modules/warningEngine.js';
 import { fetchChannelCached } from '../../src/utils/discordCache.js';
 import { isExempt } from '../../src/utils/modExempt.js';
 import { safeSend } from '../../src/utils/safeSend.js';
@@ -506,7 +506,10 @@ describe('checkAiAutoMod', () => {
       moderator_tag: 'Bot#0001',
       reason: 'AI Auto-Mod: harassment — harassment',
     });
-    vi.mocked(createWarning).mockResolvedValue({ id: 10, severity: 'low', points: 1 });
+    vi.mocked(createWarnCaseWithWarning).mockResolvedValue({
+      caseData: { id: 1, case_number: 42 },
+      warning: { id: 10, severity: 'low', points: 1 },
+    });
     vi.mocked(checkEscalation).mockResolvedValue(null);
     vi.mocked(sendDmNotification).mockResolvedValue(undefined);
     vi.mocked(sendModLogEmbed).mockResolvedValue(null);
@@ -730,9 +733,11 @@ describe('checkAiAutoMod', () => {
     const result = await checkAiAutoMod(message, client, guildConfig);
     expect(result.flagged).toBe(true);
     expect(result.action).toBe('warn');
-    expect(createCase).toHaveBeenCalledWith(
+    expect(createWarnCaseWithWarning).toHaveBeenCalledWith(
       'guild-1',
-      expect.objectContaining({ action: 'warn', targetId: 'user-1' }),
+      expect.objectContaining({ targetId: 'user-1' }),
+      expect.objectContaining({ userId: 'user-1', severity: 'low' }),
+      guildConfig,
     );
   });
 
@@ -752,14 +757,18 @@ describe('checkAiAutoMod', () => {
       'AI Auto-Mod: harassment — harassment',
       'guild-1',
     );
-    expect(createWarning).toHaveBeenCalledWith(
+    expect(createWarnCaseWithWarning).toHaveBeenCalledWith(
       'guild-1',
+      expect.objectContaining({
+        targetId: 'user-1',
+        moderatorId: 'bot-1',
+        moderatorTag: 'Bot#0001',
+      }),
       expect.objectContaining({
         userId: 'user-1',
         moderatorId: 'bot-1',
         moderatorTag: 'Bot#0001',
         severity: 'low',
-        caseId: 1,
       }),
       guildConfig,
     );
@@ -792,9 +801,10 @@ describe('checkAiAutoMod', () => {
 
     expect(result).toMatchObject({ flagged: true, action: 'warn' });
     expect(sendDmNotification).not.toHaveBeenCalled();
-    expect(createWarning).toHaveBeenCalledWith(
+    expect(createWarnCaseWithWarning).toHaveBeenCalledWith(
       'guild-1',
-      expect.objectContaining({ userId: 'user-1', caseId: 1 }),
+      expect.objectContaining({ targetId: 'user-1' }),
+      expect.objectContaining({ userId: 'user-1', severity: 'low' }),
       guildConfig,
     );
     expect(checkEscalation).toHaveBeenCalled();
@@ -810,14 +820,15 @@ describe('checkAiAutoMod', () => {
     const result = await checkAiAutoMod(message, client, guildConfig);
 
     expect(result).toMatchObject({ flagged: true, action: 'none', actions: [] });
+    expect(createWarnCaseWithWarning).not.toHaveBeenCalled();
     expect(createCase).not.toHaveBeenCalled();
     expect(sendDmNotification).not.toHaveBeenCalled();
     expectFallbackNoneAudit(['warn']);
     expectNoSuccessfulActionAudit('warn');
   });
 
-  it('does not DM or create warning records when warn case creation fails', async () => {
-    vi.mocked(createCase).mockRejectedValueOnce(new Error('database unavailable'));
+  it('does not DM, mod-log, escalate, or audit success when warn persistence fails', async () => {
+    vi.mocked(createWarnCaseWithWarning).mockRejectedValueOnce(new Error('database unavailable'));
     mockGenerate.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.1, spam: 0.1, harassment: 0.9, reason: 'harassment' }),
     );
@@ -830,15 +841,18 @@ describe('checkAiAutoMod', () => {
 
     expect(result).toMatchObject({ flagged: true, action: 'none', actions: [] });
     expect(sendDmNotification).not.toHaveBeenCalled();
-    expect(createWarning).not.toHaveBeenCalled();
+    expect(createWarnCaseWithWarning).toHaveBeenCalled();
+    expect(createCase).not.toHaveBeenCalled();
     expect(sendModLogEmbed).not.toHaveBeenCalled();
     expect(checkEscalation).not.toHaveBeenCalled();
     expectFallbackNoneAudit(['warn']);
     expectNoSuccessfulActionAudit('warn');
   });
 
-  it('does not treat warn as successful when warning creation fails', async () => {
-    vi.mocked(createWarning).mockRejectedValueOnce(new Error('warning store unavailable'));
+  it('does not create a committed warn case when warning creation fails', async () => {
+    vi.mocked(createWarnCaseWithWarning).mockRejectedValueOnce(
+      new Error('warning store unavailable'),
+    );
     mockGenerate.mockResolvedValue(
       makeClaudeResponse({ toxicity: 0.1, spam: 0.1, harassment: 0.9, reason: 'harassment' }),
     );
@@ -847,15 +861,14 @@ describe('checkAiAutoMod', () => {
     const result = await checkAiAutoMod(message, client, guildConfig);
 
     expect(result).toMatchObject({ flagged: true, action: 'none', actions: [] });
-    expect(createCase).toHaveBeenCalledWith(
+    expect(createWarnCaseWithWarning).toHaveBeenCalledWith(
       'guild-1',
-      expect.objectContaining({ action: 'warn', targetId: 'user-1' }),
-    );
-    expect(createWarning).toHaveBeenCalledWith(
-      'guild-1',
-      expect.objectContaining({ userId: 'user-1', caseId: 1 }),
+      expect.objectContaining({ targetId: 'user-1' }),
+      expect.objectContaining({ userId: 'user-1', severity: 'low' }),
       guildConfig,
     );
+    expect(createCase).not.toHaveBeenCalled();
+    expect(sendDmNotification).not.toHaveBeenCalled();
     expect(sendModLogEmbed).not.toHaveBeenCalled();
     expect(checkEscalation).not.toHaveBeenCalled();
     expectFallbackNoneAudit(['warn']);
@@ -873,9 +886,10 @@ describe('checkAiAutoMod', () => {
 
     expect(result).toMatchObject({ flagged: true, action: 'warn' });
     expect(sendDmNotification).toHaveBeenCalledTimes(1);
-    expect(createWarning).toHaveBeenCalledWith(
+    expect(createWarnCaseWithWarning).toHaveBeenCalledWith(
       'guild-1',
-      expect.objectContaining({ userId: 'user-1', caseId: 1 }),
+      expect.objectContaining({ targetId: 'user-1' }),
+      expect.objectContaining({ userId: 'user-1', severity: 'low' }),
       guildConfig,
     );
     expect(sendModLogEmbed).toHaveBeenCalledWith(
@@ -911,9 +925,10 @@ describe('checkAiAutoMod', () => {
 
     expect(result).toMatchObject({ flagged: true, action: 'warn' });
     expect(sendDmNotification).not.toHaveBeenCalled();
-    expect(createWarning).toHaveBeenCalledWith(
+    expect(createWarnCaseWithWarning).toHaveBeenCalledWith(
       'guild-1',
-      expect.objectContaining({ userId: 'user-1', caseId: 1 }),
+      expect.objectContaining({ targetId: 'user-1' }),
+      expect.objectContaining({ userId: 'user-1', severity: 'low' }),
       guildConfig,
     );
     expect(sendModLogEmbed).toHaveBeenCalledWith(
@@ -958,9 +973,10 @@ describe('checkAiAutoMod', () => {
       'AI Auto-Mod: toxicity — toxic',
       'guild-1',
     );
-    expect(createWarning).toHaveBeenCalledWith(
+    expect(createWarnCaseWithWarning).toHaveBeenCalledWith(
       'guild-1',
-      expect.objectContaining({ userId: 'user-1', caseId: 1 }),
+      expect.objectContaining({ targetId: 'user-1' }),
+      expect.objectContaining({ userId: 'user-1', severity: 'low' }),
       guildConfig,
     );
     expect(message.member.timeout).toHaveBeenCalledWith(300000, 'AI Auto-Mod: toxicity — toxic');
@@ -1359,9 +1375,11 @@ describe('checkAiAutoMod', () => {
     const result = await checkAiAutoMod(message, client, guildConfig);
 
     expect(result).toMatchObject({ flagged: true, action: 'warn', actions: ['warn', 'flag'] });
-    expect(createCase).toHaveBeenCalledWith(
+    expect(createWarnCaseWithWarning).toHaveBeenCalledWith(
       'guild-1',
-      expect.objectContaining({ action: 'warn', targetId: 'user-1' }),
+      expect.objectContaining({ targetId: 'user-1' }),
+      expect.objectContaining({ userId: 'user-1', severity: 'low' }),
+      guildConfig,
     );
     expect(fetchChannelCached).toHaveBeenCalledWith(client, 'flag-channel-1', 'guild-1');
     expect(safeSend).toHaveBeenCalledTimes(1);
