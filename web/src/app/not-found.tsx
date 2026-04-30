@@ -2,11 +2,12 @@ import { ArrowLeft, Gauge, Home, Radio, Search, ShieldAlert } from 'lucide-react
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { createPageMetadata } from '@/lib/page-titles';
 
-export const metadata: Metadata = {
-  title: '404 - Page Not Found',
-  description: 'The requested Volvox.Bot page could not be found.',
-};
+export const metadata: Metadata = createPageMetadata(
+  '404 - Page Not Found',
+  'The requested Volvox.Bot page could not be found.',
+);
 
 const diagnostics = [
   ['ROUTE_PACKET', 'NULL_DESTINATION'],
