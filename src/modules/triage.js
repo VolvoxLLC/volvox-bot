@@ -23,6 +23,7 @@ import { fetchChannelCached } from '../utils/discordCache.js';
 import { AIClientError } from '../utils/errors.js';
 import { checkGuildBudget } from '../utils/guildSpend.js';
 import { safeSend } from '../utils/safeSend.js';
+import { getAuditPool, getBotIdentity, logAuditEvent } from './auditLogger.js';
 import { buildMemoryContext, extractAndStoreMemories } from './memory.js';
 
 // ── Sub-module imports ───────────────────────────────────────────────────────
@@ -541,9 +542,11 @@ async function evaluateAndRespond(channelId, snapshot, evalConfig, evalClient, a
               spend: budget.spend,
               budget: budget.budget,
             });
+            const logChannelId = evalConfig.triage?.moderationLogChannel ?? null;
+            recordBudgetExceededAudit(evalClient, guildId, channelId, logChannelId, budget);
+
             // Post a throttled alert to the moderation log channel — at most once per
             // BUDGET_ALERT_COOLDOWN_MS — to avoid spamming on every evaluation attempt.
-            const logChannelId = evalConfig.triage?.moderationLogChannel;
             if (logChannelId) {
               const now = Date.now();
               const lastAlert = budgetAlertSentAt.get(guildId) ?? 0;
@@ -935,6 +938,26 @@ export async function accumulateMessage(message, msgConfig) {
 }
 
 const MAX_REEVAL_DEPTH = 3;
+
+function recordBudgetExceededAudit(evalClient, guildId, channelId, logChannelId, budget) {
+  const botIdentity = getBotIdentity(evalClient);
+
+  logAuditEvent(getAuditPool(), {
+    guildId,
+    userId: botIdentity.userId,
+    userTag: botIdentity.userTag,
+    action: 'triage.budget_exceeded',
+    targetType: 'guild',
+    targetId: guildId,
+    details: {
+      sourceChannelId: channelId,
+      logChannelId,
+      spend: budget.spend,
+      budget: budget.budget,
+      pct: budget.pct,
+    },
+  });
+}
 
 /**
  * Run an immediate triage evaluation of the buffered messages for the given channel.

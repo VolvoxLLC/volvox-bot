@@ -86,7 +86,21 @@ vi.mock('../../src/modules/triage-respond.js', () => ({
   sendResponses: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock('../../src/db.js', () => ({
+  getPool: vi.fn(),
+}));
+
+vi.mock('../../src/modules/auditLogger.js', async () => {
+  const actual = await vi.importActual('../../src/modules/auditLogger.js');
+  return {
+    ...actual,
+    logAuditEvent: vi.fn(),
+  };
+});
+
+import { getPool } from '../../src/db.js';
 import { warn } from '../../src/logger.js';
+import { logAuditEvent } from '../../src/modules/auditLogger.js';
 import { accumulateMessage, startTriage, stopTriage } from '../../src/modules/triage.js';
 import { channelBuffers } from '../../src/modules/triage-buffer.js';
 import { safeSend } from '../../src/utils/safeSend.js';
@@ -163,6 +177,9 @@ describe('triage budget gate', () => {
   beforeEach(async () => {
     vi.useFakeTimers();
     vi.clearAllMocks();
+    getPool.mockImplementation(() => {
+      throw new Error('Database not initialized');
+    });
     client = makeClient();
     config = makeConfig();
     await startTriage(client, config);
@@ -248,6 +265,41 @@ describe('triage budget gate', () => {
     );
   });
 
+  it('records audit event when budget is exceeded without a moderation log channel', async () => {
+    mockCheckGuildBudget.mockResolvedValue({
+      status: 'exceeded',
+      spend: 10.5,
+      budget: 10,
+      pct: 1.05,
+    });
+
+    const mockPool = { query: vi.fn() };
+    getPool.mockReturnValue(mockPool);
+
+    const msg = makeMessage();
+    await accumulateMessage(msg, config);
+    await vi.runAllTimersAsync();
+
+    expect(safeSend).not.toHaveBeenCalled();
+    expect(logAuditEvent).toHaveBeenCalledWith(
+      mockPool,
+      expect.objectContaining({
+        guildId: 'guild-test',
+        userId: 'bot-id',
+        action: 'triage.budget_exceeded',
+        targetType: 'guild',
+        targetId: 'guild-test',
+        details: expect.objectContaining({
+          sourceChannelId: 'ch-budget',
+          logChannelId: null,
+          spend: 10.5,
+          budget: 10,
+          pct: 1.05,
+        }),
+      }),
+    );
+  });
+
   it('sends alert to moderation log channel when budget exceeded', async () => {
     mockCheckGuildBudget.mockResolvedValue({
       status: 'exceeded',
@@ -259,6 +311,8 @@ describe('triage budget gate', () => {
     const configWithLog = makeConfig({
       triage: { moderationLogChannel: 'log-ch-999' },
     });
+    const mockPool = { query: vi.fn() };
+    getPool.mockReturnValue(mockPool);
     stopTriage();
     await startTriage(client, configWithLog);
     mockGlobalConfig = configWithLog;
@@ -273,6 +327,23 @@ describe('triage budget gate', () => {
     expect(safeSend).toHaveBeenCalledWith(
       expect.anything(),
       expect.stringContaining('AI spend cap reached'),
+    );
+    expect(logAuditEvent).toHaveBeenCalledWith(
+      mockPool,
+      expect.objectContaining({
+        guildId: 'guild-test',
+        userId: 'bot-id',
+        action: 'triage.budget_exceeded',
+        targetType: 'guild',
+        targetId: 'guild-test',
+        details: expect.objectContaining({
+          sourceChannelId: 'ch-budget',
+          logChannelId: 'log-ch-999',
+          spend: 10.5,
+          budget: 10,
+          pct: 1.05,
+        }),
+      }),
     );
   });
 

@@ -18,14 +18,8 @@ import { error as logError } from '../logger.js';
  * @returns {Promise<Array>} Query results
  */
 export async function queryWithLogging(sql, params = [], context = 'Database query') {
-  const pool = getPool();
-  if (!pool) {
-    logError(context, { error: 'Database pool unavailable' });
-    return [];
-  }
-
   try {
-    const { rows } = await pool.query(sql, params);
+    const { rows } = await getPool().query(sql, params);
     return rows;
   } catch (err) {
     logError(context, { error: err.message, sql: sql.substring(0, 100) });

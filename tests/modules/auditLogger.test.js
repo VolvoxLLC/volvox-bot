@@ -13,8 +13,18 @@ vi.mock('../../src/logger.js', () => ({
   error: vi.fn(),
 }));
 
+vi.mock('../../src/db.js', () => ({
+  getPool: vi.fn(),
+}));
+
+import { getPool } from '../../src/db.js';
 import * as logger from '../../src/logger.js';
-import { logAuditEvent, purgeOldAuditLogs } from '../../src/modules/auditLogger.js';
+import {
+  getAuditPool,
+  getBotIdentity,
+  logAuditEvent,
+  purgeOldAuditLogs,
+} from '../../src/modules/auditLogger.js';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -36,6 +46,38 @@ const BASE_EVENT = {
   details: { before: { key: 'old' }, after: { key: 'new' } },
   ipAddress: '127.0.0.1',
 };
+
+// ─── shared helper fallbacks ──────────────────────────────────────────────────
+
+describe('audit helper fallbacks', () => {
+  it('returns null when the shared pool is not initialized', () => {
+    getPool.mockImplementationOnce(() => {
+      throw new Error('Database not initialized');
+    });
+
+    expect(getAuditPool()).toBeNull();
+  });
+
+  it('uses the hydrated bot tag when available', () => {
+    expect(
+      getBotIdentity({ user: { id: 'bot-1', tag: 'Volvox#0001', username: 'Volvox' } }),
+    ).toEqual({
+      userId: 'bot-1',
+      userTag: 'Volvox#0001',
+    });
+  });
+
+  it('falls back to username when tag is unavailable', () => {
+    expect(getBotIdentity({ user: { id: 'bot-2', username: 'Volvox' } })).toEqual({
+      userId: 'bot-2',
+      userTag: 'Volvox',
+    });
+  });
+
+  it('uses stable defaults before Discord identity is hydrated', () => {
+    expect(getBotIdentity(null)).toEqual({ userId: 'volvox-bot', userTag: 'Volvox.Bot' });
+  });
+});
 
 // ─── logAuditEvent ────────────────────────────────────────────────────────────
 
