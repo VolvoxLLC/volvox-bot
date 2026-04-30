@@ -187,6 +187,44 @@ describe('execute — default 50 message fetch', () => {
       expect.objectContaining({ embeds: expect.any(Array) }),
     );
   });
+
+  it('uses the configured TLDR model for summary generation', async () => {
+    getConfig.mockReturnValue({
+      tldr: {
+        enabled: true,
+        model: 'moonshot:kimi-k2.6',
+        defaultMessages: 50,
+        maxMessages: 200,
+        cooldownSeconds: 300,
+      },
+    });
+
+    const interaction = createInteraction();
+    await execute(interaction);
+
+    expect(mockGenerate).toHaveBeenCalledWith(
+      expect.objectContaining({ model: 'moonshot:kimi-k2.6' }),
+    );
+  });
+
+  it('falls back to the default model when TLDR config references an unsupported model', async () => {
+    getConfig.mockReturnValue({
+      tldr: {
+        enabled: true,
+        model: 'anthropic:claude-3-5-haiku',
+        defaultMessages: 50,
+        maxMessages: 200,
+        cooldownSeconds: 300,
+      },
+    });
+
+    const interaction = createInteraction();
+    await execute(interaction);
+
+    expect(mockGenerate).toHaveBeenCalledWith(
+      expect.objectContaining({ model: 'minimax:MiniMax-M2.7' }),
+    );
+  });
 });
 
 describe('execute — count option', () => {
@@ -411,63 +449,5 @@ describe('execute — AI response formatted into embed', () => {
     expect(names.some((n) => n.includes('Decisions'))).toBe(true);
     expect(names.some((n) => n.includes('Action Items'))).toBe(true);
     expect(names.some((n) => n.includes('Notable Links'))).toBe(true);
-  });
-});
-
-describe('execute — hardcoded SUMMARIZE_MODEL (PR: model removed from config)', () => {
-  it('always uses minimax:MiniMax-M2.7 regardless of tldrConfig.model', async () => {
-    // In the PR, the configurable model was removed and hardcoded to 'minimax:MiniMax-M2.7'
-    getConfig.mockReturnValue({
-      tldr: {
-        enabled: true,
-        model: 'anthropic:claude-3-haiku', // this should be ignored
-        defaultMessages: 50,
-        maxMessages: 200,
-        cooldownSeconds: 300,
-      },
-    });
-
-    const interaction = createInteraction();
-    await execute(interaction);
-
-    expect(mockGenerate).toHaveBeenCalledWith(
-      expect.objectContaining({ model: 'minimax:MiniMax-M2.7' }),
-    );
-  });
-
-  it('uses minimax:MiniMax-M2.7 when no model is set in config', async () => {
-    getConfig.mockReturnValue({
-      tldr: { enabled: true, defaultMessages: 50, maxMessages: 200, cooldownSeconds: 300 },
-    });
-
-    const interaction = createInteraction();
-    await execute(interaction);
-
-    expect(mockGenerate).toHaveBeenCalledWith(
-      expect.objectContaining({ model: 'minimax:MiniMax-M2.7' }),
-    );
-  });
-
-  it('uses minimax:MiniMax-M2.7 even with a different provider model in config', async () => {
-    getConfig.mockReturnValue({
-      tldr: {
-        enabled: true,
-        model: 'openai:gpt-4o',
-        defaultMessages: 50,
-        maxMessages: 200,
-        cooldownSeconds: 300,
-      },
-    });
-
-    const interaction = createInteraction();
-    await execute(interaction);
-
-    // The hardcoded model should always be used
-    expect(mockGenerate).toHaveBeenCalledWith(
-      expect.objectContaining({ model: 'minimax:MiniMax-M2.7' }),
-    );
-    // The configured model should NOT be used
-    const callArgs = mockGenerate.mock.calls[0][0];
-    expect(callArgs.model).not.toBe('openai:gpt-4o');
   });
 });
