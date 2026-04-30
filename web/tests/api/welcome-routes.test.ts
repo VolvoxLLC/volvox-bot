@@ -39,6 +39,15 @@ function createRequest(path = '/api/guilds/guild-1/welcome/status') {
   return new NextRequest(new URL(path, 'https://localhost:3000'));
 }
 
+async function expectJsonResponse(response: Response, status: number, error: string) {
+  await expect(response.json()).resolves.toEqual({ error });
+  expect(response.status).toBe(status);
+}
+
+function expectProxyShortCircuited() {
+  expect(mockProxyToBotApi).not.toHaveBeenCalled();
+}
+
 function expectWelcomeProxy({
   failureMessage,
   proxyOptions,
@@ -124,4 +133,58 @@ describe('welcome API routes', () => {
       expect(response.status).toBe(200);
     });
   }
+
+  it('returns 400 without proxying when guildId is missing', async () => {
+    const response = await getWelcomeStatus(createRequest('/api/guilds//welcome/status'), {
+      params: Promise.resolve({ guildId: '' }),
+    });
+
+    await expectJsonResponse(response, 400, 'Missing guildId');
+    expect(mockAuthorizeGuildAdmin).not.toHaveBeenCalled();
+    expect(mockGetBotApiConfig).not.toHaveBeenCalled();
+    expect(mockBuildUpstreamUrl).not.toHaveBeenCalled();
+    expectProxyShortCircuited();
+  });
+
+  it('returns auth failures without proxying', async () => {
+    mockAuthorizeGuildAdmin.mockResolvedValue(
+      NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
+    );
+
+    const response = await getWelcomeStatus(createRequest(), {
+      params: Promise.resolve({ guildId: GUILD_ID }),
+    });
+
+    await expectJsonResponse(response, 401, 'Unauthorized');
+    expect(mockGetBotApiConfig).not.toHaveBeenCalled();
+    expect(mockBuildUpstreamUrl).not.toHaveBeenCalled();
+    expectProxyShortCircuited();
+  });
+
+  it('returns bot API config failures without proxying', async () => {
+    mockGetBotApiConfig.mockReturnValue(
+      NextResponse.json({ error: 'Bot API is not configured' }, { status: 500 }),
+    );
+
+    const response = await getWelcomeStatus(createRequest(), {
+      params: Promise.resolve({ guildId: GUILD_ID }),
+    });
+
+    await expectJsonResponse(response, 500, 'Bot API is not configured');
+    expect(mockBuildUpstreamUrl).not.toHaveBeenCalled();
+    expectProxyShortCircuited();
+  });
+
+  it('returns upstream URL build failures without proxying', async () => {
+    mockBuildUpstreamUrl.mockReturnValue(
+      NextResponse.json({ error: 'Bot API is not configured correctly' }, { status: 500 }),
+    );
+
+    const response = await getWelcomeStatus(createRequest(), {
+      params: Promise.resolve({ guildId: GUILD_ID }),
+    });
+
+    await expectJsonResponse(response, 500, 'Bot API is not configured correctly');
+    expectProxyShortCircuited();
+  });
 });

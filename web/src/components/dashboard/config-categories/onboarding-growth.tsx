@@ -173,7 +173,9 @@ export function OnboardingGrowthCategory() {
   const [welcomeStatus, setWelcomeStatus] = useState<WelcomePublicationStatus | null>(null);
   const [welcomeStatusLoading, setWelcomeStatusLoading] = useState(false);
   const [welcomePublishing, setWelcomePublishing] = useState<string | null>(null);
+  const selectedGuildIdRef = useRef(guildId);
   const welcomeStatusRequestIdRef = useRef(0);
+  selectedGuildIdRef.current = guildId;
 
   useEffect(() => {
     if (draftConfig?.welcome?.dmSequence?.steps) {
@@ -316,12 +318,14 @@ export function OnboardingGrowthCategory() {
     async (panelType?: 'rules' | 'role_menu') => {
       if (!guildId) return;
 
+      const initiatingGuildId = guildId;
+      const isInitiatingGuildSelected = () => selectedGuildIdRef.current === initiatingGuildId;
       const publishingKey = panelType ?? 'all';
       setWelcomePublishing(publishingKey);
       try {
         const suffix = panelType ? `/publish/${encodeURIComponent(panelType)}` : '/publish';
         const response = await fetch(
-          `/api/guilds/${encodeURIComponent(guildId)}/welcome${suffix}`,
+          `/api/guilds/${encodeURIComponent(initiatingGuildId)}/welcome${suffix}`,
           { method: 'POST' },
         );
         const data = await response.json().catch(() => null);
@@ -332,19 +336,24 @@ export function OnboardingGrowthCategory() {
         if (failureMessage) {
           throw new Error(failureMessage);
         }
+        if (!isInitiatingGuildSelected()) return;
         const infoMessage = getWelcomePublishInfoMessage(data, panelType);
         if (infoMessage) {
           toast.info(infoMessage);
         } else {
           toast.success(panelType ? 'Welcome panel published' : 'Welcome panels published');
         }
+        if (!isInitiatingGuildSelected()) return;
         await fetchWelcomeStatus();
       } catch (error) {
+        if (!isInitiatingGuildSelected()) return;
         toast.error('Failed to publish welcome panel', {
           description: error instanceof Error ? error.message : 'A network error occurred.',
         });
       } finally {
-        setWelcomePublishing(null);
+        if (isInitiatingGuildSelected()) {
+          setWelcomePublishing(null);
+        }
       }
     },
     [fetchWelcomeStatus, guildId],
