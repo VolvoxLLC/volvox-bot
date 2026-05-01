@@ -1,8 +1,9 @@
 /**
  * Amplitude Winston Transport
  *
- * Forwards sanitized info/warn log records to Amplitude. Error-level logs stay
- * in Sentry so alerting and exception grouping remain there.
+ * Forwards sanitized info/warn log records to Amplitude. Error-level logs are
+ * not forwarded by this transport and can remain reserved for Sentry when that
+ * transport is enabled.
  */
 
 import Transport from 'winston-transport';
