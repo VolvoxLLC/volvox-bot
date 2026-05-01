@@ -193,5 +193,15 @@ describe('config-listeners', () => {
       expect(cacheDelPattern).toHaveBeenCalledWith('leaderboard:guild-77*');
       expect(cacheDelPattern).toHaveBeenCalledWith('reputation:guild-77:*');
     });
+
+    it('does not invalidate caches for global config changes', async () => {
+      const listeners = registerAndCapture();
+
+      await listeners['welcome.*'](null, null, 'welcome.channelId', 'global');
+      await listeners['starboard.*'](null, null, 'starboard.channelId', 'global');
+      await listeners['reputation.*'](null, null, 'reputation.xpPerMessage', 'global');
+
+      expect(cacheDelPattern).not.toHaveBeenCalled();
+    });
   });
 });
