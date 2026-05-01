@@ -48,10 +48,14 @@ function scrubUnknown(value) {
 }
 
 /**
- * Removes secrets and direct identifiers from Sentry error or performance events.
+ * Removes sensitive fields and identifiers from a Sentry event or performance payload.
  *
- * @param {object} event - Sentry event-like payload.
- * @returns {object} The same payload after in-place scrubbing.
+ * Mutates the provided event in place: deletes user email and IP address, removes request cookies,
+ * replaces request headers and nested data with scrubbed copies (or deletes request.data if it cannot
+ * be represented as an object), and replaces `extra`, `contexts`, and `data` with scrubbed copies.
+ *
+ * @param {object} event - Sentry event-like payload to be sanitized; this object is modified in place.
+ * @returns {object} The same event object after in-place scrubbing.
  */
 function scrubSentryEvent(event) {
   if (event.user) {

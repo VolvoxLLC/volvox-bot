@@ -24,8 +24,9 @@ const INLINE_SECRET_PATTERNS = [
 ];
 
 /**
- * @param {string} key
- * @returns {string | undefined}
+ * Retrieve an environment variable by key and return its trimmed value if non-empty.
+ * @param {string} key - The environment variable name.
+ * @returns {string|undefined} The trimmed value of the environment variable, or `undefined` if it is not set or is empty after trimming.
  */
 function getEnvValue(key) {
   const value = process.env[key];
@@ -33,16 +34,22 @@ function getEnvValue(key) {
 }
 
 /**
- * @param {string | undefined} value
- * @returns {'US' | 'EU'}
+ * Normalize an Amplitude server zone string to either 'US' or 'EU'.
+ *
+ * Trims whitespace and uppercases the input; returns 'EU' only when the normalized value equals 'EU', otherwise returns 'US'.
+ * @param {string | undefined} value - The server zone value to normalize (may be undefined).
+ * @returns {'US' | 'EU'} 'EU' if the normalized input equals 'EU', 'US' otherwise.
  */
 function normalizeServerZone(value) {
   return value?.trim().toUpperCase() === 'EU' ? 'EU' : 'US';
 }
 
 /**
- * @param {unknown} value
- * @returns {string | undefined}
+ * Normalize a candidate Amplitude identifier string.
+ *
+ * Trims the input and returns it only when it's a string with length at least 5; returns `undefined` otherwise.
+ * @param {unknown} value - Value to normalize as an Amplitude identifier.
+ * @returns {string | undefined} The trimmed identifier when valid, `undefined` when invalid or not a string.
  */
 function normalizeAmplitudeId(value) {
   if (typeof value !== 'string') {
@@ -54,8 +61,9 @@ function normalizeAmplitudeId(value) {
 }
 
 /**
- * @param {string} value
- * @returns {string}
+ * Redacts any inline secret patterns found in the provided string.
+ * @param {string} value - The input string that may contain sensitive substrings.
+ * @returns {string} The input with matched secret substrings replaced by `"[REDACTED]"`.
  */
 function scrubInlineSecrets(value) {
   return INLINE_SECRET_PATTERNS.reduce(
@@ -65,11 +73,15 @@ function scrubInlineSecrets(value) {
 }
 
 /**
- * Recursively removes sensitive keys from Amplitude event properties.
+ * Sanitize a value for Amplitude by redacting inline secrets and removing sensitive object properties.
  *
- * @param {unknown} value
- * @param {WeakSet<object>} [seen]
- * @returns {unknown}
+ * Handles strings (inline secrets redacted), arrays (elements sanitized), Date (converted to ISO string),
+ * Error (returns an object with sanitized `message` and `name`), and plain objects (properties whose keys
+ * match the sensitive-key pattern are omitted; other properties are recursively sanitized). Detects
+ * circular references and replaces them with the string `"[Circular]"`.
+ *
+ * @param {unknown} value - The value to sanitize before sending to Amplitude.
+ * @returns {unknown} The sanitized value suitable for telemetry, with sensitive fields removed or redacted.
  */
 export function scrubAmplitudeProperties(value, seen = new WeakSet()) {
   if (typeof value === 'string') {
@@ -115,7 +127,8 @@ export function scrubAmplitudeProperties(value, seen = new WeakSet()) {
 }
 
 /**
- * @returns {{logLevel: number, serverZone: 'US' | 'EU'}}
+ * Build the configuration object for initializing the Amplitude server SDK.
+ * @returns {{logLevel: number, serverZone: 'US' | 'EU'}} An options object where `logLevel` is set to disable SDK logging and `serverZone` is normalized to either `'US'` or `'EU'`.
  */
 export function getAmplitudeServerOptions() {
   return {
@@ -136,12 +149,14 @@ if (apiKey) {
 }
 
 /**
- * Tracks a sanitized analytics event.
+ * Send a sanitized analytics event to Amplitude.
  *
- * @param {string} eventType
- * @param {Record<string, unknown>} [eventProperties]
- * @param {{user_id?: unknown, userId?: unknown, device_id?: unknown, deviceId?: unknown}} [eventOptions]
- * @returns {boolean}
+ * Event properties are recursively scrubbed of sensitive data before sending.
+ *
+ * @param {string} eventType - The event name; trimmed and ignored if empty.
+ * @param {Record<string, unknown>} [eventProperties] - Arbitrary properties to attach to the event; will be sanitized to remove sensitive keys/values.
+ * @param {{user_id?: unknown, userId?: unknown, device_id?: unknown, deviceId?: unknown}} [eventOptions] - Optional identifiers. Accepts either `user_id` or `userId`, and `device_id` or `deviceId`. A default device ID is used if none is provided or valid.
+ * @returns {boolean} `true` if the event was successfully tracked, `false` otherwise.
  */
 export function trackAnalyticsEvent(eventType, eventProperties = {}, eventOptions = {}) {
   const normalizedEventType = typeof eventType === 'string' ? eventType.trim() : '';
@@ -174,9 +189,9 @@ export function trackAnalyticsEvent(eventType, eventProperties = {}, eventOption
 }
 
 /**
- * Flushes queued Amplitude events before shutdown.
+ * Flushes any queued Amplitude events.
  *
- * @returns {Promise<boolean>}
+ * @returns {boolean} `true` if queued events were successfully flushed, `false` otherwise.
  */
 export async function flushAmplitude() {
   if (!amplitudeEnabled) {

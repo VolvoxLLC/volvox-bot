@@ -6,6 +6,15 @@ import { ErrorCard } from '@/components/error-card';
 import { Button } from '@/components/ui/button';
 import { logger } from '@/lib/logger';
 
+/**
+ * Renders a centered error UI and reports the provided error.
+ *
+ * Logs the error and sends it to Sentry when the component mounts and whenever `error` changes.
+ *
+ * @param error - The caught `Error` object; may include an optional `digest` string shown in the UI.
+ * @param reset - Callback invoked when the user requests a retry (e.g., clicking "Try Again").
+ * @returns The JSX element that displays the error card and retry action.
+ */
 export default function RootError({
   error,
   reset,
