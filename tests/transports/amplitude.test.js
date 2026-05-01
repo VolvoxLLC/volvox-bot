@@ -120,6 +120,38 @@ describe('AmplitudeTransport', () => {
     expect(callback).toHaveBeenCalledOnce();
   });
 
+  it('preserves repeated log references and marks true cyclic arrays', () => {
+    const callback = vi.fn();
+    const shared = { ok: true };
+    const cyclic = ['root'];
+    cyclic.push(cyclic);
+    const sharedArray = ['shared'];
+
+    transport.log(
+      {
+        level: 'info',
+        message: 'shared refs',
+        first: shared,
+        second: shared,
+        cyclic,
+        firstArray: sharedArray,
+        secondArray: sharedArray,
+      },
+      callback,
+    );
+
+    expect(mockTrackAnalyticsEvent).toHaveBeenCalledWith('bot_log_recorded', {
+      level: 'info',
+      message: 'shared refs',
+      first: { ok: true },
+      second: { ok: true },
+      cyclic: ['root', '[Circular]'],
+      firstArray: ['shared'],
+      secondArray: ['shared'],
+    });
+    expect(callback).toHaveBeenCalledOnce();
+  });
+
   it('still completes the Winston callback if Amplitude tracking throws', () => {
     const callback = vi.fn();
     mockTrackAnalyticsEvent.mockImplementationOnce(() => {
@@ -206,9 +238,6 @@ describe('AmplitudeTransport', () => {
 
     transport.log({ level: 'info', message: 'event type check' }, callback);
 
-    expect(mockTrackAnalyticsEvent).toHaveBeenCalledWith(
-      'bot_log_recorded',
-      expect.any(Object),
-    );
+    expect(mockTrackAnalyticsEvent).toHaveBeenCalledWith('bot_log_recorded', expect.any(Object));
   });
 });

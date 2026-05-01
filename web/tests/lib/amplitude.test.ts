@@ -102,6 +102,9 @@ describe('dashboard Amplitude analytics', () => {
     vi.stubEnv('NEXT_PUBLIC_AMPLITUDE_API_KEY', 'public-key');
 
     const { trackDashboardEvent } = await import('@/lib/amplitude');
+    const shared = { ok: true };
+    const cyclic = ['root'] as unknown[];
+    cyclic.push(cyclic);
 
     expect(
       trackDashboardEvent(' dashboard_button_clicked ', {
@@ -111,6 +114,9 @@ describe('dashboard Amplitude analytics', () => {
           token: 'secret',
           ok: true,
         },
+        first: shared,
+        second: shared,
+        cyclic,
       }),
     ).toBe(true);
 
@@ -119,6 +125,9 @@ describe('dashboard Amplitude analytics', () => {
       nested: {
         ok: true,
       },
+      first: { ok: true },
+      second: { ok: true },
+      cyclic: ['root', '[Circular]'],
     });
   });
 });

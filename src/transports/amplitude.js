@@ -25,10 +25,6 @@ const SENSITIVE_KEY_PATTERN =
  * @returns {unknown} The sanitized value: a primitive or array, an ISO string for Dates, an `{ message, name }` object for Errors, an object with sensitive keys omitted, or the string `"[Circular]"` for circular references.
  */
 function sanitizeLogValue(value, seen = new WeakSet()) {
-  if (Array.isArray(value)) {
-    return value.map((item) => sanitizeLogValue(item, seen));
-  }
-
   if (!value || typeof value !== 'object') {
     return value;
   }
@@ -39,28 +35,36 @@ function sanitizeLogValue(value, seen = new WeakSet()) {
 
   seen.add(value);
 
-  if (value instanceof Date) {
-    return value.toISOString();
-  }
-
-  if (value instanceof Error) {
-    return {
-      message: value.message,
-      name: value.name,
-    };
-  }
-
-  const sanitized = {};
-
-  for (const [key, childValue] of Object.entries(value)) {
-    if (SENSITIVE_KEY_PATTERN.test(key)) {
-      continue;
+  try {
+    if (Array.isArray(value)) {
+      return value.map((item) => sanitizeLogValue(item, seen));
     }
 
-    sanitized[key] = sanitizeLogValue(childValue, seen);
-  }
+    if (value instanceof Date) {
+      return value.toISOString();
+    }
 
-  return sanitized;
+    if (value instanceof Error) {
+      return {
+        message: value.message,
+        name: value.name,
+      };
+    }
+
+    const sanitized = {};
+
+    for (const [key, childValue] of Object.entries(value)) {
+      if (SENSITIVE_KEY_PATTERN.test(key)) {
+        continue;
+      }
+
+      sanitized[key] = sanitizeLogValue(childValue, seen);
+    }
+
+    return sanitized;
+  } finally {
+    seen.delete(value);
+  }
 }
 
 /**

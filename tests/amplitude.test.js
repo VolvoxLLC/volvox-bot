@@ -209,9 +209,7 @@ describe('scrubAmplitudeProperties', () => {
 
   it('redacts inline Bearer tokens in strings', async () => {
     const scrub = await getScrub();
-    expect(scrub('Authorization: Bearer abc123xyz456')).toBe(
-      'Authorization: [REDACTED]',
-    );
+    expect(scrub('Authorization: Bearer abc123xyz456')).toBe('Authorization: [REDACTED]');
   });
 
   it('redacts Anthropic/OpenAI sk- keys in strings', async () => {
@@ -260,6 +258,32 @@ describe('scrubAmplitudeProperties', () => {
     const result = scrub(obj);
     expect(result.name).toBe('root');
     expect(result.self).toBe('[Circular]');
+  });
+
+  it('preserves repeated non-cyclic references while marking true cycles', async () => {
+    const scrub = await getScrub();
+    const shared = { ok: true };
+    const result = scrub({ first: shared, second: shared });
+
+    expect(result).toEqual({
+      first: { ok: true },
+      second: { ok: true },
+    });
+  });
+
+  it('handles cyclic arrays without marking later shared arrays circular', async () => {
+    const scrub = await getScrub();
+    const cyclic = ['root'];
+    cyclic.push(cyclic);
+    const shared = ['shared'];
+
+    const result = scrub({ cyclic, first: shared, second: shared });
+
+    expect(result).toEqual({
+      cyclic: ['root', '[Circular]'],
+      first: ['shared'],
+      second: ['shared'],
+    });
   });
 
   it('handles deeply nested objects', async () => {

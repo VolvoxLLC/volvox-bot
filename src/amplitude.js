@@ -88,10 +88,6 @@ export function scrubAmplitudeProperties(value, seen = new WeakSet()) {
     return scrubInlineSecrets(value);
   }
 
-  if (Array.isArray(value)) {
-    return value.map((item) => scrubAmplitudeProperties(item, seen));
-  }
-
   if (!value || typeof value !== 'object') {
     return value;
   }
@@ -102,28 +98,36 @@ export function scrubAmplitudeProperties(value, seen = new WeakSet()) {
 
   seen.add(value);
 
-  if (value instanceof Date) {
-    return value.toISOString();
-  }
-
-  if (value instanceof Error) {
-    return {
-      message: scrubInlineSecrets(value.message),
-      name: value.name,
-    };
-  }
-
-  const scrubbed = {};
-
-  for (const [key, childValue] of Object.entries(value)) {
-    if (SENSITIVE_KEY_PATTERN.test(key)) {
-      continue;
+  try {
+    if (Array.isArray(value)) {
+      return value.map((item) => scrubAmplitudeProperties(item, seen));
     }
 
-    scrubbed[key] = scrubAmplitudeProperties(childValue, seen);
-  }
+    if (value instanceof Date) {
+      return value.toISOString();
+    }
 
-  return scrubbed;
+    if (value instanceof Error) {
+      return {
+        message: scrubInlineSecrets(value.message),
+        name: value.name,
+      };
+    }
+
+    const scrubbed = {};
+
+    for (const [key, childValue] of Object.entries(value)) {
+      if (SENSITIVE_KEY_PATTERN.test(key)) {
+        continue;
+      }
+
+      scrubbed[key] = scrubAmplitudeProperties(childValue, seen);
+    }
+
+    return scrubbed;
+  } finally {
+    seen.delete(value);
+  }
 }
 
 /**
