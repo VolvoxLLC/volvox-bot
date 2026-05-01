@@ -566,6 +566,10 @@ describe('docs/wiki-pages/README.md', () => {
       ]),
     );
 
+    const recursiveCopyLines = copyLines.filter(hasRecursiveCopyFlag);
+    expect(recursiveCopyLines).toHaveLength(1);
+    expect(copyLines.filter((line) => !hasRecursiveCopyFlag(line))).toHaveLength(1);
+
     for (const line of copyLines) {
       expectContainsAll(line, [
         'Home',

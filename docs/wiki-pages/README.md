@@ -19,7 +19,7 @@ Use GitHub's standard wiki clone flow:
 
 ```bash
 git clone https://github.com/<owner>/<repo>.wiki.git
-cp docs/wiki-pages/{Home,Quick-Start,Configuration-Reference,Operations-Runbook,Troubleshooting,Manual-Test-Plan}.md <repo>.wiki/
+cp -R docs/wiki-pages/{Home,Quick-Start,Configuration-Reference,Operations-Runbook,Troubleshooting,Manual-Test-Plan}.md <repo>.wiki/
 cd <repo>.wiki
 git add *.md
 git commit -m "docs: update wiki pages"
