@@ -55,3 +55,20 @@ pnpm mono:typecheck    # Typecheck all workspaces
 See [AGENTS.md](AGENTS.md) for repo-specific agent rules, workflows, and gotchas.
 
 See [DESIGN.md](DESIGN.md) for dashboard visual direction and the design system.
+
+
+## GitHub Wiki workflow
+
+Do not treat the project wiki as files inside this repository. GitHub wikis are a separate git repository.
+
+1. Update source pages under `docs/wiki-pages/`.
+2. Clone the wiki repo using GitHub's documented flow (`<repo>.wiki.git`).
+3. Copy updated pages into the cloned wiki repo, commit, and push.
+
+Helper command:
+
+```bash
+./scripts/publish-wiki.sh VolvoxLLC/volvox-bot
+```
+
+This script follows the GitHub "cloning wikis to your computer" process and prepares a local wiki commit for push.
