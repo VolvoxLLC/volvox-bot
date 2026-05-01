@@ -115,6 +115,32 @@ describe('Providers', () => {
     expect(JSON.stringify(mockSetContext.mock.calls)).not.toContain('1234567890');
   });
 
+  it.each([
+    ['/dashboard/members/123456789012345678', '/dashboard/members/[userId]'],
+    ['/dashboard/conversations/conv-private-123', '/dashboard/conversations/[conversationId]'],
+    ['/dashboard/tickets/ticket-123456789012345678', '/dashboard/tickets/[ticketId]'],
+    ['/dashboard/settings/moderation', '/dashboard/settings/[category]'],
+  ])('generalizes dynamic dashboard route %s for Sentry telemetry', (route, telemetryRoute) => {
+    mockUseTheme.mockReturnValue({ resolvedTheme: 'dark' });
+    mockUsePathname.mockReturnValue(route);
+    mockUseGuildSelection.mockReturnValue('123456789012345678');
+    mockUseSession.mockReturnValue({
+      data: { user: { id: 'discord-user-123' } },
+      status: 'authenticated',
+    });
+
+    render(
+      <Providers>
+        <div>Dashboard</div>
+      </Providers>,
+    );
+
+    expect(mockSetContext).toHaveBeenCalledWith('routing', { route: telemetryRoute });
+    expect(JSON.stringify(mockSetContext.mock.calls)).not.toContain('123456789012345678');
+    expect(JSON.stringify(mockSetContext.mock.calls)).not.toContain('conv-private-123');
+    expect(JSON.stringify(mockSetContext.mock.calls)).not.toContain('ticket-123456789012345678');
+  });
+
   it('clears Sentry guild context outside dashboard routes', () => {
     mockUseTheme.mockReturnValue({ resolvedTheme: 'dark' });
     mockUsePathname.mockReturnValue('/');
@@ -152,7 +178,7 @@ describe('Providers', () => {
 
   it('initializes Amplitude and tracks dashboard page views without PII', () => {
     mockUseTheme.mockReturnValue({ resolvedTheme: 'dark' });
-    mockUsePathname.mockReturnValue('/dashboard/settings');
+    mockUsePathname.mockReturnValue('/dashboard/members/1234567890');
     mockUseGuildSelection.mockReturnValue('1234567890');
     mockUseSession.mockReturnValue({
       data: {
@@ -175,7 +201,7 @@ describe('Providers', () => {
     expect(mockTrackDashboardEvent).toHaveBeenCalledWith('dashboard_page_viewed', {
       authStatus: 'authenticated',
       guildSelection: 'selected',
-      route: '/dashboard/settings',
+      route: '/dashboard/members/[userId]',
     });
     expect(JSON.stringify(mockTrackDashboardEvent.mock.calls)).not.toContain('1234567890');
   });
@@ -201,6 +227,39 @@ describe('Providers', () => {
       expect(mockTrackDashboardEvent).not.toHaveBeenCalled();
     },
   );
+
+  it('dedupes dashboard page views by generalized route', () => {
+    mockUseTheme.mockReturnValue({ resolvedTheme: 'dark' });
+    mockUsePathname.mockReturnValue('/dashboard/members/111111111111111111');
+    mockUseGuildSelection.mockReturnValue('1234567890');
+    mockUseSession.mockReturnValue({
+      data: { user: { id: 'discord-user-123' } },
+      status: 'authenticated',
+    });
+
+    const { rerender } = render(
+      <Providers>
+        <div>Dashboard</div>
+      </Providers>,
+    );
+
+    mockUsePathname.mockReturnValue('/dashboard/members/222222222222222222');
+
+    rerender(
+      <Providers>
+        <div>Dashboard</div>
+      </Providers>,
+    );
+
+    expect(mockTrackDashboardEvent).toHaveBeenCalledTimes(1);
+    expect(mockTrackDashboardEvent).toHaveBeenCalledWith('dashboard_page_viewed', {
+      authStatus: 'authenticated',
+      guildSelection: 'selected',
+      route: '/dashboard/members/[userId]',
+    });
+    expect(JSON.stringify(mockTrackDashboardEvent.mock.calls)).not.toContain('111111111111111111');
+    expect(JSON.stringify(mockTrackDashboardEvent.mock.calls)).not.toContain('222222222222222222');
+  });
 
   it('waits for auth status to settle and dedupes dashboard page views without navigation', () => {
     mockUseTheme.mockReturnValue({ resolvedTheme: 'dark' });

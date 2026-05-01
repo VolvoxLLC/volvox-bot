@@ -18,6 +18,38 @@ function isDashboardRoute(pathname: string | null): pathname is string {
   return pathname === '/dashboard' || pathname?.startsWith('/dashboard/') === true;
 }
 
+const DASHBOARD_ROUTE_PARAMETERS: Record<string, string> = {
+  conversations: '[conversationId]',
+  members: '[userId]',
+  settings: '[category]',
+  tickets: '[ticketId]',
+};
+
+function getDashboardTelemetryRoute(pathname: string | null): string {
+  if (!pathname) {
+    return 'unknown';
+  }
+
+  if (!isDashboardRoute(pathname)) {
+    return pathname;
+  }
+
+  const segments = pathname.split('/').filter(Boolean);
+  const routeSection = segments[1];
+
+  if (!routeSection || segments.length < 3) {
+    return pathname;
+  }
+
+  const routeParameter = DASHBOARD_ROUTE_PARAMETERS[routeSection];
+
+  if (!routeParameter) {
+    return pathname;
+  }
+
+  return `/${['dashboard', routeSection, routeParameter, ...segments.slice(3)].join('/')}`;
+}
+
 function getGuildTelemetryScope(guildId: string | null): 'none' | 'selected' {
   return guildId ? 'selected' : 'none';
 }
@@ -53,9 +85,10 @@ function SentryContextBridge() {
   const guildId = useGuildSelection();
   const { status } = useSession();
   const isAuthenticatedDashboardRoute = status === 'authenticated' && isDashboardRoute(pathname);
+  const telemetryRoute = getDashboardTelemetryRoute(pathname);
 
   useEffect(() => {
-    Sentry.setContext('routing', { route: pathname || 'unknown' });
+    Sentry.setContext('routing', { route: telemetryRoute });
 
     if (isAuthenticatedDashboardRoute && guildId) {
       Sentry.setContext('guild', { selection: getGuildTelemetryScope(guildId) });
@@ -63,7 +96,7 @@ function SentryContextBridge() {
     }
 
     Sentry.setContext('guild', null);
-  }, [guildId, isAuthenticatedDashboardRoute, pathname]);
+  }, [guildId, isAuthenticatedDashboardRoute, telemetryRoute]);
 
   return null;
 }
@@ -81,6 +114,7 @@ function AmplitudeContextBridge() {
   const { data: session, status } = useSession();
   const userId = status === 'authenticated' ? session?.user?.id : null;
   const lastTrackedRouteRef = useRef<string | null>(null);
+  const telemetryRoute = getDashboardTelemetryRoute(pathname);
 
   useEffect(() => {
     initDashboardAmplitude(userId);
@@ -96,17 +130,17 @@ function AmplitudeContextBridge() {
       return;
     }
 
-    if (lastTrackedRouteRef.current === pathname) {
+    if (lastTrackedRouteRef.current === telemetryRoute) {
       return;
     }
 
-    lastTrackedRouteRef.current = pathname;
+    lastTrackedRouteRef.current = telemetryRoute;
     trackDashboardEvent(DASHBOARD_PAGE_VIEW_EVENT, {
       authStatus: status,
       guildSelection: getGuildTelemetryScope(guildId),
-      route: pathname,
+      route: telemetryRoute,
     });
-  }, [guildId, pathname, status]);
+  }, [guildId, pathname, status, telemetryRoute]);
 
   return null;
 }
