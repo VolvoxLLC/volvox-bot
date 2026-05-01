@@ -176,6 +176,7 @@ export function isDashboardAmplitudeEnabled(): boolean {
  * Build the Amplitude browser initialization options using environment variables.
  *
  * The returned object configures autocapture based on NEXT_PUBLIC_AMPLITUDE_AUTOCAPTURE,
+ * keeps SDK page-view autocapture disabled so app-owned page tracking is not duplicated,
  * sets log level to `None`, disables remote config fetching, normalizes `serverZone`
  * from NEXT_PUBLIC_AMPLITUDE_SERVER_ZONE, and disables IP address tracking.
  *
@@ -192,7 +193,7 @@ export function getBrowserAmplitudeOptions(): BrowserAmplitudeOptions {
           frustrationInteractions: false,
           networkTracking: false,
           pageUrlEnrichment: true,
-          pageViews: true,
+          pageViews: false,
           sessions: true,
           webVitals: false,
         }

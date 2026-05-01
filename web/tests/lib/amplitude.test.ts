@@ -72,7 +72,7 @@ describe('dashboard Amplitude analytics', () => {
       frustrationInteractions: false,
       networkTracking: false,
       pageUrlEnrichment: true,
-      pageViews: true,
+      pageViews: false,
       sessions: true,
       webVitals: false,
     });

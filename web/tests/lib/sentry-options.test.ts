@@ -133,12 +133,14 @@ describe('sentry-options', () => {
       request: {
         cookies: { session: 'secret' },
         query_string: 'guildId=123&email=person%40example.com',
-        url: 'https://dashboard.example.com/guilds/123?guildId=123&email=person%40example.com#private',
+        url: 'https://user:pass@dashboard.example.com/guilds/123?guildId=123&email=person%40example.com#private',
         data: {
           password: 'secret',
           api_key: 'secret',
           'x-api-key': 'secret',
           email: 'person@example.com',
+          e_mail: 'person@example.com',
+          'backup.e-mail': 'person@example.com',
           safeField: 'keep-this',
         },
         headers: {
@@ -155,6 +157,7 @@ describe('sentry-options', () => {
         nested: {
           botApiSecret: 'secret',
           bot_api_secret: 'secret',
+          support_e_mail: 'nested@example.com',
           email: 'nested@example.com',
           ok: true,
         },
@@ -223,9 +226,11 @@ describe('sentry-options', () => {
         {
           category: 'fetch',
           data: {
-            url: 'https://dashboard.example.com/api?token=secret&email=person%40example.com#private',
+            url: 'https://user:pass@dashboard.example.com/api?token=secret&email=person%40example.com#private',
             nested: {
               requestUrl: '/settings?access_token=secret#private',
+              callbackUrl: 'https://user:pass@api.example.com/callback?token=secret#private',
+              e_mail: 'person@example.com',
               'e-mail': 'person@example.com',
               safeField: 'keep-this',
             },
@@ -241,6 +246,7 @@ describe('sentry-options', () => {
           url: 'https://dashboard.example.com/api',
           nested: {
             requestUrl: '/settings',
+            callbackUrl: 'https://api.example.com/callback',
             safeField: 'keep-this',
           },
         },

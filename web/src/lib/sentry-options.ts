@@ -57,8 +57,12 @@ const SENSITIVE_KEY_FRAGMENTS = [
   'stack',
 ] as const;
 const SENSITIVE_COMPACT_KEYS = new Set(['ip', 'ipaddress', 'xforwardedfor', 'apikey', 'xapikey']);
-const SENSITIVE_KEY_SEPARATOR_PATTERN = /[\s_-]+/g;
+const SENSITIVE_KEY_SEPARATOR_PATTERN = /[\s._-]+/g;
+const SENSITIVE_KEY_FRAGMENT_COMPACTS = SENSITIVE_KEY_FRAGMENTS.map((fragment) =>
+  fragment.replaceAll(SENSITIVE_KEY_SEPARATOR_PATTERN, ''),
+);
 const URL_METADATA_KEY_PATTERN = /url/i;
+const ABSOLUTE_URL_CREDENTIALS_PATTERN = /^([a-z][a-z\d+.-]*:\/\/)([^/?#@]*@)/i;
 
 const BROWSER_SENTRY_ENV = {
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
@@ -179,21 +183,18 @@ function getSentryRelease(runtime: SentryRuntime): string | undefined {
 }
 
 /**
- * Strips query strings and fragments from request URLs before sending telemetry.
+ * Strips credentials, query strings, and fragments from request URLs before sending telemetry.
  *
  * @param url - Request URL captured by Sentry.
- * @returns The URL without query-string or fragment metadata.
+ * @returns The URL without credentials, query-string, or fragment metadata.
  */
 function stripUrlMetadata(url: string): string {
   const queryIndex = url.indexOf('?');
   const fragmentIndex = url.indexOf('#');
   const cutIndexes = [queryIndex, fragmentIndex].filter((index) => index >= 0);
+  const metadataStrippedUrl = cutIndexes.length === 0 ? url : url.slice(0, Math.min(...cutIndexes));
 
-  if (cutIndexes.length === 0) {
-    return url;
-  }
-
-  return url.slice(0, Math.min(...cutIndexes));
+  return metadataStrippedUrl.replace(ABSOLUTE_URL_CREDENTIALS_PATTERN, '$1');
 }
 
 /**
@@ -204,12 +205,16 @@ function stripUrlMetadata(url: string): string {
  */
 function isSensitiveKey(key: string): boolean {
   const normalizedKey = key.toLowerCase();
+  const compactKey = normalizedKey.replaceAll(SENSITIVE_KEY_SEPARATOR_PATTERN, '');
 
-  if (SENSITIVE_KEY_FRAGMENTS.some((fragment) => normalizedKey.includes(fragment))) {
+  if (
+    SENSITIVE_KEY_FRAGMENTS.some((fragment) => normalizedKey.includes(fragment)) ||
+    SENSITIVE_KEY_FRAGMENT_COMPACTS.some((fragment) => compactKey.includes(fragment))
+  ) {
     return true;
   }
 
-  return SENSITIVE_COMPACT_KEYS.has(normalizedKey.replaceAll(SENSITIVE_KEY_SEPARATOR_PATTERN, ''));
+  return SENSITIVE_COMPACT_KEYS.has(compactKey);
 }
 
 /**
