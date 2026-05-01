@@ -16,7 +16,8 @@ import * as Sentry from '@sentry/node';
 
 const dsn = process.env.SENTRY_DSN;
 // Keep Sentry default PII capture opt-in only; any value other than the explicit string "true" stays disabled.
-const sendDefaultPii = process.env.SENTRY_SEND_DEFAULT_PII === 'true';
+// Read at init time (not module-eval time) so dotenv-loaded values are respected.
+let sendDefaultPii = false;
 const CIRCULAR_REFERENCE_SENTINEL = '[Circular]';
 const SENSITIVE_KEY_PARTS = [
   'authorization',
@@ -358,6 +359,7 @@ function scrubSentryEvent(event) {
 export const sentryEnabled = Boolean(dsn);
 
 if (dsn) {
+  sendDefaultPii = process.env.SENTRY_SEND_DEFAULT_PII === 'true';
   Sentry.init({
     dsn,
     environment: process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'production',

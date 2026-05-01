@@ -21,7 +21,7 @@ const SENSITIVE_KEY_FRAGMENTS = [
   'stack',
 ] as const;
 const SENSITIVE_COMPACT_KEYS = new Set(['ip', 'ipaddress', 'xforwardedfor', 'apikey', 'xapikey']);
-const SENSITIVE_KEY_SEPARATOR_PATTERN = /[\s_-]+/g;
+const SENSITIVE_KEY_SEPARATOR_PATTERN = /[\s._-]+/g;
 const INLINE_SECRET_PATTERNS = [
   /\bBearer\s+[\w.~+/=-]+/gi,
   /\bsk-[A-Za-z0-9][A-Za-z0-9_-]{10,}/g,

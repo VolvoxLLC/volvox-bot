@@ -266,6 +266,10 @@ function scrubUnknown(value: unknown, seen = new WeakSet<object>()): unknown {
  * @returns A scrubbed copy of the breadcrumb data value.
  */
 function scrubBreadcrumbData(value: unknown, seen = new WeakSet<object>()): unknown {
+  if (typeof value === 'string') {
+    return redactInlineSecrets(value);
+  }
+
   if (!value || typeof value !== 'object') {
     return value;
   }

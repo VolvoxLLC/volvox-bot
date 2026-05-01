@@ -35,9 +35,23 @@ const SENSITIVE_KEY_PARTS = [
 ];
 const SENSITIVE_KEY_EXACT_MATCHES = new Set(['ip']);
 const INLINE_SECRET_PATTERNS = [
-  /\bBearer\s+[\w.~+/=-]+/gi,
-  /\bsk-\w[\w-]{10,}/g,
-  /\b(?:xox[baprs]|gh[pousr])_[\w/-]{10,}/g,
+  { pattern: /\bBearer\s+[\w.~+/=-]+/gi, replacement: '[REDACTED]' },
+  { pattern: /\bsk-\w[\w-]{10,}/g, replacement: '[REDACTED]' },
+  {
+    pattern: /\b(?:xox[baprs]|gh[pousr])_[\w/-]{10,}/g,
+    replacement: '[REDACTED]',
+  },
+  { pattern: /\bgithub_pat_\w{10,}/g, replacement: '[REDACTED]' },
+  {
+    pattern:
+      /([?&#]\s*(?:access[-_]?token|refresh[-_]?token|api[-_]?key|token|secret|password)\s*=)\s*[^\s&#]+/gi,
+    replacement: '$1[REDACTED]',
+  },
+  {
+    pattern:
+      /(^|[\s,;])((?:access[-_]?token|refresh[-_]?token|api[-_]?key|token|secret|password)\s*=)\s*[^\s,;&#]+/gi,
+    replacement: '$1$2[REDACTED]',
+  },
 ];
 
 /**
@@ -84,7 +98,7 @@ function normalizeAmplitudeId(value) {
  */
 function scrubInlineSecrets(value) {
   return INLINE_SECRET_PATTERNS.reduce(
-    (scrubbedValue, pattern) => scrubbedValue.replace(pattern, '[REDACTED]'),
+    (scrubbedValue, { pattern, replacement }) => scrubbedValue.replace(pattern, replacement),
     value,
   );
 }
