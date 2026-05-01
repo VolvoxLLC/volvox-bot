@@ -222,7 +222,21 @@ function scrubSentryEvent(event) {
       event.request.url = stripRequestUrlQuery(event.request.url);
     }
 
-    event.request = scrubUnknown(event.request);
+    if (event.request.headers) {
+      event.request.headers = scrubUnknown(event.request.headers);
+    }
+
+    if (event.request.data) {
+      const rawData = event.request.data;
+      const scrubbedData = scrubUnknown(rawData);
+      if (scrubbedData && typeof scrubbedData === 'object') {
+        event.request.data = scrubbedData;
+      } else if (typeof scrubbedData === 'string' && scrubbedData !== rawData) {
+        event.request.data = scrubbedData;
+      } else {
+        delete event.request.data;
+      }
+    }
   }
 
   if (event.extra) {
