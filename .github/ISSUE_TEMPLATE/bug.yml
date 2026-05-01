@@ -1,6 +1,6 @@
 name: Bug
 description: Report a confirmed defect with reproduction.
-title: "fix(scope): "
+title: "bug(scope): "
 labels: []
 body:
   - type: markdown
@@ -8,7 +8,7 @@ body:
       value: |
         Replace `scope` in the title with a primary scope-label token (`ai`, `dashboard`, `backend`, `frontend`, `api`, `auth`, `ops`, `security`, `engagement`, `moderation`, `dependencies`) or, when clearer, a narrower title-only scope from the templates (`agents`, `design`, `readme`, `mintlify`, `deps`, `tests`, `tooling`). Treat `deps` as title shorthand for `dependencies`; labels still follow the taxonomy in `AGENTS.md`.
 
-        Use `fix(...)` for confirmed defects with reproduction or when filing alongside a PR that already resolves the issue.
+        Start bug reports with `bug(scope): ...` for confirmed defects with reproduction. Use `fix(...)` for the implementation work that resolves the defect, or when filing an issue only to track a PR that already contains the fix.
   - type: textarea
     id: summary
     attributes:

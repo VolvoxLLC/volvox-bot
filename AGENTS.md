@@ -80,7 +80,8 @@ Tickets are the source of context for asynchronous, agentic work. A well-formed 
 Use Conventional-Commits-style prefixes so titles communicate type and area at a glance:
 
 - `feat(scope): …` — new capability or feature.
-- `fix(scope): …` — fix to unintended behavior.
+- `bug(scope): …` — bug report for a confirmed defect, regression, or reproducible unintended behavior.
+- `fix(scope): …` — implementation work that fixes unintended behavior.
 - `docs(scope): …` — documentation-only change.
 - `test(scope): …` — test-only coverage, assertions, fixtures, or harness changes.
 - `chore(scope): …` — repo hygiene and routine maintenance.
@@ -90,6 +91,8 @@ Use Conventional-Commits-style prefixes so titles communicate type and area at a
 The scope is optional but encouraged. Prefer the primary scope-label tokens in titles (`ai`, `dashboard`, `backend`, `frontend`, `api`, `auth`, `ops`, `security`, `engagement`, `moderation`, `dependencies`). Narrower title-only scopes from templates are also allowed when they make the work easier to recognize at a glance: `agents`, `design`, `readme`, `mintlify`, `deps`, `tests`, `tooling`. Treat `deps` as title shorthand for `dependencies`; apply the `scope: dependencies` label when labeling dependency work. These title-only scopes do not create new label values, and labels still follow the taxonomy below. Slashed forms like `ui/dashboard` are accepted when narrower context helps. Drop the prefix only when the title is already specific and the type is unambiguous.
 
 Dependency changes use `build(deps): …` or another `build(...)` title, not `chore(deps): …`.
+
+Use `bug(...)` when the issue is primarily reporting the defect to investigate or repair. Use `fix(...)` when the title describes the code change that resolves the defect, or when filing an issue only to track a PR that already contains the fix.
 
 ### Label Taxonomy
 
