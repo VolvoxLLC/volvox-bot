@@ -22,9 +22,9 @@ description: Latest updates and improvements to Volvox.Bot.
 <Update label="2026-04-29" description="April 2026" tags={["Features", "Improvements", "Fixes"]}>
 ## New features
 
-**AI Auto-Moderation** — Active Sentry now scores incoming messages with AI across toxicity, spam, harassment, hate speech, sexual content, violence, and self-harm. Pick a detection model, set per-category sensitivity thresholds, and configure response actions (ignore, delete, flag, warn, timeout, kick, or ban) — including multiple actions per violation. AI auto-mod actions are logged alongside classic moderation cases. Configure under **Config → Moderation & Safety → Content Safety** in the [dashboard](/dashboard). See the [moderation docs](/features/moderation) for details.
+**AI Auto-Moderation** — Active Sentry now scores incoming messages with AI across toxicity, spam, harassment, hate speech, sexual content, violence, and self-harm. Choose a detection model, set per-category sensitivity thresholds, and configure response actions (ignore, delete, flag, warn, timeout, kick, or ban) — including multiple actions per violation. AI auto-mod actions are logged alongside classic moderation cases. Configure under **Config → Moderation & Safety → Content Safety** in the [dashboard](/dashboard). See the [moderation docs](/features/moderation) for details.
 
-**Configurable model for `/tldr`** — You can now pick which provider/model the [TL;DR command](/features/tldr) uses to generate summaries, right from the dashboard. MiniMax M2.7 is the new default.
+**Configurable model for `/tldr`** — You can now choose which provider/model the [TL;DR command](/features/tldr) uses to generate summaries, right from the dashboard. MiniMax M2.7 is the new default.
 
 **MiniMax provider** — MiniMax is now a first-class AI provider, with models like **MiniMax M2.7** and **MiniMax M2.7 Highspeed** available across [AI automation](/features/ai-conversations) and [TL;DR](/features/tldr).
 
@@ -66,7 +66,7 @@ description: Latest updates and improvements to Volvox.Bot.
 <Update label="2026-04-24" description="April 2026" tags={["Features", "Improvements"]}>
 ## New features
 
-**More AI providers** — Moonshot and OpenRouter are now first-class providers for [AI automation](/features/ai-conversations) and [TL;DR](/features/tldr). Pick models from these providers in your AI settings using the `provider:model` format (for example, `moonshot:kimi-k2.6`).
+**More AI providers** — Moonshot and OpenRouter are now first-class providers for [AI automation](/features/ai-conversations) and [TL;DR](/features/tldr). Choose models from these providers in your AI settings using the `provider:model` format (for example, `moonshot:kimi-k2.6`).
 
 **TL;DR is now front and center** — The `/tldr` command is highlighted on the landing page and has a [dedicated docs page](/features/tldr) covering setup, configuration, and examples.
 
@@ -96,7 +96,7 @@ description: Latest updates and improvements to Volvox.Bot.
 
 **Role-based triage filtering** — You can now control which users the AI responds to by role. Set allowed roles (whitelist) or excluded roles (blacklist) in your AI Automation settings. Bot, webhook, and system messages are automatically filtered out.
 
-**Configurable level-up DMs** — Server admins can set custom DM messages sent to members when they level up. Supports per-level message overrides, a live Discord-style preview, and built-in rate limiting to prevent spam.
+**Configurable level-up DMs** — You can now set custom DM messages sent to members when they level up. Supports per-level message overrides, a live Discord-style preview, and built-in rate limiting to prevent spam.
 
 **Discord markdown editor** — A new rich-text editor for Discord-formatted messages is available in the dashboard. Includes a formatting toolbar, variable inserter, split raw/preview mode, character counter, and keyboard shortcuts.
 
@@ -108,7 +108,7 @@ description: Latest updates and improvements to Volvox.Bot.
 
 ## Improvements
 
-**Landing page redesign** — The landing page has been completely rebuilt with a new visual style, interactive feature previews in a bento-box grid, animated stats, and a redesigned pricing section.
+**Landing page redesign** — We completely rebuilt the landing page with a new visual style, interactive feature previews in a bento-box grid, animated stats, and a redesigned pricing section.
 
 **Dashboard polish** — Row hover highlighting on tables, animated KPI counters, visible heatmap tooltips, clickable member rows, corrected XP progress bars, and a live commands-served counter. Thin scrollbars on all inputs and dropdowns for a cleaner look.
 
@@ -120,11 +120,11 @@ description: Latest updates and improvements to Volvox.Bot.
 
 **OpenGraph previews** — Sharing Volvox.Bot links now shows rich previews on social media, Discord, and Slack. A sitemap and robots.txt have been added for better search engine discoverability.
 
-**Branding update** — All visible branding has been standardized to "Volvox.Bot" across the product.
+**Branding update** — We standardized all visible branding to "Volvox.Bot" across the product.
 
 ## Fixes
 
 **More reliable bot responses** — Command responses across reminders, moderation, reaction roles, and other features now handle failures gracefully (e.g., blocked DMs or deleted channels) instead of silently failing.
 
-**Bot owners setting removed** — The "Bot Owners" editor was removed from dashboard Permissions settings. Bot ownership is now managed via environment configuration only.
+**Bot owners setting removed** — We removed the "Bot Owners" editor from dashboard Permissions settings. Bot ownership is now managed via environment configuration only.
 </Update>
