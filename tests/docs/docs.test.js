@@ -14,12 +14,6 @@ const wikiRoot = join(docsRoot, 'wiki-pages');
 function readText(filePath) {
   return existsSync(filePath) ? readFileSync(filePath, 'utf-8') : '';
 }
-
-function readJson(filePath) {
-  const content = readText(filePath);
-  return content ? JSON.parse(content) : {};
-}
-
 function getAllPages(tabs) {
   const pages = [];
   for (const tab of tabs) {
@@ -166,27 +160,37 @@ describe('hasRecursiveCopyFlag', () => {
 
 describe('docs/docs.json', () => {
   const docsJsonPath = join(docsRoot, 'docs.json');
-  let config;
+  let rawConfig;
 
   beforeAll(() => {
-    config = readJson(docsJsonPath);
+    rawConfig = readText(docsJsonPath);
   });
+
+  function getConfig() {
+    return JSON.parse(rawConfig);
+  }
 
   it('file exists', () => {
     expect(existsSync(docsJsonPath)).toBe(true);
   });
 
   it('is valid JSON', () => {
+    expect(rawConfig.length).toBeGreaterThan(0);
+    const config = JSON.parse(rawConfig);
     expect(typeof config).toBe('object');
     expect(config).not.toBeNull();
   });
 
   it('has $schema field pointing to mintlify', () => {
+    const config = getConfig();
+
     expect(config).toHaveProperty('$schema');
     expect(config.$schema).toContain('mintlify');
   });
 
   it('has navigation.tabs array', () => {
+    const config = getConfig();
+
     expect(config).toHaveProperty('navigation');
     expect(config.navigation).toHaveProperty('tabs');
     expect(Array.isArray(config.navigation.tabs)).toBe(true);
@@ -194,12 +198,14 @@ describe('docs/docs.json', () => {
   });
 
   it('includes "manual-test-plan" in the Support tab Help group pages', () => {
+    const config = getConfig();
     const helpGroup = getSupportHelpGroup(config);
 
     expect(helpGroup.pages).toContain('manual-test-plan');
   });
 
   it('"manual-test-plan" is listed after "help" in the Support tab Help group pages', () => {
+    const config = getConfig();
     const helpGroup = getSupportHelpGroup(config);
 
     const helpIdx = helpGroup.pages.indexOf('help');
@@ -209,18 +215,21 @@ describe('docs/docs.json', () => {
   });
 
   it('the Support tab Help group contains exactly the expected pages', () => {
+    const config = getConfig();
     const helpGroup = getSupportHelpGroup(config);
 
     expect(helpGroup.pages).toEqual(['faq', 'security', 'help', 'manual-test-plan']);
   });
 
   it('does not duplicate "manual-test-plan" across all pages', () => {
+    const config = getConfig();
     const allPages = getAllPages(config.navigation.tabs);
     const occurrences = allPages.filter((page) => page === 'manual-test-plan').length;
     expect(occurrences).toBe(1);
   });
 
   it('retains existing core page entries', () => {
+    const config = getConfig();
     const allPages = getAllPages(config.navigation.tabs);
     expectContainsAll(allPages, ['introduction', 'faq', 'security', 'help', 'changelog']);
   });
@@ -255,7 +264,7 @@ describe('docs/manual-test-plan.mdx', () => {
       line.startsWith('description: '),
     );
     expect(descriptionLine).toBeDefined();
-    const singleQuote = String.fromCharCode(39);
+    const singleQuote = "'";
     const descriptionPrefix = `description: ${singleQuote}`;
     expect(descriptionLine.startsWith(descriptionPrefix)).toBe(true);
     expect(descriptionLine.endsWith(singleQuote)).toBe(true);
