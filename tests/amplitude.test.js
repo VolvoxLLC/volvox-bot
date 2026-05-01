@@ -39,17 +39,45 @@ describe('amplitude analytics', () => {
     expect(mockTrack).not.toHaveBeenCalled();
   });
 
-  it('initializes Amplitude with EU residency when configured', async () => {
+  it('initializes Amplitude with EU residency on first track when configured', async () => {
     vi.stubEnv('AMPLITUDE_API_KEY', 'server-key');
     vi.stubEnv('AMPLITUDE_SERVER_ZONE', 'EU');
 
-    const { amplitudeEnabled } = await import('../src/amplitude.js');
+    const analytics = await import('../src/amplitude.js');
 
-    expect(amplitudeEnabled).toBe(true);
+    expect(analytics.amplitudeEnabled).toBe(true);
+    expect(mockInit).not.toHaveBeenCalled();
+
+    expect(analytics.trackAnalyticsEvent('bot_log_recorded', { ok: true })).toBe(true);
+
     expect(mockInit).toHaveBeenCalledWith('server-key', {
       logLevel: 'none',
       serverZone: 'EU',
     });
+  });
+
+  it('picks up an Amplitude API key added after module import', async () => {
+    vi.stubEnv('AMPLITUDE_API_KEY', '');
+
+    const analytics = await import('../src/amplitude.js');
+
+    expect(analytics.amplitudeEnabled).toBe(false);
+    expect(analytics.trackAnalyticsEvent('bot_log_recorded', { before: true })).toBe(false);
+
+    vi.stubEnv('AMPLITUDE_API_KEY', 'runtime-key');
+    vi.stubEnv('AMPLITUDE_SERVER_ZONE', 'EU');
+
+    expect(analytics.trackAnalyticsEvent('bot_log_recorded', { after: true })).toBe(true);
+    expect(analytics.amplitudeEnabled).toBe(true);
+    expect(mockInit).toHaveBeenCalledWith('runtime-key', {
+      logLevel: 'none',
+      serverZone: 'EU',
+    });
+    expect(mockTrack).toHaveBeenCalledWith(
+      'bot_log_recorded',
+      { after: true },
+      { device_id: 'volvox-bot-server' },
+    );
   });
 
   it('falls back to the US server zone for unknown values', async () => {
@@ -132,6 +160,20 @@ describe('amplitude analytics', () => {
     const { flushAmplitude } = await import('../src/amplitude.js');
 
     await expect(flushAmplitude()).resolves.toBe(false);
+    expect(mockFlush).not.toHaveBeenCalled();
+  });
+
+  it('flushAmplitude checks the current environment at call time', async () => {
+    vi.stubEnv('AMPLITUDE_API_KEY', 'server-key');
+
+    const analytics = await import('../src/amplitude.js');
+
+    expect(analytics.amplitudeEnabled).toBe(true);
+
+    vi.stubEnv('AMPLITUDE_API_KEY', '');
+
+    await expect(analytics.flushAmplitude()).resolves.toBe(false);
+    expect(analytics.amplitudeEnabled).toBe(false);
     expect(mockFlush).not.toHaveBeenCalled();
   });
 

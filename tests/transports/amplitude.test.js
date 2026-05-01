@@ -4,10 +4,15 @@ const { mockTrackAnalyticsEvent } = vi.hoisted(() => ({
   mockTrackAnalyticsEvent: vi.fn(),
 }));
 
-vi.mock('../../src/amplitude.js', () => ({
-  AMPLITUDE_LOG_EVENT: 'bot_log_recorded',
-  trackAnalyticsEvent: mockTrackAnalyticsEvent,
-}));
+vi.mock('../../src/amplitude.js', async () => {
+  const actual = await vi.importActual('../../src/amplitude.js');
+
+  return {
+    ...actual,
+    AMPLITUDE_LOG_EVENT: 'bot_log_recorded',
+    trackAnalyticsEvent: mockTrackAnalyticsEvent,
+  };
+});
 
 vi.mock('winston-transport', () => {
   class Transport {
@@ -82,7 +87,7 @@ describe('AmplitudeTransport', () => {
     const circular = { seen };
     circular.self = circular;
     const createdAt = new Date('2026-04-30T12:00:00.000Z');
-    const err = new TypeError('bad input');
+    const err = new TypeError('bad input Bearer nested-secret-12345');
 
     transport.log(
       {
@@ -105,7 +110,7 @@ describe('AmplitudeTransport', () => {
       nested: {
         createdAt: '2026-04-30T12:00:00.000Z',
         err: {
-          message: 'bad input',
+          message: 'bad input [REDACTED]',
           name: 'TypeError',
         },
         circular: {
@@ -222,6 +227,32 @@ describe('AmplitudeTransport', () => {
 
     const [, properties] = mockTrackAnalyticsEvent.mock.calls[0];
     expect(properties.message).toBe('12345');
+  });
+
+  it('redacts secret-looking strings in messages and nested metadata', () => {
+    const callback = vi.fn();
+
+    transport.log(
+      {
+        level: 'info',
+        message: 'Request failed for Bearer top-level-token-12345',
+        nested: {
+          detail: 'using key sk-abcdefghijk1234',
+          items: ['token ghp_abcdefghijk1234567890 leaked'],
+        },
+      },
+      callback,
+    );
+
+    expect(mockTrackAnalyticsEvent).toHaveBeenCalledWith('bot_log_recorded', {
+      level: 'info',
+      message: 'Request failed for [REDACTED]',
+      nested: {
+        detail: 'using key [REDACTED]',
+        items: ['token [REDACTED] leaked'],
+      },
+    });
+    expect(callback).toHaveBeenCalledOnce();
   });
 
   it('does not call trackAnalyticsEvent for debug level', () => {
