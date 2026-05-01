@@ -10,6 +10,24 @@ interface BentoChartProps {
   readonly dailyActivity?: DailyActivityPoint[];
 }
 
+function parseActivityDate(dateValue: string): Date | null {
+  const date = new Date(dateValue.includes('T') ? dateValue : `${dateValue}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return date;
+}
+
+function formatActivityDate(dateValue: string, options: Intl.DateTimeFormatOptions): string {
+  const date = parseActivityDate(dateValue);
+  if (!date) {
+    return 'Unknown';
+  }
+
+  return date.toLocaleDateString('en-US', { ...options, timeZone: 'UTC' });
+}
+
 /**
  * SVG area chart cell for the bento grid.
  * Uses real daily activity data when available, falls back to random heights.
@@ -63,10 +81,7 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
   // Day labels from real data
   const dayLabels = useMemo(() => {
     if (!hasRealData) return null;
-    return dailyActivity.map((d) => {
-      const date = new Date(`${d.date}T00:00:00Z`);
-      return date.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' });
-    });
+    return dailyActivity.map((d) => formatActivityDate(d.date, { weekday: 'short' }));
   }, [dailyActivity, hasRealData]);
 
   // Tooltip content for hovered point
@@ -79,12 +94,10 @@ export function BentoChart({ dailyActivity }: BentoChartProps) {
 
     if (hasRealData && dailyActivity) {
       const d = dailyActivity[clampedIndex];
-      const date = new Date(`${d.date}T00:00:00Z`);
-      const label = date.toLocaleDateString('en-US', {
+      const label = formatActivityDate(d.date, {
         weekday: 'short',
         month: 'short',
         day: 'numeric',
-        timeZone: 'UTC',
       });
       return { x: point.x, y: point.y, label, messages: d.messages, aiRequests: d.aiRequests };
     }
