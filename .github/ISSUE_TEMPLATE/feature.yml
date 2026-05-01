@@ -1,0 +1,68 @@
+name: Feature
+description: Propose a new capability or enhancement.
+title: "feat(scope): "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Replace `scope` in the title with one of: `ai`, `dashboard`, `backend`, `frontend`, `api`, `auth`, `ops`, `security`, `engagement`, `moderation`, `dependencies`. See the **Issue Conventions** section in `AGENTS.md`.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One or two sentences naming the change and the surface it affects. Cite file paths with line numbers when relevant.
+      placeholder: |
+        Add an OpenAI-compatible provider factory in `src/utils/aiClient.js` so the bot can route to Groq, Together, and Ollama without provider-specific code paths.
+    validations:
+      required: true
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: Why this matters now. Skip if the summary already makes it obvious.
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: Be explicit about IN and OUT.
+      value: |
+        **IN**
+
+        - …
+
+        **OUT**
+
+        - …
+    validations:
+      required: true
+  - type: textarea
+    id: proposed-design
+    attributes:
+      label: Proposed design
+      description: The shape of the solution. Snippets and pseudocode welcome — this is not a final spec.
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Verifiable checkboxes. Each item should be something a reviewer can tick off.
+      value: |
+        - [ ] …
+        - [ ] …
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: Use `**Depends on:** #N` for hard ordering and `**Blocks:** #N` for outbound. Add the `blocked` label when a dependency is open.
+  - type: textarea
+    id: open-questions
+    attributes:
+      label: Open questions
+      description: Unresolved decisions that should not block filing the issue.
+  - type: textarea
+    id: files
+    attributes:
+      label: Files likely touched
+      description: Best-effort path list to help the implementer orient.

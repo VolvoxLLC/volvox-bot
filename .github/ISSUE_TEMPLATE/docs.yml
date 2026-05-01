@@ -1,0 +1,53 @@
+name: Docs
+description: Documentation-only change (AGENTS.md, DESIGN.md, README.md, Mintlify, etc.).
+title: "docs(scope): "
+labels:
+  - documentation
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Replace `scope` in the title with one of: `agents`, `design`, `readme`, `mintlify`, or a label scope token like `ai`, `dashboard`, `backend`, etc. See the **Issue Conventions** section in `AGENTS.md`.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One or two sentences naming the doc and the change.
+    validations:
+      required: true
+  - type: textarea
+    id: current-state
+    attributes:
+      label: Current state
+      description: What the docs say today (or do not say). Quote the relevant passage when narrow.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      value: |
+        **IN**
+
+        - …
+
+        **OUT**
+
+        - …
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      value: |
+        - [ ] …
+        - [ ] …
+    validations:
+      required: true
+  - type: textarea
+    id: open-questions
+    attributes:
+      label: Open questions
+  - type: textarea
+    id: files
+    attributes:
+      label: Files likely touched

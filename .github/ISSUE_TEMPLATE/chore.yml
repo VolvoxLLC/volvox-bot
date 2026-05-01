@@ -1,0 +1,48 @@
+name: Chore
+description: Maintenance, tooling, or dependency work that does not change product behavior.
+title: "chore(scope): "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Replace `scope` in the title with `deps`, `ops`, `tests`, `tooling`, or a label scope token. See the **Issue Conventions** section in `AGENTS.md`.
+
+        Use `refactor(...)` instead of `chore(...)` when restructuring code without changing behavior.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One or two sentences naming the change.
+    validations:
+      required: true
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: Why this is worth doing now.
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      value: |
+        **IN**
+
+        - …
+
+        **OUT**
+
+        - …
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      value: |
+        - [ ] …
+        - [ ] …
+    validations:
+      required: true
+  - type: textarea
+    id: files
+    attributes:
+      label: Files likely touched
