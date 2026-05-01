@@ -20,7 +20,6 @@ import { fileURLToPath } from 'node:url';
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
 import { sentryEnabled } from './sentry.js';
-import { PostgresTransport } from './transports/postgres.js';
 import { SentryTransport } from './transports/sentry.js';
 import { WebSocketTransport } from './transports/websocket.js';
 
@@ -483,50 +482,6 @@ export function warn(message, meta = {}) {
  */
 export function error(message, meta = {}) {
   logger.error(message, meta);
-}
-
-/**
- * Add PostgreSQL transport to the logger.
- * Creates a PostgresTransport with the same redaction formatting.
- *
- * @param {import('pg').Pool} pool - PostgreSQL connection pool
- * @param {Object} config - Database logging configuration
- * @param {string} [config.minLevel='info'] - Minimum log level for DB
- * @param {number} [config.batchSize=10] - Batch size for inserts
- * @param {number} [config.flushIntervalMs=5000] - Flush interval
- * @returns {PostgresTransport} The transport instance (for cleanup)
- */
-export function addPostgresTransport(pool, config = {}) {
-  const transport = new PostgresTransport({
-    pool,
-    level: config.minLevel || 'info',
-    batchSize: config.batchSize ?? 10,
-    flushIntervalMs: config.flushIntervalMs ?? 5000,
-    format: winston.format.combine(
-      redactSensitiveData,
-      winston.format.timestamp(),
-      winston.format.json(),
-    ),
-  });
-
-  logger.add(transport);
-  return transport;
-}
-
-/**
- * Remove a PostgreSQL transport from the logger.
- * Closes the transport (flushing remaining buffer) before removing.
- *
- * @param {PostgresTransport} transport - The transport to remove
- */
-export async function removePostgresTransport(transport) {
-  if (transport) {
-    try {
-      await transport.close();
-    } finally {
-      logger.remove(transport);
-    }
-  }
 }
 
 /**

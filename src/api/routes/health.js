@@ -8,24 +8,6 @@ import { Router } from 'express';
 import { getRedisStats } from '../../redis.js';
 import { isValidSecret } from '../middleware/auth.js';
 
-/** Lazy-loaded queryLogs — optional diagnostic feature, not required for health */
-let _queryLogs = null;
-let queryLogsFailed = false;
-async function getQueryLogs() {
-  if (queryLogsFailed) return null;
-  if (!_queryLogs) {
-    try {
-      const mod = await import('../../utils/logQuery.js');
-      _queryLogs = mod.queryLogs;
-    } catch {
-      // logQuery not available — tombstone to avoid retrying every request
-      queryLogsFailed = true;
-      _queryLogs = null;
-    }
-  }
-  return _queryLogs;
-}
-
 const router = Router();
 
 // db.js is the critical dependency — import independently so restartTracker
@@ -59,7 +41,7 @@ try {
  *     description: >
  *       Returns server status and uptime. When a valid `x-api-secret` header is
  *       provided, includes extended diagnostics (Discord connection, memory,
- *       system info, error counts, restart history).
+ *       system info, log-tracking status, restart history).
  *     parameters:
  *       - in: header
  *         name: x-api-secret
@@ -104,7 +86,7 @@ try {
  *                       type: string
  *                 errors:
  *                   type: object
- *                   description: Error counts (auth only)
+ *                   description: Log-tracking status (auth only)
  *                   properties:
  *                     lastHour:
  *                       type: integer
@@ -174,29 +156,11 @@ router.get('/', async (req, res) => {
     // Redis stats (authenticated only)
     body.redis = getRedisStats();
 
-    // Error counts from logs table (optional — partial data on failure)
-    const queryLogs = await getQueryLogs();
-    if (queryLogs) {
-      try {
-        const now = new Date();
-        const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-        const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-
-        const [hourResult, dayResult] = await Promise.all([
-          queryLogs({ level: 'error', since: oneHourAgo, limit: 1 }),
-          queryLogs({ level: 'error', since: oneDayAgo, limit: 1 }),
-        ]);
-
-        body.errors = {
-          lastHour: hourResult.total,
-          lastDay: dayResult.total,
-        };
-      } catch {
-        body.errors = { lastHour: null, lastDay: null, error: 'query failed' };
-      }
-    } else {
-      body.errors = { lastHour: null, lastDay: null, error: 'log query unavailable' };
-    }
+    body.errors = {
+      lastHour: null,
+      lastDay: null,
+      error: 'database log tracking disabled',
+    };
 
     // Restart data with graceful fallback
     if (getRestarts && getRestartPool) {

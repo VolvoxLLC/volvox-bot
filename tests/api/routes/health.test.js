@@ -7,17 +7,12 @@ vi.mock('../../../src/logger.js', () => ({
   error: vi.fn(),
 }));
 
-vi.mock('../../../src/utils/logQuery.js', () => ({
-  queryLogs: vi.fn().mockResolvedValue({ rows: [], total: 0 }),
-}));
-
 // restartTracker doesn't exist yet — mock the attempted import to fail gracefully
 vi.mock('../../../src/utils/restartTracker.js', () => {
   throw new Error('Module not found');
 });
 
 import { createApp } from '../../../src/api/server.js';
-import { queryLogs } from '../../../src/utils/logQuery.js';
 
 describe('health route', () => {
   afterEach(() => {
@@ -98,28 +93,8 @@ describe('health route', () => {
     expect(res.body.system.cpuUsage.system).toBeTypeOf('number');
   });
 
-  it('should include error counts for authenticated requests', async () => {
+  it('should report that database log tracking is disabled without querying logs', async () => {
     vi.stubEnv('BOT_API_SECRET', 'test-secret');
-    queryLogs
-      .mockResolvedValueOnce({ rows: [], total: 3 }) // lastHour
-      .mockResolvedValueOnce({ rows: [], total: 15 }); // lastDay
-
-    const app = buildApp();
-
-    const res = await request(app).get('/api/v1/health').set('x-api-secret', 'test-secret');
-
-    expect(res.status).toBe(200);
-    expect(res.body).toHaveProperty('errors');
-    expect(res.body.errors.lastHour).toBe(3);
-    expect(res.body.errors.lastDay).toBe(15);
-    expect(queryLogs).toHaveBeenCalledTimes(2);
-    expect(queryLogs).toHaveBeenCalledWith(expect.objectContaining({ level: 'error', limit: 1 }));
-  });
-
-  it('should handle queryLogs failure gracefully', async () => {
-    vi.stubEnv('BOT_API_SECRET', 'test-secret');
-    queryLogs.mockRejectedValueOnce(new Error('db connection failed'));
-
     const app = buildApp();
 
     const res = await request(app).get('/api/v1/health').set('x-api-secret', 'test-secret');
@@ -128,7 +103,7 @@ describe('health route', () => {
     expect(res.body).toHaveProperty('errors');
     expect(res.body.errors.lastHour).toBeNull();
     expect(res.body.errors.lastDay).toBeNull();
-    expect(res.body.errors.error).toBe('query failed');
+    expect(res.body.errors.error).toBe('database log tracking disabled');
   });
 
   it('should include restart data fallback when restartTracker unavailable', async () => {

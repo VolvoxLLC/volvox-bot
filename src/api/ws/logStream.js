@@ -7,8 +7,7 @@
 
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import WebSocket, { WebSocketServer } from 'ws';
-import { info, error as logError, warn } from '../../logger.js';
-import { queryLogs } from '../../utils/logQuery.js';
+import { info, warn } from '../../logger.js';
 
 /** Maximum number of concurrent authenticated clients */
 const MAX_CLIENTS = 10;
@@ -18,39 +17,6 @@ const HEARTBEAT_INTERVAL_MS = 30_000;
 
 /** Auth timeout — clients must authenticate within this window */
 const AUTH_TIMEOUT_MS = 10_000;
-
-/** Number of historical log entries to send on connect */
-const HISTORY_LIMIT = 100;
-
-/** Sensitive metadata keys to strip before broadcasting */
-const SENSITIVE_KEYS = new Set([
-  'ip',
-  'accessToken',
-  'secret',
-  'apiKey',
-  'authorization',
-  'password',
-  'token',
-  'stack',
-  'cookie',
-]);
-
-/**
- * Strip sensitive keys from a metadata object.
- *
- * @param {Object} metadata - Raw metadata from log entry
- * @returns {Object} Sanitized metadata with sensitive keys removed
- */
-function sanitizeMetadata(metadata) {
-  if (!metadata || typeof metadata !== 'object') return {};
-  const sanitized = {};
-  for (const [key, value] of Object.entries(metadata)) {
-    if (!SENSITIVE_KEYS.has(key)) {
-      sanitized[key] = value;
-    }
-  }
-  return sanitized;
-}
 
 /**
  * @type {WebSocketServer | null}
@@ -241,15 +207,14 @@ function validateTicket(ticket, secret) {
 }
 
 /**
- * Authenticate a WebSocket client using a ticket and deliver recent logs.
+ * Authenticate a WebSocket client using a ticket.
  *
  * Validates `msg.ticket`, enforces guild-scoped tickets and client limits, marks the socket as authenticated,
- * clears the auth timeout, sends an `auth_ok` acknowledgement, transmits up to `HISTORY_LIMIT` historical log
- * entries scoped to the authenticated guild, and registers the socket with the real-time transport.
+ * clears the auth timeout, sends an `auth_ok` acknowledgement, sends an empty history payload, and registers
+ * the socket with the real-time transport.
  *
  * On invalid or legacy tickets the connection is closed with code 4003; when the server is at capacity the
- * connection is closed with code 4029. Historical log delivery failures are non-fatal and result in an empty
- * history being sent.
+ * connection is closed with code 4029. Operational logs are streamed live only and are not persisted.
  *
  * @param {import('ws').WebSocket} ws - The WebSocket connection to authenticate; mutated to record authentication state and filters.
  * @param {Object} msg - The incoming message object; expected to contain a `ticket` string.
@@ -295,30 +260,7 @@ async function handleAuth(ws, msg) {
 
   info('WebSocket client authenticated', { totalClients: authenticatedCount });
 
-  // Send historical logs BEFORE registering for real-time broadcast
-  // to prevent race where live logs arrive before history and get overwritten
-  try {
-    // NOTE: Historical replay is guild-scoped only — channel filtering from a
-    // subsequent filter message applies to the live stream only. Replaying filtered
-    // history on every channel filter change is not worth the complexity for 100 entries.
-    const { rows } = await queryLogs({ limit: HISTORY_LIMIT, guildId: ws.guildId || undefined });
-    // Reverse so oldest comes first (queryLogs returns DESC order)
-    const logs = rows.reverse().map((row) => {
-      const meta = sanitizeMetadata(row.metadata);
-      return {
-        level: row.level,
-        message: row.message,
-        metadata: meta,
-        timestamp: row.timestamp,
-        module: meta.module || null,
-      };
-    });
-    sendJson(ws, { type: 'history', logs });
-  } catch (err) {
-    logError('Failed to send historical logs', { error: err.message });
-    // Non-fatal — real-time streaming still works
-    sendJson(ws, { type: 'history', logs: [] });
-  }
+  sendJson(ws, { type: 'history', logs: [] });
 
   // Register with transport for real-time log broadcasting AFTER history is sent
   if (wsTransport) {

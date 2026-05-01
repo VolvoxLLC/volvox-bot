@@ -17,10 +17,6 @@ vi.mock('../../../src/db.js', () => ({
   getPool: vi.fn(),
 }));
 
-vi.mock('../../../src/utils/logQuery.js', () => ({
-  queryLogs: vi.fn().mockResolvedValue({ rows: [] }),
-}));
-
 vi.mock('../../../src/logger.js', () => ({
   info: vi.fn(),
   warn: vi.fn(),

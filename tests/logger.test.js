@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
  *
  * Tests that need a fresh logger with custom config should:
  * 1. Call vi.resetModules()
- * 2. Call vi.mock() for each module (node:fs, winston-daily-rotate-file, ../src/transports/postgres.js)
+ * 2. Call vi.mock() for each module (node:fs, winston-daily-rotate-file)
  * 3. Await import('../src/logger.js')
  *
  * Note: vi.mock() is hoisted, so these calls must be inline in the test body,
@@ -26,16 +26,6 @@ vi.mock('winston-daily-rotate-file', () => ({
   default: vi.fn().mockImplementation(function () {
     this.on = vi.fn();
     this.log = vi.fn();
-  }),
-}));
-
-// Mock PostgresTransport (imported by logger.js but only used when explicitly added)
-// Use `function` keyword so the mock is new-able (arrow functions cannot be constructors).
-vi.mock('../src/transports/postgres.js', () => ({
-  PostgresTransport: vi.fn().mockImplementation(function () {
-    this.on = vi.fn();
-    this.log = vi.fn();
-    this.close = vi.fn();
   }),
 }));
 
@@ -378,45 +368,9 @@ describe('logger module', () => {
     expect(typeof logger.info).toBe('function');
   });
 
-  it('should export addPostgresTransport and removePostgresTransport functions', async () => {
+  it('does not expose database log transport helpers', async () => {
     const logger = await import('../src/logger.js');
-    expect(typeof logger.addPostgresTransport).toBe('function');
-    expect(typeof logger.removePostgresTransport).toBe('function');
-  });
-
-  describe('addPostgresTransport', () => {
-    it('should add a transport to the winston logger and return it', async () => {
-      vi.resetModules();
-
-      const logger = await import('../src/logger.js');
-      const addSpy = vi.spyOn(logger.default.logger, 'add');
-      const mockPool = { query: vi.fn(), connect: vi.fn() };
-      const transport = logger.addPostgresTransport(mockPool);
-
-      expect(transport).not.toBeNull();
-      expect(typeof transport.log).toBe('function');
-      expect(typeof transport.close).toBe('function');
-      expect(addSpy).toHaveBeenCalledWith(transport);
-    });
-  });
-
-  describe('removePostgresTransport', () => {
-    it('should call close() and remove the transport from the logger', async () => {
-      const logger = await import('../src/logger.js');
-      const mockTransport = { close: vi.fn().mockResolvedValue(undefined) };
-      const removeSpy = vi.spyOn(logger.default.logger, 'remove');
-
-      await logger.removePostgresTransport(mockTransport);
-
-      expect(mockTransport.close).toHaveBeenCalledTimes(1);
-      expect(removeSpy).toHaveBeenCalledWith(mockTransport);
-    });
-
-    it('should handle null transport gracefully', async () => {
-      const logger = await import('../src/logger.js');
-
-      // Should not throw
-      await expect(logger.removePostgresTransport(null)).resolves.toBeUndefined();
-    });
+    expect(logger.addPostgresTransport).toBeUndefined();
+    expect(logger.removePostgresTransport).toBeUndefined();
   });
 });

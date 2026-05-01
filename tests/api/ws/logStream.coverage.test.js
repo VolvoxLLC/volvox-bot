@@ -1,15 +1,11 @@
 /**
  * Coverage tests for src/api/ws/logStream.js
  * Tests: auth timeout, invalid JSON, missing type, filter without auth, unknown message type,
- *        double setupLogStream, heartbeat, queryLogs failure
+ *        double setupLogStream, heartbeat, disabled database history
  */
 import { createHmac, randomBytes } from 'node:crypto';
 import http from 'node:http';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
-vi.mock('../../../src/utils/logQuery.js', () => ({
-  queryLogs: vi.fn().mockResolvedValue({ rows: [], total: 0 }),
-}));
 
 import WebSocket from 'ws';
 import {
@@ -18,8 +14,6 @@ import {
   stopLogStream,
 } from '../../../src/api/ws/logStream.js';
 import { WebSocketTransport } from '../../../src/transports/websocket.js';
-
-import { queryLogs } from '../../../src/utils/logQuery.js';
 
 const TEST_SECRET = 'test-secret-coverage';
 
@@ -269,11 +263,12 @@ describe('logStream coverage', () => {
   });
 
   describe('guild-scoped auth and filtering', () => {
-    it('passes the authenticated guild to historical log queries', async () => {
+    it('does not query persisted log history after authentication', async () => {
       const ws = await connect();
-      await authenticate(ws, 'guild-123');
+      const messages = await authenticate(ws, 'guild-123');
+      const history = messages.find((m) => m.type === 'history');
 
-      expect(queryLogs).toHaveBeenCalledWith({ limit: 100, guildId: 'guild-123' });
+      expect(history).toEqual({ type: 'history', logs: [] });
     });
 
     it('rejects filter messages that switch guilds after auth', async () => {
@@ -311,71 +306,13 @@ describe('logStream coverage', () => {
     });
   });
 
-  describe('history with log data (line 268-269)', () => {
-    it('sends formatted history entries when queryLogs returns rows', async () => {
-      queryLogs.mockResolvedValueOnce({
-        rows: [
-          {
-            level: 'info',
-            message: 'test message',
-            metadata: { module: 'auth', userId: 'u1' },
-            timestamp: new Date().toISOString(),
-          },
-        ],
-        total: 1,
-      });
-
-      const ws = await connect();
-
-      const messages = await new Promise((resolve) => {
-        const msgs = [];
-        ws.on('message', function handler(data) {
-          const msg = JSON.parse(data.toString());
-          msgs.push(msg);
-          if (msgs.length >= 2) {
-            ws.off('message', handler);
-            resolve(msgs);
-          }
-        });
-        sendJson(ws, { type: 'auth', ticket: makeTicket() });
-      });
-
-      const history = messages.find((m) => m.type === 'history');
-      expect(history).toBeDefined();
-      expect(history.logs).toHaveLength(1);
-      expect(history.logs[0].message).toBe('test message');
-      expect(history.logs[0].module).toBeDefined(); // null or string depending on DB metadata format
-    });
-
-    it('sanitizes null metadata', async () => {
-      queryLogs.mockResolvedValueOnce({
-        rows: [
-          {
-            level: 'error',
-            message: 'oops',
-            metadata: null,
-            timestamp: new Date().toISOString(),
-          },
-        ],
-        total: 1,
-      });
-
+  describe('disabled persisted history', () => {
+    it('always sends empty history', async () => {
       const ws = await connect();
       const messages = await authenticate(ws);
       const history = messages.find((m) => m.type === 'history');
-      expect(history).toBeDefined();
-    });
-  });
 
-  describe('queryLogs throws (lines 279-281)', () => {
-    it('sends empty history on queryLogs failure', async () => {
-      queryLogs.mockRejectedValueOnce(new Error('DB unavailable'));
-
-      const ws = await connect();
-      const messages = await authenticate(ws);
-      const history = messages.find((m) => m.type === 'history');
-      expect(history).toBeDefined();
-      expect(history.logs).toEqual([]);
+      expect(history).toEqual({ type: 'history', logs: [] });
     });
   });
 });
