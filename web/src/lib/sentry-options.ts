@@ -57,6 +57,30 @@ const SENSITIVE_KEY_FRAGMENTS = [
   'stack',
 ] as const;
 const SENSITIVE_COMPACT_KEYS = new Set(['ip', 'ipaddress', 'xforwardedfor', 'apikey', 'xapikey']);
+const SENSITIVE_IP_KEY_SUFFIXES = [
+  'actorip',
+  'clientip',
+  'destinationip',
+  'externalip',
+  'forwardedip',
+  'hostip',
+  'internalip',
+  'lastloginip',
+  'localip',
+  'originip',
+  'peerip',
+  'privateip',
+  'publicip',
+  'realip',
+  'remoteip',
+  'requestip',
+  'responseip',
+  'serverip',
+  'socketip',
+  'sourceip',
+  'userip',
+  'visitorip',
+] as const;
 const SENSITIVE_KEY_SEPARATOR_PATTERN = /[\s._-]+/g;
 const SENSITIVE_KEY_FRAGMENT_COMPACTS = SENSITIVE_KEY_FRAGMENTS.map((fragment) =>
   fragment.replaceAll(SENSITIVE_KEY_SEPARATOR_PATTERN, ''),
@@ -233,7 +257,10 @@ function isSensitiveKey(key: string): boolean {
     return true;
   }
 
-  return SENSITIVE_COMPACT_KEYS.has(compactKey);
+  return (
+    SENSITIVE_COMPACT_KEYS.has(compactKey) ||
+    SENSITIVE_IP_KEY_SUFFIXES.some((suffix) => compactKey.endsWith(suffix))
+  );
 }
 
 /**
@@ -548,7 +575,17 @@ export function scrubSentryEvent<TEvent extends Event>(
  * @returns The same span after in-place data scrubbing.
  */
 export function scrubSentrySpan(span: SentrySpan): SentrySpan {
-  span.data = scrubUnknown(span.data) as SentrySpan['data'];
+  const mutableSpan = span as SentrySpan & { description?: unknown; name?: unknown };
+
+  if (typeof mutableSpan.name === 'string') {
+    mutableSpan.name = scrubBreadcrumbString(mutableSpan.name);
+  }
+
+  if (typeof mutableSpan.description === 'string') {
+    mutableSpan.description = scrubBreadcrumbString(mutableSpan.description);
+  }
+
+  span.data = scrubBreadcrumbData(span.data) as SentrySpan['data'];
   return span;
 }
 

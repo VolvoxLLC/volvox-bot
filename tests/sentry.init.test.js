@@ -414,7 +414,8 @@ describe('sentry.js — init branch coverage', () => {
       breadcrumbs: [
         {
           category: 'fetch',
-          message: 'fetch failed with Bearer breadcrumb-token-12345',
+          message:
+            'fetch failed with Bearer breadcrumb-token-12345 at /api/auth/callback/discord?code=oauth-code#done',
           data: {
             from: '/api/auth/callback/discord?code=oauth-code&state=oauth-state#done',
             to: 'https://dashboard-user:dashboard-pass@dashboard.example.com/guilds?code=oauth-code#done',
@@ -434,7 +435,7 @@ describe('sentry.js — init branch coverage', () => {
     expect(beforeSend(event).breadcrumbs).toEqual([
       {
         category: 'fetch',
-        message: 'fetch failed with [REDACTED]',
+        message: 'fetch failed with [REDACTED] at /api/auth/callback/discord',
         data: {
           from: '/api/auth/callback/discord',
           to: 'https://dashboard.example.com/guilds',

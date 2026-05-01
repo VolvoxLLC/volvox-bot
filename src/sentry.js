@@ -296,7 +296,7 @@ function scrubBreadcrumbs(breadcrumbs) {
 
     const scrubbedBreadcrumb = { ...breadcrumb };
     if (typeof scrubbedBreadcrumb.message === 'string') {
-      scrubbedBreadcrumb.message = scrubInlineSecrets(scrubbedBreadcrumb.message);
+      scrubbedBreadcrumb.message = scrubUrlLikeString(scrubbedBreadcrumb.message);
     }
 
     if ('data' in scrubbedBreadcrumb) {

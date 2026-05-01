@@ -141,6 +141,10 @@ describe('sentry-options', () => {
           email: 'person@example.com',
           e_mail: 'person@example.com',
           'backup.e-mail': 'person@example.com',
+          clientIp: '127.0.0.1',
+          remoteIp: '127.0.0.2',
+          userIp: '127.0.0.3',
+          lastLoginIp: '127.0.0.4',
           safeField: 'keep-this',
         },
         headers: {
@@ -341,16 +345,24 @@ describe('sentry-options', () => {
         span_id: 'abc123',
         start_timestamp: 1,
         trace_id: 'trace123',
+        name: 'GET https://user:pass@example.com/callback?code=secret#fragment',
+        description: 'redirect to /dashboard/settings?token=secret#fragment',
         data: {
           authorization: 'Bearer secret',
+          url: 'https://user:pass@example.com/api?token=secret#fragment',
+          'http.url': '/internal/jobs?password=secret#fragment',
           safeField: 'keep-this',
         },
-      }),
+      } as never),
     ).toEqual({
       span_id: 'abc123',
       start_timestamp: 1,
       trace_id: 'trace123',
+      name: 'GET https://example.com/callback',
+      description: 'redirect to /dashboard/settings',
       data: {
+        url: 'https://example.com/api',
+        'http.url': '/internal/jobs',
         safeField: 'keep-this',
       },
     });
