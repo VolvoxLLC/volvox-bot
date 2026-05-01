@@ -271,4 +271,93 @@ describe('AmplitudeTransport', () => {
 
     expect(mockTrackAnalyticsEvent).toHaveBeenCalledWith('bot_log_recorded', expect.any(Object));
   });
+
+  it('strips email key matching the sensitive key pattern', () => {
+    const callback = vi.fn();
+
+    transport.log(
+      {
+        level: 'info',
+        message: 'Email strip test',
+        email: 'user@example.com',
+        safeField: 'keep-me',
+      },
+      callback,
+    );
+
+    const [, properties] = mockTrackAnalyticsEvent.mock.calls[0];
+    expect(properties.email).toBeUndefined();
+    expect(properties.safeField).toBe('keep-me');
+  });
+
+  it('strips x-forwarded-for style keys matching sensitive pattern', () => {
+    const callback = vi.fn();
+
+    transport.log(
+      {
+        level: 'info',
+        message: 'IP forwarding test',
+        'x-forwarded-for': 'client.example',
+        x_forwarded_for: 'proxy.example',
+        safeField: 'keep-me',
+      },
+      callback,
+    );
+
+    const [, properties] = mockTrackAnalyticsEvent.mock.calls[0];
+    expect(properties['x-forwarded-for']).toBeUndefined();
+    expect(properties.x_forwarded_for).toBeUndefined();
+    expect(properties.safeField).toBe('keep-me');
+  });
+
+  it('does not call trackAnalyticsEvent for verbose level', () => {
+    const callback = vi.fn();
+
+    transport.log({ level: 'verbose', message: 'Verbose noise' }, callback);
+
+    expect(mockTrackAnalyticsEvent).not.toHaveBeenCalled();
+    expect(callback).toHaveBeenCalledOnce();
+  });
+
+  it('does not call trackAnalyticsEvent for silly level', () => {
+    const callback = vi.fn();
+
+    transport.log({ level: 'silly', message: 'Silly noise' }, callback);
+
+    expect(mockTrackAnalyticsEvent).not.toHaveBeenCalled();
+    expect(callback).toHaveBeenCalledOnce();
+  });
+
+  it('always calls callback even when level is not tracked', () => {
+    const callback = vi.fn();
+
+    transport.log({ level: 'debug', message: 'Not tracked' }, callback);
+    transport.log({ level: 'verbose', message: 'Not tracked' }, callback);
+    transport.log({ level: 'silly', message: 'Not tracked' }, callback);
+
+    expect(callback).toHaveBeenCalledTimes(3);
+    expect(mockTrackAnalyticsEvent).not.toHaveBeenCalled();
+  });
+
+  it('strips nested email values in object metadata', () => {
+    const callback = vi.fn();
+
+    transport.log(
+      {
+        level: 'info',
+        message: 'Nested email test',
+        user: {
+          id: 'user-123',
+          email: 'private@example.com',
+          username: 'testuser',
+        },
+      },
+      callback,
+    );
+
+    const [, properties] = mockTrackAnalyticsEvent.mock.calls[0];
+    expect(properties.user.email).toBeUndefined();
+    expect(properties.user.id).toBe('user-123');
+    expect(properties.user.username).toBe('testuser');
+  });
 });

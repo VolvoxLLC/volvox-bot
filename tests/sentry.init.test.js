@@ -219,7 +219,7 @@ describe('sentry.js — init branch coverage', () => {
       user: {
         id: 'safe-user-key',
         email: 'person@example.com',
-        ip_address: '127.0.0.1',
+        ip_address: 'client.example',
       },
       request: {
         cookies: { session: 'secret' },
@@ -405,5 +405,158 @@ describe('sentry.js — init branch coverage', () => {
     await import('../src/sentry.js');
 
     expect(initSpy).not.toHaveBeenCalled();
+  });
+
+  // ── contexts and data scrubbing ─────────────────────────────────────
+
+  it('should scrub sensitive keys from event.contexts in beforeSend', async () => {
+    vi.stubEnv('SENTRY_DSN', 'https://key@o0.ingest.sentry.io/0');
+
+    await import('../src/sentry.js');
+
+    const beforeSend = initSpy.mock.calls[0][0].beforeSend;
+
+    const event = {
+      exception: { values: [{ value: 'Error' }] },
+      contexts: {
+        runtime: {
+          name: 'node',
+          version: '22.0.0',
+          token: 'secret-runtime-token',
+        },
+        device: {
+          name: 'server',
+          authorization: 'Bearer xyz',
+        },
+      },
+    };
+
+    const result = beforeSend(event);
+    expect(result).not.toBeNull();
+    expect(result.contexts.runtime.token).toBeUndefined();
+    expect(result.contexts.runtime.name).toBe('node');
+    expect(result.contexts.device.authorization).toBeUndefined();
+    expect(result.contexts.device.name).toBe('server');
+  });
+
+  it('should scrub sensitive keys from event.data in beforeSend', async () => {
+    vi.stubEnv('SENTRY_DSN', 'https://key@o0.ingest.sentry.io/0');
+
+    await import('../src/sentry.js');
+
+    const beforeSend = initSpy.mock.calls[0][0].beforeSend;
+
+    const event = {
+      exception: { values: [{ value: 'Error' }] },
+      data: {
+        userId: 'user-123',
+        sessionId: 'session-abc',
+        apiKey: 'secret-api-key',
+        safeField: 'keep-this',
+      },
+    };
+
+    const result = beforeSend(event);
+    expect(result).not.toBeNull();
+    expect(result.data.userId).toBe('user-123');
+    expect(result.data.sessionId).toBeUndefined();
+    expect(result.data.apiKey).toBeUndefined();
+    expect(result.data.safeField).toBe('keep-this');
+  });
+
+  it('should delete request.data when scrubbed result is not an object', async () => {
+    vi.stubEnv('SENTRY_DSN', 'https://key@o0.ingest.sentry.io/0');
+
+    await import('../src/sentry.js');
+
+    const beforeSend = initSpy.mock.calls[0][0].beforeSend;
+
+    const event = {
+      exception: { values: [{ value: 'Error' }] },
+      request: {
+        data: 'raw string body',
+      },
+    };
+
+    const result = beforeSend(event);
+    expect(result).not.toBeNull();
+    expect(result.request.data).toBeUndefined();
+  });
+
+  it('should handle event with no user field without throwing', async () => {
+    vi.stubEnv('SENTRY_DSN', 'https://key@o0.ingest.sentry.io/0');
+
+    await import('../src/sentry.js');
+
+    const beforeSend = initSpy.mock.calls[0][0].beforeSend;
+
+    const event = {
+      exception: { values: [{ value: 'Error' }] },
+      request: { headers: { accept: 'application/json' } },
+    };
+
+    expect(() => beforeSend(event)).not.toThrow();
+    const result = beforeSend(event);
+    expect(result).not.toBeNull();
+  });
+
+  it('should handle event with no request field without throwing', async () => {
+    vi.stubEnv('SENTRY_DSN', 'https://key@o0.ingest.sentry.io/0');
+
+    await import('../src/sentry.js');
+
+    const beforeSend = initSpy.mock.calls[0][0].beforeSend;
+
+    const event = {
+      exception: { values: [{ value: 'Error' }] },
+      user: { id: 'user-1' },
+    };
+
+    expect(() => beforeSend(event)).not.toThrow();
+    const result = beforeSend(event);
+    expect(result).not.toBeNull();
+    expect(result.user).toEqual({ id: 'user-1' });
+  });
+
+  it('should set service tag in initialScope', async () => {
+    vi.stubEnv('SENTRY_DSN', 'https://key@o0.ingest.sentry.io/0');
+
+    await import('../src/sentry.js');
+
+    const cfg = initSpy.mock.calls[0][0];
+    expect(cfg.initialScope?.tags?.service).toBe('volvox-bot');
+  });
+
+  it('should enable autoSessionTracking', async () => {
+    vi.stubEnv('SENTRY_DSN', 'https://key@o0.ingest.sentry.io/0');
+
+    await import('../src/sentry.js');
+
+    const cfg = initSpy.mock.calls[0][0];
+    expect(cfg.autoSessionTracking).toBe(true);
+  });
+
+  it('should export sentryEnabled as true when DSN is set', async () => {
+    vi.stubEnv('SENTRY_DSN', 'https://key@o0.ingest.sentry.io/0');
+
+    const { sentryEnabled } = await import('../src/sentry.js');
+    expect(sentryEnabled).toBe(true);
+  });
+
+  it('should export sentryEnabled as false when DSN is not set', async () => {
+    vi.stubEnv('SENTRY_DSN', '');
+
+    const { sentryEnabled } = await import('../src/sentry.js');
+    expect(sentryEnabled).toBe(false);
+  });
+
+  it('should use SENTRY_TRACES_RATE=1 to trace all transactions', async () => {
+    vi.stubEnv('SENTRY_DSN', 'https://key@o0.ingest.sentry.io/0');
+    vi.stubEnv('SENTRY_TRACES_RATE', '1');
+
+    await import('../src/sentry.js');
+
+    const cfg = initSpy.mock.calls[0][0];
+    expect(cfg.tracesSampleRate).toBe(1);
   });
 });
