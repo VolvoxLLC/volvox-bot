@@ -258,6 +258,11 @@ if (!token) {
   process.exit(1);
 }
 
+/**
+ * Determine whether the application may continue startup when database initialization fails.
+ *
+ * @returns {boolean} `true` if database startup failures are allowed — either `ALLOW_DATABASE_STARTUP_FAILURE` is `'true'` or `RAILWAY_ENVIRONMENT_NAME` matches the `volvox-bot-pr-<number>` pattern (case-insensitive); `false` otherwise.
+ */
 function canContinueWithoutDatabase() {
   const environmentName = process.env.RAILWAY_ENVIRONMENT_NAME ?? '';
   const isRailwayPullRequestEnvironment = /^volvox-bot-pr-\d+$/i.test(environmentName);

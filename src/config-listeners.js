@@ -83,6 +83,8 @@ export function registerConfigListeners({ dbPool: _dbPool, config: _config }) {
 }
 
 /**
- * Legacy shutdown hook kept so older startup code paths can call it safely.
+ * No-op shutdown hook retained for backward compatibility with existing startup/shutdown code paths.
+ *
+ * This async function intentionally performs no actions so older code can call it safely.
  */
 export async function removeLoggingTransport() {}

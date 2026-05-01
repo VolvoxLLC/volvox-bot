@@ -478,7 +478,9 @@ export function warn(message, meta = {}) {
 }
 
 /**
- * Log at error level
+ * Log a message at the error level.
+ * @param {string|Error|any} message - The message or error to log.
+ * @param {Object} [meta={}] - Additional metadata to include with the log.
  */
 export function error(message, meta = {}) {
   logger.error(message, meta);

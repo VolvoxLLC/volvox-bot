@@ -159,12 +159,15 @@ async function handleMessage(ws, data) {
 }
 
 /**
- * Validate an HMAC ticket of the form `nonce.expiry.hmac` (legacy)
- * or `nonce.expiry.guildId.hmac` (guild-bound).
+ * Validate and verify an HMAC-signed ticket and extract its bound guild ID when present.
  *
- * @param {string} ticket - The ticket string from the client
- * @param {string} secret - The BOT_API_SECRET used to derive the HMAC
- * @returns {{ valid: boolean, guildId: string | null }} Validation result and bound guild
+ * The ticket must be either `nonce.expiry.hmac` (legacy) or `nonce.expiry.guildId.hmac` (guild-bound).
+ * Validation checks that the ticket is well-formed, not expired, and that the HMAC matches
+ * the HMAC computed with `secret`.
+ *
+ * @param {string} ticket - The client-provided ticket string in one of the two allowed formats.
+ * @param {string} secret - The shared secret used to derive and verify the HMAC.
+ * @returns {{ valid: boolean, guildId: string | null }} `valid` is `true` when the ticket is well-formed, not expired, and its HMAC matches; `guildId` is the bound guild ID when present, otherwise `null`.
  */
 function validateTicket(ticket, secret) {
   if (typeof ticket !== 'string' || typeof secret !== 'string') {
@@ -207,17 +210,20 @@ function validateTicket(ticket, secret) {
 }
 
 /**
- * Authenticate a WebSocket client using a ticket.
+ * Authenticate a WebSocket client using a ticket and register it for real-time log delivery.
  *
- * Validates `msg.ticket`, enforces guild-scoped tickets and client limits, marks the socket as authenticated,
- * clears the auth timeout, sends an `auth_ok` acknowledgement, sends an empty history payload, and registers
- * the socket with the real-time transport.
+ * Validates the provided `msg.ticket`, requires a guild-scoped ticket, enforces the maximum concurrent
+ * authenticated client limit, marks the socket as authenticated (setting `ws.authenticated` and `ws.guildId`),
+ * clears the socket's authentication timeout, increments the module-level authenticated client count,
+ * sends an `auth_ok` acknowledgement and an empty `history` payload, and registers the socket with the real-time transport.
  *
- * On invalid or legacy tickets the connection is closed with code 4003; when the server is at capacity the
- * connection is closed with code 4029. Operational logs are streamed live only and are not persisted.
+ * Observable failure behaviour:
+ * - If the socket is already authenticated, an error message is sent and no state changes occur.
+ * - If the ticket is invalid or a legacy (non-guild) ticket, the connection is closed with code 4003.
+ * - If the server is at capacity, the connection is closed with code 4029.
  *
- * @param {import('ws').WebSocket} ws - The WebSocket connection to authenticate; mutated to record authentication state and filters.
- * @param {Object} msg - The incoming message object; expected to contain a `ticket` string.
+ * @param {import('ws').WebSocket} ws - WebSocket to authenticate; mutated to record authentication state, guildId, and to clear auth timeout.
+ * @param {Object} msg - Incoming message object; expected to contain a `ticket` string.
  */
 async function handleAuth(ws, msg) {
   if (ws.authenticated) {
