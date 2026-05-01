@@ -5,8 +5,10 @@
  * - http://bot.internal:3001      -> http://bot.internal:3001/api/v1
  * - http://bot.internal:3001/api/v1 -> http://bot.internal:3001/api/v1
  */
-export function getBotApiBaseUrl(): string | null {
-  const raw = process.env.BOT_API_URL;
+export function getBotApiBaseUrl(): string | null;
+export function getBotApiBaseUrl(fallback: string): string;
+export function getBotApiBaseUrl(fallback?: string): string | null {
+  const raw = process.env.BOT_API_URL ?? fallback;
   if (!raw) return null;
 
   const trimmed = raw.replace(/\/+$/, '');

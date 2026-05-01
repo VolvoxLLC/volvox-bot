@@ -5,21 +5,28 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const {
   mockPush,
   mockReplace,
+  mockRouter,
   mockGuildSelection,
   mockUseGuildChannels,
   mockConversationsState,
   mockConversationsReset,
-} = vi.hoisted(() => ({
-  mockPush: vi.fn(),
-  mockReplace: vi.fn(),
-  mockGuildSelection: vi.fn(),
-  mockUseGuildChannels: vi.fn(),
-  mockConversationsState: {} as Record<string, unknown>,
-  mockConversationsReset: vi.fn(),
-}));
+} = vi.hoisted(() => {
+  const mockPush = vi.fn();
+  const mockReplace = vi.fn();
+
+  return {
+    mockPush,
+    mockReplace,
+    mockRouter: { push: mockPush, replace: mockReplace },
+    mockGuildSelection: vi.fn(),
+    mockUseGuildChannels: vi.fn(),
+    mockConversationsState: {} as Record<string, unknown>,
+    mockConversationsReset: vi.fn(),
+  };
+});
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: mockPush, replace: mockReplace }),
+  useRouter: () => mockRouter,
 }));
 
 vi.mock('next/image', () => ({
@@ -177,6 +184,49 @@ describe('ConversationsClient', () => {
         expect.objectContaining({ page: 2 }),
       );
     });
+  });
+
+  it('does not reset the initial page when the search value is already synced', async () => {
+    mockConversationsState.currentOpts = { search: '', channel: '', page: 2 };
+    const fetchConversations = mockConversationsState.fetch as ReturnType<typeof vi.fn>;
+
+    render(<ConversationsClient />);
+
+    await waitFor(() => {
+      expect(fetchConversations).toHaveBeenCalledWith(
+        'guild-1',
+        expect.objectContaining({ page: 2 }),
+      );
+    });
+
+    fetchConversations.mockClear();
+
+    await new Promise((resolve) => setTimeout(resolve, 350));
+
+    expect(fetchConversations).not.toHaveBeenCalled();
+  });
+
+  it('clears a pending search debounce when search returns to the synced value', async () => {
+    const fetchConversations = mockConversationsState.fetch as ReturnType<typeof vi.fn>;
+
+    render(<ConversationsClient />);
+
+    await waitFor(() => {
+      expect(fetchConversations).toHaveBeenCalledWith(
+        'guild-1',
+        expect.objectContaining({ search: '' }),
+      );
+    });
+
+    fetchConversations.mockClear();
+
+    const searchInput = screen.getByLabelText('Search conversations');
+    fireEvent.change(searchInput, { target: { value: 'ada' } });
+    fireEvent.change(searchInput, { target: { value: '' } });
+
+    await new Promise((resolve) => setTimeout(resolve, 350));
+
+    expect(fetchConversations).not.toHaveBeenCalled();
   });
 
   it('renders the conversations empty prompt when no guild is selected', () => {
