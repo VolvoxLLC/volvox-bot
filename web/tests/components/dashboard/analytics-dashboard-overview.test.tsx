@@ -144,6 +144,7 @@ describe('AnalyticsDashboard overview', () => {
     analyticsPayload.kpis.activeUsers = 88;
     if (analyticsPayload.comparison) {
       analyticsPayload.comparison.kpis.activeUsers = 70;
+      analyticsPayload.comparison.kpis.newMembers = 6;
     }
   });
 
@@ -171,5 +172,18 @@ describe('AnalyticsDashboard overview', () => {
     expect(screen.getByText('Active users')).toBeInTheDocument();
     expect(screen.getByText('Unavailable')).toBeInTheDocument();
     expect(screen.queryByText('-100.0%')).not.toBeInTheDocument();
+  });
+
+  it('does not show a comparison delta when the previous KPI value is unavailable', async () => {
+    if (analyticsPayload.comparison) {
+      analyticsPayload.comparison.kpis.newMembers = null as unknown as number;
+    }
+
+    const { AnalyticsDashboard } = await import('@/components/dashboard/analytics-dashboard');
+
+    render(<AnalyticsDashboard />);
+
+    expect(screen.getByText('New members')).toBeInTheDocument();
+    expect(screen.queryByText('—')).not.toBeInTheDocument();
   });
 });

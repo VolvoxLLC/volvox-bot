@@ -27,6 +27,7 @@ describe('config-listeners', () => {
   let onConfigChange;
   let loggerInfo;
   let loggerError;
+  let reloadBotStatus;
 
   beforeEach(async () => {
     vi.resetModules();
@@ -37,6 +38,9 @@ describe('config-listeners', () => {
 
     const configMod = await import('../src/modules/config.js');
     onConfigChange = configMod.onConfigChange;
+
+    const botStatusMod = await import('../src/modules/botStatus.js');
+    reloadBotStatus = botStatusMod.reloadBotStatus;
 
     const mod = await import('../src/config-listeners.js');
     registerConfigListeners = mod.registerConfigListeners;
@@ -83,6 +87,21 @@ describe('config-listeners', () => {
       expect(registeredKeys).toContain('botStatus.rotation.messages');
       expect(registeredKeys).toHaveLength(17);
     });
+
+    it('reloads bot status for global presence changes only', () => {
+      const listeners = registerAndCapture();
+
+      listeners.botStatus('enabled', 'disabled', 'botStatus', 'global');
+      listeners['botStatus.status']('idle', 'online', 'botStatus.status', undefined);
+      listeners['botStatus.rotation.enabled'](
+        true,
+        false,
+        'botStatus.rotation.enabled',
+        'guild-42',
+      );
+
+      expect(reloadBotStatus).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe('removeLoggingTransport', () => {
@@ -120,6 +139,17 @@ describe('config-listeners', () => {
       expect(fireEvent).toHaveBeenCalledWith('config.changed', 'guild-42', {
         path: 'welcome.channelId',
       });
+    });
+
+    it('does not forward logging, notification, or global config changes', async () => {
+      const listeners = registerAndCapture();
+
+      await listeners['*']('debug', 'info', 'logging.level', 'guild-42');
+      await listeners['*']('new-hook', 'old-hook', 'notifications.webhookUrl', 'guild-42');
+      await listeners['*']('newVal', 'oldVal', 'welcome.channelId', 'global');
+      await listeners['*']('newVal', 'oldVal', 'welcome.channelId', undefined);
+
+      expect(fireEvent).not.toHaveBeenCalled();
     });
   });
 
