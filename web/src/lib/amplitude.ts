@@ -8,10 +8,22 @@ type BrowserAmplitudeOptions = NonNullable<Parameters<typeof amplitude.init>[2]>
 type BrowserAmplitudeProperties = Record<string, unknown>;
 
 const AMPLITUDE_MIN_ID_LENGTH = 5;
-const SENSITIVE_KEY_PATTERN =
-  /(?:authorization|cookie|csrf|secret|password|token|session|stack|x[-_]?forwarded[-_]?for|ip(?:[-_]?address)?|x[-_]?api[-_]?key|api[-_]?key|bot[-_]?api[-_]?secret|access[-_]?token|refresh[-_]?token|email)/i;
+const SENSITIVE_KEY_FRAGMENTS = [
+  'authorization',
+  'cookie',
+  'csrf',
+  'e-mail',
+  'email',
+  'secret',
+  'password',
+  'token',
+  'session',
+  'stack',
+] as const;
+const SENSITIVE_COMPACT_KEYS = new Set(['ip', 'ipaddress', 'xforwardedfor', 'apikey', 'xapikey']);
+const SENSITIVE_KEY_SEPARATOR_PATTERN = /[\s_-]+/g;
 const INLINE_SECRET_PATTERNS = [
-  /\bBearer\s+[A-Za-z0-9._~+/=-]+/gi,
+  /\bBearer\s+[\w.~+/=-]+/gi,
   /\bsk-[A-Za-z0-9][A-Za-z0-9_-]{10,}/g,
   /\b(?:xox[baprs]|gh[pousr])_[A-Za-z0-9_/-]{10,}/g,
 ];
@@ -80,6 +92,22 @@ function scrubInlineSecrets(value: string): string {
 }
 
 /**
+ * Determines whether an event property key may contain sensitive telemetry data.
+ *
+ * @param key - Property key to inspect.
+ * @returns True when the key should be removed from analytics payloads.
+ */
+function isSensitiveKey(key: string): boolean {
+  const normalizedKey = key.toLowerCase();
+
+  if (SENSITIVE_KEY_FRAGMENTS.some((fragment) => normalizedKey.includes(fragment))) {
+    return true;
+  }
+
+  return SENSITIVE_COMPACT_KEYS.has(normalizedKey.replaceAll(SENSITIVE_KEY_SEPARATOR_PATTERN, ''));
+}
+
+/**
  * Recursively prepares a value for Amplitude event properties by redacting sensitive data and normalizing types.
  *
  * Strings have inline secret patterns replaced with "[REDACTED]". Arrays and objects are processed recursively. Object keys that match the sensitive-key pattern are omitted. Circular references are replaced with the string "[Circular]". Date objects are converted to ISO strings. Error objects are converted to `{ message, name }` with the message redacted.
@@ -122,7 +150,7 @@ function scrubAmplitudeProperties(value: unknown, seen = new WeakSet<object>()):
     const scrubbed: BrowserAmplitudeProperties = {};
 
     for (const [key, childValue] of Object.entries(value)) {
-      if (SENSITIVE_KEY_PATTERN.test(key)) {
+      if (isSensitiveKey(key)) {
         continue;
       }
 
@@ -141,7 +169,7 @@ function scrubAmplitudeProperties(value: unknown, seen = new WeakSet<object>()):
  * @returns `true` if running in a browser and a public Amplitude API key is configured, `false` otherwise.
  */
 export function isDashboardAmplitudeEnabled(): boolean {
-  return typeof window !== 'undefined' && Boolean(getPublicApiKey());
+  return typeof globalThis.window !== 'undefined' && Boolean(getPublicApiKey());
 }
 
 /**
@@ -194,7 +222,7 @@ export function initDashboardAmplitude(userId?: string | null): boolean {
   const apiKey = getPublicApiKey();
   const normalizedUserId = normalizeAmplitudeId(userId);
 
-  if (typeof window === 'undefined' || !apiKey) {
+  if (typeof globalThis.window === 'undefined' || !apiKey) {
     return false;
   }
 
