@@ -25,10 +25,29 @@ describe('sentry.js — init branch coverage', () => {
   });
 
   afterEach(() => {
+    vi.doUnmock('dotenv/config');
     vi.unstubAllEnvs();
   });
 
   // ── tracesSampleRate IIFE branches ──────────────────────────────────
+
+  it('loads dotenv/config before reading Sentry environment variables', async () => {
+    delete process.env.SENTRY_DSN;
+    delete process.env.SENTRY_SEND_DEFAULT_PII;
+
+    vi.doMock('dotenv/config', () => {
+      vi.stubEnv('SENTRY_DSN', 'https://key@o0.ingest.sentry.io/0');
+      vi.stubEnv('SENTRY_SEND_DEFAULT_PII', 'true');
+      return {};
+    });
+
+    await import('../src/sentry.js');
+
+    expect(initSpy).toHaveBeenCalledTimes(1);
+    const cfg = initSpy.mock.calls[0][0];
+    expect(cfg.dsn).toBe('https://key@o0.ingest.sentry.io/0');
+    expect(cfg.sendDefaultPii).toBe(true);
+  });
 
   it('should use parsed SENTRY_TRACES_RATE when it is a valid number', async () => {
     vi.stubEnv('SENTRY_DSN', 'https://key@o0.ingest.sentry.io/0');
@@ -470,6 +489,7 @@ describe('sentry.js — init branch coverage', () => {
     const cfg = initSpy.mock.calls[0][0];
     const span = {
       span_id: 'span-1',
+      name: 'POST https://name-user:name-pass@name.example.com/oauth/callback?code=secret-code&state=secret-state#done',
       description:
         'GET https://api-user:api-pass@api.example.com/guilds?token=secret#done then /internal/jobs?api_key=secret#queue',
       op: 'http.client',
@@ -484,6 +504,7 @@ describe('sentry.js — init branch coverage', () => {
 
     expect(cfg.beforeSendSpan(span)).toEqual({
       span_id: 'span-1',
+      name: 'POST https://name.example.com/oauth/callback',
       description: 'GET https://api.example.com/guilds then /internal/jobs',
       op: 'http.client',
       data: {

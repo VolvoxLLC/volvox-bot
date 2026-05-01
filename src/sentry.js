@@ -7,18 +7,19 @@
  * Configure via environment variables:
  *   SENTRY_DSN           - Sentry project DSN (required to enable)
  *   SENTRY_ENVIRONMENT   - Environment name (default: 'production')
- *   SENTRY_SEND_DEFAULT_PII - Enable default PII capture after local scrubbing
- *                             (default: false; read when this module initializes)
+ *   SENTRY_SEND_DEFAULT_PII - Opt in to Sentry default PII capture after local scrubbing
+ *                             (default: false; only true when set to 'true')
  *   SENTRY_TRACES_RATE   - Performance sampling rate 0-1 (default: 0.1)
  *   NODE_ENV             - Used as fallback for environment name
  */
 
+import 'dotenv/config';
 import * as Sentry from '@sentry/node';
 
 const dsn = process.env.SENTRY_DSN;
 // Keep Sentry default PII capture opt-in only; any value other than the explicit string "true" stays disabled.
-// Read immediately before Sentry.init during module initialization, so import this module
-// after dotenv/config is loaded.
+// dotenv/config is imported above before env reads so .env Sentry settings are available
+// even when this module is imported before other startup code.
 let sendDefaultPii = false;
 const CIRCULAR_REFERENCE_SENTINEL = '[Circular]';
 const SENSITIVE_KEY_PARTS = [
@@ -94,7 +95,7 @@ const INLINE_SECRET_REPLACEMENTS = [
  */
 function scrubInlineSecrets(value) {
   return INLINE_SECRET_REPLACEMENTS.reduce(
-    (scrubbedValue, { pattern, replacement }) => scrubbedValue.replace(pattern, replacement),
+    (scrubbedValue, { pattern, replacement }) => scrubbedValue.replaceAll(pattern, replacement),
     value,
   );
 }
@@ -105,7 +106,7 @@ function scrubInlineSecrets(value) {
  * @returns {string} Lowercase alphanumeric key.
  */
 function normalizeSensitiveKey(key) {
-  return key.toLowerCase().replace(/[^a-z0-9]/g, '');
+  return key.toLowerCase().replaceAll(/[^a-z0-9]/g, '');
 }
 
 /**
@@ -211,11 +212,11 @@ function stripRequestUrlQuery(value) {
  * @returns {string} The string with URL secrets removed.
  */
 function scrubUrlLikeString(value) {
-  const scrubbedValue = scrubInlineSecrets(value).replace(ABSOLUTE_URL_IN_TEXT_PATTERN, (url) =>
+  const scrubbedValue = scrubInlineSecrets(value).replaceAll(ABSOLUTE_URL_IN_TEXT_PATTERN, (url) =>
     stripRequestUrlQuery(url),
   );
 
-  return scrubbedValue.replace(
+  return scrubbedValue.replaceAll(
     RELATIVE_URL_IN_TEXT_PATTERN,
     (_match, prefix, url) => `${prefix}${stripRequestUrlQuery(url)}`,
   );
@@ -414,7 +415,7 @@ function scrubSentryEvent(event) {
  * @returns {boolean} True when the field should be treated as URL-bearing.
  */
 function isSpanUrlBearingKey(key) {
-  return key === 'description' || URL_METADATA_KEY_PATTERN.test(key);
+  return key === 'description' || key === 'name' || URL_METADATA_KEY_PATTERN.test(key);
 }
 
 /**

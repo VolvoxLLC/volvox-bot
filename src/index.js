@@ -11,14 +11,14 @@
  * - Structured logging
  */
 
-// Sentry must be imported before all other modules to instrument them
+// Sentry loads dotenv/config before initialization and must be imported before
+// application modules to instrument them.
 import './sentry.js';
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Client, Collection, GatewayIntentBits, Partials } from 'discord.js';
-import { config as dotenvConfig } from 'dotenv';
 import { startServer, stopServer, updateServerDbPool } from './api/server.js';
 import { registerConfigListeners, removeLoggingTransport } from './config-listeners.js';
 import { closeDb, getPool, initDb } from './db.js';
@@ -71,9 +71,6 @@ try {
 } catch {
   // package.json unreadable — version stays 'unknown'
 }
-
-// Load environment variables
-dotenvConfig();
 
 // Config is loaded asynchronously after DB init (see startup below).
 // After loadConfig() resolves, `config` points to the same object as
