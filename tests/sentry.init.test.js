@@ -721,6 +721,25 @@ describe('sentry.js — init branch coverage', () => {
     expect(result.data.safeField).toBe('keep-this');
   });
 
+  it.each([
+    ['array', ['accept']],
+    ['string', 'accept: application/json'],
+  ])('should delete request.headers when scrubbed result is a non-object %s', async (_caseName, headers) => {
+    vi.stubEnv('SENTRY_DSN', 'https://key@o0.ingest.sentry.io/0');
+
+    await import('../src/sentry.js');
+
+    const beforeSend = initSpy.mock.calls[0][0].beforeSend;
+    const event = {
+      exception: { values: [{ value: 'Error' }] },
+      request: { headers },
+    };
+
+    const result = beforeSend(event);
+    expect(result).not.toBeNull();
+    expect(result.request.headers).toBeUndefined();
+  });
+
   it('should delete request.data when scrubbed result is not an object', async () => {
     vi.stubEnv('SENTRY_DSN', 'https://key@o0.ingest.sentry.io/0');
 

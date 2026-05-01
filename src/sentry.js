@@ -379,15 +379,17 @@ function scrubSentryRequest(request) {
   if (request.headers) {
     const scrubbedHeaders = scrubUnknown(request.headers);
 
-    if (scrubbedHeaders && typeof scrubbedHeaders === 'object' && !Array.isArray(scrubbedHeaders)) {
+    if (!scrubbedHeaders || typeof scrubbedHeaders !== 'object' || Array.isArray(scrubbedHeaders)) {
+      delete request.headers;
+    } else {
       for (const [key, value] of Object.entries(scrubbedHeaders)) {
         if (URL_HEADER_KEY_PATTERN.test(key) || URL_METADATA_KEY_PATTERN.test(key)) {
           scrubbedHeaders[key] = scrubRequestHeaderValue(value);
         }
       }
-    }
 
-    request.headers = scrubbedHeaders;
+      request.headers = scrubbedHeaders;
+    }
   }
 
   if (!request.data) {

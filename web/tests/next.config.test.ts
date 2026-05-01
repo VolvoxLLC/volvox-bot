@@ -170,16 +170,31 @@ describe("next.config security headers", () => {
       expect(connectSrcTokens).not.toContain("https://api.eu.amplitude.com");
     });
 
-    it("should allow Amplitude ingest endpoints when dashboard analytics is enabled", async () => {
+    it("should allow only the US Amplitude ingest endpoint by default when dashboard analytics is enabled", async () => {
       nextConfig = await loadNextConfig({ NEXT_PUBLIC_AMPLITUDE_API_KEY: "amplitude-key" });
       const headers = (await nextConfig.headers!())[0].headers;
       const enabledCspValue = headers.find(
         (h: SecurityHeader) => h.key === "Content-Security-Policy",
       )!.value;
+      const connectSrcTokens = getCspDirectiveTokens(enabledCspValue, "connect-src");
 
-      expect(getCspDirectiveTokens(enabledCspValue, "connect-src")).toEqual(
-        expect.arrayContaining(["https://api2.amplitude.com", "https://api.eu.amplitude.com"]),
-      );
+      expect(connectSrcTokens).toContain("https://api2.amplitude.com");
+      expect(connectSrcTokens).not.toContain("https://api.eu.amplitude.com");
+    });
+
+    it("should allow only the EU Amplitude ingest endpoint when the EU server zone is configured", async () => {
+      nextConfig = await loadNextConfig({
+        NEXT_PUBLIC_AMPLITUDE_API_KEY: "amplitude-key",
+        NEXT_PUBLIC_AMPLITUDE_SERVER_ZONE: "EU",
+      });
+      const headers = (await nextConfig.headers!())[0].headers;
+      const enabledCspValue = headers.find(
+        (h: SecurityHeader) => h.key === "Content-Security-Policy",
+      )!.value;
+      const connectSrcTokens = getCspDirectiveTokens(enabledCspValue, "connect-src");
+
+      expect(connectSrcTokens).toContain("https://api.eu.amplitude.com");
+      expect(connectSrcTokens).not.toContain("https://api2.amplitude.com");
     });
 
     it("should restrict font-src to self", () => {
