@@ -122,8 +122,13 @@ describe('dashboard Amplitude analytics', () => {
       trackDashboardEvent(' dashboard_button_clicked ', {
         guildId: 'guild-12345',
         password: 'secret',
+        callback: 'callback?access_token=secret-value&safe=1',
+        assignment: 'token=secret-value safe=true',
+        githubPat: 'token github_pat_abcdefghijk1234567890 leaked',
+        clientIp: '127.0.0.1',
         nested: {
           token: 'secret',
+          remoteIp: '127.0.0.2',
           ok: true,
         },
         first: shared,
@@ -134,6 +139,9 @@ describe('dashboard Amplitude analytics', () => {
 
     expect(mockTrack).toHaveBeenCalledWith('dashboard_button_clicked', {
       guildId: 'guild-12345',
+      callback: 'callback?access_token=[REDACTED]&safe=1',
+      assignment: 'token=[REDACTED] safe=true',
+      githubPat: 'token [REDACTED] leaked',
       nested: {
         ok: true,
       },

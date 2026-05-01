@@ -21,11 +21,46 @@ const SENSITIVE_KEY_FRAGMENTS = [
   'stack',
 ] as const;
 const SENSITIVE_COMPACT_KEYS = new Set(['ip', 'ipaddress', 'xforwardedfor', 'apikey', 'xapikey']);
+const SENSITIVE_IP_KEY_SUFFIXES = [
+  'actorip',
+  'clientip',
+  'destinationip',
+  'externalip',
+  'forwardedip',
+  'hostip',
+  'internalip',
+  'lastloginip',
+  'localip',
+  'originip',
+  'peerip',
+  'privateip',
+  'publicip',
+  'realip',
+  'remoteip',
+  'requestip',
+  'responseip',
+  'serverip',
+  'socketip',
+  'sourceip',
+  'userip',
+  'visitorip',
+] as const;
 const SENSITIVE_KEY_SEPARATOR_PATTERN = /[\s._-]+/g;
-const INLINE_SECRET_PATTERNS = [
-  /\bBearer\s+[\w.~+/=-]+/gi,
-  /\bsk-[A-Za-z0-9][A-Za-z0-9_-]{10,}/g,
-  /\b(?:xox[baprs]|gh[pousr])_[A-Za-z0-9_/-]{10,}/g,
+const INLINE_SECRET_REPLACEMENTS: ReadonlyArray<{ pattern: RegExp; replacement: string }> = [
+  { pattern: /\bBearer\s+[\w.~+/=-]+/gi, replacement: '[REDACTED]' },
+  { pattern: /\bsk-[A-Za-z0-9][A-Za-z0-9_-]{10,}/g, replacement: '[REDACTED]' },
+  { pattern: /\b(?:xox[baprs]|gh[pousr])_[A-Za-z0-9_/-]{10,}/g, replacement: '[REDACTED]' },
+  { pattern: /\bgithub_pat_\w{10,}/g, replacement: '[REDACTED]' },
+  {
+    pattern:
+      /([?&#]\s*(?:access[-_]?token|refresh[-_]?token|api[-_]?key|token|secret|password)\s*=)\s*[^\s&#]+/gi,
+    replacement: '$1[REDACTED]',
+  },
+  {
+    pattern:
+      /(^|[\s,;])((?:access[-_]?token|refresh[-_]?token|api[-_]?key|token|secret|password)\s*=)\s*[^\s,;&#]+/gi,
+    replacement: '$1$2[REDACTED]',
+  },
 ];
 
 let hasInitialized = false;
@@ -85,8 +120,8 @@ function normalizeAmplitudeId(value: unknown): string | undefined {
  * @returns The input string with matches of inline-secret patterns replaced by `"[REDACTED]"`
  */
 function scrubInlineSecrets(value: string): string {
-  return INLINE_SECRET_PATTERNS.reduce(
-    (scrubbedValue, pattern) => scrubbedValue.replace(pattern, '[REDACTED]'),
+  return INLINE_SECRET_REPLACEMENTS.reduce(
+    (scrubbedValue, { pattern, replacement }) => scrubbedValue.replaceAll(pattern, replacement),
     value,
   );
 }
@@ -104,7 +139,14 @@ function isSensitiveKey(key: string): boolean {
     return true;
   }
 
-  return SENSITIVE_COMPACT_KEYS.has(normalizedKey.replaceAll(SENSITIVE_KEY_SEPARATOR_PATTERN, ''));
+  const compactKey = normalizedKey.replaceAll(SENSITIVE_KEY_SEPARATOR_PATTERN, '');
+
+  return (
+    SENSITIVE_COMPACT_KEYS.has(compactKey) ||
+    /(?:^|[._\-\s])ip$/i.test(key) ||
+    /[a-z0-9]I[Pp]$/.test(key) ||
+    SENSITIVE_IP_KEY_SUFFIXES.some((suffix) => compactKey.endsWith(suffix))
+  );
 }
 
 /**
