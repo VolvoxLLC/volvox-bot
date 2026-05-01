@@ -38,6 +38,30 @@ const SENSITIVE_KEY_PARTS = [
   'refreshtoken',
 ];
 const SENSITIVE_KEY_EXACT_MATCHES = new Set(['ip']);
+const SENSITIVE_IP_KEY_SUFFIXES = [
+  'actorip',
+  'clientip',
+  'destinationip',
+  'externalip',
+  'forwardedip',
+  'hostip',
+  'internalip',
+  'lastloginip',
+  'localip',
+  'originip',
+  'peerip',
+  'privateip',
+  'publicip',
+  'realip',
+  'remoteip',
+  'requestip',
+  'responseip',
+  'serverip',
+  'socketip',
+  'sourceip',
+  'userip',
+  'visitorip',
+];
 const URL_METADATA_KEY_PATTERN = /url/i;
 const INLINE_SECRET_REPLACEMENTS = [
   { pattern: /\bBearer\s+[\w.~+/=-]+/gi, replacement: '[REDACTED]' },
@@ -85,11 +109,20 @@ function normalizeSensitiveKey(key) {
  * @param {string} key - Object key to evaluate.
  * @returns {boolean} True when the key represents secret or PII metadata.
  */
+function isIpMetadataKey(key, normalizedKey) {
+  return (
+    SENSITIVE_KEY_EXACT_MATCHES.has(normalizedKey) ||
+    /(?:^|[._\-\s])ip$/i.test(key) ||
+    /[a-z0-9]I[Pp]$/.test(key) ||
+    SENSITIVE_IP_KEY_SUFFIXES.some((sensitiveSuffix) => normalizedKey.endsWith(sensitiveSuffix))
+  );
+}
+
 function isSensitiveKey(key) {
   const normalizedKey = normalizeSensitiveKey(key);
 
   return (
-    SENSITIVE_KEY_EXACT_MATCHES.has(normalizedKey) ||
+    isIpMetadataKey(key, normalizedKey) ||
     SENSITIVE_KEY_PARTS.some((sensitivePart) => normalizedKey.includes(sensitivePart))
   );
 }
@@ -150,6 +183,8 @@ function stripRequestUrlQuery(value) {
   try {
     const isAbsoluteUrl = /^[a-z][a-z\d+.-]*:/i.test(value);
     const url = new URL(value, 'https://volvox.local');
+    url.username = '';
+    url.password = '';
     url.search = '';
     url.hash = '';
 

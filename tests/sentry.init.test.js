@@ -224,7 +224,7 @@ describe('sentry.js — init branch coverage', () => {
       request: {
         cookies: { session: 'secret' },
         query_string: 'token=secret&email=person@example.com',
-        url: 'https://example.com/callback?token=secret&email=person@example.com#done',
+        url: 'https://user:pass@example.com/callback?token=secret&email=person@example.com#done',
         headers: {
           authorization: 'Bearer secret',
           cookie: 'session=secret',
@@ -246,6 +246,30 @@ describe('sentry.js — init branch coverage', () => {
     expect(result.request.url).toBe('https://example.com/callback');
     expect(result.request.headers).toEqual({ accept: 'application/json' });
     expect(result.request.data).toEqual({ safeField: 'keep-this' });
+  });
+
+  it('should scrub common IP metadata keys from event metadata in beforeSend', async () => {
+    vi.stubEnv('SENTRY_DSN', 'https://key@o0.ingest.sentry.io/0');
+
+    await import('../src/sentry.js');
+
+    const beforeSend = initSpy.mock.calls[0][0].beforeSend;
+    const event = {
+      exception: { values: [{ value: 'Error' }] },
+      extra: {
+        clientIp: 'client.example',
+        remoteIp: 'remote.example',
+        userIp: 'user.example',
+        lastLoginIp: 'login.example',
+        zip: '90210',
+        shipping: 'keep-this',
+      },
+    };
+
+    expect(beforeSend(event).extra).toEqual({
+      zip: '90210',
+      shipping: 'keep-this',
+    });
   });
 
   it('should scrub nested email keys from event metadata in beforeSend', async () => {
@@ -373,9 +397,10 @@ describe('sentry.js — init branch coverage', () => {
           category: 'fetch',
           message: 'fetch failed with Bearer breadcrumb-token-12345',
           data: {
-            url: 'https://api.example.com/guilds?token=secret&email=person%40example.com#done',
+            url: 'https://api-user:api-pass@api.example.com/guilds?token=secret&email=person%40example.com#done',
             nested: {
-              requestUrl: '/callbacks?access_token=secret#complete',
+              requestUrl:
+                'https://callback-user:callback-pass@example.com/callbacks?access_token=secret#complete',
               email: 'person@example.com',
               safeField: 'keep-this',
             },
@@ -391,7 +416,7 @@ describe('sentry.js — init branch coverage', () => {
         data: {
           url: 'https://api.example.com/guilds',
           nested: {
-            requestUrl: '/callbacks',
+            requestUrl: 'https://example.com/callbacks',
             safeField: 'keep-this',
           },
         },

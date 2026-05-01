@@ -231,6 +231,16 @@ describe('amplitude analytics', () => {
       { user_id: 'user-99999', device_id: 'device-99999' },
     );
   });
+
+  it('returns false instead of throwing for malformed event options', async () => {
+    vi.stubEnv('AMPLITUDE_API_KEY', 'server-key');
+
+    const { trackAnalyticsEvent } = await import('../src/amplitude.js');
+
+    expect(trackAnalyticsEvent('bad_options', {}, null)).toBe(false);
+    expect(trackAnalyticsEvent('bad_options', {}, 'user-12345')).toBe(false);
+    expect(mockTrack).not.toHaveBeenCalled();
+  });
 });
 
 // ─── scrubAmplitudeProperties (unit tests) ────────────────────────────────────
@@ -343,6 +353,21 @@ describe('scrubAmplitudeProperties', () => {
       ok: true,
     });
     expect(result).toEqual({ ok: true });
+  });
+
+  it('redacts common logger IP metadata keys without dropping unrelated ip substrings', async () => {
+    const scrub = await getScrub();
+    const result = scrub({
+      clientIp: 'client.example',
+      remoteIp: 'remote.example',
+      userIp: 'user.example',
+      lastLoginIp: 'login.example',
+      request_ip: 'request.example',
+      shipping: 'keep-this',
+      zip: '90210',
+    });
+
+    expect(result).toEqual({ shipping: 'keep-this', zip: '90210' });
   });
 
   it('redacts email keys matching the sensitive key pattern', async () => {

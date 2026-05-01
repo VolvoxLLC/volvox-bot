@@ -34,6 +34,30 @@ const SENSITIVE_KEY_PARTS = [
   'email',
 ];
 const SENSITIVE_KEY_EXACT_MATCHES = new Set(['ip']);
+const SENSITIVE_IP_KEY_SUFFIXES = [
+  'actorip',
+  'clientip',
+  'destinationip',
+  'externalip',
+  'forwardedip',
+  'hostip',
+  'internalip',
+  'lastloginip',
+  'localip',
+  'originip',
+  'peerip',
+  'privateip',
+  'publicip',
+  'realip',
+  'remoteip',
+  'requestip',
+  'responseip',
+  'serverip',
+  'socketip',
+  'sourceip',
+  'userip',
+  'visitorip',
+];
 const INLINE_SECRET_PATTERNS = [
   { pattern: /\bBearer\s+[\w.~+/=-]+/gi, replacement: '[REDACTED]' },
   { pattern: /\bsk-\w[\w-]{10,}/g, replacement: '[REDACTED]' },
@@ -117,11 +141,20 @@ function normalizeSensitiveKey(key) {
  * @param {string} key - Object key to evaluate.
  * @returns {boolean} True when the key represents secret or PII metadata.
  */
+function isIpMetadataKey(key, normalizedKey) {
+  return (
+    SENSITIVE_KEY_EXACT_MATCHES.has(normalizedKey) ||
+    /(?:^|[._\-\s])ip$/i.test(key) ||
+    /[a-z0-9]I[Pp]$/.test(key) ||
+    SENSITIVE_IP_KEY_SUFFIXES.some((sensitiveSuffix) => normalizedKey.endsWith(sensitiveSuffix))
+  );
+}
+
 function isSensitiveKey(key) {
   const normalizedKey = normalizeSensitiveKey(key);
 
   return (
-    SENSITIVE_KEY_EXACT_MATCHES.has(normalizedKey) ||
+    isIpMetadataKey(key, normalizedKey) ||
     SENSITIVE_KEY_PARTS.some((sensitivePart) => normalizedKey.includes(sensitivePart))
   );
 }
@@ -251,22 +284,26 @@ export function trackAnalyticsEvent(eventType, eventProperties = {}, eventOption
     return false;
   }
 
-  const userId = normalizeAmplitudeId(eventOptions.user_id ?? eventOptions.userId);
-  const deviceId =
-    normalizeAmplitudeId(eventOptions.device_id ?? eventOptions.deviceId) ??
-    DEFAULT_AMPLITUDE_DEVICE_ID;
-  const sanitizedProperties = scrubAmplitudeProperties(eventProperties);
-  const sanitizedOptions = {};
-
-  if (deviceId) {
-    sanitizedOptions.device_id = deviceId;
-  }
-
-  if (userId) {
-    sanitizedOptions.user_id = userId;
-  }
-
   try {
+    if (!eventOptions || typeof eventOptions !== 'object') {
+      return false;
+    }
+
+    const userId = normalizeAmplitudeId(eventOptions.user_id ?? eventOptions.userId);
+    const deviceId =
+      normalizeAmplitudeId(eventOptions.device_id ?? eventOptions.deviceId) ??
+      DEFAULT_AMPLITUDE_DEVICE_ID;
+    const sanitizedProperties = scrubAmplitudeProperties(eventProperties);
+    const sanitizedOptions = {};
+
+    if (deviceId) {
+      sanitizedOptions.device_id = deviceId;
+    }
+
+    if (userId) {
+      sanitizedOptions.user_id = userId;
+    }
+
     amplitude.track(normalizedEventType, sanitizedProperties, sanitizedOptions);
     return true;
   } catch {

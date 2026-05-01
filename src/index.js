@@ -257,7 +257,14 @@ async function gracefulShutdown(signal) {
     error('Failed to close Redis connection', { error: err.message });
   }
 
-  // 5. Flush telemetry events before exit (no-op if disabled)
+  // 5. Destroy Discord client
+  info('Disconnecting from Discord');
+  client.destroy();
+
+  // 6. Log clean exit before the final telemetry flush so shutdown logs are delivered
+  info('Shutdown complete');
+
+  // 7. Flush telemetry events after final shutdown logs and before exit (no-op if disabled)
   try {
     const amplitude = await import('./amplitude.js');
     const amplitudeFlushed = await withTimeout(
@@ -280,12 +287,6 @@ async function gracefulShutdown(signal) {
     warn('Failed to flush Sentry events on shutdown', { error: err.message });
   }
 
-  // 6. Destroy Discord client
-  info('Disconnecting from Discord');
-  client.destroy();
-
-  // 7. Log clean exit
-  info('Shutdown complete');
   process.exit(0);
 }
 

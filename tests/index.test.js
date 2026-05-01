@@ -473,6 +473,17 @@ describe('index.js', () => {
     expect(mocks.db.closeDb).toHaveBeenCalled();
     expect(mocks.client.destroy).toHaveBeenCalled();
     expect(mocks.botStatus.stopBotStatus).toHaveBeenCalled();
+
+    const shutdownCompleteIndex = mocks.logger.info.mock.calls.findIndex(
+      ([message]) => message === 'Shutdown complete',
+    );
+    const shutdownCompleteOrder = mocks.logger.info.mock.invocationCallOrder[shutdownCompleteIndex];
+
+    expect(shutdownCompleteIndex).toBeGreaterThanOrEqual(0);
+    expect(mocks.client.destroy.mock.invocationCallOrder[0]).toBeLessThan(shutdownCompleteOrder);
+    expect(shutdownCompleteOrder).toBeLessThan(
+      mocks.telemetry.flushAmplitude.mock.invocationCallOrder[0],
+    );
   });
 
   it('should bound Amplitude shutdown flush and log timeout errors', async () => {
