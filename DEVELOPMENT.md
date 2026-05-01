@@ -61,7 +61,7 @@ See [DESIGN.md](DESIGN.md) for dashboard visual direction and the design system.
 
 Do not treat the project wiki as files inside this repository. GitHub wikis are a separate git repository.
 
-1. Update source pages under `docs/wiki-pages/`.
+1. Update source pages under `docs/wiki-pages/` (see `docs/wiki-pages/README.md` for page inventory).
 2. Clone the wiki repo using GitHub's documented flow (`<repo>.wiki.git`).
 3. Copy updated pages into the cloned wiki repo, commit, and push.
 
