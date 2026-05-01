@@ -34,7 +34,8 @@
     "prepare": "[ -d .git ] && git config core.hooksPath .hooks || true",
     "docs:generate": "node scripts/generate-openapi.js",
     "providers:sync": "node scripts/sync-web-provider-catalog.js",
-    "providers:check": "node scripts/sync-web-provider-catalog.js --check"
+    "providers:check": "node scripts/sync-web-provider-catalog.js --check",
+    "wiki:publish": "./scripts/publish-wiki.sh VolvoxLLC/volvox-bot"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.73",
