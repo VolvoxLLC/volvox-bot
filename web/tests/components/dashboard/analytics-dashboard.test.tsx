@@ -56,6 +56,7 @@ const analyticsPayload = {
     },
   ],
   aiUsage: {
+    source: 'ai_usage',
     byModel: [
       {
         model: "claude-sonnet-4-20250514",

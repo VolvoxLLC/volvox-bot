@@ -25,6 +25,7 @@ function makeAnalytics(overrides: Partial<DashboardAnalytics> = {}): DashboardAn
     },
     messageVolume: [],
     aiUsage: {
+      source: 'ai_usage',
       byModel: [
         {
           model: 'claude-sonnet',
@@ -178,7 +179,7 @@ describe('exportAnalyticsPdf', () => {
 
   it('omits AI usage section when no models', () => {
     exportAnalyticsPdf(
-      makeAnalytics({ aiUsage: { byModel: [], tokens: { prompt: 0, completion: 0 } } }),
+      makeAnalytics({ aiUsage: { source: 'ai_usage', byModel: [], tokens: { prompt: 0, completion: 0 } } }),
     );
 
     const html: string = mockWin.document.write.mock.calls[0]?.[0] ?? '';

@@ -13,7 +13,7 @@ export interface AnalyticsRange {
 export interface DashboardKpis {
   totalMessages: number;
   aiRequests: number;
-  aiCostUsd: number;
+  aiCostUsd: number | null;
   activeUsers: number;
   newMembers: number;
 }
@@ -71,10 +71,11 @@ export interface DashboardAnalytics {
   realtime: DashboardRealtime;
   messageVolume: MessageVolumePoint[];
   aiUsage: {
+    source: 'unavailable' | 'ai_usage';
     byModel: ModelUsage[];
     tokens: {
-      prompt: number;
-      completion: number;
+      prompt: number | null;
+      completion: number | null;
     };
   };
   channelActivity: ChannelBreakdownEntry[];

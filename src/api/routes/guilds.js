@@ -50,6 +50,7 @@ export function parsePagination(query) {
 
 const MAX_ANALYTICS_RANGE_DAYS = 90;
 const ACTIVE_CONVERSATION_WINDOW_MINUTES = 15;
+const AI_USAGE_UNAVAILABLE_SOURCE = 'unavailable';
 
 class AnalyticsRangeValidationError extends Error {
   constructor(message) {
@@ -1524,13 +1525,13 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
 
         const usageByModel = [];
 
-        const promptTokenTotal = usageByModel.reduce((sum, model) => sum + model.promptTokens, 0);
-        const completionTokenTotal = usageByModel.reduce(
-          (sum, model) => sum + model.completionTokens,
-          0,
-        );
-        const aiCostUsd = usageByModel.reduce((sum, model) => sum + model.costUsd, 0);
-        const comparisonAiCostUsd = 0;
+        // Database-backed AI usage details were removed with persisted log tracking. Keep message
+        // counts sourced from conversations, but mark spend/token breakdowns explicitly unavailable
+        // instead of reporting synthetic zeroes when aiRequests may be nonzero.
+        const aiUsageSource = AI_USAGE_UNAVAILABLE_SOURCE;
+        const aiUsageTokens = { prompt: null, completion: null };
+        const aiCostUsd = null;
+        const comparisonAiCostUsd = null;
 
         const commandUsage = commandUsageResult.rows.map((row) => ({
           command: row.command_name,
@@ -1572,17 +1573,15 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
           kpis: {
             totalMessages: Number(kpiRow.total_messages || 0),
             aiRequests: Number(kpiRow.ai_requests || 0),
-            aiCostUsd: Number(aiCostUsd.toFixed(6)),
+            aiCostUsd,
             activeUsers: Number(kpiRow.active_users || 0),
             newMembers,
           },
           messageVolume: volume,
           aiUsage: {
+            source: aiUsageSource,
             byModel: usageByModel,
-            tokens: {
-              prompt: promptTokenTotal,
-              completion: completionTokenTotal,
-            },
+            tokens: aiUsageTokens,
           },
           channelActivity,
           topChannels: channelActivity,
@@ -1599,7 +1598,7 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
                 kpis: {
                   totalMessages: Number(comparisonKpiRow.total_messages || 0),
                   aiRequests: Number(comparisonKpiRow.ai_requests || 0),
-                  aiCostUsd: Number(comparisonAiCostUsd.toFixed(6)),
+                  aiCostUsd: comparisonAiCostUsd,
                   activeUsers: Number(comparisonKpiRow.active_users || 0),
                   newMembers: comparisonNewMembers,
                 },
