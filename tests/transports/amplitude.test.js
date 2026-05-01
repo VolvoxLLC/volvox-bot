@@ -25,13 +25,11 @@ vi.mock('../../src/amplitude.js', async () => {
   };
 });
 
-vi.mock('winston-transport', () => {
-  function Transport(opts = {}) {
-    this.level = opts.level;
-  }
+function MockTransport(opts = {}) {
+  this.level = opts.level;
+}
 
-  return { default: Transport };
-});
+vi.mock('winston-transport', () => ({ default: MockTransport }));
 
 import { AmplitudeTransport } from '../../src/transports/amplitude.js';
 
