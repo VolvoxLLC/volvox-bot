@@ -73,7 +73,7 @@ Example commands:
 
 ```bash
 git clone https://github.com/VolvoxLLC/volvox-bot.wiki.git
-cp docs/wiki-pages/{Home,Quick-Start,Configuration-Reference,Operations-Runbook,Troubleshooting}.md volvox-bot.wiki/
+cp docs/wiki-pages/{Home,Quick-Start,Configuration-Reference,Operations-Runbook,Troubleshooting,Manual-Test-Plan}.md volvox-bot.wiki/
 cd volvox-bot.wiki
 git add *.md
 git commit -m "docs: update wiki pages"
