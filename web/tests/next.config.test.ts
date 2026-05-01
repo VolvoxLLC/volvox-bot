@@ -139,13 +139,11 @@ describe("next.config security headers", () => {
     });
 
     it("should omit Sentry ingest endpoints when browser error capture is disabled", () => {
-      expect(getCspDirectiveTokens(cspValue, "connect-src")).not.toEqual(
-        expect.arrayContaining([
-          "https://*.ingest.sentry.io",
-          "https://*.ingest.us.sentry.io",
-          "https://*.ingest.eu.sentry.io",
-        ]),
-      );
+      const connectSrcTokens = getCspDirectiveTokens(cspValue, "connect-src");
+
+      expect(connectSrcTokens).not.toContain("https://*.ingest.sentry.io");
+      expect(connectSrcTokens).not.toContain("https://*.ingest.us.sentry.io");
+      expect(connectSrcTokens).not.toContain("https://*.ingest.eu.sentry.io");
     });
 
     it("should allow Sentry ingest endpoints when browser error capture is enabled", async () => {
@@ -165,9 +163,10 @@ describe("next.config security headers", () => {
     });
 
     it("should omit Amplitude ingest endpoints when dashboard analytics is disabled", () => {
-      expect(getCspDirectiveTokens(cspValue, "connect-src")).not.toEqual(
-        expect.arrayContaining(["https://api2.amplitude.com", "https://api.eu.amplitude.com"]),
-      );
+      const connectSrcTokens = getCspDirectiveTokens(cspValue, "connect-src");
+
+      expect(connectSrcTokens).not.toContain("https://api2.amplitude.com");
+      expect(connectSrcTokens).not.toContain("https://api.eu.amplitude.com");
     });
 
     it("should allow Amplitude ingest endpoints when dashboard analytics is enabled", async () => {
