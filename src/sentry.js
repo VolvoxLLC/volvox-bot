@@ -15,6 +15,7 @@
 import * as Sentry from '@sentry/node';
 
 const dsn = process.env.SENTRY_DSN;
+// Keep Sentry default PII capture opt-in only; any value other than the explicit string "true" stays disabled.
 const sendDefaultPii = process.env.SENTRY_SEND_DEFAULT_PII === 'true';
 const SENSITIVE_KEY_PATTERN =
   /(?:authorization|cookie|csrf|secret|password|token|session|stack|x[-_]?forwarded[-_]?for|ip(?:[-_]?address)?|x[-_]?api[-_]?key|api[-_]?key|bot[-_]?api[-_]?secret|access[-_]?token|refresh[-_]?token)/i;
