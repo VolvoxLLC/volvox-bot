@@ -10,6 +10,8 @@ These files are the source content for the GitHub wiki.
 - `Operations-Runbook.md`
 - `Troubleshooting.md`
 
+`README.md` is repo-only documentation for maintainers and is intentionally excluded from the published wiki page list.
+
 ## Publish workflow
 
 Use GitHub's standard wiki clone flow:
