@@ -216,11 +216,22 @@ function scrubBreadcrumbData(value, seen = new WeakSet()) {
  * @returns {unknown} Scrubbed breadcrumbs, or the original value if it is not an array.
  */
 function scrubBreadcrumbs(breadcrumbs) {
-  if (!Array.isArray(breadcrumbs)) {
+  // Handle Sentry v10 shape: { values?: Breadcrumb[] }
+  let crumbs = breadcrumbs;
+  const isV10Shape =
+    breadcrumbs &&
+    typeof breadcrumbs === 'object' &&
+    !Array.isArray(breadcrumbs) &&
+    'values' in breadcrumbs;
+  if (isV10Shape) {
+    crumbs = breadcrumbs.values;
+  }
+
+  if (!Array.isArray(crumbs)) {
     return breadcrumbs;
   }
 
-  return breadcrumbs.map((breadcrumb) => {
+  const scrubbedCrumbs = crumbs.map((breadcrumb) => {
     if (!breadcrumb || typeof breadcrumb !== 'object') {
       return breadcrumb;
     }
@@ -236,6 +247,13 @@ function scrubBreadcrumbs(breadcrumbs) {
 
     return scrubbedBreadcrumb;
   });
+
+  if (isV10Shape) {
+    breadcrumbs.values = scrubbedCrumbs;
+    return breadcrumbs;
+  }
+
+  return scrubbedCrumbs;
 }
 
 /**

@@ -8,6 +8,42 @@ const DEFAULT_TRACES_SAMPLE_RATE = 0.1;
 const DEFAULT_REPLAYS_SESSION_SAMPLE_RATE = 0;
 const DEFAULT_REPLAYS_ON_ERROR_SAMPLE_RATE = 0.1;
 const CIRCULAR_REFERENCE_SENTINEL = '[Circular]';
+
+const INLINE_SECRET_REPLACEMENTS: ReadonlyArray<{
+  pattern: RegExp;
+  replacement: string;
+}> = [
+  { pattern: /\bBearer\s+[\w.~+/=-]+/gi, replacement: '[REDACTED]' },
+  { pattern: /\bsk-\w[\w-]{10,}/g, replacement: '[REDACTED]' },
+  {
+    pattern: /\b(?:xox[baprs]|gh[pousr])_[\w/-]{10,}/g,
+    replacement: '[REDACTED]',
+  },
+  { pattern: /\bgithub_pat_\w{10,}/g, replacement: '[REDACTED]' },
+  {
+    pattern:
+      /([?&#]\s*(?:access[-_]?token|refresh[-_]?token|api[-_]?key|token|secret|password)\s*=)\s*[^\s&#]+/gi,
+    replacement: '$1[REDACTED]',
+  },
+  {
+    pattern:
+      /(^|[\s,;])((?:access[-_]?token|refresh[-_]?token|api[-_]?key|token|secret|password)\s*=)\s*[^\s,;&#]+/gi,
+    replacement: '$1$2[REDACTED]',
+  },
+];
+
+/**
+ * Redact inline secrets from string values (Bearer tokens, API keys, etc.).
+ *
+ * @param value - String that may contain inline secrets.
+ * @returns String with secrets replaced by `[REDACTED]`.
+ */
+function redactInlineSecrets(value: string): string {
+  return INLINE_SECRET_REPLACEMENTS.reduce(
+    (scrubbed, { pattern, replacement }) => scrubbed.replace(pattern, replacement),
+    value,
+  );
+}
 const SENSITIVE_KEY_FRAGMENTS = [
   'authorization',
   'cookie',
@@ -188,6 +224,10 @@ function isSensitiveKey(key: string): boolean {
  * scrubbed elements, or the original non-object value.
  */
 function scrubUnknown(value: unknown, seen = new WeakSet<object>()): unknown {
+  if (typeof value === 'string') {
+    return redactInlineSecrets(value);
+  }
+
   if (!value || typeof value !== 'object') {
     return value;
   }
@@ -267,12 +307,30 @@ function scrubBreadcrumbData(value: unknown, seen = new WeakSet<object>()): unkn
  * @returns Scrubbed breadcrumbs, or the original value if it is not an array.
  */
 function scrubBreadcrumbs(breadcrumbs: Event['breadcrumbs']): Event['breadcrumbs'] {
-  if (!Array.isArray(breadcrumbs)) {
+  // Handle Sentry v10 shape: { values?: Breadcrumb[] }
+  let crumbs: unknown = breadcrumbs;
+  const isV10Shape =
+    breadcrumbs &&
+    typeof breadcrumbs === 'object' &&
+    !Array.isArray(breadcrumbs) &&
+    'values' in breadcrumbs;
+  if (isV10Shape) {
+    crumbs = (breadcrumbs as Record<string, unknown>).values;
+  }
+
+  if (!Array.isArray(crumbs)) {
     return breadcrumbs;
   }
 
-  return breadcrumbs.map((breadcrumb) => {
+  const scrubbedCrumbs = crumbs.map((breadcrumb) => {
+    if (!breadcrumb || typeof breadcrumb !== 'object') {
+      return breadcrumb;
+    }
+
     const scrubbedBreadcrumb = { ...breadcrumb };
+    if (typeof scrubbedBreadcrumb.message === 'string') {
+      scrubbedBreadcrumb.message = redactInlineSecrets(scrubbedBreadcrumb.message);
+    }
     if ('data' in scrubbedBreadcrumb) {
       scrubbedBreadcrumb.data = scrubBreadcrumbData(
         scrubbedBreadcrumb.data,
@@ -281,6 +339,13 @@ function scrubBreadcrumbs(breadcrumbs: Event['breadcrumbs']): Event['breadcrumbs
 
     return scrubbedBreadcrumb;
   });
+
+  if (isV10Shape) {
+    (breadcrumbs as Record<string, unknown>).values = scrubbedCrumbs;
+    return breadcrumbs;
+  }
+
+  return scrubbedCrumbs as Event['breadcrumbs'];
 }
 
 /**
