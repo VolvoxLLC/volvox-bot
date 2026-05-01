@@ -48,6 +48,29 @@ function scrubUnknown(value) {
 }
 
 /**
+ * Strip query parameters from a Sentry request URL without dropping the path.
+ *
+ * @param {unknown} value - Request URL value from a Sentry event.
+ * @returns {unknown} The URL without its query component, or the original value when not a string.
+ */
+function stripRequestUrlQuery(value) {
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  try {
+    const isAbsoluteUrl = /^[a-z][a-z\d+.-]*:/i.test(value);
+    const url = new URL(value, 'http://volvox.local');
+    url.search = '';
+
+    return isAbsoluteUrl ? url.toString() : `${url.pathname}${url.hash}`;
+  } catch {
+    const queryIndex = value.indexOf('?');
+    return queryIndex === -1 ? value : value.slice(0, queryIndex);
+  }
+}
+
+/**
  * Removes sensitive fields and identifiers from a Sentry event or performance payload.
  *
  * Mutates the provided event in place: deletes user email and IP address, removes request cookies,
@@ -65,6 +88,11 @@ function scrubSentryEvent(event) {
 
   if (event.request) {
     delete event.request.cookies;
+    delete event.request.query_string;
+
+    if (event.request.url) {
+      event.request.url = stripRequestUrlQuery(event.request.url);
+    }
 
     if (event.request.headers) {
       event.request.headers = scrubUnknown(event.request.headers);

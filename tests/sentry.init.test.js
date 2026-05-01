@@ -223,6 +223,8 @@ describe('sentry.js — init branch coverage', () => {
       },
       request: {
         cookies: { session: 'secret' },
+        query_string: 'token=secret&email=person@example.com',
+        url: 'https://example.com/callback?token=secret&email=person@example.com#done',
         headers: {
           authorization: 'Bearer secret',
           cookie: 'session=secret',
@@ -240,6 +242,8 @@ describe('sentry.js — init branch coverage', () => {
     const result = beforeSend(event);
     expect(result.user).toEqual({ id: 'safe-user-key' });
     expect(result.request.cookies).toBeUndefined();
+    expect(result.request.query_string).toBeUndefined();
+    expect(result.request.url).toBe('https://example.com/callback#done');
     expect(result.request.headers).toEqual({ accept: 'application/json' });
     expect(result.request.data).toEqual({ safeField: 'keep-this' });
   });
@@ -254,6 +258,8 @@ describe('sentry.js — init branch coverage', () => {
     const transaction = {
       type: 'transaction',
       request: {
+        query_string: 'api_key=secret',
+        url: '/internal/jobs?api_key=secret#queue',
         headers: { cookie: 'session=secret', accept: 'application/json' },
         data: { api_key: 'secret', safeField: 'keep-this' },
       },
@@ -268,6 +274,7 @@ describe('sentry.js — init branch coverage', () => {
     expect(cfg.beforeSendTransaction(transaction)).toEqual({
       type: 'transaction',
       request: {
+        url: '/internal/jobs#queue',
         headers: { accept: 'application/json' },
         data: { safeField: 'keep-this' },
       },

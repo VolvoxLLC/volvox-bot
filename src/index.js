@@ -73,6 +73,7 @@ const __dirname = dirname(__filename);
 // State persistence path
 const dataDir = join(__dirname, '..', 'data');
 const statePath = join(dataDir, 'state.json');
+const TELEMETRY_SHUTDOWN_FLUSH_TIMEOUT_MS = 2_000;
 
 // Package version (for restart tracking)
 let BOT_VERSION = 'unknown';
@@ -166,6 +167,27 @@ function loadState() {
 }
 
 /**
+ * Await a promise with a bounded timeout, clearing the timer when either side settles.
+ * @param {Promise<unknown>} promise - Promise to await.
+ * @param {number} timeoutMs - Timeout in milliseconds.
+ * @param {string} timeoutMessage - Error message to use if the timeout wins.
+ * @returns {Promise<unknown>} The original promise resolution.
+ */
+async function withTimeout(promise, timeoutMs, timeoutMessage) {
+  let timeoutId;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
  * Load all commands from the commands directory
  */
 async function loadCommands() {
@@ -248,8 +270,27 @@ async function gracefulShutdown(signal) {
   }
 
   // 5. Flush telemetry events before exit (no-op if disabled)
-  await import('./amplitude.js').then(({ flushAmplitude }) => flushAmplitude()).catch(() => {});
-  await import('./sentry.js').then(({ Sentry }) => Sentry.flush(2000)).catch(() => {});
+  try {
+    const { amplitudeEnabled, flushAmplitude } = await import('./amplitude.js');
+    const amplitudeFlushed = await withTimeout(
+      flushAmplitude(),
+      TELEMETRY_SHUTDOWN_FLUSH_TIMEOUT_MS,
+      'Amplitude flush timed out',
+    );
+
+    if (amplitudeEnabled && !amplitudeFlushed) {
+      warn('Failed to flush Amplitude events on shutdown', { error: 'Amplitude flush failed' });
+    }
+  } catch (err) {
+    warn('Failed to flush Amplitude events on shutdown', { error: err.message });
+  }
+
+  try {
+    const { Sentry } = await import('./sentry.js');
+    await Sentry.flush(TELEMETRY_SHUTDOWN_FLUSH_TIMEOUT_MS);
+  } catch (err) {
+    warn('Failed to flush Sentry events on shutdown', { error: err.message });
+  }
 
   // 6. Destroy Discord client
   info('Disconnecting from Discord');
