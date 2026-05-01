@@ -129,7 +129,7 @@ function shouldNormalizeSavedModel(value: unknown, normalizedValue: string): val
 }
 
 /**
- * Render the AI & Automation configuration UI for the chat, automod, triage, and memory feature tabs.
+ * Render the AI feature UI and the shared Content Safety panel used by Moderation & Safety.
  *
  * Renders controls and panels appropriate to the currently active feature tab and wires updates into
  * the shared draft configuration via the config context. Returns `null` when the draft configuration

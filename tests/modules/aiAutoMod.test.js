@@ -261,6 +261,40 @@ describe('analyzeMessage', () => {
     expect(result.reason).toBe('hate speech');
   });
 
+  it('flags categories when providers nest scores under a scores object', async () => {
+    mockGenerate.mockResolvedValue({
+      text: JSON.stringify({
+        scores: {
+          toxicity: 0.91,
+          spam: 0.1,
+          harassment: 0.1,
+        },
+        reason: 'toxic content',
+      }),
+      costUsd: 0,
+      usage: { inputTokens: 0, outputTokens: 0 },
+      durationMs: 0,
+      finishReason: 'stop',
+      sources: [],
+      providerMetadata: {},
+    });
+    const cfg = getAiAutoModConfig({
+      aiAutoMod: {
+        thresholds: { toxicity: 0.9 },
+        actions: { toxicity: 'delete' },
+      },
+    });
+
+    const result = await analyzeMessage('toxic message content here', cfg);
+
+    expect(result).toMatchObject({
+      flagged: true,
+      categories: ['toxicity'],
+      action: 'delete',
+    });
+    expect(result.scores.toxicity).toBe(0.91);
+  });
+
   it.each([
     null,
     42,
