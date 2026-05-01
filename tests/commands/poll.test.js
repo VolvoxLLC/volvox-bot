@@ -23,7 +23,7 @@ vi.mock('../../src/utils/permissions.js', () => ({
 }));
 
 vi.mock('../../src/utils/safeSend.js', () => ({
-  safeSend: vi.fn(),
+  safeSend: vi.fn().mockResolvedValue({ id: 'msg-001' }),
   safeReply: (t, opts) => t.reply(opts),
   safeEditReply: (t, opts) => t.editReply(opts),
 }));
@@ -169,6 +169,7 @@ import { data, execute } from '../../src/commands/poll.js';
 import { getPool } from '../../src/db.js';
 import * as logger from '../../src/logger.js';
 import { isModerator } from '../../src/utils/permissions.js';
+import { safeSend } from '../../src/utils/safeSend.js';
 
 /**
  * Create a mock interaction for poll tests.
@@ -260,12 +261,14 @@ describe('poll command', () => {
           JSON.stringify(['Red', 'Blue', 'Green']),
         ]),
       );
-      expect(interaction.channel.send).toHaveBeenCalledWith(
+      expect(safeSend).toHaveBeenCalledWith(
+        interaction.channel,
         expect.objectContaining({
           embeds: expect.any(Array),
           components: expect.any(Array),
         }),
       );
+      expect(interaction.channel.send).not.toHaveBeenCalled();
       expect(interaction.editReply).toHaveBeenCalledWith(
         expect.objectContaining({
           content: expect.stringContaining('Poll **#1** created'),
@@ -296,7 +299,10 @@ describe('poll command', () => {
 
       await execute(interaction);
 
-      expect(interaction.channel.send).toHaveBeenCalled();
+      expect(safeSend).toHaveBeenCalledWith(
+        interaction.channel,
+        expect.objectContaining({ embeds: expect.any(Array), components: expect.any(Array) }),
+      );
       expect(interaction.editReply).toHaveBeenCalledWith(
         expect.objectContaining({
           content: expect.stringContaining('Poll **#2** created'),
@@ -328,7 +334,10 @@ describe('poll command', () => {
 
       await execute(interaction);
 
-      expect(interaction.channel.send).toHaveBeenCalled();
+      expect(safeSend).toHaveBeenCalledWith(
+        interaction.channel,
+        expect.objectContaining({ embeds: expect.any(Array), components: expect.any(Array) }),
+      );
     });
 
     it('should reject fewer than 2 options', async () => {

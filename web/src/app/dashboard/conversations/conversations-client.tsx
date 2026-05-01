@@ -97,12 +97,17 @@ export default function ConversationsClient() {
 
   useEffect(() => {
     clearTimeout(searchTimerRef.current);
+
+    if (search === debouncedSearch) {
+      return;
+    }
+
     searchTimerRef.current = setTimeout(() => {
       setDebouncedSearch(search);
       setPage(1);
     }, 300);
     return () => clearTimeout(searchTimerRef.current);
-  }, [search]);
+  }, [search, debouncedSearch]);
 
   useEffect(() => {
     if (!guildId) return;

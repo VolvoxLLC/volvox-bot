@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { GithubIcon } from '@/components/ui/github-icon';
+import { getBotApiBaseUrl } from '@/lib/bot-api';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -52,19 +53,7 @@ interface CommunityStats {
 
 // ─── Data Fetching ────────────────────────────────────────────────────────────
 
-const API_BASE = process.env.BOT_API_URL || 'http://localhost:3001';
-
-/**
- * Normalize the configured API base so it ends with `/api/v1`.
- *
- * Removes any trailing slashes from the configured base and appends `/api/v1` if it's not already present.
- *
- * @returns The normalized API base URL ending with `/api/v1`.
- */
-function getApiBase(): string {
-  const trimmed = API_BASE.replace(/\/+$/, '');
-  return trimmed.endsWith('/api/v1') ? trimmed : `${trimmed}/api/v1`;
-}
+const API_BASE = getBotApiBaseUrl('http://localhost:3001');
 
 /**
  * Fetches aggregate community statistics for the specified guild.
@@ -74,7 +63,7 @@ function getApiBase(): string {
  */
 async function fetchStats(guildId: string): Promise<CommunityStats | null> {
   try {
-    const res = await fetch(`${getApiBase()}/community/${guildId}/stats`, {
+    const res = await fetch(`${API_BASE}/community/${guildId}/stats`, {
       next: { revalidate: 60 },
     });
     if (!res.ok) return null;
@@ -94,7 +83,7 @@ async function fetchLeaderboard(
   guildId: string,
 ): Promise<{ members: LeaderboardMember[]; total: number } | null> {
   try {
-    const res = await fetch(`${getApiBase()}/community/${guildId}/leaderboard?limit=25&page=1`, {
+    const res = await fetch(`${API_BASE}/community/${guildId}/leaderboard?limit=25&page=1`, {
       next: { revalidate: 60 },
     });
     if (!res.ok) return null;
@@ -115,7 +104,7 @@ async function fetchShowcases(
 ): Promise<{ projects: ShowcaseProject[]; total: number } | null> {
   try {
     const res = await fetch(
-      `${getApiBase()}/community/${guildId}/showcases?limit=12&page=1&sort=upvotes`,
+      `${API_BASE}/community/${guildId}/showcases?limit=12&page=1&sort=upvotes`,
       {
         next: { revalidate: 60 },
       },
