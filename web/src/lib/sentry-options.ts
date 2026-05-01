@@ -384,7 +384,7 @@ function scrubBreadcrumbs(breadcrumbs: Event['breadcrumbs']): Event['breadcrumbs
 
     const scrubbedBreadcrumb = { ...breadcrumb };
     if (typeof scrubbedBreadcrumb.message === 'string') {
-      scrubbedBreadcrumb.message = redactInlineSecrets(scrubbedBreadcrumb.message);
+      scrubbedBreadcrumb.message = scrubBreadcrumbString(scrubbedBreadcrumb.message);
     }
     if ('data' in scrubbedBreadcrumb) {
       scrubbedBreadcrumb.data = scrubBreadcrumbData(

@@ -249,6 +249,7 @@ describe('sentry-options', () => {
       breadcrumbs: [
         {
           category: 'fetch',
+          message: 'fetch failed at /api/auth/callback/discord?code=oauth-code#private and https://user:pass@api.example.com/callback?token=secret#private',
           data: {
             from: '/api/auth/callback/discord?code=oauth-code&state=oauth-state#private',
             to: 'https://user:pass@dashboard.example.com/dashboard?code=oauth-code&state=oauth-state#private',
@@ -269,6 +270,7 @@ describe('sentry-options', () => {
     expect(scrubSentryEvent(event)?.breadcrumbs).toEqual([
       {
         category: 'fetch',
+        message: 'fetch failed at /api/auth/callback/discord and https://api.example.com/callback',
         data: {
           from: '/api/auth/callback/discord',
           to: 'https://dashboard.example.com/dashboard',
