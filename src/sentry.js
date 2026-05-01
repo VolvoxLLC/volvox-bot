@@ -61,7 +61,7 @@ function stripRequestUrlQuery(value) {
 
   try {
     const isAbsoluteUrl = /^[a-z][a-z\d+.-]*:/i.test(value);
-    const url = new URL(value, 'http://volvox.local');
+    const url = new URL(value, 'https://volvox.local');
     url.search = '';
 
     return isAbsoluteUrl ? url.toString() : `${url.pathname}${url.hash}`;
