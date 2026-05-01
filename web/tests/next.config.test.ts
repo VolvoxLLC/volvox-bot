@@ -1,5 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
-import nextConfig from "../next.config.mjs";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import packageJson from "../package.json" with { type: "json" };
 
 type SecurityHeader = {
@@ -7,7 +6,60 @@ type SecurityHeader = {
   value: string;
 };
 
+const TELEMETRY_ENV_KEYS = [
+  "NEXT_PUBLIC_SENTRY_DSN",
+  "NEXT_PUBLIC_AMPLITUDE_API_KEY",
+  "NEXT_PUBLIC_AMPLITUDE_SERVER_ZONE",
+] as const;
+const originalTelemetryEnv = Object.fromEntries(
+  TELEMETRY_ENV_KEYS.map((key) => [key, process.env[key]]),
+);
+
+async function loadNextConfig(
+  env: Partial<Record<(typeof TELEMETRY_ENV_KEYS)[number], string>> = {},
+) {
+  vi.resetModules();
+  for (const key of TELEMETRY_ENV_KEYS) {
+    delete process.env[key];
+  }
+  Object.assign(process.env, env);
+
+  const module = await import("../next.config.mjs");
+  return module.default;
+}
+
+function restoreTelemetryEnv() {
+  for (const key of TELEMETRY_ENV_KEYS) {
+    const originalValue = originalTelemetryEnv[key];
+    if (originalValue === undefined) {
+      delete process.env[key];
+    } else {
+      process.env[key] = originalValue;
+    }
+  }
+}
+
+function getCspDirectiveTokens(cspValue: string, directiveName: string) {
+  const directive = cspValue
+    .split(";")
+    .map((value) => value.trim())
+    .find((value) => value.startsWith(`${directiveName} `));
+
+  expect(directive).toBeDefined();
+  return directive!.split(/\s+/);
+}
+
 describe("next.config security headers", () => {
+  let nextConfig: Awaited<ReturnType<typeof loadNextConfig>>;
+
+  beforeEach(async () => {
+    nextConfig = await loadNextConfig();
+  });
+
+  afterEach(() => {
+    restoreTelemetryEnv();
+  });
+
   it("should export a headers() function", () => {
     expect(nextConfig.headers).toBeDefined();
     expect(typeof nextConfig.headers).toBe("function");
@@ -88,8 +140,67 @@ describe("next.config security headers", () => {
       expect(cspValue).toContain("img-src 'self' cdn.discordapp.com data:");
     });
 
-    it("should restrict connect-src to self", () => {
-      expect(cspValue).toContain("connect-src 'self'");
+    it("should include self in connect-src", () => {
+      expect(getCspDirectiveTokens(cspValue, "connect-src")).toContain("'self'");
+    });
+
+    it("should omit Sentry ingest endpoints when browser error capture is disabled", () => {
+      const connectSrcTokens = getCspDirectiveTokens(cspValue, "connect-src");
+
+      expect(connectSrcTokens).not.toContain("https://*.ingest.sentry.io");
+      expect(connectSrcTokens).not.toContain("https://*.ingest.us.sentry.io");
+      expect(connectSrcTokens).not.toContain("https://*.ingest.eu.sentry.io");
+    });
+
+    it("should allow Sentry ingest endpoints when browser error capture is enabled", async () => {
+      nextConfig = await loadNextConfig({ NEXT_PUBLIC_SENTRY_DSN: "https://key@sentry.example.com/0" });
+      const headers = (await nextConfig.headers!())[0].headers;
+      const enabledCspValue = headers.find(
+        (h: SecurityHeader) => h.key === "Content-Security-Policy",
+      )!.value;
+
+      expect(getCspDirectiveTokens(enabledCspValue, "connect-src")).toEqual(
+        expect.arrayContaining([
+          "https://sentry.example.com",
+          "https://*.ingest.sentry.io",
+          "https://*.ingest.us.sentry.io",
+          "https://*.ingest.eu.sentry.io",
+        ]),
+      );
+    });
+
+    it("should omit Amplitude ingest endpoints when dashboard analytics is disabled", () => {
+      const connectSrcTokens = getCspDirectiveTokens(cspValue, "connect-src");
+
+      expect(connectSrcTokens).not.toContain("https://api2.amplitude.com");
+      expect(connectSrcTokens).not.toContain("https://api.eu.amplitude.com");
+    });
+
+    it("should allow only the US Amplitude ingest endpoint by default when dashboard analytics is enabled", async () => {
+      nextConfig = await loadNextConfig({ NEXT_PUBLIC_AMPLITUDE_API_KEY: "amplitude-key" });
+      const headers = (await nextConfig.headers!())[0].headers;
+      const enabledCspValue = headers.find(
+        (h: SecurityHeader) => h.key === "Content-Security-Policy",
+      )!.value;
+      const connectSrcTokens = getCspDirectiveTokens(enabledCspValue, "connect-src");
+
+      expect(connectSrcTokens).toContain("https://api2.amplitude.com");
+      expect(connectSrcTokens).not.toContain("https://api.eu.amplitude.com");
+    });
+
+    it("should allow only the EU Amplitude ingest endpoint when the EU server zone is configured", async () => {
+      nextConfig = await loadNextConfig({
+        NEXT_PUBLIC_AMPLITUDE_API_KEY: "amplitude-key",
+        NEXT_PUBLIC_AMPLITUDE_SERVER_ZONE: "EU",
+      });
+      const headers = (await nextConfig.headers!())[0].headers;
+      const enabledCspValue = headers.find(
+        (h: SecurityHeader) => h.key === "Content-Security-Policy",
+      )!.value;
+      const connectSrcTokens = getCspDirectiveTokens(enabledCspValue, "connect-src");
+
+      expect(connectSrcTokens).toContain("https://api.eu.amplitude.com");
+      expect(connectSrcTokens).not.toContain("https://api2.amplitude.com");
     });
 
     it("should restrict font-src to self", () => {

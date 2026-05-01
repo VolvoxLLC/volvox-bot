@@ -1,15 +1,78 @@
 'use client';
 
-import { SessionProvider } from 'next-auth/react';
+import * as Sentry from '@sentry/nextjs';
+import { usePathname } from 'next/navigation';
+import { SessionProvider, useSession } from 'next-auth/react';
 import { useTheme } from 'next-themes';
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 import { Toaster } from 'sonner';
 import { ThemeProvider } from '@/components/theme-provider';
+import { useGuildSelection } from '@/hooks/use-guild-selection';
+import {
+  DASHBOARD_PAGE_VIEW_EVENT,
+  initDashboardAmplitude,
+  trackDashboardEvent,
+} from '@/lib/amplitude';
+
+function isDashboardRoute(pathname: string | null): pathname is string {
+  return pathname === '/dashboard' || pathname?.startsWith('/dashboard/') === true;
+}
+
+const DASHBOARD_ROUTE_PARAMETERS: Record<string, string> = {
+  conversations: '[conversationId]',
+  members: '[userId]',
+  settings: '[category]',
+  tickets: '[ticketId]',
+};
+
+const COMMUNITY_ROUTE_PARAMETERS = ['[guildId]', '[userId]'] as const;
+
+function getCommunityTelemetryRoute(pathname: string): string {
+  const segments = pathname.split('/').filter(Boolean);
+
+  if (segments[0] !== 'community' || segments.length < 2) {
+    return pathname;
+  }
+
+  return `/${[
+    'community',
+    ...segments.slice(1).map((segment, index) => COMMUNITY_ROUTE_PARAMETERS[index] ?? segment),
+  ].join('/')}`;
+}
+
+function getDashboardTelemetryRoute(pathname: string | null): string {
+  if (!pathname) {
+    return 'unknown';
+  }
+
+  if (!isDashboardRoute(pathname)) {
+    return getCommunityTelemetryRoute(pathname);
+  }
+
+  const segments = pathname.split('/').filter(Boolean);
+  const routeSection = segments[1];
+
+  if (!routeSection || segments.length < 3) {
+    return pathname;
+  }
+
+  const routeParameter = DASHBOARD_ROUTE_PARAMETERS[routeSection];
+
+  if (!routeParameter) {
+    return pathname;
+  }
+
+  return `/${['dashboard', routeSection, routeParameter, ...segments.slice(3)].join('/')}`;
+}
+
+function getGuildTelemetryScope(guildId: string | null): 'none' | 'selected' {
+  return guildId ? 'selected' : 'none';
+}
 
 /**
- * Render a global Toaster whose visual theme follows the resolved app theme.
+ * Render a global Toaster that follows the resolved application theme.
  *
- * @returns A React element mounting a Toaster at the bottom-right with its `theme` set to the resolved theme (`'light'` or `'dark'`, falling back to `'system'` if unresolved) and `richColors` enabled.
+ * @returns A React element mounting a Toaster at the bottom-right with its theme set to 'light' or 'dark' when available, otherwise 'system'; `richColors` enabled.
  */
 function ThemedToaster() {
   const { resolvedTheme } = useTheme();
@@ -23,20 +86,92 @@ function ThemedToaster() {
 }
 
 /**
- * Wraps application UI with NextAuth session context, theme provider, and a global toast container.
+ * Synchronizes Sentry context with the current route and dashboard guild scope.
  *
- * Session error handling (e.g. RefreshTokenError) is handled elsewhere (the Header component),
- * which signs out and redirects to /login.
+ * Updates Sentry's `routing` context with the current pathname (or `unknown`) and
+ * only attaches `guild` context for authenticated dashboard routes with a selected
+ * guild. The guild context is cleared everywhere else so persisted dashboard state
+ * does not leak into public routes.
  *
- * Theme defaults to system preference with CSS variable-based dark/light mode support.
+ * @returns `null` — the component does not render any UI.
+ */
+function SentryContextBridge() {
+  const pathname = usePathname();
+  const guildId = useGuildSelection();
+  const { status } = useSession();
+  const isAuthenticatedDashboardRoute = status === 'authenticated' && isDashboardRoute(pathname);
+  const telemetryRoute = getDashboardTelemetryRoute(pathname);
+
+  useEffect(() => {
+    Sentry.setContext('routing', { route: telemetryRoute });
+
+    if (isAuthenticatedDashboardRoute && guildId) {
+      Sentry.setContext('guild', { selection: getGuildTelemetryScope(guildId) });
+      return;
+    }
+
+    Sentry.setContext('guild', null);
+  }, [guildId, isAuthenticatedDashboardRoute, telemetryRoute]);
+
+  return null;
+}
+
+/**
+ * Synchronizes Amplitude: initializes it with the current authenticated user and records dashboard page-view events once per route.
  *
- * @returns A React element that renders providers around `children` and mounts a Toaster
- *          positioned at the bottom-right with resolved theme (light/dark) and rich colors enabled.
+ * The emitted event includes the current `authStatus`, coarse `guildSelection`, and `route` (defaults to `'unknown'` when not set).
+ *
+ * @returns `null` (this component does not render UI)
+ */
+function AmplitudeContextBridge() {
+  const pathname = usePathname();
+  const guildId = useGuildSelection();
+  const { data: session, status } = useSession();
+  const userId = status === 'authenticated' ? session?.user?.id : null;
+  const lastTrackedRouteRef = useRef<string | null>(null);
+  const telemetryRoute = getDashboardTelemetryRoute(pathname);
+
+  useEffect(() => {
+    initDashboardAmplitude(userId);
+  }, [userId]);
+
+  useEffect(() => {
+    if (!isDashboardRoute(pathname)) {
+      lastTrackedRouteRef.current = null;
+      return;
+    }
+
+    if (status === 'loading') {
+      return;
+    }
+
+    if (lastTrackedRouteRef.current === telemetryRoute) {
+      return;
+    }
+
+    lastTrackedRouteRef.current = telemetryRoute;
+    trackDashboardEvent(DASHBOARD_PAGE_VIEW_EVENT, {
+      authStatus: status,
+      guildSelection: getGuildTelemetryScope(guildId),
+      route: telemetryRoute,
+    });
+  }, [guildId, pathname, status, telemetryRoute]);
+
+  return null;
+}
+
+/**
+ * Composes application context providers (authentication and theme), mounts telemetry bridges, and renders global UI chrome.
+ *
+ * @param children - The application UI to render inside the provider tree
+ * @returns A React element containing the provider tree that wraps `children`, mounts Sentry and Amplitude context bridges, and renders the themed global Toaster
  */
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <SessionProvider>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+        <SentryContextBridge />
+        <AmplitudeContextBridge />
         {children}
         <ThemedToaster />
       </ThemeProvider>
