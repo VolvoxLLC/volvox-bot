@@ -1,0 +1,48 @@
+name: Chore
+description: Maintenance or tooling work that does not change product behavior. Use build(deps) for dependency updates.
+title: "chore(scope): "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Replace `scope` in the title with a primary scope-label token (`ai`, `dashboard`, `backend`, `frontend`, `api`, `auth`, `ops`, `security`, `engagement`, `moderation`, `dependencies`) or, when clearer, a narrower title-only scope from the templates (`agents`, `design`, `readme`, `mintlify`, `deps`, `tests`, `tooling`). Treat `deps` as title shorthand for `dependencies`; labels still follow the taxonomy in `AGENTS.md`.
+
+        Use `build(deps): …` or another `build(...)` title for dependency, CI, packaging, or build-system changes. Use `refactor(...)` instead of `chore(...)` when restructuring code without changing behavior.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One or two sentences naming the change.
+    validations:
+      required: true
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: Why this is worth doing now.
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      value: |
+        **IN**
+
+        - …
+
+        **OUT**
+
+        - …
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      value: |
+        - [ ] …
+        - [ ] …
+    validations:
+      required: true
+  - type: textarea
+    id: files
+    attributes:
+      label: Files likely touched

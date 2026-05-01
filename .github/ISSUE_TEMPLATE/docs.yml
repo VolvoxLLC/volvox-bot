@@ -1,0 +1,53 @@
+name: Docs
+description: Documentation-only change (AGENTS.md, DESIGN.md, README.md, Mintlify, etc.).
+title: "docs(scope): "
+labels:
+  - documentation
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Replace `scope` in the title with a primary scope-label token (`ai`, `dashboard`, `backend`, `frontend`, `api`, `auth`, `ops`, `security`, `engagement`, `moderation`, `dependencies`) or, when clearer, a narrower title-only scope from the templates (`agents`, `design`, `readme`, `mintlify`, `deps`, `tests`, `tooling`). Treat `deps` as title shorthand for `dependencies`; labels still follow the taxonomy in `AGENTS.md`.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One or two sentences naming the doc and the change.
+    validations:
+      required: true
+  - type: textarea
+    id: current-state
+    attributes:
+      label: Current state
+      description: What the docs say today (or do not say). Quote the relevant passage when narrow.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      value: |
+        **IN**
+
+        - …
+
+        **OUT**
+
+        - …
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      value: |
+        - [ ] …
+        - [ ] …
+    validations:
+      required: true
+  - type: textarea
+    id: open-questions
+    attributes:
+      label: Open questions
+  - type: textarea
+    id: files
+    attributes:
+      label: Files likely touched
