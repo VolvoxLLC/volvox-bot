@@ -1352,31 +1352,6 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
         const bucketExpr =
           interval === 'hour' ? "date_trunc('hour', created_at)" : "date_trunc('day', created_at)";
 
-        const logsBase = [
-          "message = 'AI usage'",
-          "metadata->>'guildId' = $1",
-          'timestamp >= $2',
-          'timestamp <= $3',
-        ];
-        const { where: logsWhere, values: logsValues } = buildFilteredQuery(
-          logsBase,
-          [req.params.id, from.toISOString(), to.toISOString()],
-          activeChannelFilter,
-          "metadata->>'channelId'",
-        );
-
-        const comparisonLogs =
-          comparisonFrom && comparisonTo
-            ? buildFilteredQuery(
-                logsBase,
-                [req.params.id, comparisonFrom.toISOString(), comparisonTo.toISOString()],
-                activeChannelFilter,
-                "metadata->>'channelId'",
-              )
-            : null;
-        const comparisonLogsWhere = comparisonLogs?.where ?? '';
-        const comparisonLogsValues = comparisonLogs?.values ?? null;
-
         // Build command usage query dynamically to avoid SQL injection
         const { where: commandUsageWhereClause, values: commandUsageValues } = buildFilteredQuery(
           ['guild_id = $1', 'used_at >= $2', 'used_at <= $3'],
@@ -1391,8 +1366,6 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
           volumeResult,
           channelResult,
           heatmapResult,
-          modelUsageResult,
-          comparisonCostResult,
           commandUsageResult,
           userEngagementResult,
           xpEconomyResult,
@@ -1444,72 +1417,10 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
              COUNT(*)::int AS messages
            FROM conversations
            WHERE ${conversationWhere}
-           GROUP BY 1, 2
-           ORDER BY 1 ASC, 2 ASC`,
+             GROUP BY 1, 2
+             ORDER BY 1 ASC, 2 ASC`,
             conversationValues,
           ),
-          dbPool
-            .query(
-              `SELECT
-               COALESCE(NULLIF(metadata->>'model', ''), 'unknown') AS model,
-               COUNT(*)::bigint AS requests,
-               SUM(
-                 CASE
-                   WHEN (metadata->>'promptTokens') ~ '^[0-9]+$'
-                   THEN (metadata->>'promptTokens')::int
-                   ELSE 0
-                 END
-               )::bigint AS prompt_tokens,
-               SUM(
-                 CASE
-                   WHEN (metadata->>'completionTokens') ~ '^[0-9]+$'
-                   THEN (metadata->>'completionTokens')::int
-                   ELSE 0
-                 END
-               )::bigint AS completion_tokens,
-               SUM(
-                 CASE
-                   WHEN (metadata->>'estimatedCostUsd') ~ '^[0-9]+(\\.[0-9]+)?$'
-                   THEN (metadata->>'estimatedCostUsd')::numeric
-                   ELSE 0
-                 END
-               ) AS cost_usd
-             FROM logs
-             WHERE ${logsWhere}
-             GROUP BY 1
-             ORDER BY requests DESC`,
-              logsValues,
-            )
-            .catch((err) => {
-              warn('Analytics logs query failed; returning empty AI usage dataset', {
-                guild: req.params.id,
-                error: err.message,
-              });
-              return { rows: [] };
-            }),
-          comparisonLogsValues
-            ? dbPool
-                .query(
-                  `SELECT
-                   SUM(
-                     CASE
-                       WHEN (metadata->>'estimatedCostUsd') ~ '^[0-9]+(\\.[0-9]+)?$'
-                       THEN (metadata->>'estimatedCostUsd')::numeric
-                       ELSE 0
-                     END
-                   ) AS cost_usd
-                 FROM logs
-                 WHERE ${comparisonLogsWhere}`,
-                  comparisonLogsValues,
-                )
-                .catch((err) => {
-                  warn('Comparison AI usage query failed; defaulting previous AI cost to 0', {
-                    guild: req.params.id,
-                    error: err.message,
-                  });
-                  return { rows: [] };
-                })
-            : Promise.resolve({ rows: [] }),
           dbPool
             .query(
               `SELECT
@@ -1611,13 +1522,7 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
           messages: Number(row.messages || 0),
         }));
 
-        const usageByModel = modelUsageResult.rows.map((row) => ({
-          model: row.model,
-          requests: Number(row.requests || 0),
-          promptTokens: Number(row.prompt_tokens || 0),
-          completionTokens: Number(row.completion_tokens || 0),
-          costUsd: Number(row.cost_usd || 0),
-        }));
+        const usageByModel = [];
 
         const promptTokenTotal = usageByModel.reduce((sum, model) => sum + model.promptTokens, 0);
         const completionTokenTotal = usageByModel.reduce(
@@ -1625,7 +1530,7 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
           0,
         );
         const aiCostUsd = usageByModel.reduce((sum, model) => sum + model.costUsd, 0);
-        const comparisonAiCostUsd = Number(comparisonCostResult.rows[0]?.cost_usd || 0);
+        const comparisonAiCostUsd = 0;
 
         const commandUsage = commandUsageResult.rows.map((row) => ({
           command: row.command_name,

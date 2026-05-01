@@ -20,20 +20,9 @@ import { fileURLToPath } from 'node:url';
 import { Client, Collection, GatewayIntentBits, Partials } from 'discord.js';
 import { config as dotenvConfig } from 'dotenv';
 import { startServer, stopServer, updateServerDbPool } from './api/server.js';
-import {
-  registerConfigListeners,
-  removeLoggingTransport,
-  setInitialTransport,
-} from './config-listeners.js';
+import { registerConfigListeners, removeLoggingTransport } from './config-listeners.js';
 import { closeDb, getPool, initDb } from './db.js';
-import {
-  addPostgresTransport,
-  addWebSocketTransport,
-  error,
-  info,
-  removeWebSocketTransport,
-  warn,
-} from './logger.js';
+import { addWebSocketTransport, error, info, removeWebSocketTransport, warn } from './logger.js';
 import {
   getConversationHistory,
   initConversationHistory,
@@ -59,7 +48,6 @@ import {
   stopWarningExpiryScheduler,
 } from './modules/warningEngine.js';
 import { closeRedisClient as closeRedis, initRedis } from './redis.js';
-import { pruneOldLogs } from './transports/postgres.js';
 import { preloadSDK } from './utils/aiClient.js';
 import { stopCacheCleanup } from './utils/cache.js';
 import { HealthMonitor } from './utils/health.js';
@@ -209,11 +197,11 @@ async function gracefulShutdown(signal) {
   info('Saving conversation state');
   saveState();
 
-  // 3. Remove PostgreSQL logging transport (flushes remaining buffer)
+  // 3. Run the legacy logging transport shutdown hook.
   try {
     await removeLoggingTransport();
   } catch (err) {
-    error('Failed to close PostgreSQL logging transport', { error: err.message });
+    error('Failed to close logging transport', { error: err.message });
   }
 
   // 3.5. Flush any buffered engagement writes (messages_sent / reactions) before closing DB
@@ -277,7 +265,7 @@ function canContinueWithoutDatabase() {
 }
 
 /**
- * Perform full application startup: initialize the database and optional PostgreSQL logging, load configuration and conversation history, start background services (conversation cleanup, memory checks, triage, tempban scheduler), register event handlers, load slash commands, and log the Discord client in.
+ * Perform full application startup: initialize the database, load configuration and conversation history, start background services (conversation cleanup, memory checks, triage, tempban scheduler), register event handlers, load slash commands, and log the Discord client in.
  */
 async function startup() {
   // Pre-warm AI SDK in background (non-blocking) — avoids 6s import delay on first AI request
@@ -339,31 +327,12 @@ async function startup() {
   config = await loadConfig();
   info('Configuration loaded', { sections: Object.keys(config) });
 
-  // Register config change listeners for hot-reload (logging transport,
-  // observability listeners for AI/spam/moderation config changes)
+  // Register config change listeners for hot-reload and observability.
   registerConfigListeners({ dbPool, config });
 
   // Set up AI module's DB pool reference
   if (dbPool) {
     setPool(dbPool);
-
-    // Wire up PostgreSQL logging transport if enabled in config
-    if (config.logging?.database?.enabled) {
-      try {
-        const transport = addPostgresTransport(dbPool, config.logging.database);
-        setInitialTransport(transport);
-        info('PostgreSQL logging transport enabled');
-
-        // Prune old logs on startup
-        const retentionDays = config.logging.database.retentionDays ?? 30;
-        const pruned = await pruneOldLogs(dbPool, retentionDays);
-        if (pruned > 0) {
-          info('Pruned old log entries', { pruned, retentionDays });
-        }
-      } catch (err) {
-        error('Failed to initialize PostgreSQL logging transport', { error: err.message });
-      }
-    }
   }
 
   // DEPRECATED: loadState() seeds conversation history from data/state.json for

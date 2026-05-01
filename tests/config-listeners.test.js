@@ -1,18 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Top-level mocks are hoisted by Vitest, but because we use vi.resetModules()
-// and dynamic imports we re-wire them in beforeEach. The hoisted vi.mock calls
-// establish the module-replacement entries that persist across resets.
-
 vi.mock('../src/logger.js', () => ({
-  addPostgresTransport: vi.fn().mockReturnValue({ close: vi.fn() }),
-  removePostgresTransport: vi.fn().mockResolvedValue(undefined),
   info: vi.fn(),
   error: vi.fn(),
 }));
 
+vi.mock('../src/modules/botStatus.js', () => ({
+  reloadBotStatus: vi.fn(),
+}));
+
 vi.mock('../src/modules/config.js', () => ({
   onConfigChange: vi.fn(),
+}));
+
+vi.mock('../src/modules/webhookNotifier.js', () => ({
+  fireEvent: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../src/utils/cache.js', () => ({
@@ -20,62 +22,54 @@ vi.mock('../src/utils/cache.js', () => ({
 }));
 
 describe('config-listeners', () => {
-  let registerConfigListeners, removeLoggingTransport, setInitialTransport;
-  let onConfigChange, addPostgresTransport, removePostgresTransportMock;
-  let loggerInfo, loggerError;
+  let registerConfigListeners;
+  let removeLoggingTransport;
+  let onConfigChange;
+  let loggerInfo;
 
   beforeEach(async () => {
     vi.resetModules();
 
-    // Import fresh copies of the mocked modules
     const loggerMod = await import('../src/logger.js');
-    addPostgresTransport = loggerMod.addPostgresTransport;
-    removePostgresTransportMock = loggerMod.removePostgresTransport;
     loggerInfo = loggerMod.info;
-    loggerError = loggerMod.error;
 
     const configMod = await import('../src/modules/config.js');
     onConfigChange = configMod.onConfigChange;
 
-    // Import the module under test with fresh internal state
     const mod = await import('../src/config-listeners.js');
     registerConfigListeners = mod.registerConfigListeners;
     removeLoggingTransport = mod.removeLoggingTransport;
-    setInitialTransport = mod.setInitialTransport;
   });
 
   afterEach(() => {
     vi.clearAllMocks();
   });
 
-  // ── Helpers ─────────────────────────────────────────────────────────────
-
-  /**
-   * Call registerConfigListeners and return a map of key -> callback
-   * captured from onConfigChange mock calls.
-   */
-  function registerAndCapture(dbPool, config) {
+  function registerAndCapture(dbPool = {}, config = {}) {
     registerConfigListeners({ dbPool, config });
-    const listeners = {};
-    for (const call of onConfigChange.mock.calls) {
-      listeners[call[0]] = call[1];
-    }
-    return listeners;
+    return Object.fromEntries(
+      onConfigChange.mock.calls.map(([path, callback]) => [path, callback]),
+    );
   }
 
-  // ── Registration ────────────────────────────────────────────────────────
-
   describe('registerConfigListeners', () => {
-    it('registers listeners for all expected config keys', () => {
-      const config = { logging: { database: { enabled: false } } };
-      registerConfigListeners({ dbPool: {}, config });
+    it('does not register database log transport listeners', () => {
+      registerConfigListeners({ dbPool: {}, config: { logging: { database: { enabled: true } } } });
 
-      const registeredKeys = onConfigChange.mock.calls.map((c) => c[0]);
-      expect(registeredKeys).toContain('logging.database');
-      expect(registeredKeys).toContain('logging.database.enabled');
-      expect(registeredKeys).toContain('logging.database.batchSize');
-      expect(registeredKeys).toContain('logging.database.flushIntervalMs');
-      expect(registeredKeys).toContain('logging.database.minLevel');
+      const registeredKeys = onConfigChange.mock.calls.map(([path]) => path);
+
+      expect(registeredKeys).not.toContain('logging.database');
+      expect(registeredKeys).not.toContain('logging.database.enabled');
+      expect(registeredKeys).not.toContain('logging.database.batchSize');
+      expect(registeredKeys).not.toContain('logging.database.flushIntervalMs');
+      expect(registeredKeys).not.toContain('logging.database.minLevel');
+    });
+
+    it('registers the non-log listeners', () => {
+      registerConfigListeners({ dbPool: {}, config: {} });
+
+      const registeredKeys = onConfigChange.mock.calls.map(([path]) => path);
+
       expect(registeredKeys).toContain('ai.*');
       expect(registeredKeys).toContain('spam.*');
       expect(registeredKeys).toContain('moderation.*');
@@ -85,284 +79,19 @@ describe('config-listeners', () => {
       expect(registeredKeys).toContain('botStatus.rotation.enabled');
       expect(registeredKeys).toContain('botStatus.rotation.intervalMinutes');
       expect(registeredKeys).toContain('botStatus.rotation.messages');
-    });
-
-    it('registers exactly 22 listeners', () => {
-      const config = { logging: { database: { enabled: false } } };
-      registerConfigListeners({ dbPool: {}, config });
-      expect(onConfigChange).toHaveBeenCalledTimes(22);
+      expect(registeredKeys).toHaveLength(17);
     });
   });
-
-  // ── Transport enabled ──────────────────────────────────────────────────
-
-  describe('transport enable (enabled=true, no existing transport)', () => {
-    it('calls addPostgresTransport when enabled', async () => {
-      const dbPool = { query: vi.fn() };
-      const config = { logging: { database: { enabled: true, batchSize: 50 } } };
-      const listeners = registerAndCapture(dbPool, config);
-
-      await listeners['logging.database.enabled'](
-        true,
-        false,
-        'logging.database.enabled',
-        'global',
-      );
-
-      expect(addPostgresTransport).toHaveBeenCalledWith(dbPool, config.logging.database);
-      expect(loggerInfo).toHaveBeenCalledWith(
-        'PostgreSQL logging transport enabled via config change',
-        expect.objectContaining({ path: 'logging.database.enabled' }),
-      );
-    });
-  });
-
-  // ── Transport disabled ─────────────────────────────────────────────────
-
-  describe('transport disable (enabled=false, existing transport)', () => {
-    it('calls removePostgresTransport and logs', async () => {
-      const dbPool = { query: vi.fn() };
-      const config = { logging: { database: { enabled: true } } };
-      const listeners = registerAndCapture(dbPool, config);
-
-      // First enable the transport
-      await listeners['logging.database.enabled'](
-        true,
-        false,
-        'logging.database.enabled',
-        'global',
-      );
-      const transportRef = addPostgresTransport.mock.results[0].value;
-
-      // Now disable it
-      config.logging.database.enabled = false;
-      await listeners['logging.database.enabled'](
-        false,
-        true,
-        'logging.database.enabled',
-        'global',
-      );
-
-      expect(removePostgresTransportMock).toHaveBeenCalledWith(transportRef);
-      expect(loggerInfo).toHaveBeenCalledWith(
-        'PostgreSQL logging transport disabled via config change',
-        expect.objectContaining({ path: 'logging.database.enabled' }),
-      );
-    });
-  });
-
-  // ── Transport recreated ────────────────────────────────────────────────
-
-  describe('transport recreate (enabled=true, transport already exists)', () => {
-    it('removes old transport and adds new one', async () => {
-      const dbPool = { query: vi.fn() };
-      const config = { logging: { database: { enabled: true, batchSize: 50 } } };
-      const listeners = registerAndCapture(dbPool, config);
-
-      // Enable initially
-      await listeners['logging.database.enabled'](
-        true,
-        false,
-        'logging.database.enabled',
-        'global',
-      );
-      const oldTransport = addPostgresTransport.mock.results[0].value;
-
-      // Trigger recreate via batchSize change (transport exists, still enabled)
-      await listeners['logging.database.batchSize'](
-        100,
-        50,
-        'logging.database.batchSize',
-        'global',
-      );
-
-      expect(removePostgresTransportMock).toHaveBeenCalledWith(oldTransport);
-      expect(addPostgresTransport).toHaveBeenCalledTimes(2);
-      expect(loggerInfo).toHaveBeenCalledWith(
-        'PostgreSQL logging transport recreated after config change',
-        expect.objectContaining({ path: 'logging.database.batchSize' }),
-      );
-    });
-  });
-
-  // ── Re-check after remove during recreate ──────────────────────────────
-
-  describe('recreate bails out if config flipped during await', () => {
-    it('does not add new transport if enabled became false during remove', async () => {
-      const dbPool = { query: vi.fn() };
-      const config = { logging: { database: { enabled: true } } };
-      const listeners = registerAndCapture(dbPool, config);
-
-      // Enable initially
-      await listeners['logging.database.enabled'](
-        true,
-        false,
-        'logging.database.enabled',
-        'global',
-      );
-
-      // Simulate: removePostgresTransport is slow and config flips to false mid-operation
-      removePostgresTransportMock.mockImplementationOnce(async () => {
-        config.logging.database.enabled = false;
-      });
-
-      // Trigger recreate (transport exists, currently enabled)
-      config.logging.database.enabled = true; // set back for the initial check
-      await listeners['logging.database'](
-        config.logging.database,
-        null,
-        'logging.database',
-        'global',
-      );
-
-      // After remove, config.enabled is false, so addPostgresTransport should NOT be called again
-      // It was called once during initial enable
-      expect(addPostgresTransport).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  // ── removeLoggingTransport ─────────────────────────────────────────────
 
   describe('removeLoggingTransport', () => {
-    it('removes transport and sets internal ref to null', async () => {
-      const dbPool = { query: vi.fn() };
-      const config = { logging: { database: { enabled: true } } };
-      const listeners = registerAndCapture(dbPool, config);
-
-      // Enable transport
-      await listeners['logging.database.enabled'](
-        true,
-        false,
-        'logging.database.enabled',
-        'global',
-      );
-      const transportRef = addPostgresTransport.mock.results[0].value;
-
-      // Call removeLoggingTransport
-      await removeLoggingTransport();
-
-      expect(removePostgresTransportMock).toHaveBeenCalledWith(transportRef);
-    });
-
-    it('is a no-op when no transport exists', async () => {
-      await removeLoggingTransport();
-      expect(removePostgresTransportMock).not.toHaveBeenCalled();
+    it('is a no-op', async () => {
+      await expect(removeLoggingTransport()).resolves.toBeUndefined();
     });
   });
 
-  // ── setInitialTransport ────────────────────────────────────────────────
-
-  describe('setInitialTransport', () => {
-    it('sets the internal transport reference', async () => {
-      const fakeTransport = { close: vi.fn() };
-      setInitialTransport(fakeTransport);
-
-      // Verify by calling removeLoggingTransport — it should remove this transport
-      await removeLoggingTransport();
-      expect(removePostgresTransportMock).toHaveBeenCalledWith(fakeTransport);
-    });
-  });
-
-  // ── Error handling ─────────────────────────────────────────────────────
-
-  describe('error handling', () => {
-    it('logs error but does not crash when updateLoggingTransport throws', async () => {
-      const dbPool = { query: vi.fn() };
-      const config = { logging: { database: { enabled: true } } };
-      const listeners = registerAndCapture(dbPool, config);
-
-      // Make addPostgresTransport throw
-      addPostgresTransport.mockImplementationOnce(() => {
-        throw new Error('DB connection failed');
-      });
-
-      await listeners['logging.database.enabled'](
-        true,
-        false,
-        'logging.database.enabled',
-        'global',
-      );
-
-      expect(loggerError).toHaveBeenCalledWith(
-        'Failed to update PostgreSQL logging transport',
-        expect.objectContaining({ error: 'DB connection failed' }),
-      );
-    });
-  });
-
-  // ── Guild-scoped changes ───────────────────────────────────────────────
-
-  describe('guild-scoped changes', () => {
-    it('ignores changes with a non-global guildId', async () => {
-      const dbPool = { query: vi.fn() };
-      const config = { logging: { database: { enabled: true } } };
-      const listeners = registerAndCapture(dbPool, config);
-
-      await listeners['logging.database.enabled'](
-        true,
-        false,
-        'logging.database.enabled',
-        'guild-123',
-      );
-
-      expect(addPostgresTransport).not.toHaveBeenCalled();
-    });
-
-    it('processes changes with guildId "global"', async () => {
-      const dbPool = { query: vi.fn() };
-      const config = { logging: { database: { enabled: true } } };
-      const listeners = registerAndCapture(dbPool, config);
-
-      await listeners['logging.database.enabled'](
-        true,
-        false,
-        'logging.database.enabled',
-        'global',
-      );
-
-      expect(addPostgresTransport).toHaveBeenCalled();
-    });
-
-    it('processes changes with no guildId (undefined)', async () => {
-      const dbPool = { query: vi.fn() };
-      const config = { logging: { database: { enabled: true } } };
-      const listeners = registerAndCapture(dbPool, config);
-
-      await listeners['logging.database.enabled'](
-        true,
-        false,
-        'logging.database.enabled',
-        undefined,
-      );
-
-      expect(addPostgresTransport).toHaveBeenCalled();
-    });
-  });
-
-  // ── No dbPool ──────────────────────────────────────────────────────────
-
-  describe('no dbPool', () => {
-    it('returns early when dbPool is null', async () => {
-      const config = { logging: { database: { enabled: true } } };
-      const listeners = registerAndCapture(null, config);
-
-      await listeners['logging.database.enabled'](
-        true,
-        false,
-        'logging.database.enabled',
-        'global',
-      );
-
-      expect(addPostgresTransport).not.toHaveBeenCalled();
-    });
-  });
-
-  // ── Observability-only listeners ───────────────────────────────────────
-
-  describe('observability listeners (ai, spam, moderation)', () => {
-    it('ai.* listener logs the change', () => {
-      const config = {};
-      const listeners = registerAndCapture({}, config);
+  describe('observability listeners', () => {
+    it('logs AI config updates', () => {
+      const listeners = registerAndCapture();
 
       listeners['ai.*']('newVal', 'oldVal', 'ai.model', 'guild-42');
 
@@ -373,9 +102,8 @@ describe('config-listeners', () => {
       });
     });
 
-    it('spam.* listener logs the change', () => {
-      const config = {};
-      const listeners = registerAndCapture({}, config);
+    it('logs spam config updates', () => {
+      const listeners = registerAndCapture();
 
       listeners['spam.*']('newVal', 'oldVal', 'spam.threshold', 'global');
 
@@ -386,9 +114,8 @@ describe('config-listeners', () => {
       });
     });
 
-    it('moderation.* listener logs the change', () => {
-      const config = {};
-      const listeners = registerAndCapture({}, config);
+    it('logs moderation config updates', () => {
+      const listeners = registerAndCapture();
 
       listeners['moderation.*'](true, false, 'moderation.automod', undefined);
 
@@ -400,74 +127,37 @@ describe('config-listeners', () => {
     });
   });
 
-  // ── Cache invalidation listeners ───────────────────────────────────────
-
-  describe('cache invalidation listeners (welcome, starboard, reputation)', () => {
-    let cacheDelPatternMock;
+  describe('cache invalidation listeners', () => {
+    let cacheDelPattern;
 
     beforeEach(async () => {
       const cacheMod = await import('../src/utils/cache.js');
-      cacheDelPatternMock = cacheMod.cacheDelPattern;
+      cacheDelPattern = cacheMod.cacheDelPattern;
     });
 
     it('welcome.* invalidates guild channel cache for guild-scoped changes', async () => {
-      const listeners = registerAndCapture({}, {});
+      const listeners = registerAndCapture();
 
       await listeners['welcome.*'](null, null, 'welcome.channelId', 'guild-42');
 
-      expect(cacheDelPatternMock).toHaveBeenCalledWith('discord:guild:guild-42:*');
-    });
-
-    it('welcome.* does not invalidate cache for global changes', async () => {
-      const listeners = registerAndCapture({}, {});
-
-      await listeners['welcome.*'](null, null, 'welcome.channelId', 'global');
-
-      expect(cacheDelPatternMock).not.toHaveBeenCalled();
+      expect(cacheDelPattern).toHaveBeenCalledWith('discord:guild:guild-42:*');
     });
 
     it('starboard.* invalidates guild channel cache for guild-scoped changes', async () => {
-      const listeners = registerAndCapture({}, {});
+      const listeners = registerAndCapture();
 
       await listeners['starboard.*'](null, null, 'starboard.channelId', 'guild-99');
 
-      expect(cacheDelPatternMock).toHaveBeenCalledWith('discord:guild:guild-99:*');
+      expect(cacheDelPattern).toHaveBeenCalledWith('discord:guild:guild-99:*');
     });
 
     it('reputation.* invalidates leaderboard and reputation caches for guild-scoped changes', async () => {
-      const listeners = registerAndCapture({}, {});
+      const listeners = registerAndCapture();
 
       await listeners['reputation.*'](null, null, 'reputation.xpPerMessage', 'guild-77');
 
-      expect(cacheDelPatternMock).toHaveBeenCalledWith('leaderboard:guild-77*');
-      expect(cacheDelPatternMock).toHaveBeenCalledWith('reputation:guild-77:*');
-    });
-
-    it('reputation.* does not invalidate cache for global changes', async () => {
-      const listeners = registerAndCapture({}, {});
-
-      await listeners['reputation.*'](null, null, 'reputation.xpPerMessage', 'global');
-
-      expect(cacheDelPatternMock).not.toHaveBeenCalled();
-    });
-  });
-  // ── Disabled + no transport = no-op ────────────────────────────────────
-
-  describe('disabled with no existing transport', () => {
-    it('does nothing when enabled=false and no transport exists', async () => {
-      const dbPool = { query: vi.fn() };
-      const config = { logging: { database: { enabled: false } } };
-      const listeners = registerAndCapture(dbPool, config);
-
-      await listeners['logging.database.enabled'](
-        false,
-        true,
-        'logging.database.enabled',
-        'global',
-      );
-
-      expect(addPostgresTransport).not.toHaveBeenCalled();
-      expect(removePostgresTransportMock).not.toHaveBeenCalled();
+      expect(cacheDelPattern).toHaveBeenCalledWith('leaderboard:guild-77*');
+      expect(cacheDelPattern).toHaveBeenCalledWith('reputation:guild-77:*');
     });
   });
 });

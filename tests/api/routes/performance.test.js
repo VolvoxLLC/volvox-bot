@@ -12,10 +12,6 @@ vi.mock('../../../src/logger.js', () => ({
   debug: vi.fn(),
 }));
 
-vi.mock('../../../src/utils/logQuery.js', () => ({
-  queryLogs: vi.fn().mockResolvedValue({ rows: [], total: 0 }),
-}));
-
 vi.mock('../../../src/utils/restartTracker.js', () => {
   throw new Error('Module not found');
 });

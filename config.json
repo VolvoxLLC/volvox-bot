@@ -140,14 +140,7 @@
   },
   "logging": {
     "level": "info",
-    "fileOutput": true,
-    "database": {
-      "enabled": false,
-      "minLevel": "info",
-      "retentionDays": 30,
-      "batchSize": 10,
-      "flushIntervalMs": 5000
-    }
+    "fileOutput": true
   },
   "botStatus": {
     "enabled": true,

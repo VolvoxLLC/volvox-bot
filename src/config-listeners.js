@@ -1,24 +1,14 @@
 /**
  * Config Change Listeners
  *
- * Registers reactive config-change handlers that maintain the PostgreSQL
- * logging transport. Extracted from index.js to reduce startup() size.
- *
- * Transport operations (enable/disable/recreate) are serialized via a
- * promise-chain mutex so concurrent config updates don't interleave.
+ * Registers reactive config-change handlers.
  */
 
-import { addPostgresTransport, error, info, removePostgresTransport } from './logger.js';
+import { info } from './logger.js';
 import { reloadBotStatus } from './modules/botStatus.js';
 import { onConfigChange } from './modules/config.js';
 import { fireEvent } from './modules/webhookNotifier.js';
 import { cacheDelPattern } from './utils/cache.js';
-
-/** @type {import('winston').transport | null} */
-let pgTransport = null;
-
-/** Promise-chain mutex for serializing transport operations */
-let transportLock = Promise.resolve();
 
 /**
  * Register config change listeners for hot-reload.
@@ -27,57 +17,7 @@ let transportLock = Promise.resolve();
  * @param {import('pg').Pool | null} deps.dbPool - Database pool (null if no DB)
  * @param {Object} deps.config - Live config reference (mutated in-place by setConfigValue)
  */
-export function registerConfigListeners({ dbPool, config }) {
-  // ── Logging transport: stateful reactive wiring ──────────────────────
-  //
-  // All logging.database.* listeners funnel through updateLoggingTransport,
-  // serialized by transportLock. This eliminates races between enable/disable
-  // and parameter changes: only one operation runs at a time, always reading
-  // the latest config state.
-
-  async function updateLoggingTransport(changePath) {
-    if (!dbPool) return;
-    const dbConfig = config.logging?.database;
-    const enabled = dbConfig?.enabled;
-
-    if (enabled && !pgTransport) {
-      pgTransport = addPostgresTransport(dbPool, dbConfig);
-      info('PostgreSQL logging transport enabled via config change', { path: changePath });
-    } else if (enabled && pgTransport) {
-      const oldTransport = pgTransport;
-      pgTransport = null;
-      await removePostgresTransport(oldTransport);
-      if (!config.logging?.database?.enabled) return;
-      pgTransport = addPostgresTransport(dbPool, dbConfig);
-      info('PostgreSQL logging transport recreated after config change', { path: changePath });
-    } else if (!enabled && pgTransport) {
-      await removePostgresTransport(pgTransport);
-      pgTransport = null;
-      info('PostgreSQL logging transport disabled via config change', { path: changePath });
-    }
-  }
-
-  for (const key of [
-    'logging.database',
-    'logging.database.enabled',
-    'logging.database.batchSize',
-    'logging.database.flushIntervalMs',
-    'logging.database.minLevel',
-  ]) {
-    onConfigChange(key, async (_newValue, _oldValue, changePath, guildId) => {
-      if (guildId && guildId !== 'global') return;
-      transportLock = transportLock
-        .then(() => updateLoggingTransport(changePath))
-        .catch((err) =>
-          error('Failed to update PostgreSQL logging transport', {
-            path: changePath,
-            error: err.message,
-          }),
-        );
-      await transportLock;
-    });
-  }
-
+export function registerConfigListeners({ dbPool: _dbPool, config: _config }) {
   // ── Observability-only listeners ─────────────────────────────────────
   // AI, spam, and moderation modules call getConfig(guildId) per-request,
   // so changes take effect automatically. These listeners log for visibility.
@@ -143,24 +83,6 @@ export function registerConfigListeners({ dbPool, config }) {
 }
 
 /**
- * Remove the PostgreSQL logging transport during shutdown.
- * Drains the remaining log buffer before resolving.
+ * Legacy shutdown hook kept so older startup code paths can call it safely.
  */
-export async function removeLoggingTransport() {
-  transportLock = transportLock.then(async () => {
-    if (pgTransport) {
-      await removePostgresTransport(pgTransport);
-      pgTransport = null;
-    }
-  });
-  await transportLock;
-}
-
-/**
- * Set the initial PostgreSQL transport (called during startup when
- * logging.database.enabled is already true at boot).
- * @param {import('winston').transport} transport
- */
-export function setInitialTransport(transport) {
-  pgTransport = transport;
-}
+export async function removeLoggingTransport() {}

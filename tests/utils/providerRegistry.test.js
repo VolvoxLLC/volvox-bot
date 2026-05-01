@@ -9,8 +9,6 @@ vi.mock('../../src/logger.js', () => ({
   warn: vi.fn(),
   error: vi.fn(),
   default: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
-  addPostgresTransport: vi.fn(),
-  removePostgresTransport: vi.fn(),
   addWebSocketTransport: vi.fn(),
   removeWebSocketTransport: vi.fn(),
 }));

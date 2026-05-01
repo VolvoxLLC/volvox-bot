@@ -244,31 +244,25 @@ describe('config change events', () => {
   describe('guild-scoped config changes', () => {
     it('should pass guildId to listener callbacks for per-guild changes', async () => {
       const cb = vi.fn();
-      configModule.onConfigChange('logging.database.enabled', cb);
+      configModule.onConfigChange('botStatus.status', cb);
 
-      await configModule.setConfigValue('logging.database.enabled', 'true', 'guild-123');
+      await configModule.setConfigValue('botStatus.status', 'idle', 'guild-123');
 
-      expect(cb).toHaveBeenCalledWith(true, undefined, 'logging.database.enabled', 'guild-123');
+      expect(cb).toHaveBeenCalledWith('idle', undefined, 'botStatus.status', 'guild-123');
     });
 
     it('should allow listeners to filter by guildId for global-only operations', async () => {
-      // Simulates what index.js does: skip per-guild config changes for the logging transport
-      const transportUpdater = vi.fn();
-      configModule.onConfigChange(
-        'logging.database.enabled',
-        (_newValue, _oldValue, _path, guildId) => {
-          if (guildId && guildId !== 'global') return;
-          transportUpdater();
-        },
-      );
+      const globalOnlyUpdater = vi.fn();
+      configModule.onConfigChange('botStatus.status', (_newValue, _oldValue, _path, guildId) => {
+        if (guildId && guildId !== 'global') return;
+        globalOnlyUpdater();
+      });
 
-      // Per-guild change should NOT trigger the transport update
-      await configModule.setConfigValue('logging.database.enabled', 'true', 'guild-456');
-      expect(transportUpdater).not.toHaveBeenCalled();
+      await configModule.setConfigValue('botStatus.status', 'dnd', 'guild-456');
+      expect(globalOnlyUpdater).not.toHaveBeenCalled();
 
-      // Global change should trigger the transport update
-      await configModule.setConfigValue('logging.database.enabled', 'true', 'global');
-      expect(transportUpdater).toHaveBeenCalledOnce();
+      await configModule.setConfigValue('botStatus.status', 'online', 'global');
+      expect(globalOnlyUpdater).toHaveBeenCalledOnce();
     });
   });
 

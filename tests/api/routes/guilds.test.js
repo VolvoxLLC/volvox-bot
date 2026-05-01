@@ -966,17 +966,6 @@ describe('guilds routes', () => {
             },
           ],
         })
-        .mockResolvedValueOnce({
-          rows: [
-            {
-              model: 'claude-sonnet-4-20250514',
-              requests: 40,
-              prompt_tokens: 5000,
-              completion_tokens: 2000,
-              cost_usd: '0.0456',
-            },
-          ],
-        })
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({
           rows: [
@@ -1010,11 +999,11 @@ describe('guilds routes', () => {
       expect(res.body.kpis.totalMessages).toBe(120);
       expect(res.body.kpis.aiRequests).toBe(40);
       expect(res.body.kpis.activeUsers).toBe(10);
-      expect(res.body.kpis.aiCostUsd).toBeCloseTo(0.0456, 6);
+      expect(res.body.kpis.aiCostUsd).toBe(0);
       expect(res.body.kpis.newMembers).toBeTypeOf('number');
       expect(res.body.realtime.activeAiConversations).toBe(3);
-      expect(res.body.aiUsage.tokens.prompt).toBe(5000);
-      expect(res.body.aiUsage.tokens.completion).toBe(2000);
+      expect(res.body.aiUsage.tokens.prompt).toBe(0);
+      expect(res.body.aiUsage.tokens.completion).toBe(0);
       expect(res.body.channelActivity[0]).toEqual({
         channelId: 'ch1',
         name: 'general',
@@ -1108,18 +1097,6 @@ describe('guilds routes', () => {
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({
-          rows: [
-            {
-              model: 'claude',
-              requests: 6,
-              prompt_tokens: 12,
-              completion_tokens: 3,
-              cost_usd: '0.0300',
-            },
-          ],
-        })
-        .mockResolvedValueOnce({ rows: [{ cost_usd: '0.0200' }] })
         .mockResolvedValueOnce({ rows: [{ command_name: 'help', uses: 5 }] })
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
@@ -1135,7 +1112,7 @@ describe('guilds routes', () => {
       expect(res.body.comparison.kpis.totalMessages).toBe(8);
       expect(res.body.comparison.kpis.aiRequests).toBe(4);
       expect(res.body.comparison.kpis.activeUsers).toBe(3);
-      expect(res.body.comparison.kpis.aiCostUsd).toBeCloseTo(0.02, 6);
+      expect(res.body.comparison.kpis.aiCostUsd).toBe(0);
       expect(res.body.commandUsage).toEqual({
         source: 'command_usage',
         items: [{ command: 'help', uses: 5 }],
@@ -1148,7 +1125,6 @@ describe('guilds routes', () => {
     it('should mark command usage source unavailable when command query fails', async () => {
       mockPool.query
         .mockResolvedValueOnce({ rows: [{ total_messages: 1, ai_requests: 1, active_users: 1 }] })
-        .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
@@ -1165,13 +1141,12 @@ describe('guilds routes', () => {
       expect(res.body.commandUsage).toEqual({ source: 'unavailable', items: [] });
     });
 
-    it('should gracefully degrade when logs query fails', async () => {
+    it('should not query persisted logs for analytics', async () => {
       mockPool.query
         .mockResolvedValueOnce({ rows: [{ total_messages: 1, ai_requests: 1, active_users: 1 }] })
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
-        .mockRejectedValueOnce(new Error('logs relation missing'))
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
@@ -1185,6 +1160,7 @@ describe('guilds routes', () => {
       expect(res.body.aiUsage.byModel).toEqual([]);
       expect(res.body.kpis.aiCostUsd).toBe(0);
       expect(res.body.kpis.newMembers).toBeTypeOf('number');
+      expect(mockPool.query.mock.calls.map(([sql]) => sql).join('\n')).not.toMatch(/FROM logs/i);
     });
 
     it('should return null userEngagement when user_stats query fails', async () => {
