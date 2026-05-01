@@ -486,17 +486,11 @@ function scrubSentryRequestHeaders(request: NonNullable<Event['request']>): void
  * @param request - Sentry request payload to update in place.
  */
 function scrubSentryRequestData(request: NonNullable<Event['request']>): void {
-  if (!request.data) {
+  if (!('data' in request)) {
     return;
   }
 
-  const scrubbedData = scrubUnknown(request.data);
-  if (scrubbedData && typeof scrubbedData === 'object') {
-    request.data = scrubbedData;
-    return;
-  }
-
-  delete request.data;
+  request.data = scrubUnknown(request.data) as typeof request.data;
 }
 
 /**

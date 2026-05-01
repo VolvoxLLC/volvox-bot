@@ -194,6 +194,26 @@ describe('sentry-options', () => {
     });
   });
 
+  it('should preserve scrubbed primitive request bodies before sending events', async () => {
+    const { scrubSentryEvent } = await import('@/lib/sentry-options');
+
+    expect(
+      scrubSentryEvent({
+        type: undefined,
+        request: { data: 'api_key=secret-value' },
+      } as unknown as Event)?.request?.data,
+    ).toBe('api_key=[REDACTED]');
+
+    for (const data of ['', 0, false, null]) {
+      expect(
+        scrubSentryEvent({
+          type: undefined,
+          request: { data },
+        } as unknown as Event)?.request,
+      ).toEqual({ data });
+    }
+  });
+
   it('should protect recursive scrubbing against true cycles while preserving shared references', async () => {
     const { scrubSentryEvent } = await import('@/lib/sentry-options');
     const cycle: Record<string, unknown> = { safeField: 'keep-this' };
