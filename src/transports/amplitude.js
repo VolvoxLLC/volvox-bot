@@ -21,7 +21,8 @@ export class AmplitudeTransport extends Transport {
    * @param {string} [opts.level='info'] - Minimum log level to forward
    */
   constructor(opts = {}) {
-    super({ level: opts.level || 'info', ...opts });
+    const { level, ...transportOptions } = opts;
+    super({ ...transportOptions, level: level || 'info' });
   }
 
   /**

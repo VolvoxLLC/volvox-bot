@@ -23,7 +23,8 @@ export class SentryTransport extends Transport {
    * @param {string} [opts.level='error'] - Minimum log level to forward
    */
   constructor(opts = {}) {
-    super({ level: opts.level || 'error', ...opts });
+    const { level, ...transportOptions } = opts;
+    super({ ...transportOptions, level: level || 'error' });
   }
 
   /**
