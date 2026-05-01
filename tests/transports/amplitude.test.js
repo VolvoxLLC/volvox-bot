@@ -13,6 +13,10 @@ vi.mock('../../src/amplitude.js', async () => {
     AMPLITUDE_LOG_EVENT: 'bot_log_recorded',
     initializeAmplitude: mockInitializeAmplitude,
     trackAnalyticsEvent: (eventType, properties, options) => {
+      if (!mockInitializeAmplitude()) {
+        return false;
+      }
+
       const sanitizedProperties = actual.scrubAmplitudeProperties(properties);
       return options === undefined
         ? mockTrackAnalyticsEvent(eventType, sanitizedProperties)
@@ -72,6 +76,16 @@ describe('AmplitudeTransport', () => {
     expect(callback).toHaveBeenCalledOnce();
   });
 
+  it('relies on trackAnalyticsEvent for initialization so each log checks Amplitude once', () => {
+    const callback = vi.fn();
+
+    transport.log({ level: 'info', message: 'Bot ready' }, callback);
+
+    expect(mockInitializeAmplitude).toHaveBeenCalledOnce();
+    expect(mockTrackAnalyticsEvent).toHaveBeenCalledOnce();
+    expect(callback).toHaveBeenCalledOnce();
+  });
+
   it('forwards warnings to Amplitude and leaves errors for Sentry', () => {
     const callback = vi.fn();
 
@@ -101,6 +115,7 @@ describe('AmplitudeTransport', () => {
     transport.log({ level: 'info', message: 'Amplitude disabled', expensive }, callback);
 
     expect(metadataRead).toBe(false);
+    expect(mockInitializeAmplitude).toHaveBeenCalledOnce();
     expect(mockTrackAnalyticsEvent).not.toHaveBeenCalled();
     expect(callback).toHaveBeenCalledOnce();
   });
