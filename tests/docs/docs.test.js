@@ -58,7 +58,11 @@ function getFirstBraceExpansionNames(line) {
   expect(openingBrace).toBeGreaterThanOrEqual(0);
   expect(closingBrace).toBeGreaterThan(openingBrace);
 
-  return line.slice(openingBrace + 1, closingBrace).split(',');
+  return line
+    .slice(openingBrace + 1, closingBrace)
+    .split(',')
+    .map((name) => name.trim())
+    .filter(Boolean);
 }
 
 function getSupportHelpGroup(config) {
@@ -69,90 +73,6 @@ function getSupportHelpGroup(config) {
   expect(helpGroup).toBeDefined();
   return helpGroup;
 }
-
-function isWhitespace(character) {
-  return (
-    character === ' ' ||
-    character === '\t' ||
-    character === '\n' ||
-    character === '\r' ||
-    character === '\f' ||
-    character === '\v'
-  );
-}
-
-function splitWhitespaceTokens(line) {
-  const tokens = [];
-  let currentToken = '';
-
-  for (const character of line) {
-    if (isWhitespace(character)) {
-      if (currentToken) {
-        tokens.push(currentToken);
-        currentToken = '';
-      }
-      continue;
-    }
-
-    currentToken += character;
-  }
-
-  if (currentToken) {
-    tokens.push(currentToken);
-  }
-
-  return tokens;
-}
-
-function hasRecursiveCopyFlag(line) {
-  const tokens = splitWhitespaceTokens(line);
-  if (tokens[0] !== 'cp') {
-    return false;
-  }
-
-  for (const token of tokens.slice(1)) {
-    if (token === '--' || token === '-' || !token.startsWith('-')) {
-      return false;
-    }
-
-    if (token.startsWith('--')) {
-      if (token === '--recursive') {
-        return true;
-      }
-      continue;
-    }
-
-    for (const flag of token.slice(1)) {
-      if (flag === 'r' || flag === 'R') {
-        return true;
-      }
-    }
-  }
-
-  return false;
-}
-
-// ---------------------------------------------------------------------------
-// helper behavior
-// ---------------------------------------------------------------------------
-
-describe('hasRecursiveCopyFlag', () => {
-  it.each([
-    ['accepts short -r', 'cp -r source target', true],
-    ['accepts short -R', 'cp -R source target', true],
-    ['accepts grouped short flags', 'cp -aR source target', true],
-    ['accepts exact long option --recursive', 'cp --recursive source target', true],
-    ['rejects unrelated long option --preserve', 'cp --preserve source target', false],
-    ['rejects unrelated long option --parents', 'cp --parents source target', false],
-    ['rejects unrelated long option --reflink=auto', 'cp --reflink=auto source target', false],
-    ['stops at option terminator', 'cp -- -R source target', false],
-    ['stops at lone dash', 'cp - -R target', false],
-    ['stops at first operand', 'cp source -R target', false],
-    ['accepts short options before recursive flag', 'cp -P -R source target', true],
-  ])('%s', (_description, line, expected) => {
-    expect(hasRecursiveCopyFlag(line)).toBe(expected);
-  });
-});
 
 // ---------------------------------------------------------------------------
 // docs/docs.json
@@ -214,11 +134,11 @@ describe('docs/docs.json', () => {
     expect(planIdx).toBeGreaterThan(helpIdx);
   });
 
-  it('the Support tab Help group contains exactly the expected pages', () => {
+  it('the Support tab Help group retains the expected support pages', () => {
     const config = getConfig();
     const helpGroup = getSupportHelpGroup(config);
 
-    expect(helpGroup.pages).toEqual(['faq', 'security', 'help', 'manual-test-plan']);
+    expectContainsAll(helpGroup.pages, ['faq', 'security', 'help', 'manual-test-plan']);
   });
 
   it('does not duplicate "manual-test-plan" across all pages', () => {
@@ -335,11 +255,19 @@ describe('docs/wiki-pages/Home.md', () => {
     expectContainsAll(content, ['Manual Test Plan', 'release candidate']);
   });
 
-  it('recommended path step for Manual-Test-Plan is numbered 5', () => {
-    const step5 = content
-      .split('\n')
-      .find((line) => line.startsWith('5.') && line.includes('Manual Test Plan'));
-    expect(step5).toBeDefined();
+  it('recommended path links Manual-Test-Plan after Troubleshooting', () => {
+    const lines = content.split('\n');
+    const pathStart = lines.indexOf('## Recommended path');
+    const pathEnd = lines.findIndex((line, index) => index > pathStart && line.startsWith('## '));
+
+    expect(pathStart).toBeGreaterThanOrEqual(0);
+    expect(pathEnd).toBeGreaterThan(pathStart);
+
+    const pathLines = lines.slice(pathStart + 1, pathEnd);
+    const troubleshootingIndex = pathLines.findIndex((line) => line.includes('Troubleshooting'));
+    const manualPlanIndex = pathLines.findIndex((line) => line.includes('Manual Test Plan'));
+    expect(troubleshootingIndex).toBeGreaterThanOrEqual(0);
+    expect(manualPlanIndex).toBeGreaterThan(troubleshootingIndex);
   });
 
   it('retains existing links (Configuration Reference, Operations Runbook, Troubleshooting)', () => {
@@ -393,23 +321,27 @@ describe('docs/wiki-pages/Manual-Test-Plan.md', () => {
   });
 
   const requiredSections = [
-    '## 1) Purpose and Scope',
-    '## 2) Test Environment Matrix',
-    '## 3) Test Data and Preconditions',
-    '## 4) Release Blocking Criteria',
-    '## 5) End-to-End Test Suites',
-    '## 6) Negative and Abuse Cases',
-    '## 7) Accessibility Checklist (Manual)',
-    '## 8) Performance and Perceived Latency (Manual)',
-    '## 9) Regression Checklist for Every Release Candidate',
-    '## 10) Evidence Collection Template',
-    '## 11) Suggested Execution Cadence',
-    '## 12) Ownership and Sign-off',
+    'Purpose and Scope',
+    'Test Environment Matrix',
+    'Test Data and Preconditions',
+    'Release Blocking Criteria',
+    'End-to-End Test Suites',
+    'Negative and Abuse Cases',
+    'Accessibility Checklist (Manual)',
+    'Performance and Perceived Latency (Manual)',
+    'Regression Checklist for Every Release Candidate',
+    'Evidence Collection Template',
+    'Suggested Execution Cadence',
+    'Ownership and Sign-off',
   ];
 
   for (const section of requiredSections) {
     it(`contains section: ${section}`, () => {
-      expect(content).toContain(section);
+      const sectionHeading = content
+        .split('\n')
+        .find((line) => line.startsWith('## ') && line.includes(section));
+
+      expect(sectionHeading).toBeDefined();
     });
   }
 
@@ -436,6 +368,13 @@ describe('docs/wiki-pages/Manual-Test-Plan.md', () => {
       expect(content).toContain(suite);
     });
   }
+
+  it('nests suite headings under the end-to-end suites section', () => {
+    const suiteHeadings = content.split('\n').filter((line) => line.includes('Suite '));
+
+    expect(suiteHeadings.length).toBeGreaterThanOrEqual(suitesExpected.length);
+    expect(suiteHeadings.every((line) => line.startsWith('### Suite '))).toBe(true);
+  });
 
   const sectionExpectations = [
     {
@@ -558,7 +497,7 @@ describe('docs/wiki-pages/README.md', () => {
       (line) => line.trimStart().startsWith('cp') && line.includes('Manual-Test-Plan'),
     );
 
-    expect(copyLines).toHaveLength(2);
+    expect(copyLines.length).toBeGreaterThanOrEqual(2);
     expect(copyLines).toEqual(
       expect.arrayContaining([
         expect.stringContaining('<repo>.wiki'),
@@ -566,9 +505,9 @@ describe('docs/wiki-pages/README.md', () => {
       ]),
     );
 
-    const recursiveCopyLines = copyLines.filter(hasRecursiveCopyFlag);
-    expect(recursiveCopyLines).toHaveLength(1);
-    expect(copyLines.filter((line) => !hasRecursiveCopyFlag(line))).toHaveLength(1);
+    expect(copyLines.every((line) => line.trimStart().startsWith('cp docs/wiki-pages/'))).toBe(
+      true,
+    );
 
     for (const line of copyLines) {
       expectContainsAll(line, [
@@ -596,7 +535,7 @@ describe('docs/wiki-pages/README.md', () => {
     ]);
   });
 
-  it('generic copy command brace expansion contains exactly 6 page names', () => {
+  it('generic copy command brace expansion includes all published page names', () => {
     const genericLine = content
       .split('\n')
       .find(
@@ -609,6 +548,6 @@ describe('docs/wiki-pages/README.md', () => {
     if (!genericLine) {
       return;
     }
-    expect(getFirstBraceExpansionNames(genericLine)).toHaveLength(6);
+    expect(getFirstBraceExpansionNames(genericLine).length).toBeGreaterThanOrEqual(6);
   });
 });

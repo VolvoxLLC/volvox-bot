@@ -96,7 +96,7 @@ A release is blocked when any of the following occur:
 
 Execute all suites. Capture screenshots/videos for failed or ambiguous cases.
 
-## Suite A: Bot Startup, Presence, and Operational Health
+### Suite A: Bot Startup, Presence, and Operational Health
 
 - [ ] Start bot with valid environment.
 - [ ] Validate startup logs show successful initialization.
@@ -111,7 +111,7 @@ Expected:
 - Clear startup/connection logging
 - Graceful degradation messaging where applicable
 
-## Suite B: Command Discovery and Help Surfaces
+### Suite B: Command Discovery and Help Surfaces
 
 - [ ] Validate slash command registration appears complete.
 - [ ] Trigger help/onboarding command(s).
@@ -123,7 +123,7 @@ Expected:
 - Users can find and understand command usage
 - No stale names, missing commands, or broken aliases
 
-## Suite C: Permissions and Security Boundaries
+### Suite C: Permissions and Security Boundaries
 
 For each sensitive command category (moderation/config/tickets/admin-like):
 
@@ -138,7 +138,7 @@ Expected:
 - Consistent denial messages
 - No stack traces or internal detail leaks to users
 
-## Suite D: Moderation Command Flows
+### Suite D: Moderation Command Flows
 
 Validate full lifecycle for moderation commands present in repo:
 
@@ -163,7 +163,7 @@ Expected:
 - Accurate enforcement and auditability
 - No cross-guild data leakage
 
-## Suite E: Community and Utility Features
+### Suite E: Community and Utility Features
 
 Validate major non-moderation commands and workflows:
 
@@ -187,7 +187,7 @@ Expected:
 - Stable user workflows
 - Guardrails respected
 
-## Suite F: Ticketing and Support Workflows
+### Suite F: Ticketing and Support Workflows
 
 - [ ] Create ticket from eligible user.
 - [ ] Validate channel/thread creation and ACLs.
@@ -201,7 +201,7 @@ Expected:
 - Access controls prevent unauthorized viewing
 - State transitions are consistent and logged
 
-## Suite G: Temp Roles / Time-Based Automation
+### Suite G: Temp Roles / Time-Based Automation
 
 - [ ] Assign temp role.
 - [ ] Validate immediate role assignment.
@@ -213,7 +213,7 @@ Expected:
 
 - Time-based behaviors execute accurately and idempotently
 
-## Suite H: AI/Conversation Features (if enabled)
+### Suite H: AI/Conversation Features (if enabled)
 
 - [ ] Enable AI feature flag in test guild only.
 - [ ] Run prompt-response cycles with normal, long, and adversarial inputs.
@@ -226,7 +226,7 @@ Expected:
 - Predictable gating and safe response behavior
 - Clear user messaging on unavailable states
 
-## Suite I: Dashboard Authentication and Guild Access
+### Suite I: Dashboard Authentication and Guild Access
 
 - [ ] Log in as user with multiple guilds.
 - [ ] Validate guild directory and switching behavior.
@@ -238,7 +238,7 @@ Expected:
 
 - Correct guild scoping and secure auth boundaries
 
-## Suite J: Dashboard Configuration CRUD and Runtime Application
+### Suite J: Dashboard Configuration CRUD and Runtime Application
 
 For each configurable feature section in dashboard:
 
@@ -253,7 +253,7 @@ Expected:
 - No save failures, no ghost writes
 - Dashboard state matches runtime behavior
 
-## Suite K: Dashboard UX, Theming, and Responsiveness
+### Suite K: Dashboard UX, Theming, and Responsiveness
 
 - [ ] Validate page titles and navigation consistency.
 - [ ] Check key routes in light theme.
@@ -266,7 +266,7 @@ Expected:
 
 - No overlapping content, clipped controls, unreadable contrast, or unstable chart mounts
 
-## Suite L: Analytics, Audit, and Reporting
+### Suite L: Analytics, Audit, and Reporting
 
 - [ ] Generate known events (moderation action, ticket event, command usage).
 - [ ] Validate analytics pages reflect expected values.
@@ -277,7 +277,7 @@ Expected:
 
 - Consistent numbers, expected lag, accurate filters
 
-## Suite M: API Contract and Error Handling
+### Suite M: API Contract and Error Handling
 
 - [ ] Exercise dashboard actions that hit API endpoints.
 - [ ] Validate successful response shapes.
@@ -288,7 +288,7 @@ Expected:
 
 - No opaque failures; actionable user error messages
 
-## Suite N: Data Integrity and Multi-Guild Isolation
+### Suite N: Data Integrity and Multi-Guild Isolation
 
 - [ ] Make distinct config/feature changes in Guild A and Guild B.
 - [ ] Verify behavior is isolated per guild.
@@ -299,7 +299,7 @@ Expected:
 
 - Strict tenant isolation
 
-## Suite O: Resilience, Recovery, and Operational Runbook Checks
+### Suite O: Resilience, Recovery, and Operational Runbook Checks
 
 - [ ] Restart services during active activity.
 - [ ] Validate no data corruption and acceptable recovery.
