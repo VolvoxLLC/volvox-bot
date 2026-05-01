@@ -95,10 +95,14 @@ describe('Providers', () => {
     expect(screen.getByTestId('toaster')).toHaveAttribute('data-theme', 'system');
   });
 
-  it('sets Sentry route and guild context tags', () => {
+  it('sets Sentry route and guild context tags for authenticated dashboard routes', () => {
     mockUseTheme.mockReturnValue({ resolvedTheme: 'dark' });
     mockUsePathname.mockReturnValue('/dashboard/settings');
     mockUseGuildSelection.mockReturnValue('1234567890');
+    mockUseSession.mockReturnValue({
+      data: { user: { id: 'discord-user-123' } },
+      status: 'authenticated',
+    });
 
     render(
       <Providers>
@@ -108,6 +112,41 @@ describe('Providers', () => {
 
     expect(mockSetContext).toHaveBeenCalledWith('routing', { route: '/dashboard/settings' });
     expect(mockSetContext).toHaveBeenCalledWith('guild', { id: '1234567890' });
+  });
+
+  it('clears Sentry guild context outside dashboard routes', () => {
+    mockUseTheme.mockReturnValue({ resolvedTheme: 'dark' });
+    mockUsePathname.mockReturnValue('/');
+    mockUseGuildSelection.mockReturnValue('1234567890');
+    mockUseSession.mockReturnValue({
+      data: { user: { id: 'discord-user-123' } },
+      status: 'authenticated',
+    });
+
+    render(
+      <Providers>
+        <div>Home</div>
+      </Providers>,
+    );
+
+    expect(mockSetContext).toHaveBeenCalledWith('routing', { route: '/' });
+    expect(mockSetContext).toHaveBeenCalledWith('guild', null);
+  });
+
+  it('clears Sentry guild context for unauthenticated dashboard routes', () => {
+    mockUseTheme.mockReturnValue({ resolvedTheme: 'dark' });
+    mockUsePathname.mockReturnValue('/dashboard/settings');
+    mockUseGuildSelection.mockReturnValue('1234567890');
+    mockUseSession.mockReturnValue({ data: null, status: 'unauthenticated' });
+
+    render(
+      <Providers>
+        <div>Dashboard</div>
+      </Providers>,
+    );
+
+    expect(mockSetContext).toHaveBeenCalledWith('routing', { route: '/dashboard/settings' });
+    expect(mockSetContext).toHaveBeenCalledWith('guild', null);
   });
 
   it('initializes Amplitude and tracks dashboard page views without PII', () => {
@@ -136,6 +175,55 @@ describe('Providers', () => {
       authStatus: 'authenticated',
       guildId: '1234567890',
       route: '/dashboard/settings',
+    });
+  });
+
+  it('dedupes dashboard page views when auth status or guild changes without navigation', () => {
+    mockUseTheme.mockReturnValue({ resolvedTheme: 'dark' });
+    mockUsePathname.mockReturnValue('/dashboard/settings');
+    mockUseGuildSelection.mockReturnValue(null);
+    mockUseSession.mockReturnValue({ data: null, status: 'loading' });
+
+    const { rerender } = render(
+      <Providers>
+        <div>Dashboard</div>
+      </Providers>,
+    );
+
+    expect(mockTrackDashboardEvent).toHaveBeenCalledTimes(1);
+    expect(mockTrackDashboardEvent).toHaveBeenLastCalledWith('dashboard_page_viewed', {
+      authStatus: 'loading',
+      guildId: 'none',
+      route: '/dashboard/settings',
+    });
+
+    mockUseGuildSelection.mockReturnValue('1234567890');
+    mockUseSession.mockReturnValue({
+      data: { user: { id: 'discord-user-123' } },
+      status: 'authenticated',
+    });
+
+    rerender(
+      <Providers>
+        <div>Dashboard</div>
+      </Providers>,
+    );
+
+    expect(mockTrackDashboardEvent).toHaveBeenCalledTimes(1);
+
+    mockUsePathname.mockReturnValue('/dashboard/moderation');
+
+    rerender(
+      <Providers>
+        <div>Dashboard</div>
+      </Providers>,
+    );
+
+    expect(mockTrackDashboardEvent).toHaveBeenCalledTimes(2);
+    expect(mockTrackDashboardEvent).toHaveBeenLastCalledWith('dashboard_page_viewed', {
+      authStatus: 'authenticated',
+      guildId: '1234567890',
+      route: '/dashboard/moderation',
     });
   });
 });
