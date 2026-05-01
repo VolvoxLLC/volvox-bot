@@ -57,8 +57,11 @@ const SENSITIVE_KEY_FRAGMENTS = [
   'stack',
 ] as const;
 const SENSITIVE_COMPACT_KEYS = new Set(['ip', 'ipaddress', 'xforwardedfor', 'apikey', 'xapikey']);
-const SENSITIVE_IP_KEY_SUFFIX_PATTERN =
-  /(?:actor|client|destination|external|forwarded|host|internal|lastlogin|local|origin|peer|private|public|real|remote|request|response|server|socket|source|user|visitor)ip$/;
+const SENSITIVE_IP_KEY_PREFIXES = new Set(
+  'actor client destination external forwarded host internal lastlogin local origin peer private public real remote request response server socket source user visitor'.split(
+    ' ',
+  ),
+);
 const SENSITIVE_KEY_SEPARATOR_PATTERN = /[\s._-]+/g;
 const SENSITIVE_KEY_FRAGMENT_COMPACTS = SENSITIVE_KEY_FRAGMENTS.map((fragment) =>
   fragment.replaceAll(SENSITIVE_KEY_SEPARATOR_PATTERN, ''),
@@ -237,7 +240,10 @@ function isSensitiveKey(key: string): boolean {
     return true;
   }
 
-  return SENSITIVE_COMPACT_KEYS.has(compactKey) || SENSITIVE_IP_KEY_SUFFIX_PATTERN.test(compactKey);
+  return (
+    SENSITIVE_COMPACT_KEYS.has(compactKey) ||
+    (compactKey.endsWith('ip') && SENSITIVE_IP_KEY_PREFIXES.has(compactKey.slice(0, -2)))
+  );
 }
 
 /**
