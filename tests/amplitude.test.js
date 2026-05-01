@@ -344,4 +344,137 @@ describe('scrubAmplitudeProperties', () => {
     });
     expect(result).toEqual({ ok: true });
   });
+
+  it('redacts email keys matching the sensitive key pattern', async () => {
+    const scrub = await getScrub();
+    const result = scrub({
+      email: 'user@example.com',
+      safeField: 'keep-this',
+    });
+    expect(result).toEqual({ safeField: 'keep-this' });
+  });
+
+  it('redacts GitHub and Slack xox tokens in strings', async () => {
+    const scrub = await getScrub();
+    expect(scrub('token: ghp_abc1234567890abcdef')).toBe('token: [REDACTED]');
+    expect(scrub('token: xoxb_1234567890_abcdefghijk')).toBe('token: [REDACTED]');
+    expect(scrub('key: ghs_abcdefghijklmnop12345678')).toBe('key: [REDACTED]');
+  });
+
+  it('handles empty string without errors', async () => {
+    const scrub = await getScrub();
+    expect(scrub('')).toBe('');
+  });
+
+  it('handles empty object without errors', async () => {
+    const scrub = await getScrub();
+    expect(scrub({})).toEqual({});
+  });
+
+  it('handles empty array without errors', async () => {
+    const scrub = await getScrub();
+    expect(scrub([])).toEqual([]);
+  });
+});
+
+// ─── Additional amplitude analytics edge-case tests ───────────────────────────
+
+describe('amplitude analytics — additional edge cases', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+    vi.clearAllMocks();
+  });
+
+  it('falls back to US server zone when AMPLITUDE_SERVER_ZONE is not set at all', async () => {
+    vi.stubEnv('AMPLITUDE_API_KEY', 'server-key');
+    delete process.env.AMPLITUDE_SERVER_ZONE;
+
+    const { getAmplitudeServerOptions } = await import('../src/amplitude.js');
+    expect(getAmplitudeServerOptions().serverZone).toBe('US');
+  });
+
+  it('uses the EU server zone for lowercase eu input', async () => {
+    vi.stubEnv('AMPLITUDE_API_KEY', 'server-key');
+    vi.stubEnv('AMPLITUDE_SERVER_ZONE', 'eu');
+
+    const { getAmplitudeServerOptions } = await import('../src/amplitude.js');
+    expect(getAmplitudeServerOptions().serverZone).toBe('EU');
+  });
+
+  it('falls back to US server zone for empty AMPLITUDE_SERVER_ZONE string', async () => {
+    vi.stubEnv('AMPLITUDE_API_KEY', 'server-key');
+    vi.stubEnv('AMPLITUDE_SERVER_ZONE', '');
+
+    const { getAmplitudeServerOptions } = await import('../src/amplitude.js');
+    expect(getAmplitudeServerOptions().serverZone).toBe('US');
+  });
+
+  it('accepts userId alias in trackAnalyticsEvent', async () => {
+    vi.stubEnv('AMPLITUDE_API_KEY', 'server-key');
+
+    const { trackAnalyticsEvent } = await import('../src/amplitude.js');
+
+    trackAnalyticsEvent('test_event', {}, { userId: 'user-abcde' });
+
+    expect(mockTrack).toHaveBeenCalledWith(
+      'test_event',
+      {},
+      expect.objectContaining({ user_id: 'user-abcde' }),
+    );
+  });
+
+  it('uses default device_id when userId is exactly 4 chars (too short)', async () => {
+    vi.stubEnv('AMPLITUDE_API_KEY', 'server-key');
+
+    const { trackAnalyticsEvent, DEFAULT_AMPLITUDE_DEVICE_ID } = await import(
+      '../src/amplitude.js'
+    );
+
+    trackAnalyticsEvent('test_event', {}, { userId: 'abcd' });
+
+    expect(mockTrack).toHaveBeenCalledWith(
+      'test_event',
+      {},
+      { device_id: DEFAULT_AMPLITUDE_DEVICE_ID },
+    );
+  });
+
+  it('accepts userId exactly 5 chars (minimum length)', async () => {
+    vi.stubEnv('AMPLITUDE_API_KEY', 'server-key');
+
+    const { trackAnalyticsEvent } = await import('../src/amplitude.js');
+
+    trackAnalyticsEvent('test_event', {}, { userId: 'abcde' });
+
+    expect(mockTrack).toHaveBeenCalledWith(
+      'test_event',
+      {},
+      expect.objectContaining({ user_id: 'abcde' }),
+    );
+  });
+
+  it('does not include user_id in options when userId is invalid', async () => {
+    vi.stubEnv('AMPLITUDE_API_KEY', 'server-key');
+
+    const { trackAnalyticsEvent, DEFAULT_AMPLITUDE_DEVICE_ID } = await import(
+      '../src/amplitude.js'
+    );
+
+    trackAnalyticsEvent('test_event', {}, { userId: null });
+
+    const [, , options] = mockTrack.mock.calls[0];
+    expect(options.user_id).toBeUndefined();
+    expect(options.device_id).toBe(DEFAULT_AMPLITUDE_DEVICE_ID);
+  });
+
+  it('AMPLITUDE_LOG_EVENT constant has expected value', async () => {
+    const { AMPLITUDE_LOG_EVENT } = await import('../src/amplitude.js');
+    expect(AMPLITUDE_LOG_EVENT).toBe('bot_log_recorded');
+  });
+
+  it('DEFAULT_AMPLITUDE_DEVICE_ID constant has expected value', async () => {
+    const { DEFAULT_AMPLITUDE_DEVICE_ID } = await import('../src/amplitude.js');
+    expect(DEFAULT_AMPLITUDE_DEVICE_ID).toBe('volvox-bot-server');
+  });
 });
