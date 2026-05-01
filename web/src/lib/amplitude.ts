@@ -117,50 +117,33 @@ function isSensitiveKey(key: string): boolean {
  * @returns The scrubbed value, preserving the original structure where possible (primitive, array, or object) with sensitive data redacted or omitted.
  */
 function scrubAmplitudeProperties(value: unknown, seen = new WeakSet<object>()): unknown {
-  if (typeof value === 'string') {
-    return scrubInlineSecrets(value);
-  }
-
-  if (!value || typeof value !== 'object') {
-    return value;
-  }
-
-  if (seen.has(value)) {
-    return '[Circular]';
-  }
+  if (typeof value === 'string') return scrubInlineSecrets(value);
+  if (!value || typeof value !== 'object') return value;
+  if (seen.has(value)) return '[Circular]';
 
   seen.add(value);
+  let scrubbedValue: unknown;
 
-  try {
-    if (Array.isArray(value)) {
-      return value.map((item) => scrubAmplitudeProperties(item, seen));
-    }
-
-    if (value instanceof Date) {
-      return value.toISOString();
-    }
-
-    if (value instanceof Error) {
-      return {
-        message: scrubInlineSecrets(value.message),
-        name: value.name,
-      };
-    }
-
-    const scrubbed: BrowserAmplitudeProperties = {};
-
-    for (const [key, childValue] of Object.entries(value)) {
-      if (isSensitiveKey(key)) {
-        continue;
-      }
-
-      scrubbed[key] = scrubAmplitudeProperties(childValue, seen);
-    }
-
-    return scrubbed;
-  } finally {
-    seen.delete(value);
+  if (Array.isArray(value)) {
+    scrubbedValue = value.map((item) => scrubAmplitudeProperties(item, seen));
+  } else if (value instanceof Date) {
+    scrubbedValue = value.toISOString();
+  } else if (value instanceof Error) {
+    scrubbedValue = { message: scrubInlineSecrets(value.message), name: value.name };
+  } else {
+    scrubbedValue = Object.entries(value).reduce<BrowserAmplitudeProperties>(
+      (properties, [key, childValue]) => {
+        if (!isSensitiveKey(key)) {
+          properties[key] = scrubAmplitudeProperties(childValue, seen);
+        }
+        return properties;
+      },
+      {},
+    );
   }
+
+  seen.delete(value);
+  return scrubbedValue;
 }
 
 /**
