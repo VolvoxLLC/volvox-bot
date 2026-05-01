@@ -95,6 +95,7 @@ describe("next.config security headers", () => {
     it("should allow Sentry ingest endpoints for browser error capture", () => {
       expect(cspValue).toContain("https://*.ingest.sentry.io");
       expect(cspValue).toContain("https://*.ingest.us.sentry.io");
+      expect(cspValue).toContain("https://*.ingest.eu.sentry.io");
     });
 
     it("should allow Amplitude ingest endpoints for dashboard analytics", () => {
