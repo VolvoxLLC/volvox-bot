@@ -141,15 +141,36 @@ export function getAmplitudeServerOptions() {
   };
 }
 
-const apiKey = getEnvValue('AMPLITUDE_API_KEY');
+/**
+ * Whether the current runtime environment has Amplitude enabled.
+ */
+export let amplitudeEnabled = Boolean(getEnvValue('AMPLITUDE_API_KEY'));
+
+let initializedApiKey;
 
 /**
- * Whether Amplitude is actively initialized.
+ * Initialize Amplitude with the current runtime environment, if configured.
+ *
+ * This intentionally reads `process.env` at call time so dotenv/config loaders
+ * that run after this module is imported do not permanently disable analytics.
+ *
+ * @returns {boolean} `true` when Amplitude has an API key and is initialized.
  */
-export const amplitudeEnabled = Boolean(apiKey);
+export function initializeAmplitude() {
+  const apiKey = getEnvValue('AMPLITUDE_API_KEY');
+  amplitudeEnabled = Boolean(apiKey);
 
-if (apiKey) {
-  amplitude.init(apiKey, getAmplitudeServerOptions());
+  if (!apiKey) {
+    initializedApiKey = undefined;
+    return false;
+  }
+
+  if (initializedApiKey !== apiKey) {
+    amplitude.init(apiKey, getAmplitudeServerOptions());
+    initializedApiKey = apiKey;
+  }
+
+  return true;
 }
 
 /**
@@ -165,7 +186,7 @@ if (apiKey) {
 export function trackAnalyticsEvent(eventType, eventProperties = {}, eventOptions = {}) {
   const normalizedEventType = typeof eventType === 'string' ? eventType.trim() : '';
 
-  if (!amplitudeEnabled || normalizedEventType.length === 0) {
+  if (normalizedEventType.length === 0 || !initializeAmplitude()) {
     return false;
   }
 
@@ -198,7 +219,7 @@ export function trackAnalyticsEvent(eventType, eventProperties = {}, eventOption
  * @returns {boolean} `true` if queued events were successfully flushed, `false` otherwise.
  */
 export async function flushAmplitude() {
-  if (!amplitudeEnabled) {
+  if (!initializeAmplitude()) {
     return false;
   }
 
