@@ -76,6 +76,90 @@ function getSupportHelpGroup(config) {
   return helpGroup;
 }
 
+function isWhitespace(character) {
+  return (
+    character === ' ' ||
+    character === '\t' ||
+    character === '\n' ||
+    character === '\r' ||
+    character === '\f' ||
+    character === '\v'
+  );
+}
+
+function splitWhitespaceTokens(line) {
+  const tokens = [];
+  let currentToken = '';
+
+  for (const character of line) {
+    if (isWhitespace(character)) {
+      if (currentToken) {
+        tokens.push(currentToken);
+        currentToken = '';
+      }
+      continue;
+    }
+
+    currentToken += character;
+  }
+
+  if (currentToken) {
+    tokens.push(currentToken);
+  }
+
+  return tokens;
+}
+
+function hasRecursiveCopyFlag(line) {
+  const tokens = splitWhitespaceTokens(line);
+  if (tokens[0] !== 'cp') {
+    return false;
+  }
+
+  for (const token of tokens.slice(1)) {
+    if (token === '--' || token === '-' || !token.startsWith('-')) {
+      return false;
+    }
+
+    if (token.startsWith('--')) {
+      if (token === '--recursive') {
+        return true;
+      }
+      continue;
+    }
+
+    for (const flag of token.slice(1)) {
+      if (flag === 'r' || flag === 'R') {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+// ---------------------------------------------------------------------------
+// helper behavior
+// ---------------------------------------------------------------------------
+
+describe('hasRecursiveCopyFlag', () => {
+  it.each([
+    ['accepts short -r', 'cp -r source target', true],
+    ['accepts short -R', 'cp -R source target', true],
+    ['accepts grouped short flags', 'cp -aR source target', true],
+    ['accepts exact long option --recursive', 'cp --recursive source target', true],
+    ['rejects unrelated long option --preserve', 'cp --preserve source target', false],
+    ['rejects unrelated long option --parents', 'cp --parents source target', false],
+    ['rejects unrelated long option --reflink=auto', 'cp --reflink=auto source target', false],
+    ['stops at option terminator', 'cp -- -R source target', false],
+    ['stops at lone dash', 'cp - -R target', false],
+    ['stops at first operand', 'cp source -R target', false],
+    ['accepts short options before recursive flag', 'cp -P -R source target', true],
+  ])('%s', (_description, line, expected) => {
+    expect(hasRecursiveCopyFlag(line)).toBe(expected);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // docs/docs.json
 // ---------------------------------------------------------------------------
