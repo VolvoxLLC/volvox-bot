@@ -7,7 +7,7 @@
 
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import WebSocket, { WebSocketServer } from 'ws';
-import { info, warn } from '../../logger.js';
+import { info, error as logError, warn } from '../../logger.js';
 
 /** Maximum number of concurrent authenticated clients */
 const MAX_CLIENTS = 10;

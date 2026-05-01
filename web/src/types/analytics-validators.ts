@@ -8,6 +8,10 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
 }
 
+function isFiniteNumberOrNull(value: unknown): value is number | null {
+  return value === null || isFiniteNumber(value);
+}
+
 function isString(value: unknown): value is string {
   return typeof value === 'string';
 }
@@ -33,7 +37,7 @@ function isValidKpis(kpis: unknown): boolean {
   return (
     isFiniteNumber(kpis.totalMessages) &&
     isFiniteNumber(kpis.aiRequests) &&
-    isFiniteNumber(kpis.aiCostUsd) &&
+    isFiniteNumberOrNull(kpis.aiCostUsd) &&
     isFiniteNumber(kpis.activeUsers) &&
     isFiniteNumber(kpis.newMembers)
   );
@@ -73,10 +77,11 @@ function isValidAiUsageEntry(entry: unknown): boolean {
 
 function isValidAiUsage(aiUsage: unknown): boolean {
   if (!isRecord(aiUsage)) return false;
+  if (aiUsage.source !== 'unavailable' && aiUsage.source !== 'ai_usage') return false;
   if (
     !isRecord(aiUsage.tokens) ||
-    !isFiniteNumber(aiUsage.tokens.prompt) ||
-    !isFiniteNumber(aiUsage.tokens.completion)
+    !isFiniteNumberOrNull(aiUsage.tokens.prompt) ||
+    !isFiniteNumberOrNull(aiUsage.tokens.completion)
   ) {
     return false;
   }

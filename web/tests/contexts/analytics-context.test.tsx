@@ -47,6 +47,7 @@ const analyticsPayload: DashboardAnalytics = {
     },
   ],
   aiUsage: {
+    source: 'ai_usage',
     byModel: [
       {
         model: 'claude',

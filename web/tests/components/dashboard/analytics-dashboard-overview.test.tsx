@@ -33,6 +33,7 @@ const { analyticsPayload } = vi.hoisted(() => ({
       },
     ],
     aiUsage: {
+      source: 'ai_usage',
       byModel: [
         {
           model: 'claude-sonnet',

@@ -22,7 +22,7 @@ function buildKpiTable(analytics: DashboardAnalytics): string {
   const rows = [
     ['Total messages', formatNumber(kpis.totalMessages)],
     ['AI requests', formatNumber(kpis.aiRequests)],
-    ['AI cost (est.)', formatUsd(kpis.aiCostUsd)],
+    ['AI cost (est.)', kpis.aiCostUsd === null ? 'Unavailable' : formatUsd(kpis.aiCostUsd)],
     ['Active users', formatNumber(kpis.activeUsers)],
     ['New members', formatNumber(kpis.newMembers)],
   ];
@@ -129,6 +129,9 @@ function buildAiSection(analytics: DashboardAnalytics): string {
   const { byModel, tokens } = analytics.aiUsage;
   if (!byModel.length) return '';
 
+  const promptTokens = tokens.prompt ?? 0;
+  const completionTokens = tokens.completion ?? 0;
+
   const rowsHtml = byModel
     .map(
       (m) =>
@@ -150,7 +153,7 @@ function buildAiSection(analytics: DashboardAnalytics): string {
         </thead>
         <tbody>${rowsHtml}</tbody>
       </table>
-      <p class="note">Total tokens: ${esc(formatNumber(tokens.prompt + tokens.completion))} (${esc(formatNumber(tokens.prompt))} prompt + ${esc(formatNumber(tokens.completion))} completion)</p>
+      <p class="note">Total tokens: ${esc(formatNumber(promptTokens + completionTokens))} (${esc(formatNumber(promptTokens))} prompt + ${esc(formatNumber(completionTokens))} completion)</p>
     </section>`;
 }
 

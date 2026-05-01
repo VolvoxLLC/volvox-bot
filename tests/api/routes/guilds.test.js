@@ -999,11 +999,14 @@ describe('guilds routes', () => {
       expect(res.body.kpis.totalMessages).toBe(120);
       expect(res.body.kpis.aiRequests).toBe(40);
       expect(res.body.kpis.activeUsers).toBe(10);
-      expect(res.body.kpis.aiCostUsd).toBe(0);
+      expect(res.body.kpis.aiCostUsd).toBeNull();
       expect(res.body.kpis.newMembers).toBeTypeOf('number');
       expect(res.body.realtime.activeAiConversations).toBe(3);
-      expect(res.body.aiUsage.tokens.prompt).toBe(0);
-      expect(res.body.aiUsage.tokens.completion).toBe(0);
+      expect(res.body.aiUsage).toMatchObject({
+        source: 'unavailable',
+        byModel: [],
+        tokens: { prompt: null, completion: null },
+      });
       expect(res.body.channelActivity[0]).toEqual({
         channelId: 'ch1',
         name: 'general',
@@ -1086,7 +1089,7 @@ describe('guilds routes', () => {
       ).toBe(true);
     });
 
-    it('should return comparison KPIs and previous AI cost when compare mode is enabled', async () => {
+    it('should return comparison KPIs and unavailable AI cost when compare mode is enabled', async () => {
       mockPool.query
         .mockResolvedValueOnce({
           rows: [{ total_messages: 12, ai_requests: 6, active_users: 4 }],
@@ -1112,7 +1115,7 @@ describe('guilds routes', () => {
       expect(res.body.comparison.kpis.totalMessages).toBe(8);
       expect(res.body.comparison.kpis.aiRequests).toBe(4);
       expect(res.body.comparison.kpis.activeUsers).toBe(3);
-      expect(res.body.comparison.kpis.aiCostUsd).toBe(0);
+      expect(res.body.comparison.kpis.aiCostUsd).toBeNull();
       expect(res.body.commandUsage).toEqual({
         source: 'command_usage',
         items: [{ command: 'help', uses: 5 }],
@@ -1141,7 +1144,7 @@ describe('guilds routes', () => {
       expect(res.body.commandUsage).toEqual({ source: 'unavailable', items: [] });
     });
 
-    it('should not query persisted logs for analytics', async () => {
+    it('should not query persisted logs and should mark AI usage unavailable for analytics', async () => {
       mockPool.query
         .mockResolvedValueOnce({ rows: [{ total_messages: 1, ai_requests: 1, active_users: 1 }] })
         .mockResolvedValueOnce({ rows: [] })
@@ -1157,8 +1160,12 @@ describe('guilds routes', () => {
         .set('x-api-secret', SECRET);
 
       expect(res.status).toBe(200);
-      expect(res.body.aiUsage.byModel).toEqual([]);
-      expect(res.body.kpis.aiCostUsd).toBe(0);
+      expect(res.body.aiUsage).toMatchObject({
+        source: 'unavailable',
+        byModel: [],
+        tokens: { prompt: null, completion: null },
+      });
+      expect(res.body.kpis.aiCostUsd).toBeNull();
       expect(res.body.kpis.newMembers).toBeTypeOf('number');
       expect(mockPool.query.mock.calls.map(([sql]) => sql).join('\n')).not.toMatch(/FROM logs/i);
     });
