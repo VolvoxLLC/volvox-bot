@@ -41,7 +41,20 @@ describe('sentry-options', () => {
     });
   });
 
-  it('should enable Sentry default PII collection for browser and server configs', async () => {
+  it('should keep Sentry default PII collection disabled unless explicitly enabled', async () => {
+    const { getBrowserSentryOptions, getServerSentryOptions } = await import(
+      '@/lib/sentry-options'
+    );
+
+    expect(getBrowserSentryOptions().sendDefaultPii).toBe(false);
+    expect(getServerSentryOptions('nodejs').sendDefaultPii).toBe(false);
+    expect(getServerSentryOptions('edge').sendDefaultPii).toBe(false);
+  });
+
+  it('should enable Sentry default PII collection for browser and server configs when opted in', async () => {
+    vi.stubEnv('NEXT_PUBLIC_SENTRY_SEND_DEFAULT_PII', 'true');
+    vi.stubEnv('SENTRY_SEND_DEFAULT_PII', 'true');
+
     const { getBrowserSentryOptions, getServerSentryOptions } = await import(
       '@/lib/sentry-options'
     );
@@ -49,6 +62,19 @@ describe('sentry-options', () => {
     expect(getBrowserSentryOptions().sendDefaultPii).toBe(true);
     expect(getServerSentryOptions('nodejs').sendDefaultPii).toBe(true);
     expect(getServerSentryOptions('edge').sendDefaultPii).toBe(true);
+  });
+
+  it('should require SENTRY_DSN for server and edge capture', async () => {
+    vi.stubEnv('NEXT_PUBLIC_SENTRY_DSN', 'https://public@example.com/1');
+    vi.stubEnv('SENTRY_DSN', '');
+
+    const { getBrowserSentryOptions, getServerSentryOptions } = await import(
+      '@/lib/sentry-options'
+    );
+
+    expect(getBrowserSentryOptions().dsn).toBe('https://public@example.com/1');
+    expect(getServerSentryOptions('nodejs').dsn).toBeUndefined();
+    expect(getServerSentryOptions('edge').dsn).toBeUndefined();
   });
 
   it('should sanitize invalid environment names', async () => {
@@ -70,17 +96,26 @@ describe('sentry-options', () => {
       },
       request: {
         cookies: { session: 'secret' },
+        data: {
+          password: 'secret',
+          api_key: 'secret',
+          'x-api-key': 'secret',
+          safeField: 'keep-this',
+        },
         headers: {
           authorization: 'Bearer secret',
           cookie: 'session=secret',
           'x-forwarded-for': '127.0.0.1',
+          'x-api-key': 'secret',
           accept: 'application/json',
         },
       },
       extra: {
         accessToken: 'secret',
+        'refresh-token': 'secret',
         nested: {
           botApiSecret: 'secret',
+          bot_api_secret: 'secret',
           ok: true,
         },
       },
@@ -96,6 +131,9 @@ describe('sentry-options', () => {
         id: 'safe-user-key',
       },
       request: {
+        data: {
+          safeField: 'keep-this',
+        },
         headers: {
           accept: 'application/json',
         },
@@ -108,6 +146,56 @@ describe('sentry-options', () => {
       tags: {
         route: '/dashboard',
         service: 'volvox-dashboard',
+      },
+    });
+  });
+
+  it('should scrub transaction and span payloads with the same sanitizer', async () => {
+    const { getServerSentryOptions } = await import('@/lib/sentry-options');
+    const options = getServerSentryOptions('nodejs');
+
+    expect(
+      options.beforeSendTransaction?.({
+        type: 'transaction',
+        request: {
+          headers: {
+            cookie: 'session=secret',
+            accept: 'application/json',
+          },
+          data: {
+            access_token: 'secret',
+            safeField: 'keep-this',
+          },
+        },
+      }, {}),
+    ).toEqual({
+      type: 'transaction',
+      request: {
+        headers: {
+          accept: 'application/json',
+        },
+        data: {
+          safeField: 'keep-this',
+        },
+      },
+    });
+
+    expect(
+      options.beforeSendSpan?.({
+        span_id: 'abc123',
+        start_timestamp: 1,
+        trace_id: 'trace123',
+        data: {
+          authorization: 'Bearer secret',
+          safeField: 'keep-this',
+        },
+      }),
+    ).toEqual({
+      span_id: 'abc123',
+      start_timestamp: 1,
+      trace_id: 'trace123',
+      data: {
+        safeField: 'keep-this',
       },
     });
   });

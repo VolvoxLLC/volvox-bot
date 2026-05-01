@@ -7,6 +7,7 @@
  * Configure via environment variables:
  *   SENTRY_DSN           - Sentry project DSN (required to enable)
  *   SENTRY_ENVIRONMENT   - Environment name (default: 'production')
+ *   SENTRY_SEND_DEFAULT_PII - Enable default PII capture after local scrubbing (default: false)
  *   SENTRY_TRACES_RATE   - Performance sampling rate 0-1 (default: 0.1)
  *   NODE_ENV             - Used as fallback for environment name
  */
@@ -14,6 +15,81 @@
 import * as Sentry from '@sentry/node';
 
 const dsn = process.env.SENTRY_DSN;
+const sendDefaultPii = process.env.SENTRY_SEND_DEFAULT_PII === 'true';
+const SENSITIVE_KEY_PATTERN =
+  /(?:authorization|cookie|csrf|secret|password|token|session|stack|x[-_]?forwarded[-_]?for|ip(?:[-_]?address)?|x[-_]?api[-_]?key|api[-_]?key|bot[-_]?api[-_]?secret|access[-_]?token|refresh[-_]?token)/i;
+
+/**
+ * Recursively removes sensitive keys from arbitrary Sentry metadata.
+ *
+ * @param {unknown} value - Metadata value to scrub.
+ * @returns {unknown} A copy with sensitive object keys removed.
+ */
+function scrubUnknown(value) {
+  if (Array.isArray(value)) {
+    return value.map(scrubUnknown);
+  }
+
+  if (!value || typeof value !== 'object') {
+    return value;
+  }
+
+  const scrubbed = {};
+
+  for (const [key, childValue] of Object.entries(value)) {
+    if (SENSITIVE_KEY_PATTERN.test(key)) {
+      continue;
+    }
+
+    scrubbed[key] = scrubUnknown(childValue);
+  }
+
+  return scrubbed;
+}
+
+/**
+ * Removes secrets and direct identifiers from Sentry error or performance events.
+ *
+ * @param {object} event - Sentry event-like payload.
+ * @returns {object} The same payload after in-place scrubbing.
+ */
+function scrubSentryEvent(event) {
+  if (event.user) {
+    delete event.user.email;
+    delete event.user.ip_address;
+  }
+
+  if (event.request) {
+    delete event.request.cookies;
+
+    if (event.request.headers) {
+      event.request.headers = scrubUnknown(event.request.headers);
+    }
+
+    if (event.request.data) {
+      const scrubbedData = scrubUnknown(event.request.data);
+      if (scrubbedData && typeof scrubbedData === 'object') {
+        event.request.data = scrubbedData;
+      } else {
+        delete event.request.data;
+      }
+    }
+  }
+
+  if (event.extra) {
+    event.extra = scrubUnknown(event.extra);
+  }
+
+  if (event.contexts) {
+    event.contexts = scrubUnknown(event.contexts);
+  }
+
+  if (event.data) {
+    event.data = scrubUnknown(event.data);
+  }
+
+  return event;
+}
 
 /**
  * Whether Sentry is actively initialized.
@@ -25,7 +101,7 @@ if (dsn) {
   Sentry.init({
     dsn,
     environment: process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'production',
-    sendDefaultPii: true,
+    sendDefaultPii,
 
     // Performance monitoring — sample 10% of transactions by default
     // Use ?? so SENTRY_TRACES_RATE=0 explicitly disables tracing
@@ -44,27 +120,10 @@ if (dsn) {
       if (message.includes('AbortError') || message.includes('The operation was aborted')) {
         return null;
       }
-      // Scrub sensitive keys from extra context
-      const sensitiveKeys = [
-        'ip',
-        'accessToken',
-        'secret',
-        'apiKey',
-        'authorization',
-        'password',
-        'token',
-        'stack',
-        'cookie',
-      ];
-      if (event.extra) {
-        for (const key of sensitiveKeys) {
-          if (key in event.extra) {
-            delete event.extra[key];
-          }
-        }
-      }
-      return event;
+      return scrubSentryEvent(event);
     },
+    beforeSendTransaction: scrubSentryEvent,
+    beforeSendSpan: scrubSentryEvent,
 
     // Add useful default tags
     initialScope: {

@@ -5,8 +5,8 @@ const { mockUseTheme } = vi.hoisted(() => ({
   mockUseTheme: vi.fn(),
 }));
 
-const { mockSetTag, mockUseGuildSelection, mockUsePathname } = vi.hoisted(() => ({
-  mockSetTag: vi.fn(),
+const { mockSetContext, mockUseGuildSelection, mockUsePathname } = vi.hoisted(() => ({
+  mockSetContext: vi.fn(),
   mockUseGuildSelection: vi.fn(),
   mockUsePathname: vi.fn(),
 }));
@@ -29,7 +29,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('@sentry/nextjs', () => ({
-  setTag: mockSetTag,
+  setContext: mockSetContext,
 }));
 
 vi.mock('@/hooks/use-guild-selection', () => ({
@@ -50,7 +50,7 @@ import { Providers } from '@/components/providers';
 
 describe('Providers', () => {
   beforeEach(() => {
-    mockSetTag.mockClear();
+    mockSetContext.mockClear();
     mockUseGuildSelection.mockReturnValue(null);
     mockUsePathname.mockReturnValue('/');
   });
@@ -93,7 +93,7 @@ describe('Providers', () => {
       </Providers>,
     );
 
-    expect(mockSetTag).toHaveBeenCalledWith('route', '/dashboard/settings');
-    expect(mockSetTag).toHaveBeenCalledWith('guild.id', '1234567890');
+    expect(mockSetContext).toHaveBeenCalledWith('routing', { route: '/dashboard/settings' });
+    expect(mockSetContext).toHaveBeenCalledWith('guild', { id: '1234567890' });
   });
 });

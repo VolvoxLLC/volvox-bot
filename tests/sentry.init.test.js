@@ -41,8 +41,19 @@ describe('sentry.js — init branch coverage', () => {
     expect(cfg.tracesSampleRate).toBe(0.5);
   });
 
-  it('should enable Sentry default PII collection while relying on beforeSend scrubbing', async () => {
+  it('should leave Sentry default PII collection disabled unless explicitly enabled', async () => {
     vi.stubEnv('SENTRY_DSN', 'https://key@o0.ingest.sentry.io/0');
+
+    await import('../src/sentry.js');
+
+    expect(initSpy).toHaveBeenCalledTimes(1);
+    const cfg = initSpy.mock.calls[0][0];
+    expect(cfg.sendDefaultPii).toBe(false);
+  });
+
+  it('should enable Sentry default PII collection when SENTRY_SEND_DEFAULT_PII is true', async () => {
+    vi.stubEnv('SENTRY_DSN', 'https://key@o0.ingest.sentry.io/0');
+    vi.stubEnv('SENTRY_SEND_DEFAULT_PII', 'true');
 
     await import('../src/sentry.js');
 
@@ -193,6 +204,79 @@ describe('sentry.js — init branch coverage', () => {
     expect(result.extra.secret).toBeUndefined();
     expect(result.extra.stack).toBeUndefined();
     expect(result.extra.safeField).toBe('keep-this');
+  });
+
+  it('should scrub sensitive request and user fields in beforeSend', async () => {
+    vi.stubEnv('SENTRY_DSN', 'https://key@o0.ingest.sentry.io/0');
+    vi.stubEnv('SENTRY_SEND_DEFAULT_PII', 'true');
+
+    await import('../src/sentry.js');
+
+    const beforeSend = initSpy.mock.calls[0][0].beforeSend;
+
+    const event = {
+      exception: { values: [{ value: 'Error' }] },
+      user: {
+        id: 'safe-user-key',
+        email: 'person@example.com',
+        ip_address: '127.0.0.1',
+      },
+      request: {
+        cookies: { session: 'secret' },
+        headers: {
+          authorization: 'Bearer secret',
+          cookie: 'session=secret',
+          'x-api-key': 'secret',
+          accept: 'application/json',
+        },
+        data: {
+          password: 'secret',
+          access_token: 'secret',
+          safeField: 'keep-this',
+        },
+      },
+    };
+
+    const result = beforeSend(event);
+    expect(result.user).toEqual({ id: 'safe-user-key' });
+    expect(result.request.cookies).toBeUndefined();
+    expect(result.request.headers).toEqual({ accept: 'application/json' });
+    expect(result.request.data).toEqual({ safeField: 'keep-this' });
+  });
+
+  it('should scrub transaction and span events before sending performance payloads', async () => {
+    vi.stubEnv('SENTRY_DSN', 'https://key@o0.ingest.sentry.io/0');
+    vi.stubEnv('SENTRY_SEND_DEFAULT_PII', 'true');
+
+    await import('../src/sentry.js');
+
+    const cfg = initSpy.mock.calls[0][0];
+    const transaction = {
+      type: 'transaction',
+      request: {
+        headers: { cookie: 'session=secret', accept: 'application/json' },
+        data: { api_key: 'secret', safeField: 'keep-this' },
+      },
+    };
+    const span = {
+      data: {
+        authorization: 'Bearer secret',
+        safeField: 'keep-this',
+      },
+    };
+
+    expect(cfg.beforeSendTransaction(transaction)).toEqual({
+      type: 'transaction',
+      request: {
+        headers: { accept: 'application/json' },
+        data: { safeField: 'keep-this' },
+      },
+    });
+    expect(cfg.beforeSendSpan(span)).toEqual({
+      data: {
+        safeField: 'keep-this',
+      },
+    });
   });
 
   it('should handle events with no extra context in beforeSend', async () => {
