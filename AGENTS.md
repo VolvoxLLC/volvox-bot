@@ -87,7 +87,9 @@ Use Conventional-Commits-style prefixes so titles communicate type and area at a
 - `build(scope): …` — build system, CI, packaging, or dependency changes.
 - `refactor(scope): …` — internal restructure with no behavioral change.
 
-The scope is optional but encouraged. Use the same scope tokens as the labels (`ai`, `dashboard`, `backend`, `frontend`, `api`, `auth`, `ops`, `security`, `engagement`, `moderation`, `dependencies`); slashed forms like `ui/dashboard` are accepted when narrower context helps. Drop the prefix only when the title is already specific and the type is unambiguous.
+The scope is optional but encouraged. Prefer the primary scope-label tokens in titles (`ai`, `dashboard`, `backend`, `frontend`, `api`, `auth`, `ops`, `security`, `engagement`, `moderation`, `dependencies`). Narrower title-only scopes from templates are also allowed when they make the work easier to recognize at a glance: `agents`, `design`, `readme`, `mintlify`, `deps`, `tests`, `tooling`. Treat `deps` as title shorthand for `dependencies`; apply the `scope: dependencies` label when labeling dependency work. These title-only scopes do not create new label values, and labels still follow the taxonomy below. Slashed forms like `ui/dashboard` are accepted when narrower context helps. Drop the prefix only when the title is already specific and the type is unambiguous.
+
+Dependency changes use `build(deps): …` or another `build(...)` title, not `chore(deps): …`.
 
 ### Label Taxonomy
 

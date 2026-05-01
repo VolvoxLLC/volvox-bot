@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Replace `scope` in the title with one of: `ai`, `dashboard`, `backend`, `frontend`, `api`, `auth`, `ops`, `security`, `engagement`, `moderation`, `dependencies`. See the **Issue Conventions** section in `AGENTS.md`.
+        Replace `scope` in the title with a primary scope-label token (`ai`, `dashboard`, `backend`, `frontend`, `api`, `auth`, `ops`, `security`, `engagement`, `moderation`, `dependencies`) or, when clearer, a narrower title-only scope from the templates (`agents`, `design`, `readme`, `mintlify`, `deps`, `tests`, `tooling`). Treat `deps` as title shorthand for `dependencies`; labels still follow the taxonomy in `AGENTS.md`.
 
         Use `fix(...)` for confirmed defects with reproduction or when filing alongside a PR that already resolves the issue.
   - type: textarea
