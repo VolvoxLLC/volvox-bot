@@ -14,7 +14,7 @@ import {
   Users,
   Zap,
 } from 'lucide-react';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -127,15 +127,6 @@ function _KpiSkeleton() {
   );
 }
 
-function escapeCsvCell(value: string | number | null): string {
-  if (value === null) return '';
-  const text = String(value);
-  if (text.includes(',') || text.includes('"') || text.includes('\n')) {
-    return `"${text.replace(/"/g, '""')}"`;
-  }
-  return text;
-}
-
 function toDeltaPercent(current: number, previous: number): number | null {
   if (previous === 0) {
     return current === 0 ? 0 : null;
@@ -147,6 +138,125 @@ function formatDeltaPercent(deltaPercent: number | null): string {
   if (deltaPercent === null) return '—';
   if (deltaPercent === 0) return '0%';
   return `${deltaPercent > 0 ? '+' : ''}${deltaPercent.toFixed(1)}%`;
+}
+
+type KpiCardState = {
+  hasValue: boolean;
+  numericValue: number;
+  showComparison: boolean;
+  delta: number | null;
+};
+
+function getKpiCardState(
+  card: KpiCard,
+  compareMode: boolean,
+  hasComparison: boolean,
+): KpiCardState {
+  const value = card.value;
+  const hasValue = value !== null && value !== undefined;
+  const numericValue = hasValue ? value : 0;
+  const previousValue = card.previous;
+  const hasPreviousValue = previousValue !== null && previousValue !== undefined;
+  const showComparison = compareMode && hasComparison && hasValue && hasPreviousValue;
+
+  let delta: number | null = null;
+  if (showComparison) {
+    delta = toDeltaPercent(numericValue, previousValue);
+  }
+
+  return { hasValue, numericValue, showComparison, delta };
+}
+
+function getKpiValueContent(
+  analyticsLoaded: boolean,
+  card: KpiCard,
+  state: KpiCardState,
+): React.ReactNode {
+  if (!analyticsLoaded) return '\u2014';
+  if (!state.hasValue) return 'Unavailable';
+  return <AnimatedValue value={state.numericValue} format={card.format} />;
+}
+
+function getDeltaBadgeClassName(delta: number | null): string {
+  if (delta === null || delta === 0) {
+    return 'bg-muted/30 text-muted-foreground/70 border-border/30';
+  }
+  if (delta > 0) {
+    return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 shadow-[0_0_8px_rgba(16,185,129,0.1)]';
+  }
+  return 'bg-rose-500/10 text-rose-500 border-rose-500/20 shadow-[0_0_8px_rgba(244,63,94,0.1)]';
+}
+
+function getDeltaIcon(delta: number | null): typeof Minus {
+  if (delta === null || delta === 0) return Minus;
+  return delta > 0 ? ArrowUp : ArrowDown;
+}
+
+function sanitizeVolumeLabel(label: string | null | undefined): string {
+  const isMissingLabel = !label;
+  const isInvalidDateLabel = label === 'Invalid Date';
+  const includesInvalidNumber = label?.includes('NaN') === true;
+
+  if (isMissingLabel || isInvalidDateLabel || includesInvalidNumber) {
+    return `Unknown (${label || 'no label'})`;
+  }
+
+  return label;
+}
+
+function KpiMetricCard({
+  card,
+  analyticsLoaded,
+  compareMode,
+  hasComparison,
+}: {
+  card: KpiCard;
+  analyticsLoaded: boolean;
+  compareMode: boolean;
+  hasComparison: boolean;
+}) {
+  const Icon = card.icon;
+  const state = getKpiCardState(card, compareMode, hasComparison);
+  const DeltaIcon = getDeltaIcon(state.delta);
+
+  return (
+    <div className="glow-card group relative min-h-[11rem] overflow-hidden rounded-[20px] border border-border/40 bg-gradient-to-br from-background/40 to-muted/20 p-5 backdrop-blur-3xl transition-all duration-500 hover:border-border/60 hover:shadow-[0_4px_24px_-8px_rgba(0,0,0,0.3)] shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)]">
+      {/* Background ambient light & large icon */}
+      <div className="absolute inset-0 bg-primary/[0.02] opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+      <Icon className="absolute -bottom-4 -right-4 h-24 w-24 text-primary/[0.03] -rotate-12 transition-all duration-500 group-hover:scale-110 group-hover:text-primary/5 group-hover:-rotate-6" />
+
+      <div className="relative z-10">
+        <div className="flex items-center gap-3 mb-4">
+          <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-primary/10 text-primary shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] ring-1 ring-primary/20 group-hover:bg-primary/15 transition-all duration-300">
+            <Icon className="h-4 w-4 drop-shadow-[0_0_8px_hsl(var(--primary))]" />
+          </span>
+          <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/70 group-hover:text-foreground/80 transition-colors">
+            {card.label}
+          </h3>
+        </div>
+
+        <div className="flex items-baseline justify-between mt-1">
+          <span className="text-3xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-br from-foreground to-foreground/60 drop-shadow-sm">
+            {getKpiValueContent(analyticsLoaded, card, state)}
+          </span>
+        </div>
+
+        {state.showComparison ? (
+          <div
+            className={cn(
+              'mt-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider backdrop-blur-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] border transition-colors',
+              getDeltaBadgeClassName(state.delta),
+            )}
+          >
+            <DeltaIcon className="h-[10px] w-[10px]" />
+            <span>{formatDeltaPercent(state.delta)}</span>
+          </div>
+        ) : (
+          <div className="mt-3 h-[22px]" />
+        )}
+      </div>
+    </div>
+  );
 }
 
 function hexToRgba(hex: string, alpha: number): string {
@@ -278,7 +388,7 @@ function LiveActivityFeed() {
  *
  * Renders KPI cards with optional comparison deltas, realtime metrics and activity feed, message
  * volume and AI usage charts, top channels and command telemetry tables, community engagement and
- * XP economy summaries, an activity heatmap, and CSV export functionality. Handles loading,
+ * XP economy summaries, and an activity heatmap. Handles loading,
  * empty, and error states based on analytics data and exposes channel filtering and refresh actions
  * via hooks.
  *
@@ -328,10 +438,7 @@ export function AnalyticsDashboard() {
     if (!analytics?.messageVolume) return [];
     return analytics.messageVolume.map((pt) => ({
       ...pt,
-      label:
-        !pt.label || pt.label === 'Invalid Date' || pt.label.includes('NaN')
-          ? `Unknown (${pt.label ?? 'no label'})`
-          : pt.label,
+      label: sanitizeVolumeLabel(pt.label),
     }));
   }, [analytics?.messageVolume]);
 
@@ -460,76 +567,8 @@ export function AnalyticsDashboard() {
     [analytics],
   );
 
-  const _exportCsv = useCallback(() => {
-    if (!analytics) return;
-
-    const rows: string[] = [];
-    rows.push('# Analytics export');
-    rows.push(`# Generated at,${escapeCsvCell(new Date().toISOString())}`);
-    rows.push(`# Guild ID,${escapeCsvCell(analytics.guildId)}`);
-    rows.push(`# Range,${escapeCsvCell(analytics.range.type)}`);
-    rows.push(`# From,${escapeCsvCell(analytics.range.from)}`);
-    rows.push(`# To,${escapeCsvCell(analytics.range.to)}`);
-    rows.push(`# Interval,${escapeCsvCell(analytics.range.interval)}`);
-    rows.push(`# Channel filter,${escapeCsvCell(analytics.range.channelId ?? 'all')}`);
-    rows.push(`# Compare mode,${escapeCsvCell(compareMode ? 'enabled' : 'disabled')}`);
-    rows.push('');
-
-    rows.push('KPI,Current,Previous,DeltaPercent');
-    for (const card of kpiCards) {
-      const isUnavailable = card.value === null || card.value === undefined;
-      const currentNum: number = card.value ?? 0;
-      const currentCsv = isUnavailable ? '' : String(card.value);
-      const hasComparison = compareMode && analytics.comparison != null;
-      const previous = hasComparison ? (card.previous ?? 0) : 0;
-      const delta =
-        hasComparison && !isUnavailable && card.previous != null
-          ? toDeltaPercent(currentNum, previous)
-          : null;
-
-      rows.push(
-        [
-          escapeCsvCell(card.label),
-          escapeCsvCell(currentCsv),
-          escapeCsvCell(card.previous == null ? '' : String(previous)),
-          escapeCsvCell(delta === null ? null : Number(delta.toFixed(2))),
-        ].join(','),
-      );
-    }
-
-    rows.push('');
-    rows.push('Top Channels');
-    rows.push('Channel ID,Channel Name,Messages');
-    for (const channel of topChannels) {
-      rows.push(
-        [
-          escapeCsvCell(channel.channelId),
-          escapeCsvCell(channel.name),
-          escapeCsvCell(channel.messages),
-        ].join(','),
-      );
-    }
-
-    rows.push('');
-    rows.push('Command Usage');
-    rows.push(`# Source,${escapeCsvCell(analytics.commandUsage?.source ?? 'unavailable')}`);
-    rows.push('Command,Uses');
-    for (const entry of analytics.commandUsage?.items ?? []) {
-      rows.push([escapeCsvCell(entry.command), escapeCsvCell(entry.uses)].join(','));
-    }
-
-    const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `analytics-${analytics.guildId}-${analytics.range.type}.csv`;
-    document.body.append(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
-  }, [analytics, compareMode, kpiCards, topChannels]);
-
   const showKpiSkeleton = loading && !analytics;
+  const hasKpiComparison = compareMode && analytics?.comparison != null;
 
   return (
     <div className="space-y-6">
@@ -560,83 +599,15 @@ export function AnalyticsDashboard() {
                 className="h-28 animate-pulse rounded-[20px] bg-muted/20 border border-border/10"
               />
             ))
-          : kpiCards.map((card) => {
-              const Icon = card.icon;
-              const value = card.value;
-              const hasValue = value !== null && value !== undefined;
-              const displayValue = hasValue ? undefined : 'Unavailable';
-              const numericValue = hasValue ? value : 0;
-              const hasComparison = compareMode && analytics?.comparison != null;
-              const showComparison = hasComparison && hasValue;
-              const delta =
-                showComparison && card.previous != null
-                  ? toDeltaPercent(numericValue, card.previous)
-                  : null;
-
-              return (
-                <div
-                  key={card.label}
-                  className="glow-card group relative min-h-[11rem] overflow-hidden rounded-[20px] border border-border/40 bg-gradient-to-br from-background/40 to-muted/20 p-5 backdrop-blur-3xl transition-all duration-500 hover:border-border/60 hover:shadow-[0_4px_24px_-8px_rgba(0,0,0,0.3)] shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)]"
-                >
-                  {/* Background ambient light & large icon */}
-                  <div className="absolute inset-0 bg-primary/[0.02] opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-                  <Icon className="absolute -bottom-4 -right-4 h-24 w-24 text-primary/[0.03] -rotate-12 transition-all duration-500 group-hover:scale-110 group-hover:text-primary/5 group-hover:-rotate-6" />
-
-                  <div className="relative z-10">
-                    <div className="flex items-center gap-3 mb-4">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-primary/10 text-primary shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] ring-1 ring-primary/20 group-hover:bg-primary/15 transition-all duration-300">
-                        <Icon className="h-4 w-4 drop-shadow-[0_0_8px_hsl(var(--primary))]" />
-                      </span>
-                      <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/70 group-hover:text-foreground/80 transition-colors">
-                        {card.label}
-                      </h3>
-                    </div>
-
-                    <div className="flex items-baseline justify-between mt-1">
-                      <span className="text-3xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-br from-foreground to-foreground/60 drop-shadow-sm">
-                        {analytics ? (
-                          displayValue !== undefined ? (
-                            displayValue
-                          ) : (
-                            <AnimatedValue value={numericValue} format={card.format} />
-                          )
-                        ) : (
-                          '\u2014'
-                        )}
-                      </span>
-                    </div>
-
-                    {showComparison ? (
-                      <div
-                        className={cn(
-                          'mt-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider backdrop-blur-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] border transition-colors',
-                          delta === null
-                            ? 'bg-muted/30 text-muted-foreground/70 border-border/30'
-                            : delta > 0
-                              ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 shadow-[0_0_8px_rgba(16,185,129,0.1)]'
-                              : delta < 0
-                                ? 'bg-rose-500/10 text-rose-500 border-rose-500/20 shadow-[0_0_8px_rgba(244,63,94,0.1)]'
-                                : 'bg-muted/30 text-muted-foreground/70 border-border/30',
-                        )}
-                      >
-                        {delta === null ? (
-                          <Minus className="h-[10px] w-[10px]" />
-                        ) : delta > 0 ? (
-                          <ArrowUp className="h-[10px] w-[10px]" />
-                        ) : delta < 0 ? (
-                          <ArrowDown className="h-[10px] w-[10px]" />
-                        ) : (
-                          <Minus className="h-[10px] w-[10px]" />
-                        )}
-                        <span>{formatDeltaPercent(delta)}</span>
-                      </div>
-                    ) : (
-                      <div className="mt-3 h-[22px]" />
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+          : kpiCards.map((card) => (
+              <KpiMetricCard
+                key={card.label}
+                card={card}
+                analyticsLoaded={analytics != null}
+                compareMode={compareMode}
+                hasComparison={hasKpiComparison}
+              />
+            ))}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">

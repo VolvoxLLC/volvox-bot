@@ -85,6 +85,8 @@ export function registerConfigListeners({ dbPool: _dbPool, config: _config }) {
 /**
  * No-op shutdown hook retained for backward compatibility with existing startup/shutdown code paths.
  *
- * This async function intentionally performs no actions so older code can call it safely.
+ * @returns {Promise<void>} A resolved promise so shutdown code can continue to await this hook.
  */
-export async function removeLoggingTransport() {}
+export function removeLoggingTransport() {
+  return Promise.resolve();
+}
