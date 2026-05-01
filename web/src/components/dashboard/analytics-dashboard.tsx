@@ -204,17 +204,14 @@ function sanitizeVolumeLabel(label: string | null | undefined): string {
   return label;
 }
 
-function KpiMetricCard({
-  card,
-  analyticsLoaded,
-  compareMode,
-  hasComparison,
-}: {
+type KpiMetricCardProps = Readonly<{
   card: KpiCard;
   analyticsLoaded: boolean;
   compareMode: boolean;
   hasComparison: boolean;
-}) {
+}>;
+
+function KpiMetricCard({ card, analyticsLoaded, compareMode, hasComparison }: KpiMetricCardProps) {
   const Icon = card.icon;
   const state = getKpiCardState(card, compareMode, hasComparison);
   const DeltaIcon = getDeltaIcon(state.delta);
