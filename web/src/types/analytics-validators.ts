@@ -109,7 +109,8 @@ function isValidAiUsageEntry(entry: unknown): boolean {
  */
 function isValidAiUsage(aiUsage: unknown): boolean {
   if (!isRecord(aiUsage)) return false;
-  if (aiUsage.source !== 'unavailable' && aiUsage.source !== 'ai_usage') return false;
+  // Backward compat: legacy payloads may lack `source` (treat as valid legacy)
+  if (aiUsage.source !== undefined && aiUsage.source !== 'unavailable' && aiUsage.source !== 'ai_usage') return false;
   if (
     !isRecord(aiUsage.tokens) ||
     !isFiniteNumberOrNull(aiUsage.tokens.prompt) ||
