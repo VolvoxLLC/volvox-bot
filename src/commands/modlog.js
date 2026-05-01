@@ -16,7 +16,7 @@ import {
 import { info, error as logError } from '../logger.js';
 import { getConfig, setConfigValue } from '../modules/config.js';
 import { getPermissionError, hasPermission } from '../utils/permissions.js';
-import { safeEditReply, safeReply } from '../utils/safeSend.js';
+import { safeEditReply, safeReply, safeUpdate } from '../utils/safeSend.js';
 
 export const data = new SlashCommandBuilder()
   .setName('modlog')
@@ -113,7 +113,7 @@ async function handleSetup(interaction) {
   collector.on('collect', async (i) => {
     try {
       if (i.customId === 'modlog_done') {
-        await i.update({
+        await safeUpdate(i, {
           components: [],
           embeds: [embed.setDescription('✅ Mod log setup complete.')],
         });
@@ -128,7 +128,7 @@ async function handleSetup(interaction) {
           .setPlaceholder(`Select channel for ${selectedCategory}`)
           .setChannelTypes(ChannelType.GuildText);
         const channelRow = new ActionRowBuilder().addComponents(channelSelect);
-        await i.update({
+        await safeUpdate(i, {
           embeds: [embed.setDescription(`Select a channel for **${selectedCategory}** events.`)],
           components: [channelRow, doneRow],
         });
@@ -147,7 +147,7 @@ async function handleSetup(interaction) {
           channelId,
           guildId: interaction.guildId,
         });
-        await i.update({
+        await safeUpdate(i, {
           embeds: [
             embed.setDescription(
               `✅ **${selectedCategory}** → <#${channelId}>\n\nSelect another category or click Done.`,

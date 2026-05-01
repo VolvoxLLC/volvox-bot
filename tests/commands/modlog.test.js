@@ -5,6 +5,7 @@ vi.mock('../../src/utils/safeSend.js', () => ({
   safeReply: (t, opts) => t.reply(opts),
   safeFollowUp: (t, opts) => t.followUp(opts),
   safeEditReply: (t, opts) => t.editReply(opts),
+  safeUpdate: vi.fn((t, opts) => t.update(opts)),
 }));
 vi.mock('../../src/modules/config.js', () => ({
   getConfig: vi.fn().mockReturnValue({
@@ -38,6 +39,7 @@ import { adminOnly, data, execute } from '../../src/commands/modlog.js';
 import * as logger from '../../src/logger.js';
 import { getConfig, setConfigValue } from '../../src/modules/config.js';
 import { hasPermission } from '../../src/utils/permissions.js';
+import { safeUpdate } from '../../src/utils/safeSend.js';
 
 function createInteraction(subcommand) {
   const collectHandlers = {};
@@ -251,6 +253,10 @@ describe('modlog command', () => {
         update: vi.fn().mockResolvedValue(undefined),
       };
       await collectHandler(doneInteraction);
+      expect(safeUpdate).toHaveBeenCalledWith(
+        doneInteraction,
+        expect.objectContaining({ components: [] }),
+      );
       expect(doneInteraction.update).toHaveBeenCalledWith(
         expect.objectContaining({ components: [] }),
       );
@@ -268,7 +274,8 @@ describe('modlog command', () => {
         update: vi.fn().mockResolvedValue(undefined),
       };
       await collectHandler(categoryInteraction);
-      expect(categoryInteraction.update).toHaveBeenCalledWith(
+      expect(safeUpdate).toHaveBeenCalledWith(
+        categoryInteraction,
         expect.objectContaining({ components: expect.any(Array) }),
       );
     });
@@ -300,7 +307,10 @@ describe('modlog command', () => {
         '999',
         'test-guild',
       );
-      expect(channelInteraction.update).toHaveBeenCalled();
+      expect(safeUpdate).toHaveBeenCalledWith(
+        channelInteraction,
+        expect.objectContaining({ components: expect.any(Array) }),
+      );
     });
 
     it('should ignore channel selection without prior category', async () => {
