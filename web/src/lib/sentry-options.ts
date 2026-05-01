@@ -575,7 +575,7 @@ export function scrubSentryEvent<TEvent extends Event>(
  * @returns The same span after in-place data scrubbing.
  */
 export function scrubSentrySpan(span: SentrySpan): SentrySpan {
-  const mutableSpan = span as SentrySpan & { description?: unknown; name?: unknown };
+  const mutableSpan: SentrySpan & { description?: unknown; name?: unknown } = span;
 
   if (typeof mutableSpan.name === 'string') {
     mutableSpan.name = scrubBreadcrumbString(mutableSpan.name);
