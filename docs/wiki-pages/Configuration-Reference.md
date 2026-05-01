@@ -18,7 +18,7 @@ A feature is not complete unless all of the following ship together:
 - `config.json` default keys
 - `src/api/utils/configAllowlist.js` updates, including `SAFE_CONFIG_KEYS`
 
-If the key is not allowlisted, dashboard save operations will fail even if backend logic exists.
+If a key is not allowlisted, bulk dashboard save operations silently skip that key even if backend logic exists.
 
 ## Safety requirements
 
