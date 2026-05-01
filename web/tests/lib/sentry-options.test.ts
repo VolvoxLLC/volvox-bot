@@ -191,6 +191,86 @@ describe('sentry-options', () => {
     });
   });
 
+  it('should protect recursive scrubbing against true cycles while preserving shared references', async () => {
+    const { scrubSentryEvent } = await import('@/lib/sentry-options');
+    const cycle: Record<string, unknown> = { safeField: 'keep-this' };
+    cycle.self = cycle;
+    const shared = { ok: true };
+    const event = {
+      type: undefined,
+      extra: {
+        cycle,
+        first: shared,
+        second: shared,
+      },
+    } as unknown as Event;
+
+    expect(scrubSentryEvent(event)?.extra).toEqual({
+      cycle: {
+        safeField: 'keep-this',
+        self: '[Circular]',
+      },
+      first: { ok: true },
+      second: { ok: true },
+    });
+  });
+
+  it('should scrub breadcrumb data and strip URL metadata before sending events', async () => {
+    const { scrubSentryEvent } = await import('@/lib/sentry-options');
+    const event = {
+      type: undefined,
+      breadcrumbs: [
+        {
+          category: 'fetch',
+          data: {
+            url: 'https://dashboard.example.com/api?token=secret&email=person%40example.com#private',
+            nested: {
+              requestUrl: '/settings?access_token=secret#private',
+              'e-mail': 'person@example.com',
+              safeField: 'keep-this',
+            },
+          },
+        },
+      ],
+    } as unknown as Event;
+
+    expect(scrubSentryEvent(event)?.breadcrumbs).toEqual([
+      {
+        category: 'fetch',
+        data: {
+          url: 'https://dashboard.example.com/api',
+          nested: {
+            requestUrl: '/settings',
+            safeField: 'keep-this',
+          },
+        },
+      },
+    ]);
+  });
+
+  it('should normalize scrubbed request headers to strings before sending events', async () => {
+    const { scrubSentryEvent } = await import('@/lib/sentry-options');
+    const event = {
+      type: undefined,
+      request: {
+        headers: {
+          authorization: 'Bearer secret',
+          accept: ['application/json', 'text/plain'],
+          'x-retry-count': 2,
+          'x-feature-enabled': true,
+          metadata: { safeField: 'keep-this', email: 'person@example.com' },
+        },
+      },
+    } as unknown as Event;
+
+    expect(scrubSentryEvent(event)?.request?.headers).toEqual({
+      accept: 'application/json, text/plain',
+      'x-retry-count': '2',
+      'x-feature-enabled': 'true',
+      metadata: '{"safeField":"keep-this"}',
+    });
+  });
+
   it('should scrub transaction and span payloads with the same sanitizer', async () => {
     const { getServerSentryOptions } = await import('@/lib/sentry-options');
     const options = getServerSentryOptions('nodejs');

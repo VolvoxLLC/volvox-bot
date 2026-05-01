@@ -17,22 +17,33 @@ import * as Sentry from '@sentry/node';
 const dsn = process.env.SENTRY_DSN;
 // Keep Sentry default PII capture opt-in only; any value other than the explicit string "true" stays disabled.
 const sendDefaultPii = process.env.SENTRY_SEND_DEFAULT_PII === 'true';
+const CIRCULAR_REFERENCE_SENTINEL = '[Circular]';
 const SENSITIVE_KEY_PATTERN =
-  /(?:authorization|cookie|csrf|secret|password|token|session|stack|x[-_]?forwarded[-_]?for|ip(?:[-_]?address)?|x[-_]?api[-_]?key|api[-_]?key|bot[-_]?api[-_]?secret|access[-_]?token|refresh[-_]?token)/i;
+  /(?:authorization|cookie|csrf|e-?mail|secret|password|token|session|stack|x[-_]?forwarded[-_]?for|ip(?:[-_]?address)?|x[-_]?api[-_]?key|api[-_]?key|bot[-_]?api[-_]?secret|access[-_]?token|refresh[-_]?token)/i;
+const URL_METADATA_KEY_PATTERN = /url/i;
 
 /**
  * Recursively removes sensitive keys from arbitrary Sentry metadata.
  *
  * @param {unknown} value - Metadata value to scrub.
+ * @param {WeakSet<object>} seen - Objects on the current recursion path.
  * @returns {unknown} A copy with sensitive object keys removed.
  */
-function scrubUnknown(value) {
-  if (Array.isArray(value)) {
-    return value.map(scrubUnknown);
-  }
-
+function scrubUnknown(value, seen = new WeakSet()) {
   if (!value || typeof value !== 'object') {
     return value;
+  }
+
+  if (seen.has(value)) {
+    return CIRCULAR_REFERENCE_SENTINEL;
+  }
+
+  seen.add(value);
+
+  if (Array.isArray(value)) {
+    const scrubbedArray = value.map((childValue) => scrubUnknown(childValue, seen));
+    seen.delete(value);
+    return scrubbedArray;
   }
 
   const scrubbed = {};
@@ -42,9 +53,10 @@ function scrubUnknown(value) {
       continue;
     }
 
-    scrubbed[key] = scrubUnknown(childValue);
+    scrubbed[key] = scrubUnknown(childValue, seen);
   }
 
+  seen.delete(value);
   return scrubbed;
 }
 
@@ -69,6 +81,72 @@ function stripRequestUrlQuery(value) {
     const queryIndex = value.indexOf('?');
     return queryIndex === -1 ? value : value.slice(0, queryIndex);
   }
+}
+
+/**
+ * Recursively scrub breadcrumb metadata and strip query strings from URL fields.
+ *
+ * @param {unknown} value - Breadcrumb data value to scrub.
+ * @param {WeakSet<object>} seen - Objects on the current recursion path.
+ * @returns {unknown} A scrubbed copy of the breadcrumb data value.
+ */
+function scrubBreadcrumbData(value, seen = new WeakSet()) {
+  if (!value || typeof value !== 'object') {
+    return value;
+  }
+
+  if (seen.has(value)) {
+    return CIRCULAR_REFERENCE_SENTINEL;
+  }
+
+  seen.add(value);
+
+  if (Array.isArray(value)) {
+    const scrubbedArray = value.map((childValue) => scrubBreadcrumbData(childValue, seen));
+    seen.delete(value);
+    return scrubbedArray;
+  }
+
+  const scrubbed = {};
+
+  for (const [key, childValue] of Object.entries(value)) {
+    if (SENSITIVE_KEY_PATTERN.test(key)) {
+      continue;
+    }
+
+    const scrubbedValue = scrubBreadcrumbData(childValue, seen);
+    scrubbed[key] = URL_METADATA_KEY_PATTERN.test(key)
+      ? stripRequestUrlQuery(scrubbedValue)
+      : scrubbedValue;
+  }
+
+  seen.delete(value);
+  return scrubbed;
+}
+
+/**
+ * Scrubs Sentry breadcrumb payloads so URL query strings and nested secrets cannot bypass scrubbing.
+ *
+ * @param {unknown} breadcrumbs - Event breadcrumb list.
+ * @returns {unknown} Scrubbed breadcrumbs, or the original value if it is not an array.
+ */
+function scrubBreadcrumbs(breadcrumbs) {
+  if (!Array.isArray(breadcrumbs)) {
+    return breadcrumbs;
+  }
+
+  return breadcrumbs.map((breadcrumb) => {
+    if (!breadcrumb || typeof breadcrumb !== 'object') {
+      return breadcrumb;
+    }
+
+    const scrubbedBreadcrumb = { ...breadcrumb };
+    if ('data' in scrubbedBreadcrumb) {
+      scrubbedBreadcrumb.data = scrubBreadcrumbData(scrubbedBreadcrumb.data);
+    }
+
+    return scrubbedBreadcrumb;
+  });
 }
 
 /**
@@ -119,6 +197,10 @@ function scrubSentryEvent(event) {
 
   if (event.data) {
     event.data = scrubUnknown(event.data);
+  }
+
+  if (event.breadcrumbs) {
+    event.breadcrumbs = scrubBreadcrumbs(event.breadcrumbs);
   }
 
   return event;

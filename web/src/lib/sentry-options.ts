@@ -7,8 +7,10 @@ type SentryRuntime = 'browser' | 'edge' | 'nodejs';
 const DEFAULT_TRACES_SAMPLE_RATE = 0.1;
 const DEFAULT_REPLAYS_SESSION_SAMPLE_RATE = 0;
 const DEFAULT_REPLAYS_ON_ERROR_SAMPLE_RATE = 0.1;
+const CIRCULAR_REFERENCE_SENTINEL = '[Circular]';
 const SENSITIVE_KEY_PATTERN =
-  /(?:authorization|cookie|csrf|email|secret|password|token|session|stack|x[-_]?forwarded[-_]?for|ip(?:[-_]?address)?|x[-_]?api[-_]?key|api[-_]?key|bot[-_]?api[-_]?secret|access[-_]?token|refresh[-_]?token)/i;
+  /(?:authorization|cookie|csrf|e-?mail|secret|password|token|session|stack|x[-_]?forwarded[-_]?for|ip(?:[-_]?address)?|x[-_]?api[-_]?key|api[-_]?key|bot[-_]?api[-_]?secret|access[-_]?token|refresh[-_]?token)/i;
+const URL_METADATA_KEY_PATTERN = /url/i;
 
 const BROWSER_SENTRY_ENV = {
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
@@ -157,13 +159,21 @@ function stripUrlMetadata(url: string): string {
  * @returns The scrubbed value: objects copied with sensitive keys removed, arrays with
  * scrubbed elements, or the original non-object value.
  */
-function scrubUnknown(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map(scrubUnknown);
-  }
-
+function scrubUnknown(value: unknown, seen = new WeakSet<object>()): unknown {
   if (!value || typeof value !== 'object') {
     return value;
+  }
+
+  if (seen.has(value)) {
+    return CIRCULAR_REFERENCE_SENTINEL;
+  }
+
+  seen.add(value);
+
+  if (Array.isArray(value)) {
+    const scrubbedArray = value.map((childValue) => scrubUnknown(childValue, seen));
+    seen.delete(value);
+    return scrubbedArray;
   }
 
   const scrubbed: Record<string, unknown> = {};
@@ -173,10 +183,134 @@ function scrubUnknown(value: unknown): unknown {
       continue;
     }
 
-    scrubbed[key] = scrubUnknown(childValue);
+    scrubbed[key] = scrubUnknown(childValue, seen);
   }
 
+  seen.delete(value);
   return scrubbed;
+}
+
+/**
+ * Recursively scrub breadcrumb metadata and strip query strings/fragments from URL fields.
+ *
+ * @param value - Breadcrumb data value to scrub.
+ * @param seen - Objects on the current recursion path.
+ * @returns A scrubbed copy of the breadcrumb data value.
+ */
+function scrubBreadcrumbData(value: unknown, seen = new WeakSet<object>()): unknown {
+  if (!value || typeof value !== 'object') {
+    return value;
+  }
+
+  if (seen.has(value)) {
+    return CIRCULAR_REFERENCE_SENTINEL;
+  }
+
+  seen.add(value);
+
+  if (Array.isArray(value)) {
+    const scrubbedArray = value.map((childValue) => scrubBreadcrumbData(childValue, seen));
+    seen.delete(value);
+    return scrubbedArray;
+  }
+
+  const scrubbed: Record<string, unknown> = {};
+
+  for (const [key, childValue] of Object.entries(value)) {
+    if (SENSITIVE_KEY_PATTERN.test(key)) {
+      continue;
+    }
+
+    const scrubbedValue = scrubBreadcrumbData(childValue, seen);
+    scrubbed[key] =
+      typeof scrubbedValue === 'string' && URL_METADATA_KEY_PATTERN.test(key)
+        ? stripUrlMetadata(scrubbedValue)
+        : scrubbedValue;
+  }
+
+  seen.delete(value);
+  return scrubbed;
+}
+
+/**
+ * Scrubs Sentry breadcrumb payloads so URL metadata and nested secrets cannot bypass scrubbing.
+ *
+ * @param breadcrumbs - Event breadcrumb list.
+ * @returns Scrubbed breadcrumbs, or the original value if it is not an array.
+ */
+function scrubBreadcrumbs(breadcrumbs: Event['breadcrumbs']): Event['breadcrumbs'] {
+  if (!Array.isArray(breadcrumbs)) {
+    return breadcrumbs;
+  }
+
+  return breadcrumbs.map((breadcrumb) => {
+    const scrubbedBreadcrumb = { ...breadcrumb };
+    if ('data' in scrubbedBreadcrumb) {
+      scrubbedBreadcrumb.data = scrubBreadcrumbData(
+        scrubbedBreadcrumb.data,
+      ) as typeof scrubbedBreadcrumb.data;
+    }
+
+    return scrubbedBreadcrumb;
+  });
+}
+
+/**
+ * Converts scrubbed header values to strings for Sentry request header compatibility.
+ *
+ * @param value - Scrubbed header value.
+ * @returns A string representation safe for Sentry request headers.
+ */
+function normalizeHeaderValue(value: unknown): string {
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
+    return String(value);
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(normalizeHeaderValue).join(', ');
+  }
+
+  if (value === null) {
+    return 'null';
+  }
+
+  if (value === undefined) {
+    return 'undefined';
+  }
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+/**
+ * Scrubs request headers and normalizes retained values to strings for Sentry compatibility.
+ *
+ * @param headers - Raw Sentry request headers.
+ * @returns Scrubbed string headers, or undefined when headers are not object-shaped.
+ */
+function scrubHeaders(headers: unknown): Record<string, string> | undefined {
+  const scrubbedHeaders = scrubUnknown(headers);
+
+  if (!scrubbedHeaders || typeof scrubbedHeaders !== 'object' || Array.isArray(scrubbedHeaders)) {
+    return undefined;
+  }
+
+  const normalizedHeaders: Record<string, string> = {};
+
+  for (const [key, value] of Object.entries(scrubbedHeaders)) {
+    if (value !== undefined) {
+      normalizedHeaders[key] = normalizeHeaderValue(value);
+    }
+  }
+
+  return normalizedHeaders;
 }
 
 /**
@@ -204,7 +338,12 @@ export function scrubSentryEvent<TEvent extends Event>(
     }
 
     if (event.request.headers) {
-      event.request.headers = scrubUnknown(event.request.headers) as Record<string, string>;
+      const scrubbedHeaders = scrubHeaders(event.request.headers);
+      if (scrubbedHeaders) {
+        event.request.headers = scrubbedHeaders;
+      } else {
+        delete event.request.headers;
+      }
     }
 
     if (event.request.data) {
@@ -223,6 +362,10 @@ export function scrubSentryEvent<TEvent extends Event>(
 
   if (event.contexts) {
     event.contexts = scrubUnknown(event.contexts) as Event['contexts'];
+  }
+
+  if (event.breadcrumbs) {
+    event.breadcrumbs = scrubBreadcrumbs(event.breadcrumbs);
   }
 
   return event;

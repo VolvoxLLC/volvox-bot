@@ -248,6 +248,95 @@ describe('sentry.js — init branch coverage', () => {
     expect(result.request.data).toEqual({ safeField: 'keep-this' });
   });
 
+  it('should scrub nested email keys from event metadata in beforeSend', async () => {
+    vi.stubEnv('SENTRY_DSN', 'https://key@o0.ingest.sentry.io/0');
+
+    await import('../src/sentry.js');
+
+    const beforeSend = initSpy.mock.calls[0][0].beforeSend;
+    const event = {
+      exception: { values: [{ value: 'Error' }] },
+      extra: {
+        profile: {
+          email: 'person@example.com',
+          'e-mail': 'person@example.com',
+          safeField: 'keep-this',
+        },
+      },
+    };
+
+    expect(beforeSend(event).extra).toEqual({
+      profile: {
+        safeField: 'keep-this',
+      },
+    });
+  });
+
+  it('should protect recursive scrubbing against true cycles while preserving shared references', async () => {
+    vi.stubEnv('SENTRY_DSN', 'https://key@o0.ingest.sentry.io/0');
+
+    await import('../src/sentry.js');
+
+    const beforeSend = initSpy.mock.calls[0][0].beforeSend;
+    const cycle = { safeField: 'keep-this' };
+    cycle.self = cycle;
+    const shared = { ok: true };
+    const event = {
+      exception: { values: [{ value: 'Error' }] },
+      extra: {
+        cycle,
+        first: shared,
+        second: shared,
+      },
+    };
+
+    expect(beforeSend(event).extra).toEqual({
+      cycle: {
+        safeField: 'keep-this',
+        self: '[Circular]',
+      },
+      first: { ok: true },
+      second: { ok: true },
+    });
+  });
+
+  it('should scrub breadcrumb data and strip URL query metadata in beforeSend', async () => {
+    vi.stubEnv('SENTRY_DSN', 'https://key@o0.ingest.sentry.io/0');
+
+    await import('../src/sentry.js');
+
+    const beforeSend = initSpy.mock.calls[0][0].beforeSend;
+    const event = {
+      exception: { values: [{ value: 'Error' }] },
+      breadcrumbs: [
+        {
+          category: 'fetch',
+          data: {
+            url: 'https://api.example.com/guilds?token=secret&email=person%40example.com#done',
+            nested: {
+              requestUrl: '/callbacks?access_token=secret#complete',
+              email: 'person@example.com',
+              safeField: 'keep-this',
+            },
+          },
+        },
+      ],
+    };
+
+    expect(beforeSend(event).breadcrumbs).toEqual([
+      {
+        category: 'fetch',
+        data: {
+          url: 'https://api.example.com/guilds#done',
+          nested: {
+            requestUrl: '/callbacks#complete',
+            safeField: 'keep-this',
+          },
+        },
+      },
+    ]);
+  });
+
   it('should scrub transaction and span events before sending performance payloads', async () => {
     vi.stubEnv('SENTRY_DSN', 'https://key@o0.ingest.sentry.io/0');
     vi.stubEnv('SENTRY_SEND_DEFAULT_PII', 'true');
