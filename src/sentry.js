@@ -7,7 +7,8 @@
  * Configure via environment variables:
  *   SENTRY_DSN           - Sentry project DSN (required to enable)
  *   SENTRY_ENVIRONMENT   - Environment name (default: 'production')
- *   SENTRY_SEND_DEFAULT_PII - Enable default PII capture after local scrubbing (default: false)
+ *   SENTRY_SEND_DEFAULT_PII - Enable default PII capture after local scrubbing
+ *                             (default: false; read when this module initializes)
  *   SENTRY_TRACES_RATE   - Performance sampling rate 0-1 (default: 0.1)
  *   NODE_ENV             - Used as fallback for environment name
  */
@@ -16,7 +17,8 @@ import * as Sentry from '@sentry/node';
 
 const dsn = process.env.SENTRY_DSN;
 // Keep Sentry default PII capture opt-in only; any value other than the explicit string "true" stays disabled.
-// Read at init time (not module-eval time) so dotenv-loaded values are respected.
+// Read immediately before Sentry.init during module initialization, so import this module
+// after dotenv/config is loaded.
 let sendDefaultPii = false;
 const CIRCULAR_REFERENCE_SENTINEL = '[Circular]';
 const SENSITIVE_KEY_PARTS = [
