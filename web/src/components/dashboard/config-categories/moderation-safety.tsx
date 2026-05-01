@@ -13,14 +13,16 @@ import { InfoTip } from '@/components/ui/info-tip';
 import { RoleSelector } from '@/components/ui/role-selector';
 import { cn } from '@/lib/utils';
 import { ToggleSwitch } from '../toggle-switch';
+import { AiAutomationCategory } from './ai-automation';
 import { ConfigCategoryLayout } from './config-category-layout';
 
 /**
- * Render the configuration UI for moderation, permissions, and audit-log feature categories.
+ * Render the configuration UI for moderation, Content Safety, permissions, and audit-log feature categories.
  *
  * Displays the controls for the currently active category obtained from the configuration context,
- * wiring feature enable toggles and handlers that update the draft configuration. Returns `null`
- * when the draft configuration or the active tab is not available.
+ * wiring feature enable toggles and handlers that update the draft configuration. Content Safety
+ * (`ai-automod`) routes to the AI automation category controls. Returns `null` when the draft
+ * configuration or the active tab is not available.
  *
  * @returns The rendered category UI element, or `null` if configuration or active tab is absent.
  */
@@ -150,6 +152,7 @@ export function ModerationSafetyCategory() {
 
   if (!draftConfig) return null;
   if (!activeTab) return null;
+  if (activeTab === 'ai-automod') return <AiAutomationCategory />;
 
   let isCurrentFeatureEnabled = false;
   let handleToggleCurrentFeature = (_v: boolean) => {};

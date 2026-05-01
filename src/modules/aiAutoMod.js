@@ -65,6 +65,7 @@ const SCORE_ALIASES = Object.freeze({
   sexualContent: ['sexual_content', 'sexual'],
   selfHarm: ['self_harm', 'self-harm'],
 });
+const SCORE_CONTAINER_KEYS = Object.freeze(['scores', 'score', 'ratings', 'analysis']);
 
 export const AI_AUTOMOD_ACTION_TYPES = Object.freeze([
   'flag',
@@ -174,9 +175,24 @@ function buildScoreObject(value = 0) {
   return Object.fromEntries(AI_AUTOMOD_CATEGORIES.map(({ key }) => [key, value]));
 }
 
+/**
+ * Normalize a provider response score for a moderation category.
+ *
+ * Top-level score keys intentionally take precedence over nested score containers. Nested
+ * containers such as `scores`, `score`, `ratings`, or `analysis` are fallbacks for providers that
+ * wrap category values instead of returning the requested flat JSON shape.
+ */
 function normalizeScore(parsed, categoryKey) {
   const candidateKeys = [categoryKey, ...(SCORE_ALIASES[categoryKey] ?? [])];
-  const rawValue = candidateKeys.map((key) => parsed?.[key]).find((value) => value != null);
+  const candidateObjects = [
+    parsed,
+    ...SCORE_CONTAINER_KEYS.map((key) => parsed?.[key]).filter(
+      (value) => value && typeof value === 'object' && !Array.isArray(value),
+    ),
+  ];
+  const rawValue = candidateObjects
+    .flatMap((candidate) => candidateKeys.map((key) => candidate?.[key]))
+    .find((value) => value != null);
   const score = Number(rawValue);
   if (!Number.isFinite(score)) return 0;
   return Math.min(1, Math.max(0, score));
