@@ -418,6 +418,41 @@ function scrubSentryMetadata(event) {
 }
 
 /**
+ * Scrub primary Sentry message fields that are not covered by request/user/metadata scrubbers.
+ * @param {object} event - Sentry event-like payload to mutate.
+ */
+function scrubSentryMessageFields(event) {
+  if (typeof event.message === 'string') {
+    event.message = scrubUrlLikeString(event.message);
+  }
+
+  if (typeof event.transaction === 'string') {
+    event.transaction = scrubUrlLikeString(event.transaction);
+  }
+
+  if (event.logentry && typeof event.logentry === 'object') {
+    if (typeof event.logentry.formatted === 'string') {
+      event.logentry.formatted = scrubUrlLikeString(event.logentry.formatted);
+    }
+
+    if (typeof event.logentry.message === 'string') {
+      event.logentry.message = scrubUrlLikeString(event.logentry.message);
+    }
+  }
+
+  const exceptionValues = event.exception?.values;
+  if (!Array.isArray(exceptionValues)) {
+    return;
+  }
+
+  for (const exception of exceptionValues) {
+    if (exception && typeof exception.value === 'string') {
+      exception.value = scrubUrlLikeString(exception.value);
+    }
+  }
+}
+
+/**
  * Removes sensitive fields and identifiers from a Sentry event or performance payload.
  *
  * Mutates the provided event in place: deletes user email and IP address, removes request cookies,
@@ -435,6 +470,7 @@ function scrubSentryEvent(event) {
   }
 
   scrubSentryMetadata(event);
+  scrubSentryMessageFields(event);
 
   if (event.breadcrumbs) {
     event.breadcrumbs = scrubBreadcrumbs(event.breadcrumbs);

@@ -565,6 +565,73 @@ describe('sentry.js — init branch coverage', () => {
     });
   });
 
+  it('should scrub primary Sentry message fields in beforeSend', async () => {
+    vi.stubEnv('SENTRY_DSN', 'https://key@o0.ingest.sentry.io/0');
+
+    await import('../src/sentry.js');
+
+    const beforeSend = initSpy.mock.calls[0][0].beforeSend;
+    const event = {
+      message:
+        'failed callback https://api-user:api-pass@example.com/callback?access_token=secret#done with Bearer top-level-token-12345',
+      transaction: 'POST /api/auth/callback/discord?code=oauth-code#done',
+      logentry: {
+        formatted:
+          'discord callback token=secret-value at https://user:pass@example.com/login?token=secret#done',
+        message: 'GET /internal/jobs?api_key=secret#queue',
+        params: ['safe-param'],
+      },
+      exception: { values: [{ value: 'Error' }] },
+    };
+
+    expect(beforeSend(event)).toEqual({
+      message: 'failed callback https://example.com/callback with [REDACTED]',
+      transaction: 'POST /api/auth/callback/discord',
+      logentry: {
+        formatted: 'discord callback token=[REDACTED] at https://example.com/login',
+        message: 'GET /internal/jobs',
+        params: ['safe-param'],
+      },
+      exception: { values: [{ value: 'Error' }] },
+    });
+  });
+
+  it('should scrub exception value strings while preserving safe exception metadata', async () => {
+    vi.stubEnv('SENTRY_DSN', 'https://key@o0.ingest.sentry.io/0');
+
+    await import('../src/sentry.js');
+
+    const beforeSend = initSpy.mock.calls[0][0].beforeSend;
+    const event = {
+      exception: {
+        values: [
+          {
+            type: 'TypeError',
+            value:
+              'failed https://error-user:error-pass@example.com/oauth/callback?code=secret#done with Bearer exception-token-12345',
+            module: 'oauth',
+            mechanism: { type: 'generic', handled: false },
+            stacktrace: { frames: [{ filename: 'src/sentry.js', function: 'capture' }] },
+          },
+        ],
+      },
+    };
+
+    expect(beforeSend(event)).toEqual({
+      exception: {
+        values: [
+          {
+            type: 'TypeError',
+            value: 'failed https://example.com/oauth/callback with [REDACTED]',
+            module: 'oauth',
+            mechanism: { type: 'generic', handled: false },
+            stacktrace: { frames: [{ filename: 'src/sentry.js', function: 'capture' }] },
+          },
+        ],
+      },
+    });
+  });
+
   it('should handle events with no extra context in beforeSend', async () => {
     vi.stubEnv('SENTRY_DSN', 'https://key@o0.ingest.sentry.io/0');
 
