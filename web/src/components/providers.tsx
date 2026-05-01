@@ -18,6 +18,10 @@ function isDashboardRoute(pathname: string | null): pathname is string {
   return pathname === '/dashboard' || pathname?.startsWith('/dashboard/') === true;
 }
 
+function getGuildTelemetryScope(guildId: string | null): 'none' | 'selected' {
+  return guildId ? 'selected' : 'none';
+}
+
 /**
  * Render a global Toaster that follows the resolved application theme.
  *
@@ -54,7 +58,7 @@ function SentryContextBridge() {
     Sentry.setContext('routing', { route: pathname || 'unknown' });
 
     if (isAuthenticatedDashboardRoute && guildId) {
-      Sentry.setContext('guild', { id: guildId });
+      Sentry.setContext('guild', { selection: getGuildTelemetryScope(guildId) });
       return;
     }
 
@@ -67,7 +71,7 @@ function SentryContextBridge() {
 /**
  * Synchronizes Amplitude: initializes it with the current authenticated user and records dashboard page-view events once per route.
  *
- * The emitted event includes the current `authStatus`, `guildId` (defaults to `'none'` when not set), and `route` (defaults to `'unknown'` when not set).
+ * The emitted event includes the current `authStatus`, coarse `guildSelection`, and `route` (defaults to `'unknown'` when not set).
  *
  * @returns `null` (this component does not render UI)
  */
@@ -88,6 +92,10 @@ function AmplitudeContextBridge() {
       return;
     }
 
+    if (status === 'loading') {
+      return;
+    }
+
     if (lastTrackedRouteRef.current === pathname) {
       return;
     }
@@ -95,7 +103,7 @@ function AmplitudeContextBridge() {
     lastTrackedRouteRef.current = pathname;
     trackDashboardEvent(DASHBOARD_PAGE_VIEW_EVENT, {
       authStatus: status,
-      guildId: guildId || 'none',
+      guildSelection: getGuildTelemetryScope(guildId),
       route: pathname,
     });
   }, [guildId, pathname, status]);

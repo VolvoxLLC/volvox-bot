@@ -111,7 +111,8 @@ describe('Providers', () => {
     );
 
     expect(mockSetContext).toHaveBeenCalledWith('routing', { route: '/dashboard/settings' });
-    expect(mockSetContext).toHaveBeenCalledWith('guild', { id: '1234567890' });
+    expect(mockSetContext).toHaveBeenCalledWith('guild', { selection: 'selected' });
+    expect(JSON.stringify(mockSetContext.mock.calls)).not.toContain('1234567890');
   });
 
   it('clears Sentry guild context outside dashboard routes', () => {
@@ -173,9 +174,10 @@ describe('Providers', () => {
     expect(mockInitDashboardAmplitude).toHaveBeenCalledWith('discord-user-123');
     expect(mockTrackDashboardEvent).toHaveBeenCalledWith('dashboard_page_viewed', {
       authStatus: 'authenticated',
-      guildId: '1234567890',
+      guildSelection: 'selected',
       route: '/dashboard/settings',
     });
+    expect(JSON.stringify(mockTrackDashboardEvent.mock.calls)).not.toContain('1234567890');
   });
 
   it.each(['/', '/privacy', '/login', '/error', '/dashboard-login'])(
@@ -200,7 +202,7 @@ describe('Providers', () => {
     },
   );
 
-  it('dedupes dashboard page views when auth status or guild changes without navigation', () => {
+  it('waits for auth status to settle and dedupes dashboard page views without navigation', () => {
     mockUseTheme.mockReturnValue({ resolvedTheme: 'dark' });
     mockUsePathname.mockReturnValue('/dashboard/settings');
     mockUseGuildSelection.mockReturnValue(null);
@@ -212,12 +214,7 @@ describe('Providers', () => {
       </Providers>,
     );
 
-    expect(mockTrackDashboardEvent).toHaveBeenCalledTimes(1);
-    expect(mockTrackDashboardEvent).toHaveBeenLastCalledWith('dashboard_page_viewed', {
-      authStatus: 'loading',
-      guildId: 'none',
-      route: '/dashboard/settings',
-    });
+    expect(mockTrackDashboardEvent).not.toHaveBeenCalled();
 
     mockUseGuildSelection.mockReturnValue('1234567890');
     mockUseSession.mockReturnValue({
@@ -232,6 +229,12 @@ describe('Providers', () => {
     );
 
     expect(mockTrackDashboardEvent).toHaveBeenCalledTimes(1);
+    expect(mockTrackDashboardEvent).toHaveBeenLastCalledWith('dashboard_page_viewed', {
+      authStatus: 'authenticated',
+      guildSelection: 'selected',
+      route: '/dashboard/settings',
+    });
+    expect(JSON.stringify(mockTrackDashboardEvent.mock.calls)).not.toContain('1234567890');
 
     mockUsePathname.mockReturnValue('/dashboard/moderation');
 
@@ -244,8 +247,9 @@ describe('Providers', () => {
     expect(mockTrackDashboardEvent).toHaveBeenCalledTimes(2);
     expect(mockTrackDashboardEvent).toHaveBeenLastCalledWith('dashboard_page_viewed', {
       authStatus: 'authenticated',
-      guildId: '1234567890',
+      guildSelection: 'selected',
       route: '/dashboard/moderation',
     });
+    expect(JSON.stringify(mockTrackDashboardEvent.mock.calls)).not.toContain('1234567890');
   });
 });
