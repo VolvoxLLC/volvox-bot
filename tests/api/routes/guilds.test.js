@@ -1170,6 +1170,31 @@ describe('guilds routes', () => {
       expect(mockPool.query.mock.calls.map(([sql]) => sql).join('\n')).not.toMatch(/FROM logs/i);
     });
 
+    it('should include source field in aiUsage response for all analytics requests', async () => {
+      // Regression guard: source must always be present so clients can distinguish
+      // unavailable data from zero values
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [{ total_messages: 0, ai_requests: 0, active_users: 0 }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [{ count: 0 }] });
+
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1/analytics?range=week')
+        .set('x-api-secret', SECRET);
+
+      expect(res.status).toBe(200);
+      expect(res.body.aiUsage).toHaveProperty('source', 'unavailable');
+      expect(res.body.aiUsage.tokens).toEqual({ prompt: null, completion: null });
+      expect(res.body.aiUsage.byModel).toEqual([]);
+      // aiCostUsd should be null (not 0) so clients can render a dedicated "unavailable" state
+      expect(res.body.kpis.aiCostUsd).toBeNull();
+    });
+
     it('should return null userEngagement when user_stats query fails', async () => {
       mockPool.query
         .mockResolvedValueOnce({ rows: [{ total_messages: 1, ai_requests: 0, active_users: 1 }] })

@@ -106,6 +106,26 @@ describe('health route', () => {
     expect(res.body.errors.error).toBe('database log tracking disabled');
   });
 
+  it('should return errors object with exactly three keys when authenticated', async () => {
+    vi.stubEnv('BOT_API_SECRET', 'test-secret');
+    const app = buildApp();
+
+    const res = await request(app).get('/api/v1/health').set('x-api-secret', 'test-secret');
+
+    expect(res.status).toBe(200);
+    expect(Object.keys(res.body.errors)).toEqual(['lastHour', 'lastDay', 'error']);
+  });
+
+  it('should not include errors field for unauthenticated requests', async () => {
+    vi.stubEnv('BOT_API_SECRET', 'test-secret');
+    const app = buildApp();
+
+    const res = await request(app).get('/api/v1/health');
+
+    expect(res.status).toBe(200);
+    expect(res.body.errors).toBeUndefined();
+  });
+
   it('should include restart data fallback when restartTracker unavailable', async () => {
     vi.stubEnv('BOT_API_SECRET', 'test-secret');
     const app = buildApp();

@@ -53,6 +53,10 @@ describe('config-listeners', () => {
   }
 
   describe('registerConfigListeners', () => {
+    it('accepts null dbPool without throwing', () => {
+      expect(() => registerConfigListeners({ dbPool: null, config: {} })).not.toThrow();
+    });
+
     it('does not register database log transport listeners', () => {
       registerConfigListeners({ dbPool: {}, config: { logging: { database: { enabled: true } } } });
 
@@ -86,6 +90,18 @@ describe('config-listeners', () => {
   describe('removeLoggingTransport', () => {
     it('is a no-op', async () => {
       await expect(removeLoggingTransport()).resolves.toBeUndefined();
+    });
+
+    it('can be called multiple times without error', async () => {
+      await expect(removeLoggingTransport()).resolves.toBeUndefined();
+      await expect(removeLoggingTransport()).resolves.toBeUndefined();
+      await expect(removeLoggingTransport()).resolves.toBeUndefined();
+    });
+
+    it('does not call logger methods when called', async () => {
+      await removeLoggingTransport();
+
+      expect(loggerInfo).not.toHaveBeenCalled();
     });
   });
 
