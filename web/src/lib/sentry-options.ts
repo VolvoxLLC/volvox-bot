@@ -213,11 +213,11 @@ function stripUrlMetadata(url: string): string {
  * @returns The string with URL query strings, fragments, credentials, and inline secrets removed.
  */
 function scrubBreadcrumbString(value: string): string {
-  const scrubbedValue = redactInlineSecrets(value).replace(ABSOLUTE_URL_IN_TEXT_PATTERN, (url) =>
+  const scrubbedValue = redactInlineSecrets(value).replaceAll(ABSOLUTE_URL_IN_TEXT_PATTERN, (url) =>
     stripUrlMetadata(url),
   );
 
-  return scrubbedValue.replace(
+  return scrubbedValue.replaceAll(
     RELATIVE_URL_IN_TEXT_PATTERN,
     (_match, prefix: string, url: string) => `${prefix}${stripUrlMetadata(url)}`,
   );

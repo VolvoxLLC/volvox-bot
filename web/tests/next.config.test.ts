@@ -6,12 +6,18 @@ type SecurityHeader = {
   value: string;
 };
 
-const TELEMETRY_ENV_KEYS = ["NEXT_PUBLIC_SENTRY_DSN", "NEXT_PUBLIC_AMPLITUDE_API_KEY"] as const;
+const TELEMETRY_ENV_KEYS = [
+  "NEXT_PUBLIC_SENTRY_DSN",
+  "NEXT_PUBLIC_AMPLITUDE_API_KEY",
+  "NEXT_PUBLIC_AMPLITUDE_SERVER_ZONE",
+] as const;
 const originalTelemetryEnv = Object.fromEntries(
   TELEMETRY_ENV_KEYS.map((key) => [key, process.env[key]]),
 );
 
-async function loadNextConfig(env: Partial<Record<(typeof TELEMETRY_ENV_KEYS)[number], string>> = {}) {
+async function loadNextConfig(
+  env: Partial<Record<(typeof TELEMETRY_ENV_KEYS)[number], string>> = {},
+) {
   vi.resetModules();
   for (const key of TELEMETRY_ENV_KEYS) {
     delete process.env[key];
