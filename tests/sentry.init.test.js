@@ -248,6 +248,8 @@ describe('sentry.js — init branch coverage', () => {
           authorization: 'Bearer secret',
           cookie: 'session=secret',
           'x-api-key': 'secret',
+          referer: 'https://user:pass@example.com/callback?code=secret#fragment',
+          origin: 'https://example.com/login?state=secret#fragment',
           accept: 'application/json',
         },
         data: {
@@ -263,7 +265,11 @@ describe('sentry.js — init branch coverage', () => {
     expect(result.request.cookies).toBeUndefined();
     expect(result.request.query_string).toBeUndefined();
     expect(result.request.url).toBe('https://example.com/callback');
-    expect(result.request.headers).toEqual({ accept: 'application/json' });
+    expect(result.request.headers).toEqual({
+      referer: 'https://example.com/callback',
+      origin: 'https://example.com/login',
+      accept: 'application/json',
+    });
     expect(result.request.data).toEqual({ safeField: 'keep-this' });
   });
 

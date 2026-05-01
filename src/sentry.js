@@ -66,6 +66,7 @@ const SENSITIVE_IP_KEY_SUFFIXES = [
   'visitorip',
 ];
 const URL_METADATA_KEY_PATTERN = /url/i;
+const URL_HEADER_KEY_PATTERN = /^(?:referer|referrer|origin)$/i;
 const ABSOLUTE_URL_IN_TEXT_PATTERN = /\b[a-z][a-z\d+.-]*:\/\/[^\s"'<>]+/gi;
 const RELATIVE_URL_IN_TEXT_PATTERN = /(^|[\s(["'])((?:\/|\.\.?\/)[^\s"'<>?#]*(?:[?#][^\s"'<>]*)+)/g;
 const INLINE_SECRET_REPLACEMENTS = [
@@ -355,6 +356,18 @@ function shouldKeepRequestData(scrubbedData, rawData) {
  * Scrub request metadata that can carry secrets or PII.
  * @param {object} request - Sentry request-like payload to mutate.
  */
+function scrubRequestHeaderValue(value) {
+  if (typeof value === 'string') {
+    return scrubUrlLikeString(value);
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((headerValue) => scrubRequestHeaderValue(headerValue));
+  }
+
+  return value;
+}
+
 function scrubSentryRequest(request) {
   delete request.cookies;
   delete request.query_string;
@@ -364,7 +377,17 @@ function scrubSentryRequest(request) {
   }
 
   if (request.headers) {
-    request.headers = scrubUnknown(request.headers);
+    const scrubbedHeaders = scrubUnknown(request.headers);
+
+    if (scrubbedHeaders && typeof scrubbedHeaders === 'object' && !Array.isArray(scrubbedHeaders)) {
+      for (const [key, value] of Object.entries(scrubbedHeaders)) {
+        if (URL_HEADER_KEY_PATTERN.test(key) || URL_METADATA_KEY_PATTERN.test(key)) {
+          scrubbedHeaders[key] = scrubRequestHeaderValue(value);
+        }
+      }
+    }
+
+    request.headers = scrubbedHeaders;
   }
 
   if (!request.data) {
