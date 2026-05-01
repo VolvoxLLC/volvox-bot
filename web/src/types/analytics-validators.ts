@@ -4,14 +4,30 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
+/**
+ * Check whether a value is a finite number.
+ *
+ * @returns `true` if `value` is a finite number, `false` otherwise.
+ */
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
 }
 
+/**
+ * Determines whether a value is `null` or a finite number.
+ *
+ * @param value - The value to test
+ * @returns `true` if the value is `null` or a finite number, `false` otherwise.
+ */
 function isFiniteNumberOrNull(value: unknown): value is number | null {
   return value === null || isFiniteNumber(value);
 }
 
+/**
+ * Determines whether a value is a string.
+ *
+ * @returns `true` if `value` is a string, `false` otherwise.
+ */
 function isString(value: unknown): value is string {
   return typeof value === 'string';
 }
@@ -32,6 +48,12 @@ function isValidRange(range: unknown): boolean {
   return true;
 }
 
+/**
+ * Validates that a value matches the expected KPIs structure for dashboard analytics.
+ *
+ * @param kpis - The value to validate as KPIs
+ * @returns `true` if `kpis` is a record containing finite numbers for `totalMessages`, `aiRequests`, `activeUsers`, and `newMembers`, and a finite number or `null` for `aiCostUsd`; `false` otherwise.
+ */
 function isValidKpis(kpis: unknown): boolean {
   if (!isRecord(kpis)) return false;
   return (
@@ -75,6 +97,16 @@ function isValidAiUsageEntry(entry: unknown): boolean {
   );
 }
 
+/**
+ * Determines whether a value conforms to the expected AI usage payload structure.
+ *
+ * Validates that the value is an object with `source` equal to `'unavailable'` or `'ai_usage'`,
+ * a `tokens` object whose `prompt` and `completion` are either finite numbers or `null`,
+ * and a `byModel` array where every entry is a valid AI usage entry.
+ *
+ * @param aiUsage - The value to validate as an AI usage payload
+ * @returns `true` if `aiUsage` matches the expected AI usage structure, `false` otherwise.
+ */
 function isValidAiUsage(aiUsage: unknown): boolean {
   if (!isRecord(aiUsage)) return false;
   if (aiUsage.source !== 'unavailable' && aiUsage.source !== 'ai_usage') return false;

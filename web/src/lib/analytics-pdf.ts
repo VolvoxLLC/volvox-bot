@@ -17,6 +17,14 @@ function esc(value: string | number | null | undefined): string {
     .replace(/"/g, '&quot;');
 }
 
+/**
+ * Build an HTML table presenting key performance indicators from the provided analytics.
+ *
+ * The table contains rows for total messages, AI requests, AI cost (est.), active users, and new members.
+ *
+ * @param analytics - Dashboard analytics object whose `kpis` provide the values (`totalMessages`, `aiRequests`, `aiCostUsd`, `activeUsers`, `newMembers`)
+ * @returns The HTML markup for a table with KPI names and their escaped, formatted values; the AI cost cell contains `Unavailable` when `aiCostUsd` is `null`
+ */
 function buildKpiTable(analytics: DashboardAnalytics): string {
   const { kpis } = analytics;
   const rows = [
@@ -125,6 +133,17 @@ function buildXpSection(analytics: DashboardAnalytics): string {
     </section>`;
 }
 
+/**
+ * Builds an HTML section summarizing AI usage grouped by model.
+ *
+ * The section contains a table with columns for model name, request count,
+ * token usage, and estimated cost, followed by a note with total prompt and
+ * completion token counts. If there are no models in the analytics data,
+ * an empty string is returned.
+ *
+ * @param analytics - Dashboard analytics payload containing `aiUsage.byModel` and `aiUsage.tokens`
+ * @returns An HTML string with the "AI Usage by Model" section, or an empty string when no model data is present
+ */
 function buildAiSection(analytics: DashboardAnalytics): string {
   const { byModel, tokens } = analytics.aiUsage;
   if (!byModel.length) return '';
