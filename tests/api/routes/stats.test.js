@@ -129,6 +129,30 @@ describe('GET /api/v1/stats', () => {
       const res = await request(app).get('/api/v1/stats').expect(200);
       expect(res.body.uptime).toBeGreaterThan(0);
     });
+
+    it('serializes daily activity dates as date-only strings', async () => {
+      const client = buildClient([buildGuild('g1', 100)]);
+      const pool = {
+        query: vi
+          .fn()
+          .mockResolvedValueOnce({ rows: [{ count: 42 }] })
+          .mockResolvedValueOnce({ rows: [{ count: 999 }] })
+          .mockResolvedValueOnce({
+            rows: [
+              {
+                date: new Date('2026-04-30T00:00:00.000Z'),
+                messages: 4,
+                ai_requests: 1,
+              },
+            ],
+          }),
+      };
+      app = createApp(client, pool);
+
+      const res = await request(app).get('/api/v1/stats').expect(200);
+
+      expect(res.body.dailyActivity).toEqual([{ date: '2026-04-30', messages: 4, aiRequests: 1 }]);
+    });
   });
 
   describe('Redis caching', () => {

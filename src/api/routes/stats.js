@@ -29,6 +29,30 @@ const statsRateLimit = redisRateLimit({
  */
 const ALLOWED_TABLES = new Set(['command_usage', 'conversations']);
 
+function formatDateOnly(value) {
+  if (value == null) {
+    return null;
+  }
+
+  if (typeof value === 'string') {
+    const dateOnlyMatch = value.match(/^(\d{4}-\d{2}-\d{2})(?:T|$)/);
+    if (dateOnlyMatch) {
+      return dateOnlyMatch[1];
+    }
+  }
+
+  if (!(value instanceof Date)) {
+    return null;
+  }
+
+  const timestamp = value.getTime();
+  if (Number.isNaN(timestamp)) {
+    return null;
+  }
+
+  return value.toISOString().slice(0, 10);
+}
+
 async function safeCount(pool, table) {
   if (!ALLOWED_TABLES.has(table)) {
     return 0;
@@ -141,11 +165,20 @@ router.get('/', statsRateLimit, async (req, res) => {
                  ORDER BY 1 ASC`,
               )
               .then((r) =>
-                r.rows.map((row) => ({
-                  date: row.date,
-                  messages: row.messages,
-                  aiRequests: row.ai_requests,
-                })),
+                r.rows
+                  .map((row) => {
+                    const date = formatDateOnly(row.date);
+                    if (!date) {
+                      return null;
+                    }
+
+                    return {
+                      date,
+                      messages: row.messages,
+                      aiRequests: row.ai_requests,
+                    };
+                  })
+                  .filter(Boolean),
               )
               .catch(() => []),
           ]);
