@@ -375,6 +375,7 @@ describe('scrubAmplitudeProperties', () => {
     const scrub = await getScrub();
     expect(scrub([])).toEqual([]);
   });
+
   it('removes dashed e-mail keys', async () => {
     const scrub = await getScrub();
     const result = scrub({
@@ -385,7 +386,6 @@ describe('scrubAmplitudeProperties', () => {
 
     expect(result).toEqual({ nested: { ok: true }, ok: true });
   });
-
 });
 
 // ─── Additional amplitude analytics edge-case tests ───────────────────────────
