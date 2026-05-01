@@ -70,6 +70,15 @@ function hasRecursiveCopyFlag(line) {
   return /\bcp\s+-\S*[rR]\S*\s/.test(line);
 }
 
+function getSupportHelpGroup(config) {
+  const supportTab = config.navigation.tabs.find((tab) => tab.tab === 'Support');
+  expect(supportTab).toBeDefined();
+
+  const helpGroup = supportTab?.groups?.find((group) => group.group === 'Help');
+  expect(helpGroup).toBeDefined();
+  return helpGroup;
+}
+
 // ---------------------------------------------------------------------------
 // docs/docs.json
 // ---------------------------------------------------------------------------
@@ -104,28 +113,13 @@ describe('docs/docs.json', () => {
   });
 
   it('includes "manual-test-plan" in the Support tab Help group pages', () => {
-    const supportTab = config.navigation.tabs.find(
-      (tab) => tab.tab === 'Support' || getAllPages([tab]).includes('manual-test-plan'),
-    );
-    expect(supportTab).toBeDefined();
+    const helpGroup = getSupportHelpGroup(config);
 
-    const helpGroup = supportTab.groups?.find((group) => group.group === 'Help');
-    expect(helpGroup).toBeDefined();
-    if (!helpGroup) {
-      return;
-    }
     expect(helpGroup.pages).toContain('manual-test-plan');
   });
 
-  it('"manual-test-plan" is listed after "help" in the Help group pages', () => {
-    const helpGroup = config.navigation.tabs
-      .flatMap((tab) => tab.groups ?? [])
-      .find((group) => group.group === 'Help');
-
-    expect(helpGroup).toBeDefined();
-    if (!helpGroup) {
-      return;
-    }
+  it('"manual-test-plan" is listed after "help" in the Support tab Help group pages', () => {
+    const helpGroup = getSupportHelpGroup(config);
 
     const helpIdx = helpGroup.pages.indexOf('help');
     const planIdx = helpGroup.pages.indexOf('manual-test-plan');
@@ -133,15 +127,8 @@ describe('docs/docs.json', () => {
     expect(planIdx).toBeGreaterThan(helpIdx);
   });
 
-  it('the Help group contains exactly the expected pages', () => {
-    const helpGroup = config.navigation.tabs
-      .flatMap((tab) => tab.groups ?? [])
-      .find((group) => group.group === 'Help');
-
-    expect(helpGroup).toBeDefined();
-    if (!helpGroup) {
-      return;
-    }
+  it('the Support tab Help group contains exactly the expected pages', () => {
+    const helpGroup = getSupportHelpGroup(config);
 
     expect(helpGroup.pages).toEqual(['faq', 'security', 'help', 'manual-test-plan']);
   });
@@ -472,6 +459,14 @@ describe('docs/wiki-pages/README.md', () => {
     expect(copyLines).toHaveLength(2);
     expect(copyLines.filter(hasRecursiveCopyFlag)).toHaveLength(1);
     expect(copyLines.filter((line) => !hasRecursiveCopyFlag(line))).toHaveLength(1);
+
+    expect(copyLines).toHaveLength(2);
+    expect(copyLines).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('<repo>.wiki'),
+        expect.stringContaining('volvox-bot.wiki'),
+      ]),
+    );
 
     for (const line of copyLines) {
       expectContainsAll(line, [
