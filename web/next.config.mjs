@@ -32,7 +32,7 @@ const securityHeaders = [
       `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV !== "production" ? " 'unsafe-eval'" : ""}`,
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' cdn.discordapp.com data:",
-      "connect-src 'self' https://*.ingest.sentry.io https://*.ingest.us.sentry.io",
+      "connect-src 'self' https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://api2.amplitude.com https://api.eu.amplitude.com",
       "font-src 'self'",
       "frame-ancestors 'none'",
     ].join("; "),

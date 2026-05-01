@@ -1,9 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 
-const { mockUseTheme } = vi.hoisted(() => ({
-  mockUseTheme: vi.fn(),
-}));
+const { mockInitDashboardAmplitude, mockTrackDashboardEvent, mockUseSession, mockUseTheme } =
+  vi.hoisted(() => ({
+    mockInitDashboardAmplitude: vi.fn(),
+    mockTrackDashboardEvent: vi.fn(),
+    mockUseSession: vi.fn(),
+    mockUseTheme: vi.fn(),
+  }));
 
 const { mockSetContext, mockUseGuildSelection, mockUsePathname } = vi.hoisted(() => ({
   mockSetContext: vi.fn(),
@@ -11,12 +15,18 @@ const { mockSetContext, mockUseGuildSelection, mockUsePathname } = vi.hoisted(()
   mockUsePathname: vi.fn(),
 }));
 
+vi.mock('@/lib/amplitude', () => ({
+  DASHBOARD_PAGE_VIEW_EVENT: 'dashboard_page_viewed',
+  initDashboardAmplitude: mockInitDashboardAmplitude,
+  trackDashboardEvent: mockTrackDashboardEvent,
+}));
+
 // Mock next-auth/react
 vi.mock('next-auth/react', () => ({
   SessionProvider: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="session-provider">{children}</div>
   ),
-  useSession: () => ({ data: null, status: 'unauthenticated' }),
+  useSession: () => mockUseSession(),
   signIn: vi.fn(),
 }));
 
@@ -50,9 +60,12 @@ import { Providers } from '@/components/providers';
 
 describe('Providers', () => {
   beforeEach(() => {
+    mockInitDashboardAmplitude.mockClear();
     mockSetContext.mockClear();
+    mockTrackDashboardEvent.mockClear();
     mockUseGuildSelection.mockReturnValue(null);
     mockUsePathname.mockReturnValue('/');
+    mockUseSession.mockReturnValue({ data: null, status: 'unauthenticated' });
   });
 
   it('wraps children in SessionProvider', () => {
@@ -95,5 +108,34 @@ describe('Providers', () => {
 
     expect(mockSetContext).toHaveBeenCalledWith('routing', { route: '/dashboard/settings' });
     expect(mockSetContext).toHaveBeenCalledWith('guild', { id: '1234567890' });
+  });
+
+  it('initializes Amplitude and tracks dashboard page views without PII', () => {
+    mockUseTheme.mockReturnValue({ resolvedTheme: 'dark' });
+    mockUsePathname.mockReturnValue('/dashboard/settings');
+    mockUseGuildSelection.mockReturnValue('1234567890');
+    mockUseSession.mockReturnValue({
+      data: {
+        user: {
+          id: 'discord-user-123',
+          email: 'person@example.com',
+          name: 'Person',
+        },
+      },
+      status: 'authenticated',
+    });
+
+    render(
+      <Providers>
+        <div>Dashboard</div>
+      </Providers>,
+    );
+
+    expect(mockInitDashboardAmplitude).toHaveBeenCalledWith('discord-user-123');
+    expect(mockTrackDashboardEvent).toHaveBeenCalledWith('dashboard_page_viewed', {
+      authStatus: 'authenticated',
+      guildId: '1234567890',
+      route: '/dashboard/settings',
+    });
   });
 });

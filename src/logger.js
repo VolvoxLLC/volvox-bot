@@ -19,7 +19,9 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
+import { amplitudeEnabled } from './amplitude.js';
 import { sentryEnabled } from './sentry.js';
+import { AmplitudeTransport } from './transports/amplitude.js';
 import { PostgresTransport } from './transports/postgres.js';
 import { SentryTransport } from './transports/sentry.js';
 import { WebSocketTransport } from './transports/websocket.js';
@@ -442,9 +444,14 @@ if (fileOutputEnabled) {
   );
 }
 
-// Add Sentry transport if enabled — all error/warn logs automatically go to Sentry
+// Add Sentry transport if enabled — error logs go to Sentry for alerting/grouping
 if (sentryEnabled) {
-  transports.push(new SentryTransport({ level: 'warn' }));
+  transports.push(new SentryTransport({ level: 'error' }));
+}
+
+// Add Amplitude transport if enabled — info/warn logs become analytics events
+if (amplitudeEnabled) {
+  transports.push(new AmplitudeTransport({ level: 'info' }));
 }
 
 const logger = winston.createLogger({

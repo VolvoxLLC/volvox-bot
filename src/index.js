@@ -247,7 +247,8 @@ async function gracefulShutdown(signal) {
     error('Failed to close Redis connection', { error: err.message });
   }
 
-  // 5. Flush Sentry events before exit (no-op if Sentry disabled)
+  // 5. Flush telemetry events before exit (no-op if disabled)
+  await import('./amplitude.js').then(({ flushAmplitude }) => flushAmplitude()).catch(() => {});
   await import('./sentry.js').then(({ Sentry }) => Sentry.flush(2000)).catch(() => {});
 
   // 6. Destroy Discord client
