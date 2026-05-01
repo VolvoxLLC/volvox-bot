@@ -482,7 +482,10 @@ export function AnalyticsDashboard() {
       const currentCsv = isUnavailable ? '' : String(card.value);
       const hasComparison = compareMode && analytics.comparison != null;
       const previous = hasComparison ? (card.previous ?? 0) : 0;
-      const delta = hasComparison && !isUnavailable && card.previous != null ? toDeltaPercent(currentNum, previous) : null;
+      const delta =
+        hasComparison && !isUnavailable && card.previous != null
+          ? toDeltaPercent(currentNum, previous)
+          : null;
 
       rows.push(
         [
@@ -560,7 +563,8 @@ export function AnalyticsDashboard() {
           : kpiCards.map((card) => {
               const Icon = card.icon;
               const value = card.value;
-              const displayValue = value === null || value === undefined ? 'Unavailable' : undefined;
+              const displayValue =
+                value === null || value === undefined ? 'Unavailable' : undefined;
               const numericValue = value ?? 0;
               const hasComparison = compareMode && analytics?.comparison != null;
               const delta =

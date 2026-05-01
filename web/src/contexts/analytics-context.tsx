@@ -210,10 +210,11 @@ export function AnalyticsProvider({ children }: { children: React.ReactNode }) {
 
     rows.push('KPI,Current,Previous,DeltaPercent');
     for (const card of kpiCards) {
-      const current = card.value ?? 0;
+      const current = card.value;
       const hasComparison = compareMode && analytics.comparison != null;
       const previous = hasComparison ? (card.previous ?? null) : null;
-      const delta = hasComparison && previous !== null ? toDeltaPercent(current, previous) : null;
+      const delta =
+        current !== null && previous !== null ? toDeltaPercent(current, previous) : null;
 
       rows.push(
         [

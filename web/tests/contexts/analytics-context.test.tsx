@@ -202,12 +202,59 @@ describe('AnalyticsProvider', () => {
     const exportedBlob = exportedBlobs.at(-1);
     expect(exportedBlob).toBeDefined();
     expect(exportedBlob!.type).toContain('text/csv');
-    await expect(exportedBlob!.text()).resolves.toContain('"Top, ""Channel"""');
+    const exportedCsv = await exportedBlob!.text();
+    expect(exportedCsv).toContain('"Top, ""Channel"""');
+    expect(exportedCsv).toContain('AI cost (est.),1.23,1.23,0');
     expect(clickSpy).toHaveBeenCalledTimes(1);
     expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:csv');
 
     await user.click(screen.getByRole('button', { name: 'Export PDF' }));
     expect(exportAnalyticsPdf).toHaveBeenCalledWith(analyticsPayload);
+  });
+
+  it('preserves unavailable AI cost as blank cells in CSV exports', async () => {
+    const user = userEvent.setup();
+    const createObjectURLSpy = vi.spyOn(globalThis.URL, 'createObjectURL').mockReturnValue('blob:csv');
+    vi.spyOn(globalThis.URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    const exportedBlobs: Blob[] = [];
+    createObjectURLSpy.mockImplementation((blob) => {
+      exportedBlobs.push(blob as Blob);
+      return 'blob:csv';
+    });
+
+    const clickSpy = vi.fn();
+    const originalCreateElement = document.createElement.bind(document);
+    vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
+      const element = originalCreateElement(tagName);
+      if (tagName.toLowerCase() === 'a') {
+        Object.defineProperty(element, 'click', { value: clickSpy, configurable: true });
+      }
+      return element;
+    });
+
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({
+        ...analyticsPayload,
+        kpis: { ...analyticsPayload.kpis, aiCostUsd: null },
+        comparison: {
+          ...analyticsPayload.comparison!,
+          kpis: { ...analyticsPayload.comparison!.kpis, aiCostUsd: null },
+        },
+      } satisfies DashboardAnalytics),
+    );
+
+    renderProvider();
+
+    await waitFor(() => expect(screen.getByTestId('guild')).toHaveTextContent('guild/1'));
+    await user.click(screen.getByRole('button', { name: 'Compare' }));
+    await waitFor(() => expect(String(vi.mocked(fetch).mock.calls.at(-1)?.[0])).toContain('compare=1'));
+
+    await user.click(screen.getByRole('button', { name: 'Export CSV' }));
+
+    const exportedCsv = await exportedBlobs.at(-1)!.text();
+    expect(exportedCsv).toContain('AI cost (est.),,,');
+    expect(exportedCsv).not.toContain('AI cost (est.),0,');
+    expect(clickSpy).toHaveBeenCalledTimes(1);
   });
 
   it('handles unauthorized, API, invalid payload, unknown, and abort errors', async () => {
