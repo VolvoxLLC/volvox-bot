@@ -6,11 +6,7 @@
  */
 
 import Transport from 'winston-transport';
-import {
-  AMPLITUDE_LOG_EVENT,
-  scrubAmplitudeProperties,
-  trackAnalyticsEvent,
-} from '../amplitude.js';
+import * as amplitude from '../amplitude.js';
 
 const TRACKED_LEVELS = new Set(['info', 'warn']);
 const RESERVED_KEYS = new Set(['level', 'message', 'originalLevel', 'splat', 'timestamp']);
@@ -35,7 +31,7 @@ export class AmplitudeTransport extends Transport {
     try {
       const { level, message } = info;
 
-      if (!TRACKED_LEVELS.has(level)) {
+      if (!TRACKED_LEVELS.has(level) || !amplitude.initializeAmplitude()) {
         return;
       }
 
@@ -52,8 +48,7 @@ export class AmplitudeTransport extends Transport {
         rawProperties[key] = value;
       }
 
-      const properties = scrubAmplitudeProperties(rawProperties);
-      trackAnalyticsEvent(AMPLITUDE_LOG_EVENT, properties);
+      amplitude.trackAnalyticsEvent(amplitude.AMPLITUDE_LOG_EVENT, rawProperties);
     } catch {
       // Logging must never fail the process because analytics ingestion is down.
     } finally {

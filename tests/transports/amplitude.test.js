@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockTrackAnalyticsEvent } = vi.hoisted(() => ({
+const { mockInitializeAmplitude, mockTrackAnalyticsEvent } = vi.hoisted(() => ({
+  mockInitializeAmplitude: vi.fn(),
   mockTrackAnalyticsEvent: vi.fn(),
 }));
 
@@ -10,7 +11,13 @@ vi.mock('../../src/amplitude.js', async () => {
   return {
     ...actual,
     AMPLITUDE_LOG_EVENT: 'bot_log_recorded',
-    trackAnalyticsEvent: mockTrackAnalyticsEvent,
+    initializeAmplitude: mockInitializeAmplitude,
+    trackAnalyticsEvent: (eventType, properties, options) => {
+      const sanitizedProperties = actual.scrubAmplitudeProperties(properties);
+      return options === undefined
+        ? mockTrackAnalyticsEvent(eventType, sanitizedProperties)
+        : mockTrackAnalyticsEvent(eventType, sanitizedProperties, options);
+    },
   };
 });
 
@@ -31,6 +38,7 @@ describe('AmplitudeTransport', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockInitializeAmplitude.mockReturnValue(true);
     transport = new AmplitudeTransport();
   });
 
@@ -79,6 +87,24 @@ describe('AmplitudeTransport', () => {
       source: 'api',
     });
     expect(callback).toHaveBeenCalledTimes(2);
+  });
+
+  it('short-circuits before building analytics properties when Amplitude is disabled', () => {
+    const callback = vi.fn();
+    let metadataRead = false;
+    const expensive = {
+      get value() {
+        metadataRead = true;
+        return 'metadata';
+      },
+    };
+    mockInitializeAmplitude.mockReturnValueOnce(false);
+
+    transport.log({ level: 'info', message: 'Amplitude disabled', expensive }, callback);
+
+    expect(metadataRead).toBe(false);
+    expect(mockTrackAnalyticsEvent).not.toHaveBeenCalled();
+    expect(callback).toHaveBeenCalledOnce();
   });
 
   it('sanitizes nested log metadata before tracking', () => {

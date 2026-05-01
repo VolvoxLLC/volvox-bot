@@ -16,7 +16,7 @@ export const DEFAULT_AMPLITUDE_DEVICE_ID = 'volvox-bot-server';
 
 const AMPLITUDE_MIN_ID_LENGTH = 5;
 const SENSITIVE_KEY_PATTERN =
-  /(?:authorization|cookie|csrf|secret|password|token|session|stack|x[-_]?forwarded[-_]?for|ip(?:[-_]?address)?|x[-_]?api[-_]?key|api[-_]?key|bot[-_]?api[-_]?secret|access[-_]?token|refresh[-_]?token|email)/i;
+  /(?:authorization|cookie|csrf|secret|password|token|session|stack|x[-_]?forwarded[-_]?for|ip(?:[-_]?address)?|x[-_]?api[-_]?key|api[-_]?key|bot[-_]?api[-_]?secret|access[-_]?token|refresh[-_]?token|e-?mail)/i;
 const INLINE_SECRET_PATTERNS = [
   /\bBearer\s+[A-Za-z0-9._~+/=-]+/gi,
   /\bsk-[A-Za-z0-9][A-Za-z0-9_-]{10,}/g,

@@ -21,6 +21,37 @@ const CIRCULAR_REFERENCE_SENTINEL = '[Circular]';
 const SENSITIVE_KEY_PATTERN =
   /(?:authorization|cookie|csrf|e-?mail|secret|password|token|session|stack|x[-_]?forwarded[-_]?for|ip(?:[-_]?address)?|x[-_]?api[-_]?key|api[-_]?key|bot[-_]?api[-_]?secret|access[-_]?token|refresh[-_]?token)/i;
 const URL_METADATA_KEY_PATTERN = /url/i;
+const INLINE_SECRET_REPLACEMENTS = [
+  { pattern: /\bBearer\s+[A-Za-z0-9._~+/=-]+/gi, replacement: '[REDACTED]' },
+  { pattern: /\bsk-[A-Za-z0-9][A-Za-z0-9_-]{10,}/g, replacement: '[REDACTED]' },
+  {
+    pattern: /\b(?:xox[baprs]|gh[pousr])_[A-Za-z0-9_/-]{10,}/g,
+    replacement: '[REDACTED]',
+  },
+  { pattern: /\bgithub_pat_[A-Za-z0-9_]{10,}/g, replacement: '[REDACTED]' },
+  {
+    pattern:
+      /([?&#]\s*(?:access[-_]?token|refresh[-_]?token|api[-_]?key|token|secret|password)\s*=)\s*[^\s&#]+/gi,
+    replacement: '$1[REDACTED]',
+  },
+  {
+    pattern:
+      /(^|[\s,;])((?:access[-_]?token|refresh[-_]?token|api[-_]?key|token|secret|password)\s*=)\s*[^\s,;&#]+/gi,
+    replacement: '$1$2[REDACTED]',
+  },
+];
+
+/**
+ * Redact secret-looking substrings from free-form strings before they reach Sentry.
+ * @param {string} value - The string to scrub.
+ * @returns {string} The string with inline secrets redacted.
+ */
+function scrubInlineSecrets(value) {
+  return INLINE_SECRET_REPLACEMENTS.reduce(
+    (scrubbedValue, { pattern, replacement }) => scrubbedValue.replace(pattern, replacement),
+    value,
+  );
+}
 
 /**
  * Recursively removes sensitive keys from arbitrary Sentry metadata.
@@ -30,6 +61,10 @@ const URL_METADATA_KEY_PATTERN = /url/i;
  * @returns {unknown} A copy with sensitive object keys removed.
  */
 function scrubUnknown(value, seen = new WeakSet()) {
+  if (typeof value === 'string') {
+    return scrubInlineSecrets(value);
+  }
+
   if (!value || typeof value !== 'object') {
     return value;
   }
@@ -61,10 +96,10 @@ function scrubUnknown(value, seen = new WeakSet()) {
 }
 
 /**
- * Strip query parameters from a Sentry request URL without dropping the path.
+ * Strip query parameters and fragments from a Sentry request URL without dropping the path.
  *
  * @param {unknown} value - Request URL value from a Sentry event.
- * @returns {unknown} The URL without its query component, or the original value when not a string.
+ * @returns {unknown} The URL without its query or fragment component, or the original value when not a string.
  */
 function stripRequestUrlQuery(value) {
   if (typeof value !== 'string') {
@@ -75,11 +110,17 @@ function stripRequestUrlQuery(value) {
     const isAbsoluteUrl = /^[a-z][a-z\d+.-]*:/i.test(value);
     const url = new URL(value, 'https://volvox.local');
     url.search = '';
+    url.hash = '';
 
-    return isAbsoluteUrl ? url.toString() : `${url.pathname}${url.hash}`;
+    return isAbsoluteUrl ? url.toString() : url.pathname;
   } catch {
     const queryIndex = value.indexOf('?');
-    return queryIndex === -1 ? value : value.slice(0, queryIndex);
+    const fragmentIndex = value.indexOf('#');
+    const stripIndex = [queryIndex, fragmentIndex]
+      .filter((index) => index !== -1)
+      .reduce((earliestIndex, index) => Math.min(earliestIndex, index), value.length);
+
+    return stripIndex === value.length ? value : value.slice(0, stripIndex);
   }
 }
 
@@ -91,6 +132,10 @@ function stripRequestUrlQuery(value) {
  * @returns {unknown} A scrubbed copy of the breadcrumb data value.
  */
 function scrubBreadcrumbData(value, seen = new WeakSet()) {
+  if (typeof value === 'string') {
+    return scrubInlineSecrets(value);
+  }
+
   if (!value || typeof value !== 'object') {
     return value;
   }
@@ -141,6 +186,10 @@ function scrubBreadcrumbs(breadcrumbs) {
     }
 
     const scrubbedBreadcrumb = { ...breadcrumb };
+    if (typeof scrubbedBreadcrumb.message === 'string') {
+      scrubbedBreadcrumb.message = scrubInlineSecrets(scrubbedBreadcrumb.message);
+    }
+
     if ('data' in scrubbedBreadcrumb) {
       scrubbedBreadcrumb.data = scrubBreadcrumbData(scrubbedBreadcrumb.data);
     }
@@ -173,18 +222,7 @@ function scrubSentryEvent(event) {
       event.request.url = stripRequestUrlQuery(event.request.url);
     }
 
-    if (event.request.headers) {
-      event.request.headers = scrubUnknown(event.request.headers);
-    }
-
-    if (event.request.data) {
-      const scrubbedData = scrubUnknown(event.request.data);
-      if (scrubbedData && typeof scrubbedData === 'object') {
-        event.request.data = scrubbedData;
-      } else {
-        delete event.request.data;
-      }
-    }
+    event.request = scrubUnknown(event.request);
   }
 
   if (event.extra) {

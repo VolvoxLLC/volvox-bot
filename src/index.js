@@ -259,14 +259,14 @@ async function gracefulShutdown(signal) {
 
   // 5. Flush telemetry events before exit (no-op if disabled)
   try {
-    const { amplitudeEnabled, flushAmplitude } = await import('./amplitude.js');
+    const amplitude = await import('./amplitude.js');
     const amplitudeFlushed = await withTimeout(
-      flushAmplitude(),
+      amplitude.flushAmplitude(),
       TELEMETRY_SHUTDOWN_FLUSH_TIMEOUT_MS,
       'Amplitude flush timed out',
     );
 
-    if (amplitudeEnabled && !amplitudeFlushed) {
+    if (amplitude.amplitudeEnabled && !amplitudeFlushed) {
       warn('Failed to flush Amplitude events on shutdown', { error: 'Amplitude flush failed' });
     }
   } catch (err) {

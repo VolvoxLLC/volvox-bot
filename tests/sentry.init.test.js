@@ -243,7 +243,7 @@ describe('sentry.js — init branch coverage', () => {
     expect(result.user).toEqual({ id: 'safe-user-key' });
     expect(result.request.cookies).toBeUndefined();
     expect(result.request.query_string).toBeUndefined();
-    expect(result.request.url).toBe('https://example.com/callback#done');
+    expect(result.request.url).toBe('https://example.com/callback');
     expect(result.request.headers).toEqual({ accept: 'application/json' });
     expect(result.request.data).toEqual({ safeField: 'keep-this' });
   });
@@ -269,6 +269,66 @@ describe('sentry.js — init branch coverage', () => {
       profile: {
         safeField: 'keep-this',
       },
+    });
+  });
+
+  it('should redact inline secrets from free-form event metadata strings in beforeSend', async () => {
+    vi.stubEnv('SENTRY_DSN', 'https://key@o0.ingest.sentry.io/0');
+
+    await import('../src/sentry.js');
+
+    const beforeSend = initSpy.mock.calls[0][0].beforeSend;
+    const event = {
+      exception: { values: [{ value: 'Error' }] },
+      extra: {
+        detail: 'using Bearer top-level-token-12345',
+        nested: {
+          openAiKey: 'sk-abcdefghijk1234',
+          slack: 'token xoxb_abcdefghijk1234567890 leaked',
+          github: 'token ghp_abcdefghijk1234567890 leaked',
+          githubPat: 'token github_pat_abcdefghijk1234567890 leaked',
+          callback: 'callback?access_token=secret-value&safe=1',
+          assignment: 'token=secret-value safe=true',
+        },
+      },
+      contexts: {
+        retry: { reason: 'secret=hidden-value' },
+      },
+    };
+
+    expect(beforeSend(event).extra).toEqual({
+      detail: 'using [REDACTED]',
+      nested: {
+        openAiKey: '[REDACTED]',
+        slack: 'token [REDACTED] leaked',
+        github: 'token [REDACTED] leaked',
+        githubPat: 'token [REDACTED] leaked',
+        callback: 'callback?access_token=[REDACTED]&safe=1',
+        assignment: 'token=[REDACTED] safe=true',
+      },
+    });
+    expect(beforeSend(event).contexts).toEqual({
+      retry: { reason: 'secret=[REDACTED]' },
+    });
+  });
+
+  it('should redact inline secrets from request string data in beforeSend', async () => {
+    vi.stubEnv('SENTRY_DSN', 'https://key@o0.ingest.sentry.io/0');
+
+    await import('../src/sentry.js');
+
+    const beforeSend = initSpy.mock.calls[0][0].beforeSend;
+    const event = {
+      exception: { values: [{ value: 'Error' }] },
+      request: {
+        url: 'https://example.com/callback?token=secret#token=fragment-secret',
+        data: 'payload Bearer request-token-12345',
+      },
+    };
+
+    expect(beforeSend(event).request).toEqual({
+      url: 'https://example.com/callback',
+      data: 'payload [REDACTED]',
     });
   });
 
@@ -311,6 +371,7 @@ describe('sentry.js — init branch coverage', () => {
       breadcrumbs: [
         {
           category: 'fetch',
+          message: 'fetch failed with Bearer breadcrumb-token-12345',
           data: {
             url: 'https://api.example.com/guilds?token=secret&email=person%40example.com#done',
             nested: {
@@ -326,10 +387,11 @@ describe('sentry.js — init branch coverage', () => {
     expect(beforeSend(event).breadcrumbs).toEqual([
       {
         category: 'fetch',
+        message: 'fetch failed with [REDACTED]',
         data: {
-          url: 'https://api.example.com/guilds#done',
+          url: 'https://api.example.com/guilds',
           nested: {
-            requestUrl: '/callbacks#complete',
+            requestUrl: '/callbacks',
             safeField: 'keep-this',
           },
         },
@@ -363,7 +425,7 @@ describe('sentry.js — init branch coverage', () => {
     expect(cfg.beforeSendTransaction(transaction)).toEqual({
       type: 'transaction',
       request: {
-        url: '/internal/jobs#queue',
+        url: '/internal/jobs',
         headers: { accept: 'application/json' },
         data: { safeField: 'keep-this' },
       },
