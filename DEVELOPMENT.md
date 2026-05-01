@@ -65,10 +65,15 @@ Do not treat the project wiki as files inside this repository. GitHub wikis are 
 2. Clone the wiki repo using GitHub's documented flow (`<repo>.wiki.git`).
 3. Copy updated pages into the cloned wiki repo, commit, and push.
 
-Helper command:
+Example commands:
 
 ```bash
-./scripts/publish-wiki.sh VolvoxLLC/volvox-bot
+git clone https://github.com/VolvoxLLC/volvox-bot.wiki.git
+cp docs/wiki-pages/*.md volvox-bot.wiki/
+cd volvox-bot.wiki
+git add *.md
+git commit -m "docs: update wiki pages"
+git push origin master
 ```
 
-This script follows the GitHub "cloning wikis to your computer" process and prepares a local wiki commit for push.
+This follows GitHub's "cloning wikis to your computer" process directly without additional helper tooling.
