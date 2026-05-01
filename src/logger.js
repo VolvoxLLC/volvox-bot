@@ -19,7 +19,6 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
-import { amplitudeEnabled } from './amplitude.js';
 import { sentryEnabled } from './sentry.js';
 import { AmplitudeTransport } from './transports/amplitude.js';
 import { SentryTransport } from './transports/sentry.js';
@@ -448,10 +447,10 @@ if (sentryEnabled) {
   transports.push(new SentryTransport({ level: 'error' }));
 }
 
-// Add Amplitude transport if enabled — info/warn logs become analytics events
-if (amplitudeEnabled) {
-  transports.push(new AmplitudeTransport({ level: 'info' }));
-}
+// Always install the Amplitude transport so dotenv-loaded API keys that become
+// available after this module is imported can still enable info/warn telemetry.
+// trackAnalyticsEvent() reads process.env at call time and no-ops while disabled.
+transports.push(new AmplitudeTransport({ level: 'info' }));
 
 const logger = winston.createLogger({
   level: logLevel,
