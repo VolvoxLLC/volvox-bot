@@ -462,6 +462,39 @@ describe('sentry.js — init branch coverage', () => {
     });
   });
 
+  it('should scrub URL-bearing fields and sensitive strings from spans', async () => {
+    vi.stubEnv('SENTRY_DSN', 'https://key@o0.ingest.sentry.io/0');
+
+    await import('../src/sentry.js');
+
+    const cfg = initSpy.mock.calls[0][0];
+    const span = {
+      span_id: 'span-1',
+      description:
+        'GET https://api-user:api-pass@api.example.com/guilds?token=secret#done then /internal/jobs?api_key=secret#queue',
+      op: 'http.client',
+      data: {
+        url: 'https://data-user:data-pass@example.com/callback?access_token=secret#done',
+        'http.url': 'https://example.com/discord?code=secret#fragment',
+        requestUrl: '/relative/path?password=secret#fragment',
+        authorization: 'Bearer secret-token-12345',
+        safeField: 'payload token=secret-token safe=true',
+      },
+    };
+
+    expect(cfg.beforeSendSpan(span)).toEqual({
+      span_id: 'span-1',
+      description: 'GET https://api.example.com/guilds then /internal/jobs',
+      op: 'http.client',
+      data: {
+        url: 'https://example.com/callback',
+        'http.url': 'https://example.com/discord',
+        requestUrl: '/relative/path',
+        safeField: 'payload token=[REDACTED] safe=true',
+      },
+    });
+  });
+
   it('should handle events with no extra context in beforeSend', async () => {
     vi.stubEnv('SENTRY_DSN', 'https://key@o0.ingest.sentry.io/0');
 

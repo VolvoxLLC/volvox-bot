@@ -65,6 +65,8 @@ const SENSITIVE_IP_KEY_SUFFIXES = [
   'visitorip',
 ];
 const URL_METADATA_KEY_PATTERN = /url/i;
+const ABSOLUTE_URL_IN_TEXT_PATTERN = /\b[a-z][a-z\d+.-]*:\/\/[^\s"'<>]+/gi;
+const RELATIVE_URL_IN_TEXT_PATTERN = /(^|[\s(["'])((?:\/|\.\.?\/)[^\s"'<>?#]*(?:[?#][^\s"'<>]*)+)/g;
 const INLINE_SECRET_REPLACEMENTS = [
   { pattern: /\bBearer\s+[\w.~+/=-]+/gi, replacement: '[REDACTED]' },
   { pattern: /\bsk-\w[\w-]{10,}/g, replacement: '[REDACTED]' },
@@ -200,6 +202,23 @@ function stripRequestUrlQuery(value) {
 
     return stripIndex === value.length ? value : value.slice(0, stripIndex);
   }
+}
+
+/**
+ * Strip query strings, fragments, credentials, and inline secrets from URL-like free-form text.
+ *
+ * @param {string} value - String that may contain one or more URLs.
+ * @returns {string} The string with URL secrets removed.
+ */
+function scrubUrlLikeString(value) {
+  const scrubbedValue = scrubInlineSecrets(value).replace(ABSOLUTE_URL_IN_TEXT_PATTERN, (url) =>
+    stripRequestUrlQuery(url),
+  );
+
+  return scrubbedValue.replace(
+    RELATIVE_URL_IN_TEXT_PATTERN,
+    (_match, prefix, url) => `${prefix}${stripRequestUrlQuery(url)}`,
+  );
 }
 
 /**
@@ -390,6 +409,78 @@ function scrubSentryEvent(event) {
 }
 
 /**
+ * Check whether a span key can contain a URL that needs query/fragment/credential stripping.
+ * @param {string} key - Span field or nested data key.
+ * @returns {boolean} True when the field should be treated as URL-bearing.
+ */
+function isSpanUrlBearingKey(key) {
+  return key === 'description' || URL_METADATA_KEY_PATTERN.test(key);
+}
+
+/**
+ * Recursively scrub span payloads while preserving non-sensitive span identifiers and attributes.
+ * @param {unknown} value - Span or nested span value.
+ * @param {string} key - The object key that contained value.
+ * @param {WeakSet<object>} seen - Objects on the current recursion path.
+ * @returns {unknown} A scrubbed span value.
+ */
+function scrubSpanValue(value, key = '', seen = new WeakSet()) {
+  if (typeof value === 'string') {
+    return isSpanUrlBearingKey(key) ? scrubUrlLikeString(value) : scrubInlineSecrets(value);
+  }
+
+  if (!value || typeof value !== 'object') {
+    return value;
+  }
+
+  if (seen.has(value)) {
+    return CIRCULAR_REFERENCE_SENTINEL;
+  }
+
+  seen.add(value);
+
+  if (Array.isArray(value)) {
+    const scrubbedArray = value.map((childValue) => scrubSpanValue(childValue, key, seen));
+    seen.delete(value);
+    return scrubbedArray;
+  }
+
+  const scrubbed = {};
+
+  for (const [childKey, childValue] of Object.entries(value)) {
+    if (isSensitiveKey(childKey)) {
+      continue;
+    }
+
+    scrubbed[childKey] = scrubSpanValue(childValue, childKey, seen);
+  }
+
+  seen.delete(value);
+  return scrubbed;
+}
+
+/**
+ * Scrub Sentry span payloads that do not use the same shape as error/transaction events.
+ *
+ * @param {object} span - Sentry serialized span; this object is modified in place.
+ * @returns {object} The same span object after in-place scrubbing.
+ */
+function scrubSentrySpan(span) {
+  if (!span || typeof span !== 'object') {
+    return span;
+  }
+
+  const scrubbedSpan = scrubSpanValue(span);
+
+  for (const key of Object.keys(span)) {
+    delete span[key];
+  }
+  Object.assign(span, scrubbedSpan);
+
+  return span;
+}
+
+/**
  * Whether Sentry is actively initialized.
  * Use this to guard optional Sentry calls in hot paths.
  */
@@ -422,7 +513,7 @@ if (dsn) {
       return scrubSentryEvent(event);
     },
     beforeSendTransaction: scrubSentryEvent,
-    beforeSendSpan: scrubSentryEvent,
+    beforeSendSpan: scrubSentrySpan,
 
     // Add useful default tags
     initialScope: {
