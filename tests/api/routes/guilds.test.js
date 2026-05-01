@@ -360,7 +360,7 @@ describe('guilds routes', () => {
       expect(res.status).toBe(200);
       expect(res.body).toHaveLength(1);
       expect(res.body[0].id).toBe('guild1');
-      expect(res.body[0].access).toBe('bot-owner');
+      expect(res.body[0].access).toBe('admin');
       expect(fetchSpy).not.toHaveBeenCalled();
     });
 

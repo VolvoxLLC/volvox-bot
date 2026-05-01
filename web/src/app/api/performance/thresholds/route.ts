@@ -2,10 +2,15 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { buildUpstreamUrl, getBotApiConfig, proxyToBotApi } from '@/lib/bot-api-proxy';
+import { isRequestGlobalAdmin } from '@/lib/global-admin';
 
 export const dynamic = 'force-dynamic';
 
 async function authorize(request: NextRequest) {
+  if (!(await isRequestGlobalAdmin(request))) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
   const token = await getToken({ req: request });
   if (typeof token?.accessToken !== 'string' || token.accessToken.length === 0) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

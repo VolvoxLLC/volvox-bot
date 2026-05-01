@@ -2,10 +2,19 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { buildUpstreamUrl, getBotApiConfig, proxyToBotApi } from '@/lib/bot-api-proxy';
+import { isRequestGlobalAdmin } from '@/lib/global-admin';
 
 export const dynamic = 'force-dynamic';
 
+async function authorizeGlobalAdmin(request: NextRequest) {
+  if (await isRequestGlobalAdmin(request)) return null;
+  return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+}
+
 export async function GET(request: NextRequest) {
+  const adminError = await authorizeGlobalAdmin(request);
+  if (adminError) return adminError;
+
   const token = await getToken({ req: request });
 
   if (typeof token?.accessToken !== 'string' || token.accessToken.length === 0) {

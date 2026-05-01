@@ -1,8 +1,8 @@
 'use client';
 
 import { ScrollText } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { HealthSection } from '@/components/dashboard/health-section';
 import { LogFilters } from '@/components/dashboard/log-filters';
 import { LogViewer } from '@/components/dashboard/log-viewer';
@@ -21,12 +21,14 @@ import { cn } from '@/lib/utils';
 export default function LogsPage() {
   const guildId = useGuildSelection();
   const router = useRouter();
-  const [isGlobalAdmin, setIsGlobalAdmin] = useState(true);
+  const [isGlobalAdmin, setIsGlobalAdmin] = useState<boolean | null>(null);
+  const isAuthorized = isGlobalAdmin === true;
+  const authorizedGuildId = isAuthorized ? guildId : null;
   const { logs, status, sendFilter, clearLogs } = useLogStream({
-    enabled: Boolean(guildId),
-    guildId,
+    enabled: isAuthorized && Boolean(guildId),
+    guildId: authorizedGuildId,
   });
-  const { channels } = useGuildChannels(guildId);
+  const { channels } = useGuildChannels(authorizedGuildId);
 
   const channelNameById = useMemo(
     () => new Map(channels.map((channel) => [channel.id, channel.name])),
@@ -44,22 +46,13 @@ export default function LogsPage() {
   useEffect(() => {
     let mounted = true;
     const load = async () => {
-      if (typeof fetch !== 'function') {
-        setIsGlobalAdmin(true);
-        return;
-      }
-
       try {
-        const pending = fetch('/api/global-admin', { cache: 'no-store' });
-        if (!pending || typeof (pending as Promise<Response>).then !== 'function') {
-          return;
-        }
-        const response = await pending;
+        const response = await fetch('/api/global-admin', { cache: 'no-store' });
         const data = response.ok
           ? ((await response.json()) as { isGlobalAdmin?: boolean })
           : { isGlobalAdmin: false };
         if (!mounted) return;
-        const allowed = Boolean(data.isGlobalAdmin);
+        const allowed = data.isGlobalAdmin === true;
         setIsGlobalAdmin(allowed);
         if (!allowed) router.replace('/dashboard');
       } catch {
@@ -74,7 +67,7 @@ export default function LogsPage() {
     };
   }, [router]);
 
-  if (!isGlobalAdmin) return null;
+  if (!isAuthorized) return null;
 
   return (
     <ErrorBoundary title="Logs failed to load">

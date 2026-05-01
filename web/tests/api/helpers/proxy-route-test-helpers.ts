@@ -182,7 +182,8 @@ export function setupProxyRouteMocks() {
     mockAuthorizeGuildModerator.mockResolvedValue(null);
     mockGetBotApiConfig.mockImplementation(() => ({ ...apiConfig }));
     mockGetBotApiBaseUrl.mockReturnValue(apiConfig.baseUrl);
-    mockGetToken.mockResolvedValue({ accessToken: 'access-token' });
+    vi.stubEnv('BOT_OWNER_IDS', 'owner-1');
+    mockGetToken.mockResolvedValue({ accessToken: 'access-token', id: 'owner-1' });
     mockBuildUpstreamUrl.mockImplementation(buildTestUpstreamUrl);
     mockProxyToBotApi.mockResolvedValue(NextResponse.json({ ok: true }));
     fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
@@ -196,5 +197,6 @@ export function setupProxyRouteMocks() {
   afterEach(() => {
     fetchSpy?.mockRestore();
     fetchSpy = undefined;
+    vi.unstubAllEnvs();
   });
 }

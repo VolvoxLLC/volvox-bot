@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useMemo, useState, type ComponentType } from 'react';
+import { type ComponentType, useEffect, useMemo, useState } from 'react';
 import { useConfigContext } from '@/components/dashboard/config-context';
 import { CONFIG_NAVIGATION } from '@/components/dashboard/config-workspace/navigation';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
@@ -186,15 +186,12 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
   useEffect(() => {
     let mounted = true;
     const load = async () => {
-      if (typeof fetch !== 'function') return;
       try {
-        const pending = fetch('/api/global-admin', { cache: 'no-store' });
-        if (!pending || typeof (pending as Promise<Response>).then !== 'function') return;
-        const response = await pending;
+        const response = await fetch('/api/global-admin', { cache: 'no-store' });
         const data = response.ok
           ? ((await response.json()) as { isGlobalAdmin?: boolean })
           : { isGlobalAdmin: false };
-        if (mounted) setIsGlobalAdmin(Boolean(data.isGlobalAdmin));
+        if (mounted) setIsGlobalAdmin(data.isGlobalAdmin === true);
       } catch {
         if (mounted) setIsGlobalAdmin(false);
       }

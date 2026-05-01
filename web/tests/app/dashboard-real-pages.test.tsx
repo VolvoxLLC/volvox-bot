@@ -352,10 +352,11 @@ describe('previously unexcluded app pages', () => {
   it('renders logs and wires filter/clear handlers', async () => {
     const stream = { logs: [{ message: 'ready', channelId: 'chan-1' }], status: 'connected', sendFilter: vi.fn(), clearLogs: vi.fn() };
     mockUseLogStream.mockReturnValue(stream);
+    vi.mocked(fetch).mockResolvedValue(jsonResponse({ isGlobalAdmin: true }));
 
     render(<LogsPage />);
 
-    expect(screen.getByRole('heading', { name: /log\s*stream/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /log\s*stream/i })).toBeInTheDocument();
     expect(screen.getByText('channel:general')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: /apply log filter/i }));
     await userEvent.click(screen.getByRole('button', { name: /clear logs/i }));
@@ -465,16 +466,17 @@ describe('previously unexcluded app pages', () => {
 });
 
 describe('previously unexcluded app page alternate states', () => {
-  it('covers logs connection and channel-name fallbacks', () => {
+  it('covers logs connection and channel-name fallbacks', async () => {
+    vi.mocked(fetch).mockImplementation(() => Promise.resolve(jsonResponse({ isGlobalAdmin: true })));
     mockUseLogStream.mockReturnValue({ logs: [{ message: 'retry', channelId: 'missing' }], status: 'reconnecting', sendFilter: vi.fn(), clearLogs: vi.fn() });
     const first = render(<LogsPage />);
-    expect(screen.getByText('reconnecting')).toBeInTheDocument();
+    expect(await screen.findByText('reconnecting')).toBeInTheDocument();
     expect(screen.getByText('channel:')).toBeInTheDocument();
     first.unmount();
 
     mockUseLogStream.mockReturnValue({ logs: [{}], status: 'disconnected', sendFilter: vi.fn(), clearLogs: vi.fn() });
     render(<LogsPage />);
-    expect(screen.getByText('disconnected')).toBeInTheDocument();
+    expect(await screen.findByText('disconnected')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /apply log filter/i })).toBeDisabled();
   });
 

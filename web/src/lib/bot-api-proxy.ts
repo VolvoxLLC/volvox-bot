@@ -19,11 +19,7 @@ type AuthToken = {
   id?: string;
   sub?: string;
 };
-const GUILD_ACCESS_LEVELS = new Set<GuildAccessLevel>([
-  'viewer',
-  'moderator',
-  'admin',
-]);
+const GUILD_ACCESS_LEVELS = new Set<GuildAccessLevel>(['viewer', 'moderator', 'admin']);
 
 /**
  * Determines whether a Discord permission bitfield includes the administrator permission.

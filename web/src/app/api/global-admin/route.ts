@@ -1,7 +1,10 @@
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { isDashboardGlobalAdmin } from '@/lib/global-admin';
+import { isRequestGlobalAdmin } from '@/lib/global-admin';
 
-export async function GET() {
-  const isGlobalAdmin = await isDashboardGlobalAdmin();
+export const dynamic = 'force-dynamic';
+
+export async function GET(request: NextRequest) {
+  const isGlobalAdmin = await isRequestGlobalAdmin(request);
   return NextResponse.json({ isGlobalAdmin });
 }

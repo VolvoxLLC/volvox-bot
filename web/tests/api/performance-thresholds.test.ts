@@ -29,11 +29,17 @@ describe('performance and threshold proxy routes', () => {
       expect.objectContaining({ method: 'PUT' }),
     );
 
-    mockGetToken.mockResolvedValueOnce(null);
+    mockGetToken.mockResolvedValueOnce({ accessToken: 'token', id: 'not-owner' });
+    const forbidden = await performanceRoute.GET(request('http://localhost/api'));
+    expect(forbidden.status).toBe(403);
+
+    mockGetToken.mockResolvedValueOnce({ id: 'owner-1' }).mockResolvedValueOnce(null);
     const unauthorized = await performanceRoute.GET(request('http://localhost/api'));
     expect(unauthorized.status).toBe(401);
 
-    mockGetToken.mockResolvedValueOnce({ accessToken: 'token', error: 'RefreshTokenError' });
+    mockGetToken
+      .mockResolvedValueOnce({ accessToken: 'token', id: 'owner-1' })
+      .mockResolvedValueOnce({ accessToken: 'token', error: 'RefreshTokenError' });
     const expired = await thresholdsRoute.GET(request('http://localhost/api'));
     expect(expired.status).toBe(401);
 
