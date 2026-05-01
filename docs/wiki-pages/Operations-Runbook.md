@@ -17,7 +17,7 @@ Operational checklist for maintainers running Volvox Bot in production.
 
 - Confirm dashboard can load guild list.
 - Validate config save path for at least one setting.
-- Test both dark/light if style tokens changed.
+- For visual changes, verify light and dark themes across mobile, tablet, and desktop viewport sizes; capture screenshots for every theme/viewport combination and attach them to the change record.
 
 ## Incident quick triage
 
@@ -29,6 +29,6 @@ Operational checklist for maintainers running Volvox Bot in production.
 
 ## Recovery patterns
 
-- **Auth/session failures**: rotate `SESSION_SECRET`, restart the bot and web dashboard so the new secret is loaded, and verify callback URLs.
+- **Auth/session failures**: rotate `SESSION_SECRET`, restart the bot and web dashboard so the new secret is loaded, verify callback URLs, and warn operators that currently active dashboard sessions are invalidated by the rotation.
 - **Config not applying**: verify allowlist key + guild override retrieval path.
 - **Dashboard UI regressions**: verify page-title wiring and provider usage patterns.

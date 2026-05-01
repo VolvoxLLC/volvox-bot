@@ -5,8 +5,8 @@ This page is a minimal path from clone to running bot + dashboard locally.
 ## Prerequisites
 
 - Node.js 22+
-- pnpm 10.33+ (the repo currently pins `pnpm@10.33.2` in `packageManager`)
-- PostgreSQL available
+- pnpm `10.33.2` (pinned by the repo `packageManager`; Corepack recommended)
+- PostgreSQL 17+
 - Redis is optional; session storage falls back to in-memory when `REDIS_URL` is unset
 - Discord application + bot token
 
@@ -31,7 +31,6 @@ Required for the bot and shared API/database setup:
 - `SESSION_SECRET`
 - `MINIMAX_API_KEY`
 - `DATABASE_URL`
-- `BOT_API_SECRET`
 - `BOT_OWNER_IDS`
 
 Required when running the web dashboard locally:
@@ -41,6 +40,7 @@ Required when running the web dashboard locally:
 - `NEXTAUTH_SECRET`
 - `NEXTAUTH_URL`
 - `BOT_API_URL`
+- `BOT_API_SECRET`
 - `DASHBOARD_URL`
 - `NEXT_PUBLIC_DISCORD_CLIENT_ID`
 
@@ -70,10 +70,10 @@ Or run them in separate terminals:
 
 ```bash
 pnpm dev
-pnpm --filter volvox-bot-web dev
+pnpm --prefix web dev
 ```
 
-`pnpm dev` starts the bot only; use one of the options above when you also need the dashboard.
+`pnpm dev` starts the bot only; use `pnpm mono:dev` or the split-terminal commands above when you also need the dashboard.
 
 ## 5) Validate core health
 
@@ -84,6 +84,6 @@ pnpm mono:test
 
 ## Common first-run issues
 
-- OAuth callback mismatch: verify Discord redirect URI matches local dashboard URL.
+- OAuth callback mismatch: verify the Discord redirect URI points to the bot API callback endpoint, such as `http://localhost:3001/api/v1/auth/discord/callback`.
 - Login loops in dashboard dev: confirm `127.0.0.1` support in `web/next.config.mjs`.
 - Missing guild data in dashboard: ensure bot is in guild and permissions are granted.
