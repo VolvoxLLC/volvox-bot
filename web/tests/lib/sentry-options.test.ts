@@ -27,6 +27,25 @@ describe('sentry-options', () => {
     expect(getServerSentryOptions('nodejs').tracesSampleRate).toBe(0.1);
   });
 
+  it('should keep server trace sampling independent from the public browser setting', async () => {
+    vi.stubEnv('NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE', '0.75');
+
+    const { getBrowserSentryOptions, getServerSentryOptions } = await import(
+      '@/lib/sentry-options'
+    );
+
+    expect(getBrowserSentryOptions().tracesSampleRate).toBe(0.75);
+    expect(getServerSentryOptions('nodejs').tracesSampleRate).toBe(0.1);
+  });
+
+  it('should still support the legacy server trace sampling env var', async () => {
+    vi.stubEnv('SENTRY_TRACES_RATE', '0.2');
+
+    const { getServerSentryOptions } = await import('@/lib/sentry-options');
+
+    expect(getServerSentryOptions('nodejs').tracesSampleRate).toBe(0.2);
+  });
+
   it('should prefer public browser DSN and public release values for client config', async () => {
     vi.stubEnv('NEXT_PUBLIC_SENTRY_DSN', 'https://public@example.com/1');
     vi.stubEnv('SENTRY_DSN', 'https://private@example.com/1');
@@ -39,6 +58,23 @@ describe('sentry-options', () => {
       dsn: 'https://public@example.com/1',
       release: 'web-public-release',
     });
+  });
+
+  it('should not use server-only env vars when building browser options', async () => {
+    vi.stubEnv('SENTRY_DSN', 'https://private@example.com/1');
+    vi.stubEnv('SENTRY_ENVIRONMENT', 'server production');
+    vi.stubEnv('SENTRY_RELEASE', 'server-release');
+    vi.stubEnv('SENTRY_SEND_DEFAULT_PII', 'true');
+    vi.stubEnv('SENTRY_TRACES_SAMPLE_RATE', '0.75');
+
+    const { getBrowserSentryOptions } = await import('@/lib/sentry-options');
+    const options = getBrowserSentryOptions();
+
+    expect(options.dsn).toBeUndefined();
+    expect(options.environment).not.toBe('server-production');
+    expect(options.release).toBeUndefined();
+    expect(options.sendDefaultPii).toBe(false);
+    expect(options.tracesSampleRate).toBe(0.1);
   });
 
   it('should keep Sentry default PII collection disabled unless explicitly enabled', async () => {
@@ -96,10 +132,13 @@ describe('sentry-options', () => {
       },
       request: {
         cookies: { session: 'secret' },
+        query_string: 'guildId=123&email=person%40example.com',
+        url: 'https://dashboard.example.com/guilds/123?guildId=123&email=person%40example.com#private',
         data: {
           password: 'secret',
           api_key: 'secret',
           'x-api-key': 'secret',
+          email: 'person@example.com',
           safeField: 'keep-this',
         },
         headers: {
@@ -116,6 +155,7 @@ describe('sentry-options', () => {
         nested: {
           botApiSecret: 'secret',
           bot_api_secret: 'secret',
+          email: 'nested@example.com',
           ok: true,
         },
       },
@@ -131,6 +171,7 @@ describe('sentry-options', () => {
         id: 'safe-user-key',
       },
       request: {
+        url: 'https://dashboard.example.com/guilds/123',
         data: {
           safeField: 'keep-this',
         },
@@ -158,6 +199,8 @@ describe('sentry-options', () => {
       options.beforeSendTransaction?.({
         type: 'transaction',
         request: {
+          query_string: 'token=secret',
+          url: '/dashboard?token=secret&email=person%40example.com',
           headers: {
             cookie: 'session=secret',
             accept: 'application/json',
@@ -171,6 +214,7 @@ describe('sentry-options', () => {
     ).toEqual({
       type: 'transaction',
       request: {
+        url: '/dashboard',
         headers: {
           accept: 'application/json',
         },

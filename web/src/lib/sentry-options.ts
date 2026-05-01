@@ -8,7 +8,18 @@ const DEFAULT_TRACES_SAMPLE_RATE = 0.1;
 const DEFAULT_REPLAYS_SESSION_SAMPLE_RATE = 0;
 const DEFAULT_REPLAYS_ON_ERROR_SAMPLE_RATE = 0.1;
 const SENSITIVE_KEY_PATTERN =
-  /(?:authorization|cookie|csrf|secret|password|token|session|stack|x[-_]?forwarded[-_]?for|ip(?:[-_]?address)?|x[-_]?api[-_]?key|api[-_]?key|bot[-_]?api[-_]?secret|access[-_]?token|refresh[-_]?token)/i;
+  /(?:authorization|cookie|csrf|email|secret|password|token|session|stack|x[-_]?forwarded[-_]?for|ip(?:[-_]?address)?|x[-_]?api[-_]?key|api[-_]?key|bot[-_]?api[-_]?secret|access[-_]?token|refresh[-_]?token)/i;
+
+const BROWSER_SENTRY_ENV = {
+  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+  environment: process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT,
+  release: process.env.NEXT_PUBLIC_SENTRY_RELEASE,
+  webAppVersion: process.env.NEXT_PUBLIC_WEB_APP_VERSION,
+  sendDefaultPii: process.env.NEXT_PUBLIC_SENTRY_SEND_DEFAULT_PII,
+  tracesSampleRate: process.env.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE,
+  replaysSessionSampleRate: process.env.NEXT_PUBLIC_SENTRY_REPLAYS_SESSION_SAMPLE_RATE,
+  replaysOnErrorSampleRate: process.env.NEXT_PUBLIC_SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE,
+} as const;
 
 /**
  * Returns the first non-empty environment value from the provided key list.
@@ -19,6 +30,26 @@ const SENSITIVE_KEY_PATTERN =
 function getEnvValue(keys: string[]): string | undefined {
   for (const key of keys) {
     const value = process.env[key];
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * Returns the first non-empty value from statically referenced browser environment values.
+ *
+ * Next.js only bundles client-side environment variables when they are referenced with
+ * direct `process.env.NEXT_PUBLIC_*` property access, so browser options must use values
+ * captured from static references instead of dynamic `process.env[key]` lookups.
+ *
+ * @param values - Environment values ordered by precedence.
+ * @returns The trimmed value, or undefined when none are set.
+ */
+function getStaticEnvValue(values: readonly (string | undefined)[]): string | undefined {
+  for (const value of values) {
     if (typeof value === 'string' && value.trim().length > 0) {
       return value.trim();
     }
@@ -56,22 +87,24 @@ function parseBoolean(value: string | undefined): boolean {
 /**
  * Derives a normalized Sentry environment name from prioritized deployment environment variables.
  *
- * Chooses the first non-empty value from NEXT_PUBLIC_SENTRY_ENVIRONMENT, SENTRY_ENVIRONMENT,
- * VERCEL_ENV, RAILWAY_ENVIRONMENT_NAME, and NODE_ENV; normalizes it for Sentry by replacing
- * whitespace and slashes with `-`, removing characters outside `A-Za-z0-9_.-`, and truncating
- * to 64 characters. Falls back to `development` if no valid value is found.
+ * For browser runtime, checks statically referenced NEXT_PUBLIC_SENTRY_ENVIRONMENT and NODE_ENV.
+ * For server runtimes, checks SENTRY_ENVIRONMENT, VERCEL_ENV, RAILWAY_ENVIRONMENT_NAME,
+ * and NODE_ENV. Normalizes the value for Sentry by replacing whitespace and slashes with `-`,
+ * removing characters outside `A-Za-z0-9_.-`, and truncating to 64 characters. Falls back to
+ * `development` if no valid value is found.
  *
  * @returns The normalized environment string accepted by Sentry (or `development`).
  */
-function getSentryEnvironment(): string {
+function getSentryEnvironment(runtime: SentryRuntime): string {
   const environment =
-    getEnvValue([
-      'NEXT_PUBLIC_SENTRY_ENVIRONMENT',
-      'SENTRY_ENVIRONMENT',
-      'VERCEL_ENV',
-      'RAILWAY_ENVIRONMENT_NAME',
-      'NODE_ENV',
-    ]) ?? 'development';
+    (runtime === 'browser'
+      ? getStaticEnvValue([BROWSER_SENTRY_ENV.environment, process.env.NODE_ENV])
+      : getEnvValue([
+          'SENTRY_ENVIRONMENT',
+          'VERCEL_ENV',
+          'RAILWAY_ENVIRONMENT_NAME',
+          'NODE_ENV',
+        ])) ?? 'development';
 
   const normalized = environment.replaceAll(/[\s/\\]+/g, '-').replaceAll(/[^A-Za-z0-9_.-]/g, '');
   return normalized.slice(0, 64) || 'development';
@@ -80,19 +113,37 @@ function getSentryEnvironment(): string {
 /**
  * Determines the Sentry release identifier using runtime-specific environment-variable precedence.
  *
- * For `runtime === 'browser'`, checks in order: `NEXT_PUBLIC_SENTRY_RELEASE`, `NEXT_PUBLIC_WEB_APP_VERSION`, `SENTRY_RELEASE`.
+ * For `runtime === 'browser'`, checks statically referenced public values in order:
+ * `NEXT_PUBLIC_SENTRY_RELEASE`, `NEXT_PUBLIC_WEB_APP_VERSION`.
  * For non-browser runtimes, checks in order: `SENTRY_RELEASE`, `NEXT_PUBLIC_SENTRY_RELEASE`, `VERCEL_GIT_COMMIT_SHA`.
  *
  * @param runtime - Runtime being configured (`'browser' | 'edge' | 'nodejs'`)
  * @returns The first configured release string found, or `undefined` if none are set
  */
 function getSentryRelease(runtime: SentryRuntime): string | undefined {
-  const releaseKeys =
-    runtime === 'browser'
-      ? ['NEXT_PUBLIC_SENTRY_RELEASE', 'NEXT_PUBLIC_WEB_APP_VERSION', 'SENTRY_RELEASE']
-      : ['SENTRY_RELEASE', 'NEXT_PUBLIC_SENTRY_RELEASE', 'VERCEL_GIT_COMMIT_SHA'];
+  if (runtime === 'browser') {
+    return getStaticEnvValue([BROWSER_SENTRY_ENV.release, BROWSER_SENTRY_ENV.webAppVersion]);
+  }
 
-  return getEnvValue(releaseKeys);
+  return getEnvValue(['SENTRY_RELEASE', 'NEXT_PUBLIC_SENTRY_RELEASE', 'VERCEL_GIT_COMMIT_SHA']);
+}
+
+/**
+ * Strips query strings and fragments from request URLs before sending telemetry.
+ *
+ * @param url - Request URL captured by Sentry.
+ * @returns The URL without query-string or fragment metadata.
+ */
+function stripUrlMetadata(url: string): string {
+  const queryIndex = url.indexOf('?');
+  const fragmentIndex = url.indexOf('#');
+  const cutIndexes = [queryIndex, fragmentIndex].filter((index) => index >= 0);
+
+  if (cutIndexes.length === 0) {
+    return url;
+  }
+
+  return url.slice(0, Math.min(...cutIndexes));
 }
 
 /**
@@ -146,6 +197,11 @@ export function scrubSentryEvent<TEvent extends Event>(
 
   if (event.request) {
     delete event.request.cookies;
+    delete event.request.query_string;
+
+    if (typeof event.request.url === 'string') {
+      event.request.url = stripUrlMetadata(event.request.url);
+    }
 
     if (event.request.headers) {
       event.request.headers = scrubUnknown(event.request.headers) as Record<string, string>;
@@ -190,20 +246,20 @@ export function scrubSentrySpan(span: SentrySpan): SentrySpan {
  */
 export function getBrowserSentryOptions(): SentryInitOptions {
   return {
-    dsn: getEnvValue(['NEXT_PUBLIC_SENTRY_DSN']),
-    environment: getSentryEnvironment(),
+    dsn: getStaticEnvValue([BROWSER_SENTRY_ENV.dsn]),
+    environment: getSentryEnvironment('browser'),
     release: getSentryRelease('browser'),
-    sendDefaultPii: parseBoolean(getEnvValue(['NEXT_PUBLIC_SENTRY_SEND_DEFAULT_PII'])),
+    sendDefaultPii: parseBoolean(getStaticEnvValue([BROWSER_SENTRY_ENV.sendDefaultPii])),
     tracesSampleRate: parseSampleRate(
-      getEnvValue(['NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE']),
+      getStaticEnvValue([BROWSER_SENTRY_ENV.tracesSampleRate]),
       DEFAULT_TRACES_SAMPLE_RATE,
     ),
     replaysSessionSampleRate: parseSampleRate(
-      getEnvValue(['NEXT_PUBLIC_SENTRY_REPLAYS_SESSION_SAMPLE_RATE']),
+      getStaticEnvValue([BROWSER_SENTRY_ENV.replaysSessionSampleRate]),
       DEFAULT_REPLAYS_SESSION_SAMPLE_RATE,
     ),
     replaysOnErrorSampleRate: parseSampleRate(
-      getEnvValue(['NEXT_PUBLIC_SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE']),
+      getStaticEnvValue([BROWSER_SENTRY_ENV.replaysOnErrorSampleRate]),
       DEFAULT_REPLAYS_ON_ERROR_SAMPLE_RATE,
     ),
     beforeSend: (event, hint) => scrubSentryEvent(event, hint),
@@ -229,15 +285,11 @@ export function getServerSentryOptions(
 ): SentryInitOptions {
   return {
     dsn: getEnvValue(['SENTRY_DSN']),
-    environment: getSentryEnvironment(),
+    environment: getSentryEnvironment(runtime),
     release: getSentryRelease(runtime),
     sendDefaultPii: parseBoolean(getEnvValue(['SENTRY_SEND_DEFAULT_PII'])),
     tracesSampleRate: parseSampleRate(
-      getEnvValue([
-        'SENTRY_TRACES_SAMPLE_RATE',
-        'SENTRY_TRACES_RATE',
-        'NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE',
-      ]),
+      getEnvValue(['SENTRY_TRACES_SAMPLE_RATE', 'SENTRY_TRACES_RATE']),
       DEFAULT_TRACES_SAMPLE_RATE,
     ),
     beforeSend: (event, hint) => scrubSentryEvent(event, hint),
