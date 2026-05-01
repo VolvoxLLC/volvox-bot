@@ -130,4 +130,85 @@ describe('AmplitudeTransport', () => {
 
     expect(callback).toHaveBeenCalledOnce();
   });
+
+  it('strips sensitive keys from log metadata before tracking', () => {
+    const callback = vi.fn();
+
+    transport.log(
+      {
+        level: 'info',
+        message: 'Sensitive test',
+        authorization: 'Bearer secret',
+        cookie: 'session=abc',
+        token: 'tok',
+        password: 'hunter2',
+        secret: 'shh',
+        apiKey: 'key123',
+        safeField: 'keep-me',
+      },
+      callback,
+    );
+
+    const [, properties] = mockTrackAnalyticsEvent.mock.calls[0];
+    expect(properties.authorization).toBeUndefined();
+    expect(properties.cookie).toBeUndefined();
+    expect(properties.token).toBeUndefined();
+    expect(properties.password).toBeUndefined();
+    expect(properties.secret).toBeUndefined();
+    expect(properties.apiKey).toBeUndefined();
+    expect(properties.safeField).toBe('keep-me');
+  });
+
+  it('strips reserved keys (timestamp, originalLevel, splat) but includes level and message in properties', () => {
+    const callback = vi.fn();
+
+    transport.log(
+      {
+        level: 'info',
+        message: 'Reserve test',
+        timestamp: '2026-01-01T00:00:00.000Z',
+        originalLevel: 'info',
+        splat: ['noise'],
+        realMeta: 'keep',
+      },
+      callback,
+    );
+
+    const [, properties] = mockTrackAnalyticsEvent.mock.calls[0];
+    expect(properties.level).toBe('info');
+    expect(properties.message).toBe('Reserve test');
+    expect(properties.timestamp).toBeUndefined();
+    expect(properties.originalLevel).toBeUndefined();
+    expect(properties.splat).toBeUndefined();
+    expect(properties.realMeta).toBe('keep');
+  });
+
+  it('coerces non-string message to string', () => {
+    const callback = vi.fn();
+
+    transport.log({ level: 'info', message: 12345 }, callback);
+
+    const [, properties] = mockTrackAnalyticsEvent.mock.calls[0];
+    expect(properties.message).toBe('12345');
+  });
+
+  it('does not call trackAnalyticsEvent for debug level', () => {
+    const callback = vi.fn();
+
+    transport.log({ level: 'debug', message: 'Debug noise' }, callback);
+
+    expect(mockTrackAnalyticsEvent).not.toHaveBeenCalled();
+    expect(callback).toHaveBeenCalledOnce();
+  });
+
+  it('uses AMPLITUDE_LOG_EVENT as the event type', () => {
+    const callback = vi.fn();
+
+    transport.log({ level: 'info', message: 'event type check' }, callback);
+
+    expect(mockTrackAnalyticsEvent).toHaveBeenCalledWith(
+      'bot_log_recorded',
+      expect.any(Object),
+    );
+  });
 });
