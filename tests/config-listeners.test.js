@@ -26,12 +26,14 @@ describe('config-listeners', () => {
   let removeLoggingTransport;
   let onConfigChange;
   let loggerInfo;
+  let loggerError;
 
   beforeEach(async () => {
     vi.resetModules();
 
     const loggerMod = await import('../src/logger.js');
     loggerInfo = loggerMod.info;
+    loggerError = loggerMod.error;
 
     const configMod = await import('../src/modules/config.js');
     onConfigChange = configMod.onConfigChange;
@@ -62,11 +64,7 @@ describe('config-listeners', () => {
 
       const registeredKeys = onConfigChange.mock.calls.map(([path]) => path);
 
-      expect(registeredKeys).not.toContain('logging.database');
-      expect(registeredKeys).not.toContain('logging.database.enabled');
-      expect(registeredKeys).not.toContain('logging.database.batchSize');
-      expect(registeredKeys).not.toContain('logging.database.flushIntervalMs');
-      expect(registeredKeys).not.toContain('logging.database.minLevel');
+      expect(registeredKeys.filter((key) => key.startsWith('logging.database'))).toEqual([]);
     });
 
     it('registers the non-log listeners', () => {
@@ -102,6 +100,26 @@ describe('config-listeners', () => {
       await removeLoggingTransport();
 
       expect(loggerInfo).not.toHaveBeenCalled();
+      expect(loggerError).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('webhook listeners', () => {
+    let fireEvent;
+
+    beforeEach(async () => {
+      const webhookMod = await import('../src/modules/webhookNotifier.js');
+      fireEvent = webhookMod.fireEvent;
+    });
+
+    it('registers a catch-all listener that forwards guild-scoped config changes', async () => {
+      const listeners = registerAndCapture();
+
+      await listeners['*']('newVal', 'oldVal', 'welcome.channelId', 'guild-42');
+
+      expect(fireEvent).toHaveBeenCalledWith('config.changed', 'guild-42', {
+        path: 'welcome.channelId',
+      });
     });
   });
 
