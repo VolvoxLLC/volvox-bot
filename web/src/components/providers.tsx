@@ -14,6 +14,10 @@ import {
   trackDashboardEvent,
 } from '@/lib/amplitude';
 
+function isDashboardRoute(pathname: string | null): pathname is string {
+  return pathname === '/dashboard' || pathname?.startsWith('/dashboard/') === true;
+}
+
 /**
  * Render a global Toaster that follows the resolved application theme.
  *
@@ -44,8 +48,7 @@ function SentryContextBridge() {
   const pathname = usePathname();
   const guildId = useGuildSelection();
   const { status } = useSession();
-  const isAuthenticatedDashboardRoute =
-    status === 'authenticated' && pathname?.startsWith('/dashboard') === true;
+  const isAuthenticatedDashboardRoute = status === 'authenticated' && isDashboardRoute(pathname);
 
   useEffect(() => {
     Sentry.setContext('routing', { route: pathname || 'unknown' });
@@ -80,17 +83,20 @@ function AmplitudeContextBridge() {
   }, [userId]);
 
   useEffect(() => {
-    const route = pathname || 'unknown';
-
-    if (lastTrackedRouteRef.current === route) {
+    if (!isDashboardRoute(pathname)) {
+      lastTrackedRouteRef.current = null;
       return;
     }
 
-    lastTrackedRouteRef.current = route;
+    if (lastTrackedRouteRef.current === pathname) {
+      return;
+    }
+
+    lastTrackedRouteRef.current = pathname;
     trackDashboardEvent(DASHBOARD_PAGE_VIEW_EVENT, {
       authStatus: status,
       guildId: guildId || 'none',
-      route,
+      route: pathname,
     });
   }, [guildId, pathname, status]);
 

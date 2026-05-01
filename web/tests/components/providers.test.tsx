@@ -178,6 +178,28 @@ describe('Providers', () => {
     });
   });
 
+  it.each(['/', '/privacy', '/login', '/error', '/dashboard-login'])(
+    'does not track dashboard page views on non-dashboard route %s',
+    (route) => {
+      mockUseTheme.mockReturnValue({ resolvedTheme: 'dark' });
+      mockUsePathname.mockReturnValue(route);
+      mockUseGuildSelection.mockReturnValue('1234567890');
+      mockUseSession.mockReturnValue({
+        data: { user: { id: 'discord-user-123' } },
+        status: 'authenticated',
+      });
+
+      render(
+        <Providers>
+          <div>Public page</div>
+        </Providers>,
+      );
+
+      expect(mockInitDashboardAmplitude).toHaveBeenCalledWith('discord-user-123');
+      expect(mockTrackDashboardEvent).not.toHaveBeenCalled();
+    },
+  );
+
   it('dedupes dashboard page views when auth status or guild changes without navigation', () => {
     mockUseTheme.mockReturnValue({ resolvedTheme: 'dark' });
     mockUsePathname.mockReturnValue('/dashboard/settings');

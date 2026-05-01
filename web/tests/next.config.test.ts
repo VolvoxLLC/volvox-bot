@@ -7,6 +7,16 @@ type SecurityHeader = {
   value: string;
 };
 
+function getCspDirectiveTokens(cspValue: string, directiveName: string) {
+  const directive = cspValue
+    .split(";")
+    .map((value) => value.trim())
+    .find((value) => value.startsWith(`${directiveName} `));
+
+  expect(directive).toBeDefined();
+  return directive!.split(/\s+/);
+}
+
 describe("next.config security headers", () => {
   it("should export a headers() function", () => {
     expect(nextConfig.headers).toBeDefined();
@@ -89,18 +99,23 @@ describe("next.config security headers", () => {
     });
 
     it("should restrict connect-src to self", () => {
-      expect(cspValue).toContain("connect-src 'self'");
+      expect(getCspDirectiveTokens(cspValue, "connect-src")).toContain("'self'");
     });
 
-    it("should allow Sentry ingest endpoints for browser error capture", () => {
-      expect(cspValue).toContain("https://*.ingest.sentry.io");
-      expect(cspValue).toContain("https://*.ingest.us.sentry.io");
-      expect(cspValue).toContain("https://*.ingest.eu.sentry.io");
+    it("should allow Sentry ingest endpoints for browser error capture in connect-src", () => {
+      expect(getCspDirectiveTokens(cspValue, "connect-src")).toEqual(
+        expect.arrayContaining([
+          "https://*.ingest.sentry.io",
+          "https://*.ingest.us.sentry.io",
+          "https://*.ingest.eu.sentry.io",
+        ]),
+      );
     });
 
-    it("should allow Amplitude ingest endpoints for dashboard analytics", () => {
-      expect(cspValue).toContain("https://api2.amplitude.com");
-      expect(cspValue).toContain("https://api.eu.amplitude.com");
+    it("should allow Amplitude ingest endpoints for dashboard analytics in connect-src", () => {
+      expect(getCspDirectiveTokens(cspValue, "connect-src")).toEqual(
+        expect.arrayContaining(["https://api2.amplitude.com", "https://api.eu.amplitude.com"]),
+      );
     });
 
     it("should restrict font-src to self", () => {
