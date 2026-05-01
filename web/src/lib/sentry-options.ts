@@ -545,6 +545,43 @@ function scrubSentryRequestData(request: NonNullable<Event['request']>): void {
 }
 
 /**
+ * Scrubs primary Sentry message fields that are not covered by request/user/extra metadata.
+ *
+ * @param event - Sentry event payload to update in place.
+ */
+function scrubSentryMessageFields(event: Event): void {
+  if (typeof event.message === 'string') {
+    event.message = scrubBreadcrumbString(event.message);
+  }
+
+  if (typeof event.transaction === 'string') {
+    event.transaction = scrubBreadcrumbString(event.transaction);
+  }
+
+  const logEntry = (event as Event & { logentry?: unknown }).logentry;
+  if (logEntry && typeof logEntry === 'object') {
+    const mutableLogEntry = logEntry as { formatted?: unknown; message?: unknown };
+    if (typeof mutableLogEntry.formatted === 'string') {
+      mutableLogEntry.formatted = scrubBreadcrumbString(mutableLogEntry.formatted);
+    }
+    if (typeof mutableLogEntry.message === 'string') {
+      mutableLogEntry.message = scrubBreadcrumbString(mutableLogEntry.message);
+    }
+  }
+
+  const values = event.exception?.values;
+  if (!Array.isArray(values)) {
+    return;
+  }
+
+  for (const exception of values) {
+    if (exception && typeof exception.value === 'string') {
+      exception.value = scrubBreadcrumbString(exception.value);
+    }
+  }
+}
+
+/**
  * Removes secrets and direct identifiers from Sentry error or transaction events.
  *
  * @param event - Sentry error or transaction event.
@@ -563,6 +600,7 @@ export function scrubSentryEvent<TEvent extends Event>(
   }
 
   scrubSentryRequest(event.request);
+  scrubSentryMessageFields(event);
 
   if (event.extra) {
     event.extra = scrubUnknown(event.extra) as Record<string, unknown>;

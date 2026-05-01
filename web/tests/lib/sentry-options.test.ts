@@ -201,6 +201,48 @@ describe('sentry-options', () => {
     });
   });
 
+  it('should scrub primary event messages before sending events', async () => {
+    const { scrubSentryEvent } = await import('@/lib/sentry-options');
+    const event = {
+      type: undefined,
+      message:
+        'failed with Bearer top-level-token-12345 token=plain-secret at https://user:pass@api.example.com/callback?code=oauth-code#private and /settings?access_token=secret#private',
+    } as unknown as Event;
+
+    expect(scrubSentryEvent(event)?.message).toBe(
+      'failed with [REDACTED] token=[REDACTED] at https://api.example.com/callback and /settings',
+    );
+  });
+
+  it('should scrub primary exception values while preserving safe metadata', async () => {
+    const { scrubSentryEvent } = await import('@/lib/sentry-options');
+    const event = {
+      type: undefined,
+      exception: {
+        values: [
+          {
+            type: 'Error',
+            value:
+              'request failed with Bearer nested-token-12345 from https://user:pass@api.example.com/callback?token=secret#private',
+            mechanism: { type: 'generic', handled: false },
+            stacktrace: { frames: [{ filename: 'src/app.ts', lineno: 42 }] },
+          },
+        ],
+      },
+    } as unknown as Event;
+
+    expect(scrubSentryEvent(event)?.exception).toEqual({
+      values: [
+        {
+          type: 'Error',
+          value: 'request failed with [REDACTED] from https://api.example.com/callback',
+          mechanism: { type: 'generic', handled: false },
+          stacktrace: { frames: [{ filename: 'src/app.ts', lineno: 42 }] },
+        },
+      ],
+    });
+  });
+
   it('should preserve scrubbed primitive request bodies before sending events', async () => {
     const { scrubSentryEvent } = await import('@/lib/sentry-options');
 
