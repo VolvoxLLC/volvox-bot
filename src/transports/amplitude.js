@@ -14,9 +14,15 @@ const SENSITIVE_KEY_PATTERN =
   /(?:authorization|cookie|csrf|secret|password|token|session|stack|x[-_]?forwarded[-_]?for|ip(?:[-_]?address)?|x[-_]?api[-_]?key|api[-_]?key|bot[-_]?api[-_]?secret|access[-_]?token|refresh[-_]?token|email)/i;
 
 /**
- * @param {unknown} value
- * @param {WeakSet<object>} [seen]
- * @returns {unknown}
+ * Sanitize a log value into a safe, serializable structure suitable for analytics.
+ *
+ * Converts arrays recursively, returns primitives unchanged, formats Dates as ISO strings,
+ * reduces Errors to `{ message, name }`, removes object properties whose keys match
+ * the sensitive-key pattern, and replaces circular references with the string `"[Circular]"`.
+ *
+ * @param {unknown} value - The value to sanitize before forwarding to analytics.
+ * @param {WeakSet<object>} [seen] - WeakSet used internally to track visited objects and detect circular references.
+ * @returns {unknown} The sanitized value: a primitive or array, an ISO string for Dates, an `{ message, name }` object for Errors, an object with sensitive keys omitted, or the string `"[Circular]"` for circular references.
  */
 function sanitizeLogValue(value, seen = new WeakSet()) {
   if (Array.isArray(value)) {

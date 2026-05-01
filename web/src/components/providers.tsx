@@ -15,9 +15,9 @@ import {
 } from '@/lib/amplitude';
 
 /**
- * Render a global Toaster whose visual theme follows the resolved app theme.
+ * Render a global Toaster that follows the resolved application theme.
  *
- * @returns A React element mounting a Toaster at the bottom-right with its `theme` set to the resolved theme (`'light'` or `'dark'`, falling back to `'system'` if unresolved) and `richColors` enabled.
+ * @returns A React element mounting a Toaster at the bottom-right with its theme set to 'light' or 'dark' when available, otherwise 'system'; `richColors` enabled.
  */
 function ThemedToaster() {
   const { resolvedTheme } = useTheme();
@@ -31,9 +31,13 @@ function ThemedToaster() {
 }
 
 /**
- * Keeps Sentry context aligned with the current dashboard route and selected guild.
+ * Synchronizes Sentry context with the current dashboard route and selected guild.
  *
- * @returns Null because it only synchronizes telemetry context.
+ * Updates Sentry's `routing` context with the current pathname (or `unknown`) and
+ * `guild` context with the selected guild id (or `none`) whenever the route or
+ * guild selection changes.
+ *
+ * @returns `null` — the component does not render any UI.
  */
 function SentryContextBridge() {
   const pathname = usePathname();
@@ -48,9 +52,11 @@ function SentryContextBridge() {
 }
 
 /**
- * Keeps Amplitude initialized and records dashboard route changes.
+ * Synchronizes Amplitude: initializes it with the current authenticated user and records dashboard page-view events when the auth status, route, or selected guild change.
  *
- * @returns Null because it only synchronizes telemetry context.
+ * The emitted event includes `authStatus`, `guildId` (defaults to `'none'` when not set), and `route` (defaults to `'unknown'` when not set).
+ *
+ * @returns `null` (this component does not render UI)
  */
 function AmplitudeContextBridge() {
   const pathname = usePathname();
@@ -74,15 +80,10 @@ function AmplitudeContextBridge() {
 }
 
 /**
- * Wraps application UI with NextAuth session context, theme provider, and a global toast container.
+ * Composes application context providers (authentication and theme), mounts telemetry bridges, and renders global UI chrome.
  *
- * Session error handling (e.g. RefreshTokenError) is handled elsewhere (the Header component),
- * which signs out and redirects to /login.
- *
- * Theme defaults to system preference with CSS variable-based dark/light mode support.
- *
- * @returns A React element that renders providers around `children` and mounts a Toaster
- *          positioned at the bottom-right with resolved theme (light/dark) and rich colors enabled.
+ * @param children - The application UI to render inside the provider tree
+ * @returns A React element containing the provider tree that wraps `children`, mounts Sentry and Amplitude context bridges, and renders the themed global Toaster
  */
 export function Providers({ children }: { children: ReactNode }) {
   return (

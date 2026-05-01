@@ -54,9 +54,14 @@ function parseBoolean(value: string | undefined): boolean {
 }
 
 /**
- * Builds a Sentry-safe environment name from deployment environment variables.
+ * Derives a normalized Sentry environment name from prioritized deployment environment variables.
  *
- * @returns A normalized environment string accepted by Sentry.
+ * Chooses the first non-empty value from NEXT_PUBLIC_SENTRY_ENVIRONMENT, SENTRY_ENVIRONMENT,
+ * VERCEL_ENV, RAILWAY_ENVIRONMENT_NAME, and NODE_ENV; normalizes it for Sentry by replacing
+ * whitespace and slashes with `-`, removing characters outside `A-Za-z0-9_.-`, and truncating
+ * to 64 characters. Falls back to `development` if no valid value is found.
+ *
+ * @returns The normalized environment string accepted by Sentry (or `development`).
  */
 function getSentryEnvironment(): string {
   const environment =
@@ -73,10 +78,13 @@ function getSentryEnvironment(): string {
 }
 
 /**
- * Resolves the release identifier for the current Sentry runtime.
+ * Determines the Sentry release identifier using runtime-specific environment-variable precedence.
  *
- * @param runtime - Runtime being configured.
- * @returns The release identifier when one is configured.
+ * For `runtime === 'browser'`, checks in order: `NEXT_PUBLIC_SENTRY_RELEASE`, `NEXT_PUBLIC_WEB_APP_VERSION`, `SENTRY_RELEASE`.
+ * For non-browser runtimes, checks in order: `SENTRY_RELEASE`, `NEXT_PUBLIC_SENTRY_RELEASE`, `VERCEL_GIT_COMMIT_SHA`.
+ *
+ * @param runtime - Runtime being configured (`'browser' | 'edge' | 'nodejs'`)
+ * @returns The first configured release string found, or `undefined` if none are set
  */
 function getSentryRelease(runtime: SentryRuntime): string | undefined {
   const releaseKeys =
@@ -88,10 +96,15 @@ function getSentryRelease(runtime: SentryRuntime): string | undefined {
 }
 
 /**
- * Recursively removes sensitive keys from arbitrary Sentry metadata.
+ * Remove sensitive object properties from a value recursively.
  *
- * @param value - Metadata value to scrub.
- * @returns A copy with sensitive object keys removed.
+ * Processes arrays element-wise, returns non-object values unchanged, and for objects
+ * returns a shallow copy with any property whose key matches `SENSITIVE_KEY_PATTERN`
+ * removed; nested objects/arrays are scrubbed recursively.
+ *
+ * @param value - The value to scrub of sensitive object keys.
+ * @returns The scrubbed value: objects copied with sensitive keys removed, arrays with
+ * scrubbed elements, or the original non-object value.
  */
 function scrubUnknown(value: unknown): unknown {
   if (Array.isArray(value)) {
