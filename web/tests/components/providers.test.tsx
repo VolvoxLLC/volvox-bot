@@ -141,6 +141,28 @@ describe('Providers', () => {
     expect(JSON.stringify(mockSetContext.mock.calls)).not.toContain('ticket-123456789012345678');
   });
 
+  it('generalizes dynamic community routes for Sentry telemetry', () => {
+    mockUseTheme.mockReturnValue({ resolvedTheme: 'dark' });
+    mockUsePathname.mockReturnValue('/community/123456789012345678/987654321098765432');
+    mockUseGuildSelection.mockReturnValue('1234567890');
+    mockUseSession.mockReturnValue({
+      data: { user: { id: 'discord-user-123' } },
+      status: 'authenticated',
+    });
+
+    render(
+      <Providers>
+        <div>Community</div>
+      </Providers>,
+    );
+
+    expect(mockSetContext).toHaveBeenCalledWith('routing', {
+      route: '/community/[guildId]/[userId]',
+    });
+    expect(JSON.stringify(mockSetContext.mock.calls)).not.toContain('123456789012345678');
+    expect(JSON.stringify(mockSetContext.mock.calls)).not.toContain('987654321098765432');
+  });
+
   it('clears Sentry guild context outside dashboard routes', () => {
     mockUseTheme.mockReturnValue({ resolvedTheme: 'dark' });
     mockUsePathname.mockReturnValue('/');

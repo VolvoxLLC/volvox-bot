@@ -25,13 +25,28 @@ const DASHBOARD_ROUTE_PARAMETERS: Record<string, string> = {
   tickets: '[ticketId]',
 };
 
+const COMMUNITY_ROUTE_PARAMETERS = ['[guildId]', '[userId]'] as const;
+
+function getCommunityTelemetryRoute(pathname: string): string {
+  const segments = pathname.split('/').filter(Boolean);
+
+  if (segments[0] !== 'community' || segments.length < 2) {
+    return pathname;
+  }
+
+  return `/${[
+    'community',
+    ...segments.slice(1).map((segment, index) => COMMUNITY_ROUTE_PARAMETERS[index] ?? segment),
+  ].join('/')}`;
+}
+
 function getDashboardTelemetryRoute(pathname: string | null): string {
   if (!pathname) {
     return 'unknown';
   }
 
   if (!isDashboardRoute(pathname)) {
-    return pathname;
+    return getCommunityTelemetryRoute(pathname);
   }
 
   const segments = pathname.split('/').filter(Boolean);
