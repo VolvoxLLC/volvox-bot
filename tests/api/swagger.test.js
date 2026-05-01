@@ -68,6 +68,23 @@ describe('OpenAPI / Swagger', () => {
       expect(paths.some((p) => p.includes('/tickets'))).toBe(true);
       expect(paths.some((p) => p.startsWith('/webhooks/'))).toBe(true);
     });
+
+    it('should document unavailable health error metrics', () => {
+      const errorsSchema =
+        swaggerSpec.paths['/health'].get.responses['200'].content['application/json'].schema
+          .properties.errors;
+
+      expect(errorsSchema.properties.lastHour.nullable).toBe(true);
+      expect(errorsSchema.properties.lastHour.enum).toEqual([null]);
+      expect(errorsSchema.properties.lastDay.nullable).toBe(true);
+      expect(errorsSchema.properties.lastDay.enum).toEqual([null]);
+      expect(errorsSchema.properties.error).toEqual(
+        expect.objectContaining({
+          type: 'string',
+          example: 'database log tracking disabled',
+        }),
+      );
+    });
   });
 
   describe('/api/docs.json endpoint', () => {

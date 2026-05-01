@@ -86,14 +86,22 @@ try {
  *                       type: string
  *                 errors:
  *                   type: object
- *                   description: Log-tracking status (auth only)
+ *                   description: Log-tracking status (auth only). Database log tracking is disabled, so counts are unavailable.
  *                   properties:
  *                     lastHour:
  *                       type: integer
  *                       nullable: true
+ *                       enum: [null]
+ *                       description: Always null because database log tracking is disabled.
  *                     lastDay:
  *                       type: integer
  *                       nullable: true
+ *                       enum: [null]
+ *                       description: Always null because database log tracking is disabled.
+ *                     error:
+ *                       type: string
+ *                       description: Reason error-count metrics are unavailable.
+ *                       example: database log tracking disabled
  *                 restarts:
  *                   type: array
  *                   description: Recent restart history (auth only)
