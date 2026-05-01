@@ -29,6 +29,6 @@ Operational checklist for maintainers running Volvox Bot in production.
 
 ## Recovery patterns
 
-- **Auth/session failures**: rotate session secret and verify callback URLs.
+- **Auth/session failures**: rotate `SESSION_SECRET`, restart the bot and web dashboard so the new secret is loaded, and verify callback URLs.
 - **Config not applying**: verify allowlist key + guild override retrieval path.
 - **Dashboard UI regressions**: verify page-title wiring and provider usage patterns.
