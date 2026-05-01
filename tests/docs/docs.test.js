@@ -351,8 +351,17 @@ describe('docs/wiki-pages/Home.md', () => {
   });
 
   it('Manual-Test-Plan link appears in the navigation list section', () => {
-    const listLines = getLines(
-      content,
+    const lines = content.split('\n');
+    const navigationStart = lines.indexOf('## Start here');
+    const navigationEnd = lines.findIndex(
+      (line, index) => index > navigationStart && line.startsWith('## '),
+    );
+
+    expect(navigationStart).toBeGreaterThanOrEqual(0);
+    expect(navigationEnd).toBeGreaterThan(navigationStart);
+
+    const navigationLines = lines.slice(navigationStart + 1, navigationEnd);
+    const listLines = navigationLines.filter(
       (line) => line.trimStart().startsWith('-') && line.includes('Manual-Test-Plan'),
     );
     expect(listLines.length).toBeGreaterThanOrEqual(1);
