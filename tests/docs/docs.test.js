@@ -111,6 +111,9 @@ describe('docs/docs.json', () => {
 
     const helpGroup = supportTab.groups?.find((group) => group.group === 'Help');
     expect(helpGroup).toBeDefined();
+    if (!helpGroup) {
+      return;
+    }
     expect(helpGroup.pages).toContain('manual-test-plan');
   });
 
@@ -118,6 +121,11 @@ describe('docs/docs.json', () => {
     const helpGroup = config.navigation.tabs
       .flatMap((tab) => tab.groups ?? [])
       .find((group) => group.group === 'Help');
+
+    expect(helpGroup).toBeDefined();
+    if (!helpGroup) {
+      return;
+    }
 
     const helpIdx = helpGroup.pages.indexOf('help');
     const planIdx = helpGroup.pages.indexOf('manual-test-plan');
@@ -129,6 +137,11 @@ describe('docs/docs.json', () => {
     const helpGroup = config.navigation.tabs
       .flatMap((tab) => tab.groups ?? [])
       .find((group) => group.group === 'Help');
+
+    expect(helpGroup).toBeDefined();
+    if (!helpGroup) {
+      return;
+    }
 
     expect(helpGroup.pages).toEqual(['faq', 'security', 'help', 'manual-test-plan']);
   });
@@ -154,7 +167,7 @@ describe('docs/manual-test-plan.mdx', () => {
   let content;
 
   beforeAll(() => {
-    content = readText(mdxPath);
+    content = existsSync(mdxPath) ? readText(mdxPath) : '';
   });
 
   it('file exists', () => {
@@ -174,9 +187,11 @@ describe('docs/manual-test-plan.mdx', () => {
       line.startsWith('description: '),
     );
     expect(descriptionLine).toBeDefined();
-    expect(descriptionLine.startsWith("description: '")).toBe(true);
-    expect(descriptionLine.endsWith("'")).toBe(true);
-    expect(descriptionLine.slice("description: '".length, -1).trim().length).toBeGreaterThan(0);
+    const singleQuote = String.fromCharCode(39);
+    const descriptionPrefix = `description: ${singleQuote}`;
+    expect(descriptionLine.startsWith(descriptionPrefix)).toBe(true);
+    expect(descriptionLine.endsWith(singleQuote)).toBe(true);
+    expect(descriptionLine.slice(descriptionPrefix.length, -1).trim().length).toBeGreaterThan(0);
   });
 
   it('has a top-level # Manual Test Plan heading', () => {
