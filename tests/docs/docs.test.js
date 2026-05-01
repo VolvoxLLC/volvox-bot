@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const docsRoot = join(__dirname, '..', '..', 'docs');
@@ -36,6 +36,36 @@ function getAllPages(tabs) {
   return pages;
 }
 
+function expectContainsAll(content, expectedSnippets) {
+  for (const snippet of expectedSnippets) {
+    expect(content).toContain(snippet);
+  }
+}
+
+function getFrontmatter(content) {
+  const openingFence = content.indexOf('---');
+  expect(openingFence).toBe(0);
+
+  const closingFence = content.indexOf('\n---', openingFence + 3);
+  expect(closingFence).toBeGreaterThan(3);
+
+  return content.slice(openingFence + 4, closingFence).split('\n');
+}
+
+function getLines(content, predicate) {
+  return content.split('\n').filter(predicate);
+}
+
+function getFirstBraceExpansionNames(line) {
+  const openingBrace = line.indexOf('{');
+  const closingBrace = line.indexOf('}', openingBrace + 1);
+
+  expect(openingBrace).toBeGreaterThanOrEqual(0);
+  expect(closingBrace).toBeGreaterThan(openingBrace);
+
+  return line.slice(openingBrace + 1, closingBrace).split(',');
+}
+
 // ---------------------------------------------------------------------------
 // docs/docs.json
 // ---------------------------------------------------------------------------
@@ -44,24 +74,25 @@ describe('docs/docs.json', () => {
   const docsJsonPath = join(docsRoot, 'docs.json');
   let config;
 
+  beforeAll(() => {
+    config = readJson(docsJsonPath);
+  });
+
   it('file exists', () => {
     expect(existsSync(docsJsonPath)).toBe(true);
   });
 
   it('is valid JSON', () => {
-    config = readJson(docsJsonPath);
     expect(typeof config).toBe('object');
     expect(config).not.toBeNull();
   });
 
   it('has $schema field pointing to mintlify', () => {
-    config = readJson(docsJsonPath);
     expect(config).toHaveProperty('$schema');
     expect(config.$schema).toContain('mintlify');
   });
 
   it('has navigation.tabs array', () => {
-    config = readJson(docsJsonPath);
     expect(config).toHaveProperty('navigation');
     expect(config.navigation).toHaveProperty('tabs');
     expect(Array.isArray(config.navigation.tabs)).toBe(true);
@@ -69,24 +100,20 @@ describe('docs/docs.json', () => {
   });
 
   it('includes "manual-test-plan" in the Support tab Help group pages', () => {
-    config = readJson(docsJsonPath);
-    const tabs = config.navigation.tabs;
-    const supportTab = tabs.find(
-      (t) => t.tab === 'Support' || getAllPages([t]).includes('manual-test-plan'),
+    const supportTab = config.navigation.tabs.find(
+      (tab) => tab.tab === 'Support' || getAllPages([tab]).includes('manual-test-plan'),
     );
     expect(supportTab).toBeDefined();
 
-    const helpGroup = supportTab.groups?.find((g) => g.group === 'Help');
+    const helpGroup = supportTab.groups?.find((group) => group.group === 'Help');
     expect(helpGroup).toBeDefined();
     expect(helpGroup.pages).toContain('manual-test-plan');
   });
 
   it('"manual-test-plan" is listed after "help" in the Help group pages', () => {
-    config = readJson(docsJsonPath);
-    const tabs = config.navigation.tabs;
-    const helpGroup = tabs
-      .flatMap((t) => t.groups ?? [])
-      .find((g) => g.group === 'Help');
+    const helpGroup = config.navigation.tabs
+      .flatMap((tab) => tab.groups ?? [])
+      .find((group) => group.group === 'Help');
 
     const helpIdx = helpGroup.pages.indexOf('help');
     const planIdx = helpGroup.pages.indexOf('manual-test-plan');
@@ -95,28 +122,22 @@ describe('docs/docs.json', () => {
   });
 
   it('the Help group contains exactly the expected pages', () => {
-    config = readJson(docsJsonPath);
-    const tabs = config.navigation.tabs;
-    const helpGroup = tabs
-      .flatMap((t) => t.groups ?? [])
-      .find((g) => g.group === 'Help');
+    const helpGroup = config.navigation.tabs
+      .flatMap((tab) => tab.groups ?? [])
+      .find((group) => group.group === 'Help');
 
     expect(helpGroup.pages).toEqual(['faq', 'security', 'help', 'manual-test-plan']);
   });
 
   it('does not duplicate "manual-test-plan" across all pages', () => {
-    config = readJson(docsJsonPath);
     const allPages = getAllPages(config.navigation.tabs);
-    const occurrences = allPages.filter((p) => p === 'manual-test-plan').length;
+    const occurrences = allPages.filter((page) => page === 'manual-test-plan').length;
     expect(occurrences).toBe(1);
   });
 
   it('retains existing core page entries', () => {
-    config = readJson(docsJsonPath);
     const allPages = getAllPages(config.navigation.tabs);
-    for (const page of ['introduction', 'faq', 'security', 'help', 'changelog']) {
-      expect(allPages).toContain(page);
-    }
+    expectContainsAll(allPages, ['introduction', 'faq', 'security', 'help', 'changelog']);
   });
 });
 
@@ -128,89 +149,68 @@ describe('docs/manual-test-plan.mdx', () => {
   const mdxPath = join(docsRoot, 'manual-test-plan.mdx');
   let content;
 
+  beforeAll(() => {
+    content = readText(mdxPath);
+  });
+
   it('file exists', () => {
     expect(existsSync(mdxPath)).toBe(true);
-    content = readText(mdxPath);
   });
 
   it('has a YAML frontmatter block', () => {
-    content = readText(mdxPath);
-    expect(content.startsWith('---')).toBe(true);
-    const closingFence = content.indexOf('---', 3);
-    expect(closingFence).toBeGreaterThan(3);
+    expect(getFrontmatter(content).length).toBeGreaterThan(0);
   });
 
-  it('frontmatter contains title "Manual Test Plan"', () => {
-    content = readText(mdxPath);
-    expect(content).toContain('title: "Manual Test Plan"');
+  it('frontmatter contains unquoted title "Manual Test Plan"', () => {
+    expect(getFrontmatter(content)).toContain('title: Manual Test Plan');
   });
 
-  it('frontmatter contains a non-empty description', () => {
-    content = readText(mdxPath);
-    const match = content.match(/description:\s*"(.+?)"/);
-    expect(match).not.toBeNull();
-    expect(match[1].trim().length).toBeGreaterThan(0);
+  it('frontmatter contains a non-empty single-quoted description', () => {
+    const descriptionLine = getFrontmatter(content).find((line) =>
+      line.startsWith('description: '),
+    );
+    expect(descriptionLine).toBeDefined();
+    expect(descriptionLine.startsWith("description: '")).toBe(true);
+    expect(descriptionLine.endsWith("'")).toBe(true);
+    expect(descriptionLine.slice("description: '".length, -1).trim().length).toBeGreaterThan(0);
   });
 
   it('has a top-level # Manual Test Plan heading', () => {
-    content = readText(mdxPath);
-    expect(content).toMatch(/^# Manual Test Plan$/m);
+    expect(content.split('\n')).toContain('# Manual Test Plan');
   });
 
-  it('contains link to the wiki source on GitHub', () => {
-    content = readText(mdxPath);
-    expect(content).toContain(
-      'https://github.com/VolvoxLLC/volvox-bot/blob/main/docs/wiki-pages/Manual-Test-Plan.md',
-    );
+  it('contains link to the rendered GitHub wiki page', () => {
+    expect(content).toContain('https://github.com/VolvoxLLC/volvox-bot/wiki/Manual-Test-Plan');
   });
 
   it('has a "What it covers" section', () => {
-    content = readText(mdxPath);
     expect(content).toContain('## What it covers');
   });
 
-  it('"What it covers" lists environment matrix and persona setup', () => {
-    content = readText(mdxPath);
-    expect(content).toContain('Environment matrix and persona setup');
-  });
+  const coverageBullets = [
+    'Environment matrix and persona setup',
+    'Preconditions and release-blocking criteria',
+    'End-to-end suites',
+    'Negative/abuse testing',
+    'Accessibility and performance spot checks',
+    'Evidence collection and sign-off ownership',
+  ];
 
-  it('"What it covers" lists preconditions and release-blocking criteria', () => {
-    content = readText(mdxPath);
-    expect(content).toContain('Preconditions and release-blocking criteria');
-  });
-
-  it('"What it covers" lists end-to-end suites', () => {
-    content = readText(mdxPath);
-    expect(content).toContain('End-to-end suites');
-  });
-
-  it('"What it covers" lists negative/abuse testing', () => {
-    content = readText(mdxPath);
-    expect(content).toContain('Negative/abuse testing');
-  });
-
-  it('"What it covers" lists accessibility and performance spot checks', () => {
-    content = readText(mdxPath);
-    expect(content).toContain('Accessibility and performance spot checks');
-  });
-
-  it('"What it covers" lists evidence collection and sign-off ownership', () => {
-    content = readText(mdxPath);
-    expect(content).toContain('Evidence collection and sign-off ownership');
-  });
+  for (const bullet of coverageBullets) {
+    it(`"What it covers" lists ${bullet}`, () => {
+      expect(content).toContain(bullet);
+    });
+  }
 
   it('has a "Publish to GitHub Wiki" section', () => {
-    content = readText(mdxPath);
     expect(content).toContain('## Publish to GitHub Wiki');
   });
 
   it('instructs to include Manual-Test-Plan.md when publishing', () => {
-    content = readText(mdxPath);
     expect(content).toContain('Manual-Test-Plan.md');
   });
 
   it('file is non-empty and has meaningful length', () => {
-    content = readText(mdxPath);
     expect(content.length).toBeGreaterThan(200);
   });
 });
@@ -223,45 +223,42 @@ describe('docs/wiki-pages/Home.md', () => {
   const homePath = join(wikiRoot, 'Home.md');
   let content;
 
-  it('file exists', () => {
-    expect(existsSync(homePath)).toBe(true);
+  beforeAll(() => {
     content = readText(homePath);
   });
 
+  it('file exists', () => {
+    expect(existsSync(homePath)).toBe(true);
+  });
+
   it('contains a link to Manual-Test-Plan', () => {
-    content = readText(homePath);
     expect(content).toContain('[Manual Test Plan](Manual-Test-Plan)');
   });
 
   it('includes Manual-Test-Plan in the recommended path steps', () => {
-    content = readText(homePath);
-    expect(content).toContain('Manual Test Plan');
-    // The recommended-path step should mention release candidates
-    expect(content).toContain('release candidate');
+    expectContainsAll(content, ['Manual Test Plan', 'release candidate']);
   });
 
   it('recommended path step for Manual-Test-Plan is numbered 5', () => {
-    content = readText(homePath);
-    const lines = content.split('\n');
-    const step5 = lines.find(
-      (l) => l.startsWith('5.') && l.includes('Manual Test Plan'),
-    );
+    const step5 = content
+      .split('\n')
+      .find((line) => line.startsWith('5.') && line.includes('Manual Test Plan'));
     expect(step5).toBeDefined();
   });
 
   it('retains existing links (Configuration Reference, Operations Runbook, Troubleshooting)', () => {
-    content = readText(homePath);
-    expect(content).toContain('[Configuration Reference](Configuration-Reference)');
-    expect(content).toContain('[Operations Runbook](Operations-Runbook)');
-    expect(content).toContain('[Troubleshooting](Troubleshooting)');
+    expectContainsAll(content, [
+      '[Configuration Reference](Configuration-Reference)',
+      '[Operations Runbook](Operations-Runbook)',
+      '[Troubleshooting](Troubleshooting)',
+    ]);
   });
 
   it('Manual-Test-Plan link appears in the navigation list section', () => {
-    content = readText(homePath);
-    // The link should appear in a markdown list item
-    const listLines = content
-      .split('\n')
-      .filter((l) => l.trimStart().startsWith('-') && l.includes('Manual-Test-Plan'));
+    const listLines = getLines(
+      content,
+      (line) => line.trimStart().startsWith('-') && line.includes('Manual-Test-Plan'),
+    );
     expect(listLines.length).toBeGreaterThanOrEqual(1);
   });
 });
@@ -274,22 +271,22 @@ describe('docs/wiki-pages/Manual-Test-Plan.md', () => {
   const planPath = join(wikiRoot, 'Manual-Test-Plan.md');
   let content;
 
+  beforeAll(() => {
+    content = readText(planPath);
+  });
+
   it('file exists', () => {
     expect(existsSync(planPath)).toBe(true);
-    content = readText(planPath);
   });
 
   it('has a top-level heading "Volvox.Bot Manual Test Plan"', () => {
-    content = readText(planPath);
-    expect(content).toMatch(/^# Volvox\.Bot Manual Test Plan$/m);
+    expect(content.split('\n')).toContain('# Volvox.Bot Manual Test Plan');
   });
 
   it('contains a "Last updated" date field', () => {
-    content = readText(planPath);
-    expect(content).toMatch(/Last updated:/);
+    expect(content).toContain('Last updated:');
   });
 
-  // Verify all 12 numbered sections are present
   const requiredSections = [
     '## 1) Purpose and Scope',
     '## 2) Test Environment Matrix',
@@ -307,12 +304,10 @@ describe('docs/wiki-pages/Manual-Test-Plan.md', () => {
 
   for (const section of requiredSections) {
     it(`contains section: ${section}`, () => {
-      content = readText(planPath);
       expect(content).toContain(section);
     });
   }
 
-  // Verify all test suites A–O are present
   const suitesExpected = [
     'Suite A:',
     'Suite B:',
@@ -333,94 +328,77 @@ describe('docs/wiki-pages/Manual-Test-Plan.md', () => {
 
   for (const suite of suitesExpected) {
     it(`contains ${suite}`, () => {
-      content = readText(planPath);
       expect(content).toContain(suite);
     });
   }
 
-  it('section 2 describes at least 3 environments (local, staging, production)', () => {
-    content = readText(planPath);
-    expect(content).toContain('Local development');
-    expect(content).toContain('Staging');
-    expect(content).toContain('Production smoke check');
-  });
+  const sectionExpectations = [
+    {
+      name: 'section 2 describes at least 3 environments (local, staging, production)',
+      snippets: ['Local development', 'Staging', 'Production smoke check'],
+    },
+    {
+      name: 'section 2 defines at least 3 Discord test guilds',
+      snippets: ['Guild A', 'Guild B', 'Guild C'],
+    },
+    {
+      name: 'section 2 defines at least 4 user personas',
+      snippets: [
+        'Server owner/admin',
+        'Moderator',
+        'Normal member',
+        'User missing required permissions',
+      ],
+    },
+    {
+      name: 'section 4 specifies release-blocking criteria for uncaught errors',
+      snippets: ['uncaught errors'],
+    },
+    {
+      name: 'section 4 specifies release-blocking criteria for permission checks',
+      snippets: ['Permission checks'],
+    },
+    {
+      name: 'Suite D lists core moderation commands',
+      snippets: ['warn', 'kick', 'ban', 'purge'],
+    },
+    {
+      name: 'Suite H covers AI/conversation feature gating',
+      snippets: ['AI feature flag'],
+    },
+    {
+      name: 'section 6 lists negative/abuse input categories',
+      snippets: ['Oversized inputs', 'Invalid IDs/mentions', 'Markdown/formatting injection'],
+    },
+    {
+      name: 'section 7 accessibility checklist includes keyboard navigation',
+      snippets: ['Keyboard-only navigation'],
+    },
+    {
+      name: 'section 9 regression checklist includes a smoke check',
+      snippets: ['Smoke:'],
+    },
+    {
+      name: 'section 10 evidence template includes severity and release impact fields',
+      snippets: ['Severity and release impact'],
+    },
+    {
+      name: 'section 11 defines per-PR, pre-release RC, post-release, and monthly cadence',
+      snippets: ['Per PR', 'Pre-release RC', 'Post-release', 'Monthly hardening pass'],
+    },
+    {
+      name: 'section 12 names sign-off roles including QA/Tester and Operations owner',
+      snippets: ['QA/Tester', 'Operations owner'],
+    },
+  ];
 
-  it('section 2 defines at least 3 Discord test guilds', () => {
-    content = readText(planPath);
-    expect(content).toContain('Guild A');
-    expect(content).toContain('Guild B');
-    expect(content).toContain('Guild C');
-  });
-
-  it('section 2 defines at least 4 user personas', () => {
-    content = readText(planPath);
-    expect(content).toContain('Server owner/admin');
-    expect(content).toContain('Moderator');
-    expect(content).toContain('Normal member');
-    expect(content).toContain('User missing required permissions');
-  });
-
-  it('section 4 specifies release-blocking criteria for uncaught errors', () => {
-    content = readText(planPath);
-    expect(content).toContain('uncaught errors');
-  });
-
-  it('section 4 specifies release-blocking criteria for permission checks', () => {
-    content = readText(planPath);
-    expect(content).toContain('Permission checks');
-  });
-
-  it('Suite D lists core moderation commands', () => {
-    content = readText(planPath);
-    expect(content).toContain('warn');
-    expect(content).toContain('kick');
-    expect(content).toContain('ban');
-    expect(content).toContain('purge');
-  });
-
-  it('Suite H covers AI/conversation feature gating', () => {
-    content = readText(planPath);
-    expect(content).toContain('AI feature flag');
-  });
-
-  it('section 6 lists negative/abuse input categories', () => {
-    content = readText(planPath);
-    expect(content).toContain('Oversized inputs');
-    expect(content).toContain('Invalid IDs/mentions');
-    expect(content).toContain('Markdown/formatting injection');
-  });
-
-  it('section 7 accessibility checklist includes keyboard navigation', () => {
-    content = readText(planPath);
-    expect(content).toContain('Keyboard-only navigation');
-  });
-
-  it('section 9 regression checklist includes a smoke check', () => {
-    content = readText(planPath);
-    expect(content).toContain('Smoke:');
-  });
-
-  it('section 10 evidence template includes severity and release impact fields', () => {
-    content = readText(planPath);
-    expect(content).toContain('Severity and release impact');
-  });
-
-  it('section 11 defines per-PR, pre-release RC, post-release, and monthly cadence', () => {
-    content = readText(planPath);
-    expect(content).toContain('Per PR');
-    expect(content).toContain('Pre-release RC');
-    expect(content).toContain('Post-release');
-    expect(content).toContain('Monthly hardening pass');
-  });
-
-  it('section 12 names sign-off roles including QA/Tester and Operations owner', () => {
-    content = readText(planPath);
-    expect(content).toContain('QA/Tester');
-    expect(content).toContain('Operations owner');
-  });
+  for (const expectation of sectionExpectations) {
+    it(expectation.name, () => {
+      expectContainsAll(content, expectation.snippets);
+    });
+  }
 
   it('is a substantial document (>5000 characters)', () => {
-    content = readText(planPath);
     expect(content.length).toBeGreaterThan(5000);
   });
 });
@@ -433,81 +411,81 @@ describe('docs/wiki-pages/README.md', () => {
   const readmePath = join(wikiRoot, 'README.md');
   let content;
 
-  it('file exists', () => {
-    expect(existsSync(readmePath)).toBe(true);
+  beforeAll(() => {
     content = readText(readmePath);
   });
 
+  it('file exists', () => {
+    expect(existsSync(readmePath)).toBe(true);
+  });
+
   it('lists Manual-Test-Plan.md in the "Included pages" section', () => {
-    content = readText(readmePath);
     expect(content).toContain('`Manual-Test-Plan.md`');
   });
 
   it('generic copy command includes Manual-Test-Plan in the brace expansion', () => {
-    content = readText(readmePath);
-    // Should include Manual-Test-Plan in the bash brace expansion
-    expect(content).toMatch(/\{[^}]*Manual-Test-Plan[^}]*\}\.md/);
+    const genericLine = content
+      .split('\n')
+      .find(
+        (line) =>
+          line.trimStart().startsWith('cp') &&
+          line.includes('<repo>.wiki') &&
+          line.includes('Manual-Test-Plan'),
+      );
+    expect(genericLine).toBeDefined();
+    expect(getFirstBraceExpansionNames(genericLine)).toContain('Manual-Test-Plan');
   });
 
   it('project-specific copy command for VolvoxLLC includes Manual-Test-Plan', () => {
-    content = readText(readmePath);
-    const volvoxLines = content
-      .split('\n')
-      .filter((l) => l.includes('volvox-bot.wiki') && l.includes('Manual-Test-Plan'));
+    const volvoxLines = getLines(
+      content,
+      (line) => line.includes('volvox-bot.wiki') && line.includes('Manual-Test-Plan'),
+    );
     expect(volvoxLines.length).toBeGreaterThanOrEqual(1);
   });
 
   it('both copy commands include all original pages alongside Manual-Test-Plan', () => {
-    content = readText(readmePath);
-    const copyLines = content
-      .split('\n')
-      .filter((l) => l.trimStart().startsWith('cp') && l.includes('Manual-Test-Plan'));
+    const copyLines = getLines(
+      content,
+      (line) => line.trimStart().startsWith('cp') && line.includes('Manual-Test-Plan'),
+    );
 
     for (const line of copyLines) {
-      expect(line).toContain('Home');
-      expect(line).toContain('Quick-Start');
-      expect(line).toContain('Configuration-Reference');
-      expect(line).toContain('Operations-Runbook');
-      expect(line).toContain('Troubleshooting');
-      expect(line).toContain('Manual-Test-Plan');
+      expectContainsAll(line, [
+        'Home',
+        'Quick-Start',
+        'Configuration-Reference',
+        'Operations-Runbook',
+        'Troubleshooting',
+        'Manual-Test-Plan',
+      ]);
     }
   });
 
   it('states that README.md itself is excluded from the published wiki', () => {
-    content = readText(readmePath);
-    expect(content).toContain('README.md');
-    expect(content).toContain('excluded from the published wiki');
+    expectContainsAll(content, ['README.md', 'excluded from the published wiki']);
   });
 
   it('retains all original pages in the included pages list', () => {
-    content = readText(readmePath);
-    for (const page of [
+    expectContainsAll(content, [
       '`Home.md`',
       '`Quick-Start.md`',
       '`Configuration-Reference.md`',
       '`Operations-Runbook.md`',
       '`Troubleshooting.md`',
-    ]) {
-      expect(content).toContain(page);
-    }
+    ]);
   });
 
-  // Regression: ensure the page count in the copy commands didn't regress
   it('generic copy command brace expansion contains exactly 6 page names', () => {
-    content = readText(readmePath);
     const genericLine = content
       .split('\n')
       .find(
-        (l) =>
-          l.trimStart().startsWith('cp') &&
-          l.includes('<repo>.wiki') &&
-          l.includes('Manual-Test-Plan'),
+        (line) =>
+          line.trimStart().startsWith('cp') &&
+          line.includes('<repo>.wiki') &&
+          line.includes('Manual-Test-Plan'),
       );
     expect(genericLine).toBeDefined();
-    // Extract brace content
-    const braceMatch = genericLine.match(/\{([^}]+)\}/);
-    expect(braceMatch).not.toBeNull();
-    const names = braceMatch[1].split(',');
-    expect(names).toHaveLength(6);
+    expect(getFirstBraceExpansionNames(genericLine)).toHaveLength(6);
   });
 });
