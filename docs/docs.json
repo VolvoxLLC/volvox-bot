@@ -51,7 +51,8 @@
             "pages": [
               "faq",
               "security",
-              "help"
+              "help",
+              "manual-test-plan"
             ]
           }
         ]

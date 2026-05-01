@@ -9,6 +9,7 @@ These files are the source content for the GitHub wiki.
 - `Configuration-Reference.md`
 - `Operations-Runbook.md`
 - `Troubleshooting.md`
+- `Manual-Test-Plan.md`
 
 `README.md` is repo-only documentation for maintainers and is intentionally excluded from the published wiki page list.
 
@@ -18,7 +19,7 @@ Use GitHub's standard wiki clone flow:
 
 ```bash
 git clone https://github.com/<owner>/<repo>.wiki.git
-cp docs/wiki-pages/{Home,Quick-Start,Configuration-Reference,Operations-Runbook,Troubleshooting}.md <repo>.wiki/
+cp docs/wiki-pages/{Home,Quick-Start,Configuration-Reference,Operations-Runbook,Troubleshooting,Manual-Test-Plan}.md <repo>.wiki/
 cd <repo>.wiki
 git add *.md
 git commit -m "docs: update wiki pages"
@@ -29,5 +30,5 @@ For this project specifically:
 
 ```bash
 git clone https://github.com/VolvoxLLC/volvox-bot.wiki.git
-cp docs/wiki-pages/{Home,Quick-Start,Configuration-Reference,Operations-Runbook,Troubleshooting}.md volvox-bot.wiki/
+cp docs/wiki-pages/{Home,Quick-Start,Configuration-Reference,Operations-Runbook,Troubleshooting,Manual-Test-Plan}.md volvox-bot.wiki/
 ```
