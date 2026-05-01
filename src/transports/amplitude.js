@@ -31,7 +31,7 @@ export class AmplitudeTransport extends Transport {
     try {
       const { level, message } = info;
 
-      if (!TRACKED_LEVELS.has(level)) {
+      if (!TRACKED_LEVELS.has(level) || !amplitude.initializeAmplitude()) {
         return;
       }
 

@@ -74,12 +74,12 @@ describe('AmplitudeTransport', () => {
     expect(callback).toHaveBeenCalledOnce();
   });
 
-  it('relies on trackAnalyticsEvent for initialization so each log checks Amplitude once', () => {
+  it('checks Amplitude availability before building and sending analytics properties', () => {
     const callback = vi.fn();
 
     transport.log({ level: 'info', message: 'Bot ready' }, callback);
 
-    expect(mockInitializeAmplitude).toHaveBeenCalledOnce();
+    expect(mockInitializeAmplitude).toHaveBeenCalledTimes(2);
     expect(mockTrackAnalyticsEvent).toHaveBeenCalledOnce();
     expect(callback).toHaveBeenCalledOnce();
   });

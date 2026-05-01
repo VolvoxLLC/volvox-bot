@@ -5,6 +5,20 @@ import packageJson from "./package.json" with { type: "json" };
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+const connectSrc = ["'self'"];
+
+if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
+  connectSrc.push(
+    "https://*.ingest.sentry.io",
+    "https://*.ingest.us.sentry.io",
+    "https://*.ingest.eu.sentry.io",
+  );
+}
+
+if (process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY) {
+  connectSrc.push("https://api2.amplitude.com", "https://api.eu.amplitude.com");
+}
+
 const securityHeaders = [
   {
     key: "X-Frame-Options",
@@ -32,7 +46,7 @@ const securityHeaders = [
       `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV !== "production" ? " 'unsafe-eval'" : ""}`,
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' cdn.discordapp.com data:",
-      "connect-src 'self' https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.eu.sentry.io https://api2.amplitude.com https://api.eu.amplitude.com",
+      `connect-src ${connectSrc.join(" ")}`,
       "font-src 'self'",
       "frame-ancestors 'none'",
     ].join("; "),
