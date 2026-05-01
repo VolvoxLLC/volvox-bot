@@ -179,7 +179,7 @@ describe('sentry.js — init branch coverage', () => {
     const event = {
       exception: { values: [{ value: 'Error' }] },
       extra: {
-        ip: '1.2.3.4',
+        ip: 'client.example',
         accessToken: 'secret-token',
         password: 'hunter2',
         token: 'tok',

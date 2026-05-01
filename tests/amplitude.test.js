@@ -295,9 +295,9 @@ describe('scrubAmplitudeProperties', () => {
   it('redacts x-forwarded-for and ip_address keys', async () => {
     const scrub = await getScrub();
     const result = scrub({
-      'x-forwarded-for': '1.2.3.4',
-      ip_address: '127.0.0.1',
-      ipAddress: '10.0.0.1',
+      'x-forwarded-for': 'client.example',
+      ip_address: 'loopback.example',
+      ipAddress: 'internal.example',
       ok: true,
     });
     expect(result).toEqual({ ok: true });
