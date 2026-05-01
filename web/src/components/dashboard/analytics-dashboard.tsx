@@ -53,8 +53,8 @@ const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
 type KpiCard = {
   label: string;
-  value: number | undefined;
-  previous: number | undefined;
+  value: number | null | undefined;
+  previous: number | null | undefined;
   icon: typeof MessageSquare;
   format: (value: number) => string;
 };
@@ -563,12 +563,13 @@ export function AnalyticsDashboard() {
           : kpiCards.map((card) => {
               const Icon = card.icon;
               const value = card.value;
-              const displayValue =
-                value === null || value === undefined ? 'Unavailable' : undefined;
-              const numericValue = value ?? 0;
+              const hasValue = value !== null && value !== undefined;
+              const displayValue = hasValue ? undefined : 'Unavailable';
+              const numericValue = hasValue ? value : 0;
               const hasComparison = compareMode && analytics?.comparison != null;
+              const showComparison = hasComparison && hasValue;
               const delta =
-                hasComparison && card.previous != null && numericValue != null
+                showComparison && card.previous != null
                   ? toDeltaPercent(numericValue, card.previous)
                   : null;
 
@@ -605,7 +606,7 @@ export function AnalyticsDashboard() {
                       </span>
                     </div>
 
-                    {hasComparison ? (
+                    {showComparison ? (
                       <div
                         className={cn(
                           'mt-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider backdrop-blur-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] border transition-colors',

@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { DashboardAnalytics } from '@/types/analytics';
 
 const { analyticsPayload } = vi.hoisted(() => ({
@@ -139,6 +139,14 @@ vi.mock('@/hooks/use-glow-card', () => ({
 }));
 
 describe('AnalyticsDashboard overview', () => {
+
+  afterEach(() => {
+    analyticsPayload.kpis.activeUsers = 88;
+    if (analyticsPayload.comparison) {
+      analyticsPayload.comparison.kpis.activeUsers = 70;
+    }
+  });
+
   it('does not expose AI cost metrics on the overview dashboard', async () => {
     const { AnalyticsDashboard } = await import('@/components/dashboard/analytics-dashboard');
 
@@ -151,5 +159,17 @@ describe('AnalyticsDashboard overview', () => {
     expect(screen.queryByText('AI cost (est.)')).not.toBeInTheDocument();
     expect(screen.queryByText('AI Cost Analysis')).not.toBeInTheDocument();
     expect(screen.getByText('AI Usage Analysis')).toBeInTheDocument();
+  });
+
+  it('does not show a comparison delta when a KPI value is unavailable', async () => {
+    analyticsPayload.kpis.activeUsers = null as unknown as number;
+
+    const { AnalyticsDashboard } = await import('@/components/dashboard/analytics-dashboard');
+
+    render(<AnalyticsDashboard />);
+
+    expect(screen.getByText('Active users')).toBeInTheDocument();
+    expect(screen.getByText('Unavailable')).toBeInTheDocument();
+    expect(screen.queryByText('-100.0%')).not.toBeInTheDocument();
   });
 });
