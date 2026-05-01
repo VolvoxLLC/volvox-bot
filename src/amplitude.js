@@ -275,12 +275,21 @@ export function initializeAmplitude() {
  * @param {string} eventType - The event name; trimmed and ignored if empty.
  * @param {Record<string, unknown>} [eventProperties] - Arbitrary properties to attach to the event; will be sanitized to remove sensitive keys/values.
  * @param {{user_id?: unknown, userId?: unknown, device_id?: unknown, deviceId?: unknown}} [eventOptions] - Optional identifiers. Accepts either `user_id` or `userId`, and `device_id` or `deviceId`. A default device ID is used if none is provided or valid.
+ * @param {{skipInitialize?: boolean}} [trackOptions] - Internal tracking controls for callers that already initialized Amplitude.
  * @returns {boolean} `true` if the event was successfully tracked, `false` otherwise.
  */
-export function trackAnalyticsEvent(eventType, eventProperties = {}, eventOptions = {}) {
+export function trackAnalyticsEvent(
+  eventType,
+  eventProperties = {},
+  eventOptions = {},
+  trackOptions = {},
+) {
   const normalizedEventType = typeof eventType === 'string' ? eventType.trim() : '';
 
-  if (normalizedEventType.length === 0 || !initializeAmplitude()) {
+  if (
+    normalizedEventType.length === 0 ||
+    (!trackOptions.skipInitialize && !initializeAmplitude())
+  ) {
     return false;
   }
 

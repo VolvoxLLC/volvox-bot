@@ -147,7 +147,7 @@ describe("next.config security headers", () => {
     });
 
     it("should allow Sentry ingest endpoints when browser error capture is enabled", async () => {
-      nextConfig = await loadNextConfig({ NEXT_PUBLIC_SENTRY_DSN: "https://key@example.ingest.sentry.io/0" });
+      nextConfig = await loadNextConfig({ NEXT_PUBLIC_SENTRY_DSN: "https://key@sentry.example.com/0" });
       const headers = (await nextConfig.headers!())[0].headers;
       const enabledCspValue = headers.find(
         (h: SecurityHeader) => h.key === "Content-Security-Policy",
@@ -155,6 +155,7 @@ describe("next.config security headers", () => {
 
       expect(getCspDirectiveTokens(enabledCspValue, "connect-src")).toEqual(
         expect.arrayContaining([
+          "https://sentry.example.com",
           "https://*.ingest.sentry.io",
           "https://*.ingest.us.sentry.io",
           "https://*.ingest.eu.sentry.io",

@@ -48,7 +48,9 @@ export class AmplitudeTransport extends Transport {
         rawProperties[key] = value;
       }
 
-      amplitude.trackAnalyticsEvent(amplitude.AMPLITUDE_LOG_EVENT, rawProperties);
+      amplitude.trackAnalyticsEvent(amplitude.AMPLITUDE_LOG_EVENT, rawProperties, undefined, {
+        skipInitialize: true,
+      });
     } catch {
       // Logging must never fail the process because analytics ingestion is down.
     } finally {

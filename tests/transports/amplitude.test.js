@@ -12,8 +12,8 @@ vi.mock('../../src/amplitude.js', async () => {
     ...actual,
     AMPLITUDE_LOG_EVENT: 'bot_log_recorded',
     initializeAmplitude: mockInitializeAmplitude,
-    trackAnalyticsEvent: (eventType, properties, options) => {
-      if (!mockInitializeAmplitude()) {
+    trackAnalyticsEvent: (eventType, properties, options, trackOptions = {}) => {
+      if (!trackOptions.skipInitialize && !mockInitializeAmplitude()) {
         return false;
       }
 
@@ -74,12 +74,12 @@ describe('AmplitudeTransport', () => {
     expect(callback).toHaveBeenCalledOnce();
   });
 
-  it('checks Amplitude availability before building and sending analytics properties', () => {
+  it('checks Amplitude availability once before building and sending analytics properties', () => {
     const callback = vi.fn();
 
     transport.log({ level: 'info', message: 'Bot ready' }, callback);
 
-    expect(mockInitializeAmplitude).toHaveBeenCalledTimes(2);
+    expect(mockInitializeAmplitude).toHaveBeenCalledOnce();
     expect(mockTrackAnalyticsEvent).toHaveBeenCalledOnce();
     expect(callback).toHaveBeenCalledOnce();
   });

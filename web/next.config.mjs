@@ -5,9 +5,26 @@ import packageJson from "./package.json" with { type: "json" };
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+function getSentryConnectSrcOrigin(dsn) {
+  if (!dsn) {
+    return null;
+  }
+
+  try {
+    return new URL(dsn).origin;
+  } catch {
+    return null;
+  }
+}
+
 const connectSrc = ["'self'"];
+const sentryConnectSrcOrigin = getSentryConnectSrcOrigin(process.env.NEXT_PUBLIC_SENTRY_DSN);
 
 if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
+  if (sentryConnectSrcOrigin) {
+    connectSrc.push(sentryConnectSrcOrigin);
+  }
+
   connectSrc.push(
     "https://*.ingest.sentry.io",
     "https://*.ingest.us.sentry.io",
