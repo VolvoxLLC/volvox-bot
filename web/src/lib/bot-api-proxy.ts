@@ -12,7 +12,7 @@ const KICK_MEMBERS_PERMISSION = 0x2n;
 const BAN_MEMBERS_PERMISSION = 0x4n;
 const MODERATE_MEMBERS_PERMISSION = 0x10000000000n;
 
-export type GuildAccessLevel = 'viewer' | 'moderator' | 'admin' | 'bot-owner';
+export type GuildAccessLevel = 'viewer' | 'moderator' | 'admin';
 type RequiredGuildAccess = 'moderator' | 'admin';
 type AuthToken = {
   accessToken: string;
@@ -23,7 +23,6 @@ const GUILD_ACCESS_LEVELS = new Set<GuildAccessLevel>([
   'viewer',
   'moderator',
   'admin',
-  'bot-owner',
 ]);
 
 /**
@@ -58,7 +57,7 @@ function accessSatisfiesRequirement(
   access: GuildAccessLevel,
   required: RequiredGuildAccess,
 ): boolean {
-  if (access === 'bot-owner' || access === 'admin') return true;
+  if (access === 'admin') return true;
   return required === 'moderator' && access === 'moderator';
 }
 

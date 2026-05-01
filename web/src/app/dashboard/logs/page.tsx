@@ -1,7 +1,8 @@
 'use client';
 
 import { ScrollText } from 'lucide-react';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { HealthSection } from '@/components/dashboard/health-section';
 import { LogFilters } from '@/components/dashboard/log-filters';
 import { LogViewer } from '@/components/dashboard/log-viewer';
@@ -19,6 +20,8 @@ import { cn } from '@/lib/utils';
  */
 export default function LogsPage() {
   const guildId = useGuildSelection();
+  const router = useRouter();
+  const [isGlobalAdmin, setIsGlobalAdmin] = useState(true);
   const { logs, status, sendFilter, clearLogs } = useLogStream({
     enabled: Boolean(guildId),
     guildId,
@@ -37,6 +40,41 @@ export default function LogsPage() {
     },
     [channelNameById],
   );
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      if (typeof fetch !== 'function') {
+        setIsGlobalAdmin(true);
+        return;
+      }
+
+      try {
+        const pending = fetch('/api/global-admin', { cache: 'no-store' });
+        if (!pending || typeof (pending as Promise<Response>).then !== 'function') {
+          return;
+        }
+        const response = await pending;
+        const data = response.ok
+          ? ((await response.json()) as { isGlobalAdmin?: boolean })
+          : { isGlobalAdmin: false };
+        if (!mounted) return;
+        const allowed = Boolean(data.isGlobalAdmin);
+        setIsGlobalAdmin(allowed);
+        if (!allowed) router.replace('/dashboard');
+      } catch {
+        if (!mounted) return;
+        setIsGlobalAdmin(false);
+        router.replace('/dashboard');
+      }
+    };
+    void load();
+    return () => {
+      mounted = false;
+    };
+  }, [router]);
+
+  if (!isGlobalAdmin) return null;
 
   return (
     <ErrorBoundary title="Logs failed to load">

@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import type { ComponentType } from 'react';
+import { useEffect, useMemo, useState, type ComponentType } from 'react';
 import { useConfigContext } from '@/components/dashboard/config-context';
 import { CONFIG_NAVIGATION } from '@/components/dashboard/config-workspace/navigation';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
@@ -65,6 +65,7 @@ const navGroups = [
     ],
   },
 ];
+const GLOBAL_ADMIN_ONLY_HREFS = new Set(['/dashboard/performance', '/dashboard/logs']);
 
 interface SidebarProps {
   className?: string;
@@ -174,12 +175,46 @@ function renderNavItem(item: NavItem, isActive: boolean, onNavClick?: () => void
 export function Sidebar({ className, onNavClick }: SidebarProps) {
   const pathname = usePathname();
   const _guildId = useGuildSelection();
+  const [isGlobalAdmin, setIsGlobalAdmin] = useState(false);
   const { activeCategoryId, activeTabId, setActiveCategoryId, setActiveTabId } = useConfigContext();
 
   const isSettingsMode = pathname.startsWith('/dashboard/settings');
 
   const isNavItemActive = (href: string) =>
     pathname === href || (href !== '/dashboard' && pathname.startsWith(`${href}/`));
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      if (typeof fetch !== 'function') return;
+      try {
+        const pending = fetch('/api/global-admin', { cache: 'no-store' });
+        if (!pending || typeof (pending as Promise<Response>).then !== 'function') return;
+        const response = await pending;
+        const data = response.ok
+          ? ((await response.json()) as { isGlobalAdmin?: boolean })
+          : { isGlobalAdmin: false };
+        if (mounted) setIsGlobalAdmin(Boolean(data.isGlobalAdmin));
+      } catch {
+        if (mounted) setIsGlobalAdmin(false);
+      }
+    };
+    void load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const visibleNavGroups = useMemo(
+    () =>
+      navGroups.map((group) => ({
+        ...group,
+        items: group.items.filter(
+          (item) => isGlobalAdmin || !GLOBAL_ADMIN_ONLY_HREFS.has(item.href),
+        ),
+      })),
+    [isGlobalAdmin],
+  );
 
   return (
     <div className={cn('flex h-full flex-col overflow-y-auto scrollbar-none', className)}>
@@ -269,7 +304,7 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
           </div>
         ) : (
           /* Standard Navigation Groups */
-          navGroups.map((group) => (
+          visibleNavGroups.map((group) => (
             <div
               key={group.label}
               className="flex flex-col gap-1.5 rounded-[24px] bg-card/20 border border-border/30 shadow-[inset_0_1px_1px_hsl(var(--foreground)/0.02)] relative overflow-hidden p-2 shrink-0"

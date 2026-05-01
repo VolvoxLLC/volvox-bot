@@ -239,7 +239,6 @@ function isOAuthGuildModerator(user, guildId) {
 }
 
 function accessSatisfiesRequirement(access, requiredAccess) {
-  if (access === 'bot-owner') return true;
   if (requiredAccess === 'admin') return access === 'admin';
   return access === 'admin' || access === 'moderator';
 }
@@ -284,14 +283,10 @@ async function mapWithConcurrency(items, concurrency, iteratee) {
  *
  * @param {import('discord.js').Guild} guild
  * @param {string} userId
- * @returns {Promise<'bot-owner'|'admin'|'moderator'|'viewer'>}
+ * @returns {Promise<'admin'|'moderator'|'viewer'>}
  */
 async function getGuildAccessLevel(guild, userId) {
   const config = getConfig(guild.id);
-
-  if (getBotOwnerIds(config).includes(userId)) {
-    return 'bot-owner';
-  }
 
   let member = guild.members.cache.get(userId) || null;
   if (!member && typeof guild.members?.fetch === 'function') {
@@ -419,7 +414,7 @@ export function validateGuild(req, res, next) {
  *     summary: List guilds
  *     description: >
  *       For OAuth users: returns guilds where the user has MANAGE_GUILD or ADMINISTRATOR.
- *       Bot owners see all guilds. For API-secret users: returns all bot guilds.
+ *       Global admins (configured via BOT_OWNER_IDS) see all guilds. For API-secret users: returns all bot guilds.
  *     security:
  *       - ApiKeyAuth: []
  *       - BearerAuth: []
@@ -444,7 +439,7 @@ export function validateGuild(req, res, next) {
  *                     type: integer
  *                   access:
  *                     type: string
- *                     enum: [admin, moderator, bot-owner]
+ *                     enum: [admin, moderator]
  *       "401":
  *         $ref: "#/components/responses/Unauthorized"
  *       "502":
@@ -469,7 +464,7 @@ router.get('/', async (req, res) => {
         name: g.name,
         icon: g.iconURL(),
         memberCount: g.memberCount,
-        access: 'bot-owner',
+        access: 'admin',
       }));
       return res.json(ownerGuilds);
     }
