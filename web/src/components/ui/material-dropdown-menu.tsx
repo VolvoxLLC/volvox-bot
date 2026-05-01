@@ -28,7 +28,7 @@ const EASING_STANDARD = 'cubic-bezier(0.2, 0, 0, 1)';
 
 const useInternalRipple = (disabled = false) => {
   const [pressed, setPressed] = React.useState(false);
-  const surfaceRef = React.useRef<HTMLDivElement>(null);
+  const surfaceRef = React.useRef<HTMLElement>(null);
   const rippleRef = React.useRef<HTMLDivElement>(null);
   const growAnimationRef = React.useRef<Animation | null>(null);
 
@@ -106,11 +106,14 @@ const useInternalRipple = (disabled = false) => {
 };
 
 const RippleLayer = React.forwardRef<
-  HTMLDivElement,
-  { pressed: boolean; rippleRef: React.RefObject<HTMLDivElement> }
+  HTMLElement,
+  { pressed: boolean; rippleRef: React.RefObject<HTMLDivElement | null> }
 >(({ pressed, rippleRef }, ref) => (
   <div
-    ref={ref}
+    ref={(node) => {
+      if (typeof ref === 'function') ref(node);
+      else if (ref) (ref as React.MutableRefObject<HTMLElement | null>).current = node;
+    }}
     className="absolute inset-0 overflow-hidden rounded-[inherit] pointer-events-none z-0"
   >
     <div className="absolute inset-0 bg-current opacity-0 transition-opacity duration-200 group-hover:opacity-[0.08] group-data-[highlighted]:opacity-[0.08]" />
@@ -236,11 +239,7 @@ const DropdownMenuTrigger = React.forwardRef<
         )}
         {...events}
       >
-        <RippleLayer
-          ref={surfaceRef as React.RefObject<HTMLDivElement>}
-          rippleRef={rippleRef as React.RefObject<HTMLDivElement>}
-          pressed={pressed}
-        />
+        <RippleLayer ref={surfaceRef} rippleRef={rippleRef} pressed={pressed} />
         <div className="relative z-10 flex w-full h-full items-center justify-center gap-[inherit] pointer-events-none">
           {children}
         </div>
@@ -290,7 +289,7 @@ const DropdownMenuContent = React.forwardRef<
 });
 
 const DropdownMenuItem = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.Item>,
+  HTMLElement,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
     inset?: boolean;
     delayDuration?: number;
@@ -319,11 +318,7 @@ const DropdownMenuItem = React.forwardRef<
 
     let itemChildren = (
       <div className={cn('relative flex flex-1 items-center px-4', inset && 'pl-12')}>
-        <RippleLayer
-          ref={surfaceRef as React.RefObject<HTMLDivElement>}
-          rippleRef={rippleRef as React.RefObject<HTMLDivElement>}
-          pressed={pressed}
-        />
+        <RippleLayer ref={surfaceRef} rippleRef={rippleRef} pressed={pressed} />
         <span className="relative z-10 flex w-full items-center gap-3 pointer-events-none">
           {children}
         </span>
@@ -331,24 +326,17 @@ const DropdownMenuItem = React.forwardRef<
     );
 
     if (asChild) {
-      const child = React.Children.only(children);
+      const childArray = React.Children.toArray(children);
+      const child = childArray.length === 1 ? childArray[0] : null;
       if (!React.isValidElement<{ className?: string; children?: React.ReactNode }>(child)) {
         throw new Error('DropdownMenuItem with asChild requires a single React element child.');
       }
 
       itemChildren = React.cloneElement(child, {
-        className: cn(
-          'relative flex min-h-[48px] w-full items-center overflow-hidden px-4',
-          inset && 'pl-12',
-          child.props.className,
-        ),
+        className: cn(itemClassName, 'w-full px-4', inset && 'pl-12', child.props.className),
         children: (
           <>
-            <RippleLayer
-              ref={surfaceRef as React.RefObject<HTMLDivElement>}
-              rippleRef={rippleRef as React.RefObject<HTMLDivElement>}
-              pressed={pressed}
-            />
+            <RippleLayer ref={surfaceRef} rippleRef={rippleRef} pressed={pressed} />
             <span className="relative z-10 flex w-full items-center gap-3 pointer-events-none">
               {child.props.children}
             </span>
@@ -360,12 +348,12 @@ const DropdownMenuItem = React.forwardRef<
     return (
       <DropdownMenuPrimitive.Item
         ref={(node) => {
-          (surfaceRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+          (surfaceRef as React.MutableRefObject<HTMLElement | null>).current = node;
           if (typeof ref === 'function') ref(node);
-          else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+          else if (ref) (ref as React.MutableRefObject<HTMLElement | null>).current = node;
         }}
         asChild={asChild}
-        className={itemClassName}
+        className={asChild ? undefined : itemClassName}
         {...events}
         {...props}
         onSelect={handleSelect}
@@ -408,11 +396,7 @@ const DropdownMenuCheckboxItem = React.forwardRef<
       }}
     >
       <div className="relative flex flex-1 items-center px-4">
-        <RippleLayer
-          ref={surfaceRef as React.RefObject<HTMLDivElement>}
-          rippleRef={rippleRef as React.RefObject<HTMLDivElement>}
-          pressed={pressed}
-        />
+        <RippleLayer ref={surfaceRef} rippleRef={rippleRef} pressed={pressed} />
         <span className="relative z-10 flex w-full items-center gap-3 pointer-events-none">
           <span className="flex h-5 w-5 items-center justify-center">
             <DropdownMenuPrimitive.ItemIndicator>
@@ -459,11 +443,7 @@ const DropdownMenuRadioItem = React.forwardRef<
       }}
     >
       <div className="relative flex flex-1 items-center px-4">
-        <RippleLayer
-          ref={surfaceRef as React.RefObject<HTMLDivElement>}
-          rippleRef={rippleRef as React.RefObject<HTMLDivElement>}
-          pressed={pressed}
-        />
+        <RippleLayer ref={surfaceRef} rippleRef={rippleRef} pressed={pressed} />
         <span className="relative z-10 flex w-full items-center gap-3 pointer-events-none">
           <span className="flex h-5 w-5 items-center justify-center">
             <DropdownMenuPrimitive.ItemIndicator>

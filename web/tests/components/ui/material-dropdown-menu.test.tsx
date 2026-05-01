@@ -26,5 +26,21 @@ describe('DropdownMenuItem', () => {
 
     expect(documentationItem.tagName).toBe('A');
     expect(documentationItem).toHaveAttribute('href', 'https://docs.volvox.bot');
+    const classNames = documentationItem.className.split(/\s+/).filter((className) => className);
+    expect(classNames).toEqual(expect.arrayContaining(['m3-item-enter']));
+    expect(classNames.filter((className) => className === 'm3-item-enter')).toHaveLength(1);
+  });
+
+  it('throws a clear error when asChild does not receive a React element child', () => {
+    expect(() =>
+      render(
+        <DropdownMenu defaultOpen>
+          <DropdownMenuTrigger>Open account menu</DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem asChild>Documentation</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>,
+      ),
+    ).toThrow('DropdownMenuItem with asChild requires a single React element child.');
   });
 });
