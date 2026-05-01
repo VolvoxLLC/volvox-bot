@@ -25,14 +25,18 @@ function ThemedToaster() {
   );
 }
 
+/**
+ * Keeps Sentry context aligned with the current dashboard route and selected guild.
+ *
+ * @returns Null because it only synchronizes telemetry context.
+ */
 function SentryContextBridge() {
   const pathname = usePathname();
   const guildId = useGuildSelection();
 
   useEffect(() => {
-    Sentry.setTag('route', pathname || 'unknown');
-
-    Sentry.setTag('guild.id', guildId || 'none');
+    Sentry.setContext('routing', { route: pathname || 'unknown' });
+    Sentry.setContext('guild', { id: guildId || 'none' });
   }, [guildId, pathname]);
 
   return null;
