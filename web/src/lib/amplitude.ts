@@ -21,30 +21,8 @@ const SENSITIVE_KEY_FRAGMENTS = [
   'stack',
 ] as const;
 const SENSITIVE_COMPACT_KEYS = new Set(['ip', 'ipaddress', 'xforwardedfor', 'apikey', 'xapikey']);
-const SENSITIVE_IP_KEY_SUFFIXES = [
-  'actorip',
-  'clientip',
-  'destinationip',
-  'externalip',
-  'forwardedip',
-  'hostip',
-  'internalip',
-  'lastloginip',
-  'localip',
-  'originip',
-  'peerip',
-  'privateip',
-  'publicip',
-  'realip',
-  'remoteip',
-  'requestip',
-  'responseip',
-  'serverip',
-  'socketip',
-  'sourceip',
-  'userip',
-  'visitorip',
-] as const;
+const SENSITIVE_IP_KEY_SUFFIX_PATTERN =
+  /(?:actor|client|destination|external|forwarded|host|internal|lastlogin|local|origin|peer|private|public|real|remote|request|response|server|socket|source|user|visitor)ip$/;
 const SENSITIVE_KEY_SEPARATOR_PATTERN = /[\s._-]+/g;
 const INLINE_SECRET_REPLACEMENTS: ReadonlyArray<{ pattern: RegExp; replacement: string }> = [
   { pattern: /\bBearer\s+[\w.~+/=-]+/gi, replacement: '[REDACTED]' },
@@ -145,7 +123,7 @@ function isSensitiveKey(key: string): boolean {
     SENSITIVE_COMPACT_KEYS.has(compactKey) ||
     /(?:^|[._\-\s])ip$/i.test(key) ||
     /[a-z0-9]I[Pp]$/.test(key) ||
-    SENSITIVE_IP_KEY_SUFFIXES.some((suffix) => compactKey.endsWith(suffix))
+    SENSITIVE_IP_KEY_SUFFIX_PATTERN.test(compactKey)
   );
 }
 
