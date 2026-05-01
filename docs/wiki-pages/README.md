@@ -12,16 +12,20 @@ These files are the source content for the GitHub wiki.
 
 ## Publish workflow
 
-From the repo root:
+Use GitHub's standard wiki clone flow:
 
 ```bash
-pnpm wiki:publish
+git clone https://github.com/<owner>/<repo>.wiki.git
+cp docs/wiki-pages/*.md <repo>.wiki/
+cd <repo>.wiki
+git add *.md
+git commit -m "docs: update wiki pages"
+git push origin master
 ```
 
-Or run the script directly for another repo slug:
+For this project specifically:
 
 ```bash
-./scripts/publish-wiki.sh <owner/repo>
+git clone https://github.com/VolvoxLLC/volvox-bot.wiki.git
+cp docs/wiki-pages/*.md volvox-bot.wiki/
 ```
-
-This clones `<owner>/<repo>.wiki.git`, copies all `*.md` files from this directory, and creates a local commit ready to push.

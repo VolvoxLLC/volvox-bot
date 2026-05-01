@@ -8,7 +8,7 @@ Repo-specific operating rules for agents working on Volvox.Bot. Keep this file s
 - Read the relevant code before changing it. Prefer existing patterns over new abstractions.
 - For UI/UX work, read `DESIGN.md` before touching code. This includes dashboard, landing page, shared UI primitives, theme/token, layout, and visual copy changes.
 - Run the narrowest meaningful verification while iterating, then run broader repo gates when the blast radius justifies it.
-- For GitHub wiki updates, edit `docs/wiki-pages/` and publish through the wiki git repo flow (`./scripts/publish-wiki.sh <owner/repo>`), not by treating `/wiki` as product docs.
+- For GitHub wiki updates, edit `docs/wiki-pages/` and publish through the wiki git repo flow (`git clone https://github.com/<owner>/<repo>.wiki.git`), not by treating `/wiki` as product docs.
 - Ask questions only when the missing decision changes architecture, UX direction, data model, security posture, or external behavior. Otherwise make a reasonable choice, document it, and keep moving.
 
 ## Non-Negotiable Code Rules
