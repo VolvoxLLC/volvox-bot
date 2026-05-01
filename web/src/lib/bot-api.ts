@@ -8,7 +8,7 @@
 export function getBotApiBaseUrl(): string | null;
 export function getBotApiBaseUrl(fallback: string): string;
 export function getBotApiBaseUrl(fallback?: string): string | null {
-  const raw = process.env.BOT_API_URL ?? fallback;
+  const raw = process.env.BOT_API_URL || fallback;
   if (!raw) return null;
 
   const trimmed = raw.replace(/\/+$/, '');

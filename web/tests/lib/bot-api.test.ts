@@ -29,4 +29,10 @@ describe('bot-api', () => {
 
     expect(getBotApiBaseUrl('http://localhost:3001')).toBe('http://localhost:3001/api/v1');
   });
+
+  it('uses the provided fallback when BOT_API_URL is empty', () => {
+    process.env.BOT_API_URL = '';
+
+    expect(getBotApiBaseUrl('http://localhost:3001')).toBe('http://localhost:3001/api/v1');
+  });
 });

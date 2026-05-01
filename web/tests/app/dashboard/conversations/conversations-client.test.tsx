@@ -1,6 +1,6 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
   mockPush,
@@ -93,6 +93,10 @@ function resetState() {
 
 beforeEach(() => {
   resetState();
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe('ConversationsClient', () => {
@@ -201,7 +205,10 @@ describe('ConversationsClient', () => {
 
     fetchConversations.mockClear();
 
-    await new Promise((resolve) => setTimeout(resolve, 350));
+    vi.useFakeTimers();
+    act(() => {
+      vi.advanceTimersByTime(350);
+    });
 
     expect(fetchConversations).not.toHaveBeenCalled();
   });
@@ -221,10 +228,13 @@ describe('ConversationsClient', () => {
     fetchConversations.mockClear();
 
     const searchInput = screen.getByLabelText('Search conversations');
+    vi.useFakeTimers();
     fireEvent.change(searchInput, { target: { value: 'ada' } });
     fireEvent.change(searchInput, { target: { value: '' } });
 
-    await new Promise((resolve) => setTimeout(resolve, 350));
+    act(() => {
+      vi.advanceTimersByTime(350);
+    });
 
     expect(fetchConversations).not.toHaveBeenCalled();
   });
