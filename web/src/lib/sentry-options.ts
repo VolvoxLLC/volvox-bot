@@ -475,13 +475,20 @@ function scrubHeaders(headers: unknown): Record<string, string> | undefined {
  *
  * @param user - Sentry user payload to scrub in place.
  */
-function scrubSentryUser(user: Event['user']): void {
-  if (!user) {
-    return;
+function scrubSentryUser(user: Event['user']): Event['user'] | undefined {
+  const scrubbedUser = scrubUnknown(user);
+
+  if (!scrubbedUser || typeof scrubbedUser !== 'object' || Array.isArray(scrubbedUser)) {
+    return undefined;
   }
 
-  delete user.email;
-  delete user.ip_address;
+  const sanitizedUser = scrubbedUser as NonNullable<Event['user']>;
+  delete sanitizedUser.id;
+  delete sanitizedUser.username;
+  delete sanitizedUser.email;
+  delete sanitizedUser.ip_address;
+
+  return Object.keys(sanitizedUser).length > 0 ? sanitizedUser : undefined;
 }
 
 /**
@@ -548,7 +555,13 @@ export function scrubSentryEvent<TEvent extends Event>(
   event: TEvent,
   _hint?: EventHint,
 ): TEvent | null {
-  scrubSentryUser(event.user);
+  const scrubbedUser = scrubSentryUser(event.user);
+  if (scrubbedUser) {
+    event.user = scrubbedUser;
+  } else {
+    delete event.user;
+  }
+
   scrubSentryRequest(event.request);
 
   if (event.extra) {

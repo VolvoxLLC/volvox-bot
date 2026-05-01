@@ -127,8 +127,11 @@ describe('sentry-options', () => {
       type: undefined,
       user: {
         id: 'safe-user-key',
+        username: 'support-user',
         email: 'person@example.com',
         ip_address: '127.0.0.1',
+        role: 'admin',
+        apiToken: 'secret',
       },
       request: {
         cookies: { session: 'secret' },
@@ -175,7 +178,7 @@ describe('sentry-options', () => {
     expect(scrubSentryEvent(event)).toEqual({
       type: undefined,
       user: {
-        id: 'safe-user-key',
+        role: 'admin',
       },
       request: {
         url: 'https://dashboard.example.com/guilds/123',
