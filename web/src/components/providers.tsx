@@ -4,7 +4,7 @@ import * as Sentry from '@sentry/nextjs';
 import { usePathname } from 'next/navigation';
 import { SessionProvider, useSession } from 'next-auth/react';
 import { useTheme } from 'next-themes';
-import { type ReactNode, useEffect } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 import { Toaster } from 'sonner';
 import { ThemeProvider } from '@/components/theme-provider';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
@@ -31,30 +31,40 @@ function ThemedToaster() {
 }
 
 /**
- * Synchronizes Sentry context with the current dashboard route and selected guild.
+ * Synchronizes Sentry context with the current route and dashboard guild scope.
  *
  * Updates Sentry's `routing` context with the current pathname (or `unknown`) and
- * `guild` context with the selected guild id (or `none`) whenever the route or
- * guild selection changes.
+ * only attaches `guild` context for authenticated dashboard routes with a selected
+ * guild. The guild context is cleared everywhere else so persisted dashboard state
+ * does not leak into public routes.
  *
  * @returns `null` — the component does not render any UI.
  */
 function SentryContextBridge() {
   const pathname = usePathname();
   const guildId = useGuildSelection();
+  const { status } = useSession();
+  const isAuthenticatedDashboardRoute =
+    status === 'authenticated' && pathname?.startsWith('/dashboard') === true;
 
   useEffect(() => {
     Sentry.setContext('routing', { route: pathname || 'unknown' });
-    Sentry.setContext('guild', { id: guildId || 'none' });
-  }, [guildId, pathname]);
+
+    if (isAuthenticatedDashboardRoute && guildId) {
+      Sentry.setContext('guild', { id: guildId });
+      return;
+    }
+
+    Sentry.setContext('guild', null);
+  }, [guildId, isAuthenticatedDashboardRoute, pathname]);
 
   return null;
 }
 
 /**
- * Synchronizes Amplitude: initializes it with the current authenticated user and records dashboard page-view events when the auth status, route, or selected guild change.
+ * Synchronizes Amplitude: initializes it with the current authenticated user and records dashboard page-view events once per route.
  *
- * The emitted event includes `authStatus`, `guildId` (defaults to `'none'` when not set), and `route` (defaults to `'unknown'` when not set).
+ * The emitted event includes the current `authStatus`, `guildId` (defaults to `'none'` when not set), and `route` (defaults to `'unknown'` when not set).
  *
  * @returns `null` (this component does not render UI)
  */
@@ -63,16 +73,24 @@ function AmplitudeContextBridge() {
   const guildId = useGuildSelection();
   const { data: session, status } = useSession();
   const userId = status === 'authenticated' ? session?.user?.id : null;
+  const lastTrackedRouteRef = useRef<string | null>(null);
 
   useEffect(() => {
     initDashboardAmplitude(userId);
   }, [userId]);
 
   useEffect(() => {
+    const route = pathname || 'unknown';
+
+    if (lastTrackedRouteRef.current === route) {
+      return;
+    }
+
+    lastTrackedRouteRef.current = route;
     trackDashboardEvent(DASHBOARD_PAGE_VIEW_EVENT, {
       authStatus: status,
       guildId: guildId || 'none',
-      route: pathname || 'unknown',
+      route,
     });
   }, [guildId, pathname, status]);
 
