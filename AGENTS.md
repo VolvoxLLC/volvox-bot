@@ -73,7 +73,7 @@ Run checks that prove the change without wasting time:
 
 ## Issue Conventions
 
-Tickets are the source of context for asynchronous, agentic work. A well-formed issue should be pickable up cold by a contributor or agent who has never seen the thread it came from. Templates live in `.github/ISSUE_TEMPLATE/`; the rules below describe the substance.
+Tickets are the source of context for asynchronous, agentic work. A well-formed issue should be clear enough to be picked up cold by a contributor or agent who has never seen the thread it came from. Templates live in `.github/ISSUE_TEMPLATE/`; the rules below describe the substance.
 
 ### Title Grammar
 
@@ -81,9 +81,10 @@ Use Conventional-Commits-style prefixes so titles communicate type and area at a
 
 - `feat(scope): …` — new capability or feature.
 - `fix(scope): …` — fix to unintended behavior.
-- `bug(scope): …` — confirmed defect with reproduction.
 - `docs(scope): …` — documentation-only change.
-- `chore(scope): …` — dependency bumps, tooling, repo hygiene.
+- `test(scope): …` — test-only coverage, assertions, fixtures, or harness changes.
+- `chore(scope): …` — repo hygiene and routine maintenance.
+- `build(scope): …` — build system, CI, packaging, or dependency changes.
 - `refactor(scope): …` — internal restructure with no behavioral change.
 
 The scope is optional but encouraged. Use the same scope tokens as the labels (`ai`, `dashboard`, `backend`, `frontend`, `api`, `auth`, `ops`, `security`, `engagement`, `moderation`, `dependencies`); slashed forms like `ui/dashboard` are accepted when narrower context helps. Drop the prefix only when the title is already specific and the type is unambiguous.

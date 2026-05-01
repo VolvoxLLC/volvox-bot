@@ -1,14 +1,14 @@
 name: Bug
 description: Report a confirmed defect with reproduction.
-title: "bug(scope): "
+title: "fix(scope): "
 labels: []
 body:
   - type: markdown
     attributes:
       value: |
-        Replace `scope` in the title with one of: `ai`, `dashboard`, `backend`, `frontend`, `api`, `auth`, `ops`, `security`, `engagement`, `moderation`, `dependencies` (or a slashed form like `ui/dashboard`). See the **Issue Conventions** section in `AGENTS.md`.
+        Replace `scope` in the title with one of: `ai`, `dashboard`, `backend`, `frontend`, `api`, `auth`, `ops`, `security`, `engagement`, `moderation`, `dependencies`. See the **Issue Conventions** section in `AGENTS.md`.
 
-        Use `bug(...)` for confirmed defects with reproduction. Use `fix(...)` instead when filing alongside a PR that already resolves the issue.
+        Use `fix(...)` for confirmed defects with reproduction or when filing alongside a PR that already resolves the issue.
   - type: textarea
     id: summary
     attributes:

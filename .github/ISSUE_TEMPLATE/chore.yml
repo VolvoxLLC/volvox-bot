@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Replace `scope` in the title with `deps`, `ops`, `tests`, `tooling`, or a label scope token. See the **Issue Conventions** section in `AGENTS.md`.
+        Replace `scope` in the title with one of: `ai`, `dashboard`, `backend`, `frontend`, `api`, `auth`, `ops`, `security`, `engagement`, `moderation`, `dependencies`. See the **Issue Conventions** section in `AGENTS.md`.
 
         Use `refactor(...)` instead of `chore(...)` when restructuring code without changing behavior.
   - type: textarea

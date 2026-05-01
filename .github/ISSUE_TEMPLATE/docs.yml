@@ -7,7 +7,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Replace `scope` in the title with one of: `agents`, `design`, `readme`, `mintlify`, or a label scope token like `ai`, `dashboard`, `backend`, etc. See the **Issue Conventions** section in `AGENTS.md`.
+        Replace `scope` in the title with one of: `ai`, `dashboard`, `backend`, `frontend`, `api`, `auth`, `ops`, `security`, `engagement`, `moderation`, `dependencies`. See the **Issue Conventions** section in `AGENTS.md`.
   - type: textarea
     id: summary
     attributes:
