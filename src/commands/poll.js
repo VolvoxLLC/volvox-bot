@@ -11,7 +11,7 @@ import { info, warn } from '../logger.js';
 import { getConfig } from '../modules/config.js';
 import { buildPollButtons, buildPollEmbed, closePoll } from '../modules/pollHandler.js';
 import { isModerator } from '../utils/permissions.js';
-import { safeEditReply } from '../utils/safeSend.js';
+import { safeEditReply, safeSend } from '../utils/safeSend.js';
 
 export const data = new SlashCommandBuilder()
   .setName('poll')
@@ -137,7 +137,7 @@ async function handleCreate(interaction, pool) {
   const buttons = buildPollButtons(poll.id, options);
 
   // Send the poll as a non-ephemeral message in the channel
-  const pollMessage = await interaction.channel.send({
+  const pollMessage = await safeSend(interaction.channel, {
     embeds: [embed],
     components: buttons,
   });

@@ -14,6 +14,7 @@ import { notFound } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { GithubIcon } from '@/components/ui/github-icon';
+import { getBotApiBaseUrl } from '@/lib/bot-api';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -51,20 +52,7 @@ interface UserProfile {
 
 // ─── Data Fetching ────────────────────────────────────────────────────────────
 
-const API_BASE = process.env.BOT_API_URL || 'http://localhost:3001';
-
-/**
- * Normalize the API base URL to ensure it ends with `/api/v1`.
- *
- * This removes any trailing slashes from the configured base and appends `/api/v1`
- * if it is not already present.
- *
- * @returns The API base URL guaranteed to end with `/api/v1`.
- */
-function getApiBase(): string {
-  const trimmed = API_BASE.replace(/\/+$/, '');
-  return trimmed.endsWith('/api/v1') ? trimmed : `${trimmed}/api/v1`;
-}
+const API_BASE = getBotApiBaseUrl('http://localhost:3001');
 
 /**
  * Fetches a community member's profile from the API.
@@ -75,7 +63,7 @@ function getApiBase(): string {
  */
 async function fetchProfile(guildId: string, userId: string): Promise<UserProfile | null> {
   try {
-    const res = await fetch(`${getApiBase()}/community/${guildId}/profile/${userId}`, {
+    const res = await fetch(`${API_BASE}/community/${guildId}/profile/${userId}`, {
       next: { revalidate: 60 },
     });
     if (!res.ok) return null;

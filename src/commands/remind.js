@@ -9,7 +9,7 @@ import { EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { getPool } from '../db.js';
 import { info, error as logError, warn } from '../logger.js';
 import { getConfig } from '../modules/config.js';
-import { safeEditReply } from '../utils/safeSend.js';
+import { safeEditReply, safeReply } from '../utils/safeSend.js';
 import { parseTimeAndMessage } from '../utils/timeParser.js';
 
 export const data = new SlashCommandBuilder()
@@ -53,7 +53,7 @@ export async function execute(interaction) {
   // Config gate
   const guildConfig = getConfig(interaction.guildId);
   if (!guildConfig.reminders?.enabled) {
-    await interaction.reply({
+    await safeReply(interaction, {
       content: '❌ Reminders are not enabled on this server.',
       ephemeral: true,
     });

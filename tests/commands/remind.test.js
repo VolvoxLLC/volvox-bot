@@ -75,7 +75,7 @@ vi.mock('discord.js', () => {
 import { getPool } from '../../src/db.js';
 import * as logger from '../../src/logger.js';
 import { getConfig } from '../../src/modules/config.js';
-import { safeEditReply } from '../../src/utils/safeSend.js';
+import { safeEditReply, safeReply } from '../../src/utils/safeSend.js';
 
 describe('remind command', () => {
   let mockPool;
@@ -119,9 +119,11 @@ describe('remind command', () => {
     };
 
     await execute(interaction);
-    expect(interaction.reply).toHaveBeenCalledWith(
+    expect(safeReply).toHaveBeenCalledWith(
+      interaction,
       expect.objectContaining({ content: expect.stringContaining('not enabled') }),
     );
+    expect(interaction.reply).not.toHaveBeenCalled();
   });
 
   describe('/remind me', () => {
