@@ -98,7 +98,7 @@ describe("next.config security headers", () => {
       expect(cspValue).toContain("img-src 'self' cdn.discordapp.com data:");
     });
 
-    it("should restrict connect-src to self", () => {
+    it("should include self in connect-src", () => {
       expect(getCspDirectiveTokens(cspValue, "connect-src")).toContain("'self'");
     });
 

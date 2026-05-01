@@ -416,10 +416,13 @@ describe('sentry.js — init branch coverage', () => {
           category: 'fetch',
           message: 'fetch failed with Bearer breadcrumb-token-12345',
           data: {
+            from: '/api/auth/callback/discord?code=oauth-code&state=oauth-state#done',
+            to: 'https://dashboard-user:dashboard-pass@dashboard.example.com/guilds?code=oauth-code#done',
             url: 'https://api-user:api-pass@api.example.com/guilds?token=secret&email=person%40example.com#done',
             nested: {
               requestUrl:
                 'https://callback-user:callback-pass@example.com/callbacks?access_token=secret#complete',
+              note: 'redirected from /api/auth/callback/discord?code=oauth-code#done',
               email: 'person@example.com',
               safeField: 'keep-this',
             },
@@ -433,9 +436,12 @@ describe('sentry.js — init branch coverage', () => {
         category: 'fetch',
         message: 'fetch failed with [REDACTED]',
         data: {
+          from: '/api/auth/callback/discord',
+          to: 'https://dashboard.example.com/guilds',
           url: 'https://api.example.com/guilds',
           nested: {
             requestUrl: 'https://example.com/callbacks',
+            note: 'redirected from /api/auth/callback/discord',
             safeField: 'keep-this',
           },
         },

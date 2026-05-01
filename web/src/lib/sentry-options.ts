@@ -63,6 +63,8 @@ const SENSITIVE_KEY_FRAGMENT_COMPACTS = SENSITIVE_KEY_FRAGMENTS.map((fragment) =
 );
 const URL_METADATA_KEY_PATTERN = /url/i;
 const ABSOLUTE_URL_CREDENTIALS_PATTERN = /^([a-z][a-z\d+.-]*:\/\/)([^/?#@]*@)/i;
+const ABSOLUTE_URL_IN_TEXT_PATTERN = /\b[a-z][a-z\d+.-]*:\/\/[^\s"'<>]+/gi;
+const RELATIVE_URL_IN_TEXT_PATTERN = /(^|[\s(["'])((?:\/|\.\.?\/)[^\s"'<>?#]*(?:[?#][^\s"'<>]*)+)/g;
 
 const BROWSER_SENTRY_ENV = {
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
@@ -198,6 +200,23 @@ function stripUrlMetadata(url: string): string {
 }
 
 /**
+ * Strips URL metadata from any URL-like substrings in breadcrumb data values.
+ *
+ * @param value - Breadcrumb string value that may contain absolute or relative URLs.
+ * @returns The string with URL query strings, fragments, credentials, and inline secrets removed.
+ */
+function scrubBreadcrumbString(value: string): string {
+  const scrubbedValue = redactInlineSecrets(value).replace(ABSOLUTE_URL_IN_TEXT_PATTERN, (url) =>
+    stripUrlMetadata(url),
+  );
+
+  return scrubbedValue.replace(
+    RELATIVE_URL_IN_TEXT_PATTERN,
+    (_match, prefix: string, url: string) => `${prefix}${stripUrlMetadata(url)}`,
+  );
+}
+
+/**
  * Determines whether an object key may contain sensitive telemetry data.
  *
  * @param key - Object key to inspect.
@@ -272,7 +291,7 @@ function scrubUnknown(value: unknown, seen = new WeakSet<object>()): unknown {
  */
 function scrubBreadcrumbData(value: unknown, seen = new WeakSet<object>()): unknown {
   if (typeof value === 'string') {
-    return redactInlineSecrets(value);
+    return scrubBreadcrumbString(value);
   }
 
   if (!value || typeof value !== 'object') {

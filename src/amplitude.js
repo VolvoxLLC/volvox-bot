@@ -133,7 +133,7 @@ function scrubInlineSecrets(value) {
  * @returns {string} Lowercase alphanumeric key.
  */
 function normalizeSensitiveKey(key) {
-  return key.toLowerCase().replace(/[^a-z0-9]/g, '');
+  return key.toLowerCase().replaceAll(/[^a-z0-9]/g, '');
 }
 
 /**

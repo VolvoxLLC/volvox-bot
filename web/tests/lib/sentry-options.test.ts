@@ -246,10 +246,13 @@ describe('sentry-options', () => {
         {
           category: 'fetch',
           data: {
+            from: '/api/auth/callback/discord?code=oauth-code&state=oauth-state#private',
+            to: 'https://user:pass@dashboard.example.com/dashboard?code=oauth-code&state=oauth-state#private',
             url: 'https://user:pass@dashboard.example.com/api?token=secret&email=person%40example.com#private',
             nested: {
               requestUrl: '/settings?access_token=secret#private',
               callbackUrl: 'https://user:pass@api.example.com/callback?token=secret#private',
+              note: 'redirected from /api/auth/callback/discord?code=oauth-code#private',
               e_mail: 'person@example.com',
               'e-mail': 'person@example.com',
               safeField: 'keep-this',
@@ -263,10 +266,13 @@ describe('sentry-options', () => {
       {
         category: 'fetch',
         data: {
+          from: '/api/auth/callback/discord',
+          to: 'https://dashboard.example.com/dashboard',
           url: 'https://dashboard.example.com/api',
           nested: {
             requestUrl: '/settings',
             callbackUrl: 'https://api.example.com/callback',
+            note: 'redirected from /api/auth/callback/discord',
             safeField: 'keep-this',
           },
         },

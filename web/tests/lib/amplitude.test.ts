@@ -22,6 +22,7 @@ vi.mock('@amplitude/analytics-browser', () => ({
 describe('dashboard Amplitude analytics', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
     vi.resetModules();
     vi.clearAllMocks();
   });
@@ -56,6 +57,17 @@ describe('dashboard Amplitude analytics', () => {
         ipAddress: false,
       },
     });
+  });
+
+  it('does not enable or initialize when the browser window is unavailable', async () => {
+    vi.stubEnv('NEXT_PUBLIC_AMPLITUDE_API_KEY', 'public-key');
+    vi.stubGlobal('window', undefined);
+
+    const { initDashboardAmplitude, isDashboardAmplitudeEnabled } = await import('@/lib/amplitude');
+
+    expect(isDashboardAmplitudeEnabled()).toBe(false);
+    expect(initDashboardAmplitude('discord-user-123')).toBe(false);
+    expect(mockInit).not.toHaveBeenCalled();
   });
 
   it('enables only safe autocapture groups when opted in', async () => {

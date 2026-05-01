@@ -223,7 +223,7 @@ function scrubUrlLikeString(value) {
 }
 
 /**
- * Recursively scrub breadcrumb metadata and strip query strings from URL fields.
+ * Recursively scrub breadcrumb metadata and strip query strings from URL-like values.
  *
  * @param {unknown} value - Breadcrumb data value to scrub.
  * @param {WeakSet<object>} seen - Objects on the current recursion path.
@@ -231,7 +231,7 @@ function scrubUrlLikeString(value) {
  */
 function scrubBreadcrumbData(value, seen = new WeakSet()) {
   if (typeof value === 'string') {
-    return scrubInlineSecrets(value);
+    return scrubUrlLikeString(value);
   }
 
   if (!value || typeof value !== 'object') {

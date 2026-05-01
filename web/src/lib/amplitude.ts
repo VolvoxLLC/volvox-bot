@@ -169,7 +169,7 @@ function scrubAmplitudeProperties(value: unknown, seen = new WeakSet<object>()):
  * @returns `true` if running in a browser and a public Amplitude API key is configured, `false` otherwise.
  */
 export function isDashboardAmplitudeEnabled(): boolean {
-  return typeof globalThis.window !== 'undefined' && Boolean(getPublicApiKey());
+  return globalThis.window !== undefined && Boolean(getPublicApiKey());
 }
 
 /**
@@ -223,7 +223,7 @@ export function initDashboardAmplitude(userId?: string | null): boolean {
   const apiKey = getPublicApiKey();
   const normalizedUserId = normalizeAmplitudeId(userId);
 
-  if (typeof globalThis.window === 'undefined' || !apiKey) {
+  if (globalThis.window === undefined || !apiKey) {
     return false;
   }
 
