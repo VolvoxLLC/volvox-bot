@@ -477,16 +477,18 @@ export function AnalyticsDashboard() {
 
     rows.push('KPI,Current,Previous,DeltaPercent');
     for (const card of kpiCards) {
-      const current = card.value ?? 0;
+      const isUnavailable = card.value === null || card.value === undefined;
+      const currentNum: number = card.value ?? 0;
+      const currentCsv = isUnavailable ? '' : String(card.value);
       const hasComparison = compareMode && analytics.comparison != null;
-      const previous = hasComparison ? (card.previous ?? null) : null;
-      const delta = hasComparison && previous !== null ? toDeltaPercent(current, previous) : null;
+      const previous = hasComparison ? (card.previous ?? 0) : 0;
+      const delta = hasComparison && !isUnavailable && card.previous != null ? toDeltaPercent(currentNum, previous) : null;
 
       rows.push(
         [
           escapeCsvCell(card.label),
-          escapeCsvCell(current),
-          escapeCsvCell(previous),
+          escapeCsvCell(currentCsv),
+          escapeCsvCell(card.previous == null ? '' : String(previous)),
           escapeCsvCell(delta === null ? null : Number(delta.toFixed(2))),
         ].join(','),
       );
@@ -557,11 +559,13 @@ export function AnalyticsDashboard() {
             ))
           : kpiCards.map((card) => {
               const Icon = card.icon;
-              const value = card.value ?? 0;
+              const value = card.value;
+              const displayValue = value === null || value === undefined ? 'Unavailable' : undefined;
+              const numericValue = value ?? 0;
               const hasComparison = compareMode && analytics?.comparison != null;
               const delta =
-                hasComparison && card.previous != null
-                  ? toDeltaPercent(value, card.previous)
+                hasComparison && card.previous != null && numericValue != null
+                  ? toDeltaPercent(numericValue, card.previous)
                   : null;
 
               return (
@@ -586,7 +590,11 @@ export function AnalyticsDashboard() {
                     <div className="flex items-baseline justify-between mt-1">
                       <span className="text-3xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-br from-foreground to-foreground/60 drop-shadow-sm">
                         {analytics ? (
-                          <AnimatedValue value={value} format={card.format} />
+                          displayValue !== undefined ? (
+                            displayValue
+                          ) : (
+                            <AnimatedValue value={numericValue} format={card.format} />
+                          )
                         ) : (
                           '\u2014'
                         )}
