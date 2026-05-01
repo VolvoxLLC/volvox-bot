@@ -37,9 +37,9 @@
     "providers:check": "node scripts/sync-web-provider-catalog.js --check"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.72",
+    "@ai-sdk/anthropic": "^3.0.73",
     "@sentry/node": "^10.51.0",
-    "ai": "^6.0.170",
+    "ai": "^6.0.172",
     "discord.js": "^14.26.3",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
@@ -71,7 +71,7 @@
     "@changesets/cli": "^2.31.0",
     "@vitest/coverage-v8": "^4.1.5",
     "supertest": "^7.2.2",
-    "turbo": "^2.9.6",
+    "turbo": "^2.9.7",
     "vitest": "^4.1.5"
   }
 }
