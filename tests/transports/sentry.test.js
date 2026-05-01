@@ -30,9 +30,9 @@ describe('SentryTransport', () => {
   });
 
   describe('constructor', () => {
-    it('should default level to warn', () => {
+    it('should default level to error', () => {
       const t = new SentryTransport();
-      expect(t.level).toBe('warn');
+      expect(t.level).toBe('error');
     });
 
     it('should allow overriding level via opts', () => {
@@ -174,7 +174,7 @@ describe('SentryTransport', () => {
   });
 
   describe('log() — warn level', () => {
-    it('should captureMessage with warning level', () => {
+    it('should leave warn-level telemetry to Amplitude', () => {
       const callback = vi.fn();
       transport.log(
         {
@@ -185,12 +185,7 @@ describe('SentryTransport', () => {
         callback,
       );
 
-      expect(Sentry.captureMessage).toHaveBeenCalledWith(
-        'Watch out',
-        expect.objectContaining({ level: 'warning' }),
-      );
-      const [, context] = Sentry.captureMessage.mock.calls[0];
-      expect(context.tags).toEqual({ source: 'health' });
+      expect(Sentry.captureMessage).not.toHaveBeenCalled();
       expect(callback).toHaveBeenCalledOnce();
     });
 

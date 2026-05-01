@@ -1,7 +1,7 @@
 /**
  * Sentry Winston Transport
  *
- * Forwards error and warn level logs to Sentry automatically.
+ * Forwards error level logs to Sentry automatically.
  * This is the single integration point — no need to call
  * Sentry.captureException() manually throughout the codebase.
  */
@@ -10,10 +10,9 @@ import Transport from 'winston-transport';
 import { Sentry } from '../sentry.js';
 
 /**
- * Winston transport that sends error/warn logs to Sentry.
+ * Winston transport that sends error logs to Sentry.
  *
  * - 'error' level → Sentry.captureException (if Error) or captureMessage (if string)
- * - 'warn' level → Sentry.captureMessage with 'warning' severity
  *
  * Metadata from the log entry is attached as Sentry extra context,
  * and recognized tags (source, command, module) are promoted to Sentry tags.
@@ -24,7 +23,7 @@ export class SentryTransport extends Transport {
    * @param {string} [opts.level='error'] - Minimum log level to forward
    */
   constructor(opts = {}) {
-    super({ level: opts.level || 'warn', ...opts });
+    super({ level: opts.level || 'error', ...opts });
   }
 
   /**
@@ -85,8 +84,6 @@ export class SentryTransport extends Transport {
       } else {
         Sentry.captureMessage(message, { ...context, level: 'error' });
       }
-    } else if (level === 'warn') {
-      Sentry.captureMessage(message, { ...context, level: 'warning' });
     }
 
     callback();

@@ -97,6 +97,11 @@ describe("next.config security headers", () => {
       expect(cspValue).toContain("https://*.ingest.us.sentry.io");
     });
 
+    it("should allow Amplitude ingest endpoints for dashboard analytics", () => {
+      expect(cspValue).toContain("https://api2.amplitude.com");
+      expect(cspValue).toContain("https://api.eu.amplitude.com");
+    });
+
     it("should restrict font-src to self", () => {
       expect(cspValue).toContain("font-src 'self'");
     });

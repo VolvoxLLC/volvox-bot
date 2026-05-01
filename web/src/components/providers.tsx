@@ -2,12 +2,17 @@
 
 import * as Sentry from '@sentry/nextjs';
 import { usePathname } from 'next/navigation';
-import { SessionProvider } from 'next-auth/react';
+import { SessionProvider, useSession } from 'next-auth/react';
 import { useTheme } from 'next-themes';
 import { type ReactNode, useEffect } from 'react';
 import { Toaster } from 'sonner';
 import { ThemeProvider } from '@/components/theme-provider';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
+import {
+  DASHBOARD_PAGE_VIEW_EVENT,
+  initDashboardAmplitude,
+  trackDashboardEvent,
+} from '@/lib/amplitude';
 
 /**
  * Render a global Toaster whose visual theme follows the resolved app theme.
@@ -43,6 +48,32 @@ function SentryContextBridge() {
 }
 
 /**
+ * Keeps Amplitude initialized and records dashboard route changes.
+ *
+ * @returns Null because it only synchronizes telemetry context.
+ */
+function AmplitudeContextBridge() {
+  const pathname = usePathname();
+  const guildId = useGuildSelection();
+  const { data: session, status } = useSession();
+  const userId = status === 'authenticated' ? session?.user?.id : null;
+
+  useEffect(() => {
+    initDashboardAmplitude(userId);
+  }, [userId]);
+
+  useEffect(() => {
+    trackDashboardEvent(DASHBOARD_PAGE_VIEW_EVENT, {
+      authStatus: status,
+      guildId: guildId || 'none',
+      route: pathname || 'unknown',
+    });
+  }, [guildId, pathname, status]);
+
+  return null;
+}
+
+/**
  * Wraps application UI with NextAuth session context, theme provider, and a global toast container.
  *
  * Session error handling (e.g. RefreshTokenError) is handled elsewhere (the Header component),
@@ -58,6 +89,7 @@ export function Providers({ children }: { children: ReactNode }) {
     <SessionProvider>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
         <SentryContextBridge />
+        <AmplitudeContextBridge />
         {children}
         <ThemedToaster />
       </ThemeProvider>
