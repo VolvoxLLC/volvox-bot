@@ -296,30 +296,28 @@ const DropdownMenuItem = React.forwardRef<
     delayDuration?: number;
     enterAnimation?: boolean;
   }
->(({ className, inset, children, delayDuration = 250, enterAnimation = true, ...props }, ref) => {
-  const { surfaceRef, rippleRef, pressed, events } = useInternalRipple(props.disabled);
-  return (
-    <DropdownMenuPrimitive.Item
-      ref={(node) => {
-        (surfaceRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
-        if (typeof ref === 'function') ref(node);
-        else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
-      }}
-      className={cn(
-        'group relative flex cursor-pointer select-none items-stretch px-0 min-h-[48px] text-sm font-medium tracking-[0.01em] outline-none transition-colors',
-        'data-[disabled]:pointer-events-none data-[disabled]:opacity-40 overflow-hidden rounded-none',
-        enterAnimation && 'm3-item-enter',
-        className,
-      )}
-      {...events}
-      {...props}
-      onSelect={(e) => {
-        if (delayDuration > 0) {
-          e.preventDefault();
-          setTimeout(() => props.onSelect?.(e), delayDuration);
-        } else props.onSelect?.(e);
-      }}
-    >
+>(
+  (
+    { className, inset, children, delayDuration = 250, enterAnimation = true, asChild, ...props },
+    ref,
+  ) => {
+    const { surfaceRef, rippleRef, pressed, events } = useInternalRipple(props.disabled);
+    const itemClassName = cn(
+      'group relative flex cursor-pointer select-none min-h-[48px] text-sm font-medium tracking-[0.01em] outline-none transition-colors',
+      'data-[disabled]:pointer-events-none data-[disabled]:opacity-40 overflow-hidden rounded-none',
+      asChild ? 'items-center' : 'items-stretch px-0',
+      enterAnimation && 'm3-item-enter',
+      className,
+    );
+
+    const handleSelect = (e: Event) => {
+      if (delayDuration > 0) {
+        e.preventDefault();
+        setTimeout(() => props.onSelect?.(e), delayDuration);
+      } else props.onSelect?.(e);
+    };
+
+    let itemChildren = (
       <div className={cn('relative flex flex-1 items-center px-4', inset && 'pl-12')}>
         <RippleLayer
           ref={surfaceRef as React.RefObject<HTMLDivElement>}
@@ -330,9 +328,53 @@ const DropdownMenuItem = React.forwardRef<
           {children}
         </span>
       </div>
-    </DropdownMenuPrimitive.Item>
-  );
-});
+    );
+
+    if (asChild) {
+      const child = React.Children.only(children);
+      if (!React.isValidElement<{ className?: string; children?: React.ReactNode }>(child)) {
+        throw new Error('DropdownMenuItem with asChild requires a single React element child.');
+      }
+
+      itemChildren = React.cloneElement(child, {
+        className: cn(
+          'relative flex min-h-[48px] w-full items-center overflow-hidden px-4',
+          inset && 'pl-12',
+          child.props.className,
+        ),
+        children: (
+          <>
+            <RippleLayer
+              ref={surfaceRef as React.RefObject<HTMLDivElement>}
+              rippleRef={rippleRef as React.RefObject<HTMLDivElement>}
+              pressed={pressed}
+            />
+            <span className="relative z-10 flex w-full items-center gap-3 pointer-events-none">
+              {child.props.children}
+            </span>
+          </>
+        ),
+      });
+    }
+
+    return (
+      <DropdownMenuPrimitive.Item
+        ref={(node) => {
+          (surfaceRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+          if (typeof ref === 'function') ref(node);
+          else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+        }}
+        asChild={asChild}
+        className={itemClassName}
+        {...events}
+        {...props}
+        onSelect={handleSelect}
+      >
+        {itemChildren}
+      </DropdownMenuPrimitive.Item>
+    );
+  },
+);
 
 const DropdownMenuCheckboxItem = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.CheckboxItem>,
