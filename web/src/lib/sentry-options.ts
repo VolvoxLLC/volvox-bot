@@ -283,6 +283,17 @@ function scrubUnknown(value: unknown, seen = new WeakSet<object>()): unknown {
     return value;
   }
 
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  if (value instanceof Error) {
+    return {
+      name: value.name,
+      message: redactInlineSecrets(value.message),
+    };
+  }
+
   if (seen.has(value)) {
     return CIRCULAR_REFERENCE_SENTINEL;
   }

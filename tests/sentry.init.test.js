@@ -355,6 +355,42 @@ describe('sentry.js — init branch coverage', () => {
     });
   });
 
+  it('should preserve safe Error and Date details in event metadata in beforeSend', async () => {
+    vi.stubEnv('SENTRY_DSN', 'https://key@o0.ingest.sentry.io/0');
+
+    await import('../src/sentry.js');
+
+    const beforeSend = initSpy.mock.calls[0][0].beforeSend;
+    const event = {
+      exception: { values: [{ value: 'Error' }] },
+      extra: {
+        failure: new Error('request failed with Bearer top-level-token-12345'),
+        happenedAt: new Date('2026-05-01T10:00:00.000Z'),
+      },
+      contexts: {
+        retry: {
+          cause: new Error('token=secret-value safe=true'),
+        },
+      },
+    };
+
+    expect(beforeSend(event).extra).toEqual({
+      failure: {
+        name: 'Error',
+        message: 'request failed with [REDACTED]',
+      },
+      happenedAt: '2026-05-01T10:00:00.000Z',
+    });
+    expect(beforeSend(event).contexts).toEqual({
+      retry: {
+        cause: {
+          name: 'Error',
+          message: 'token=[REDACTED] safe=true',
+        },
+      },
+    });
+  });
+
   it('should redact inline secrets from request string data in beforeSend', async () => {
     vi.stubEnv('SENTRY_DSN', 'https://key@o0.ingest.sentry.io/0');
 

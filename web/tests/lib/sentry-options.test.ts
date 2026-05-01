@@ -242,6 +242,38 @@ describe('sentry-options', () => {
     });
   });
 
+  it('should preserve safe Error and Date details in event metadata before sending events', async () => {
+    const { scrubSentryEvent } = await import('@/lib/sentry-options');
+    const event = {
+      type: undefined,
+      extra: {
+        failure: new Error('request failed with Bearer top-level-token-12345'),
+        happenedAt: new Date('2026-05-01T10:00:00.000Z'),
+      },
+      contexts: {
+        retry: {
+          cause: new Error('token=secret-value safe=true'),
+        },
+      },
+    } as unknown as Event;
+
+    expect(scrubSentryEvent(event)?.extra).toEqual({
+      failure: {
+        name: 'Error',
+        message: 'request failed with [REDACTED]',
+      },
+      happenedAt: '2026-05-01T10:00:00.000Z',
+    });
+    expect(scrubSentryEvent(event)?.contexts).toEqual({
+      retry: {
+        cause: {
+          name: 'Error',
+          message: 'token=[REDACTED] safe=true',
+        },
+      },
+    });
+  });
+
   it('should scrub breadcrumb data and strip URL metadata before sending events', async () => {
     const { scrubSentryEvent } = await import('@/lib/sentry-options');
     const event = {

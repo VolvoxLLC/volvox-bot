@@ -1,11 +1,37 @@
-import { beforeEach, describe, expect, it } from "vitest";
-import nextConfig from "../next.config.mjs";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import packageJson from "../package.json" with { type: "json" };
 
 type SecurityHeader = {
   key: string;
   value: string;
 };
+
+const TELEMETRY_ENV_KEYS = ["NEXT_PUBLIC_SENTRY_DSN", "NEXT_PUBLIC_AMPLITUDE_API_KEY"] as const;
+const originalTelemetryEnv = Object.fromEntries(
+  TELEMETRY_ENV_KEYS.map((key) => [key, process.env[key]]),
+);
+
+async function loadNextConfig(env: Partial<Record<(typeof TELEMETRY_ENV_KEYS)[number], string>> = {}) {
+  vi.resetModules();
+  for (const key of TELEMETRY_ENV_KEYS) {
+    delete process.env[key];
+  }
+  Object.assign(process.env, env);
+
+  const module = await import("../next.config.mjs");
+  return module.default;
+}
+
+function restoreTelemetryEnv() {
+  for (const key of TELEMETRY_ENV_KEYS) {
+    const originalValue = originalTelemetryEnv[key];
+    if (originalValue === undefined) {
+      delete process.env[key];
+    } else {
+      process.env[key] = originalValue;
+    }
+  }
+}
 
 function getCspDirectiveTokens(cspValue: string, directiveName: string) {
   const directive = cspValue
@@ -18,6 +44,16 @@ function getCspDirectiveTokens(cspValue: string, directiveName: string) {
 }
 
 describe("next.config security headers", () => {
+  let nextConfig: Awaited<ReturnType<typeof loadNextConfig>>;
+
+  beforeEach(async () => {
+    nextConfig = await loadNextConfig();
+  });
+
+  afterEach(() => {
+    restoreTelemetryEnv();
+  });
+
   it("should export a headers() function", () => {
     expect(nextConfig.headers).toBeDefined();
     expect(typeof nextConfig.headers).toBe("function");
@@ -112,8 +148,36 @@ describe("next.config security headers", () => {
       );
     });
 
+    it("should allow Sentry ingest endpoints when browser error capture is enabled", async () => {
+      nextConfig = await loadNextConfig({ NEXT_PUBLIC_SENTRY_DSN: "https://key@example.ingest.sentry.io/0" });
+      const headers = (await nextConfig.headers!())[0].headers;
+      const enabledCspValue = headers.find(
+        (h: SecurityHeader) => h.key === "Content-Security-Policy",
+      )!.value;
+
+      expect(getCspDirectiveTokens(enabledCspValue, "connect-src")).toEqual(
+        expect.arrayContaining([
+          "https://*.ingest.sentry.io",
+          "https://*.ingest.us.sentry.io",
+          "https://*.ingest.eu.sentry.io",
+        ]),
+      );
+    });
+
     it("should omit Amplitude ingest endpoints when dashboard analytics is disabled", () => {
       expect(getCspDirectiveTokens(cspValue, "connect-src")).not.toEqual(
+        expect.arrayContaining(["https://api2.amplitude.com", "https://api.eu.amplitude.com"]),
+      );
+    });
+
+    it("should allow Amplitude ingest endpoints when dashboard analytics is enabled", async () => {
+      nextConfig = await loadNextConfig({ NEXT_PUBLIC_AMPLITUDE_API_KEY: "amplitude-key" });
+      const headers = (await nextConfig.headers!())[0].headers;
+      const enabledCspValue = headers.find(
+        (h: SecurityHeader) => h.key === "Content-Security-Policy",
+      )!.value;
+
+      expect(getCspDirectiveTokens(enabledCspValue, "connect-src")).toEqual(
         expect.arrayContaining(["https://api2.amplitude.com", "https://api.eu.amplitude.com"]),
       );
     });
