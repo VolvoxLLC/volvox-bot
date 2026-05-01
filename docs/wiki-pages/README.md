@@ -30,5 +30,5 @@ For this project specifically:
 
 ```bash
 git clone https://github.com/VolvoxLLC/volvox-bot.wiki.git
-cp docs/wiki-pages/{Home,Quick-Start,Configuration-Reference,Operations-Runbook,Troubleshooting,Manual-Test-Plan}.md volvox-bot.wiki/
+cp -r docs/wiki-pages/{Home,Quick-Start,Configuration-Reference,Operations-Runbook,Troubleshooting,Manual-Test-Plan}.md volvox-bot.wiki/
 ```

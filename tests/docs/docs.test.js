@@ -66,6 +66,10 @@ function getFirstBraceExpansionNames(line) {
   return line.slice(openingBrace + 1, closingBrace).split(',');
 }
 
+function hasRecursiveCopyFlag(line) {
+  return /\bcp\s+-\S*[rR]\S*\s/.test(line);
+}
+
 // ---------------------------------------------------------------------------
 // docs/docs.json
 // ---------------------------------------------------------------------------
@@ -449,6 +453,10 @@ describe('docs/wiki-pages/README.md', () => {
       content,
       (line) => line.trimStart().startsWith('cp') && line.includes('Manual-Test-Plan'),
     );
+
+    expect(copyLines).toHaveLength(2);
+    expect(copyLines.filter(hasRecursiveCopyFlag)).toHaveLength(1);
+    expect(copyLines.filter((line) => !hasRecursiveCopyFlag(line))).toHaveLength(1);
 
     for (const line of copyLines) {
       expectContainsAll(line, [
