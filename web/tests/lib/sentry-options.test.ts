@@ -1,0 +1,490 @@
+import type { Event } from '@sentry/nextjs';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+describe('sentry-options', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it('should parse sample rates within the allowed 0-1 range', async () => {
+    vi.stubEnv('NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE', '0.25');
+
+    const { getBrowserSentryOptions } = await import('@/lib/sentry-options');
+
+    expect(getBrowserSentryOptions().tracesSampleRate).toBe(0.25);
+  });
+
+  it('should fall back when sample rates are missing, malformed, or out of range', async () => {
+    vi.stubEnv('NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE', 'banana');
+    vi.stubEnv('SENTRY_TRACES_SAMPLE_RATE', '2');
+
+    const { getBrowserSentryOptions, getServerSentryOptions } = await import(
+      '@/lib/sentry-options'
+    );
+
+    expect(getBrowserSentryOptions().tracesSampleRate).toBe(0.1);
+    expect(getServerSentryOptions('nodejs').tracesSampleRate).toBe(0.1);
+  });
+
+  it('should keep server trace sampling independent from the public browser setting', async () => {
+    vi.stubEnv('NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE', '0.75');
+
+    const { getBrowserSentryOptions, getServerSentryOptions } = await import(
+      '@/lib/sentry-options'
+    );
+
+    expect(getBrowserSentryOptions().tracesSampleRate).toBe(0.75);
+    expect(getServerSentryOptions('nodejs').tracesSampleRate).toBe(0.1);
+  });
+
+  it('should still support the legacy server trace sampling env var', async () => {
+    vi.stubEnv('SENTRY_TRACES_RATE', '0.2');
+
+    const { getServerSentryOptions } = await import('@/lib/sentry-options');
+
+    expect(getServerSentryOptions('nodejs').tracesSampleRate).toBe(0.2);
+  });
+
+  it('should prefer public browser DSN and public release values for client config', async () => {
+    vi.stubEnv('NEXT_PUBLIC_SENTRY_DSN', 'https://public@example.com/1');
+    vi.stubEnv('SENTRY_DSN', 'https://private@example.com/1');
+    vi.stubEnv('NEXT_PUBLIC_SENTRY_RELEASE', 'web-public-release');
+    vi.stubEnv('SENTRY_RELEASE', 'server-release');
+
+    const { getBrowserSentryOptions } = await import('@/lib/sentry-options');
+
+    expect(getBrowserSentryOptions()).toMatchObject({
+      dsn: 'https://public@example.com/1',
+      release: 'web-public-release',
+    });
+  });
+
+  it('should not use server-only env vars when building browser options', async () => {
+    vi.stubEnv('SENTRY_DSN', 'https://private@example.com/1');
+    vi.stubEnv('SENTRY_ENVIRONMENT', 'server production');
+    vi.stubEnv('SENTRY_RELEASE', 'server-release');
+    vi.stubEnv('SENTRY_SEND_DEFAULT_PII', 'true');
+    vi.stubEnv('SENTRY_TRACES_SAMPLE_RATE', '0.75');
+
+    const { getBrowserSentryOptions } = await import('@/lib/sentry-options');
+    const options = getBrowserSentryOptions();
+
+    expect(options.dsn).toBeUndefined();
+    expect(options.environment).not.toBe('server-production');
+    expect(options.release).toBeUndefined();
+    expect(options.sendDefaultPii).toBe(false);
+    expect(options.tracesSampleRate).toBe(0.1);
+  });
+
+  it('should keep Sentry default PII collection disabled unless explicitly enabled', async () => {
+    const { getBrowserSentryOptions, getServerSentryOptions } = await import(
+      '@/lib/sentry-options'
+    );
+
+    expect(getBrowserSentryOptions().sendDefaultPii).toBe(false);
+    expect(getServerSentryOptions('nodejs').sendDefaultPii).toBe(false);
+    expect(getServerSentryOptions('edge').sendDefaultPii).toBe(false);
+  });
+
+  it('should enable Sentry default PII collection for browser and server configs when opted in', async () => {
+    vi.stubEnv('NEXT_PUBLIC_SENTRY_SEND_DEFAULT_PII', 'true');
+    vi.stubEnv('SENTRY_SEND_DEFAULT_PII', 'true');
+
+    const { getBrowserSentryOptions, getServerSentryOptions } = await import(
+      '@/lib/sentry-options'
+    );
+
+    expect(getBrowserSentryOptions().sendDefaultPii).toBe(true);
+    expect(getServerSentryOptions('nodejs').sendDefaultPii).toBe(true);
+    expect(getServerSentryOptions('edge').sendDefaultPii).toBe(true);
+  });
+
+  it('should require SENTRY_DSN for server and edge capture', async () => {
+    vi.stubEnv('NEXT_PUBLIC_SENTRY_DSN', 'https://public@example.com/1');
+    vi.stubEnv('SENTRY_DSN', '');
+
+    const { getBrowserSentryOptions, getServerSentryOptions } = await import(
+      '@/lib/sentry-options'
+    );
+
+    expect(getBrowserSentryOptions().dsn).toBe('https://public@example.com/1');
+    expect(getServerSentryOptions('nodejs').dsn).toBeUndefined();
+    expect(getServerSentryOptions('edge').dsn).toBeUndefined();
+  });
+
+  it('should sanitize invalid environment names', async () => {
+    vi.stubEnv('NEXT_PUBLIC_SENTRY_ENVIRONMENT', 'preview deploy/123');
+
+    const { getBrowserSentryOptions } = await import('@/lib/sentry-options');
+
+    expect(getBrowserSentryOptions().environment).toBe('preview-deploy-123');
+  });
+
+  it('should scrub sensitive request and user fields before sending events', async () => {
+    const { scrubSentryEvent } = await import('@/lib/sentry-options');
+    const event: Omit<Event, 'type'> & { type: undefined } = {
+      type: undefined,
+      user: {
+        id: 'safe-user-key',
+        username: 'support-user',
+        email: 'person@example.com',
+        ip_address: '127.0.0.1',
+        role: 'admin',
+        apiToken: 'secret',
+      },
+      request: {
+        cookies: { session: 'secret' },
+        query_string: 'guildId=123&email=person%40example.com',
+        url: 'https://user:pass@dashboard.example.com/guilds/123?guildId=123&email=person%40example.com#private',
+        data: {
+          password: 'secret',
+          api_key: 'secret',
+          'x-api-key': 'secret',
+          email: 'person@example.com',
+          e_mail: 'person@example.com',
+          'backup.e-mail': 'person@example.com',
+          clientIp: '127.0.0.1',
+          remoteIp: '127.0.0.2',
+          userIp: '127.0.0.3',
+          lastLoginIp: '127.0.0.4',
+          safeField: 'keep-this',
+        },
+        headers: {
+          authorization: 'Bearer secret',
+          cookie: 'session=secret',
+          'x-forwarded-for': '127.0.0.1',
+          'x-api-key': 'secret',
+          accept: 'application/json',
+        },
+      },
+      extra: {
+        accessToken: 'secret',
+        'refresh-token': 'secret',
+        nested: {
+          botApiSecret: 'secret',
+          bot_api_secret: 'secret',
+          support_e_mail: 'nested@example.com',
+          email: 'nested@example.com',
+          ok: true,
+        },
+      },
+      tags: {
+        route: '/dashboard',
+        service: 'volvox-dashboard',
+      },
+    };
+
+    expect(scrubSentryEvent(event)).toEqual({
+      type: undefined,
+      user: {
+        role: 'admin',
+      },
+      request: {
+        url: 'https://dashboard.example.com/guilds/123',
+        data: {
+          safeField: 'keep-this',
+        },
+        headers: {
+          accept: 'application/json',
+        },
+      },
+      extra: {
+        nested: {
+          ok: true,
+        },
+      },
+      tags: {
+        route: '/dashboard',
+        service: 'volvox-dashboard',
+      },
+    });
+  });
+
+  it('should scrub primary event messages before sending events', async () => {
+    const { scrubSentryEvent } = await import('@/lib/sentry-options');
+    const event = {
+      type: undefined,
+      message:
+        'failed with Bearer top-level-token-12345 token=plain-secret at https://user:pass@api.example.com/callback?code=oauth-code#private and /settings?access_token=secret#private',
+    } as unknown as Event;
+
+    expect(scrubSentryEvent(event)?.message).toBe(
+      'failed with [REDACTED] token=[REDACTED] at https://api.example.com/callback and /settings',
+    );
+  });
+
+  it('should scrub primary exception values while preserving safe metadata', async () => {
+    const { scrubSentryEvent } = await import('@/lib/sentry-options');
+    const event = {
+      type: undefined,
+      exception: {
+        values: [
+          {
+            type: 'Error',
+            value:
+              'request failed with Bearer nested-token-12345 from https://user:pass@api.example.com/callback?token=secret#private',
+            mechanism: { type: 'generic', handled: false },
+            stacktrace: { frames: [{ filename: 'src/app.ts', lineno: 42 }] },
+          },
+        ],
+      },
+    } as unknown as Event;
+
+    expect(scrubSentryEvent(event)?.exception).toEqual({
+      values: [
+        {
+          type: 'Error',
+          value: 'request failed with [REDACTED] from https://api.example.com/callback',
+          mechanism: { type: 'generic', handled: false },
+          stacktrace: { frames: [{ filename: 'src/app.ts', lineno: 42 }] },
+        },
+      ],
+    });
+  });
+
+  it('should preserve scrubbed primitive request bodies before sending events', async () => {
+    const { scrubSentryEvent } = await import('@/lib/sentry-options');
+
+    expect(
+      scrubSentryEvent({
+        type: undefined,
+        request: { data: 'api_key=secret-value' },
+      } as unknown as Event)?.request?.data,
+    ).toBe('api_key=[REDACTED]');
+
+    for (const data of ['', 0, false, null]) {
+      expect(
+        scrubSentryEvent({
+          type: undefined,
+          request: { data },
+        } as unknown as Event)?.request,
+      ).toEqual({ data });
+    }
+  });
+
+  it('should protect recursive scrubbing against true cycles while preserving shared references', async () => {
+    const { scrubSentryEvent } = await import('@/lib/sentry-options');
+    const cycle: Record<string, unknown> = { safeField: 'keep-this' };
+    cycle.self = cycle;
+    const shared = { ok: true };
+    const event = {
+      type: undefined,
+      extra: {
+        cycle,
+        first: shared,
+        second: shared,
+      },
+    } as unknown as Event;
+
+    expect(scrubSentryEvent(event)?.extra).toEqual({
+      cycle: {
+        safeField: 'keep-this',
+        self: '[Circular]',
+      },
+      first: { ok: true },
+      second: { ok: true },
+    });
+  });
+
+  it('should preserve safe Error and Date details in event metadata before sending events', async () => {
+    const { scrubSentryEvent } = await import('@/lib/sentry-options');
+    const event = {
+      type: undefined,
+      extra: {
+        failure: new Error('request failed with Bearer top-level-token-12345'),
+        happenedAt: new Date('2026-05-01T10:00:00.000Z'),
+      },
+      contexts: {
+        retry: {
+          cause: new Error('token=secret-value safe=true'),
+        },
+      },
+    } as unknown as Event;
+
+    expect(scrubSentryEvent(event)?.extra).toEqual({
+      failure: {
+        name: 'Error',
+        message: 'request failed with [REDACTED]',
+      },
+      happenedAt: '2026-05-01T10:00:00.000Z',
+    });
+    expect(scrubSentryEvent(event)?.contexts).toEqual({
+      retry: {
+        cause: {
+          name: 'Error',
+          message: 'token=[REDACTED] safe=true',
+        },
+      },
+    });
+  });
+
+  it('should scrub breadcrumb data and strip URL metadata before sending events', async () => {
+    const { scrubSentryEvent } = await import('@/lib/sentry-options');
+    const event = {
+      type: undefined,
+      breadcrumbs: [
+        {
+          category: 'fetch',
+          message: 'fetch failed at /api/auth/callback/discord?code=oauth-code#private and https://user:pass@api.example.com/callback?token=secret#private',
+          data: {
+            from: '/api/auth/callback/discord?code=oauth-code&state=oauth-state#private',
+            to: 'https://user:pass@dashboard.example.com/dashboard?code=oauth-code&state=oauth-state#private',
+            url: 'https://user:pass@dashboard.example.com/api?token=secret&email=person%40example.com#private',
+            nested: {
+              requestUrl: '/settings?access_token=secret#private',
+              callbackUrl: 'https://user:pass@api.example.com/callback?token=secret#private',
+              note: 'redirected from /api/auth/callback/discord?code=oauth-code#private',
+              e_mail: 'person@example.com',
+              'e-mail': 'person@example.com',
+              safeField: 'keep-this',
+            },
+          },
+        },
+      ],
+    } as unknown as Event;
+
+    expect(scrubSentryEvent(event)?.breadcrumbs).toEqual([
+      {
+        category: 'fetch',
+        message: 'fetch failed at /api/auth/callback/discord and https://api.example.com/callback',
+        data: {
+          from: '/api/auth/callback/discord',
+          to: 'https://dashboard.example.com/dashboard',
+          url: 'https://dashboard.example.com/api',
+          nested: {
+            requestUrl: '/settings',
+            callbackUrl: 'https://api.example.com/callback',
+            note: 'redirected from /api/auth/callback/discord',
+            safeField: 'keep-this',
+          },
+        },
+      },
+    ]);
+  });
+
+  it('should scrub Sentry v10 object-shaped breadcrumb values before sending events', async () => {
+    const { scrubSentryEvent } = await import('@/lib/sentry-options');
+    const event = {
+      type: undefined,
+      breadcrumbs: {
+        values: [
+          {
+            category: 'fetch',
+            message: 'fetch failed at /api/auth/callback/discord?code=oauth-code#private',
+            data: {
+              url: 'https://user:pass@dashboard.example.com/api?token=secret#private',
+              nested: {
+                note: 'redirected from /api/auth/callback/discord?code=oauth-code#private',
+                email: 'person@example.com',
+                safeField: 'keep-this',
+              },
+            },
+          },
+        ],
+      },
+    } as unknown as Event;
+
+    expect(scrubSentryEvent(event)?.breadcrumbs).toEqual({
+      values: [
+        {
+          category: 'fetch',
+          message: 'fetch failed at /api/auth/callback/discord',
+          data: {
+            url: 'https://dashboard.example.com/api',
+            nested: {
+              note: 'redirected from /api/auth/callback/discord',
+              safeField: 'keep-this',
+            },
+          },
+        },
+      ],
+    });
+  });
+
+  it('should normalize scrubbed request headers to strings before sending events', async () => {
+    const { scrubSentryEvent } = await import('@/lib/sentry-options');
+    const event = {
+      type: undefined,
+      request: {
+        headers: {
+          authorization: 'Bearer secret',
+          accept: ['application/json', 'text/plain'],
+          referer: 'https://user:pass@example.com/callback?code=secret#fragment',
+          'x-retry-count': 2,
+          'x-feature-enabled': true,
+          metadata: { safeField: 'keep-this', email: 'person@example.com' },
+        },
+      },
+    } as unknown as Event;
+
+    expect(scrubSentryEvent(event)?.request?.headers).toEqual({
+      accept: 'application/json, text/plain',
+      referer: 'https://example.com/callback',
+      'x-retry-count': '2',
+      'x-feature-enabled': 'true',
+      metadata: '{"safeField":"keep-this"}',
+    });
+  });
+
+  it('should scrub transaction and span payloads with the same sanitizer', async () => {
+    const { getServerSentryOptions } = await import('@/lib/sentry-options');
+    const options = getServerSentryOptions('nodejs');
+
+    expect(
+      options.beforeSendTransaction?.({
+        type: 'transaction',
+        request: {
+          query_string: 'token=secret',
+          url: '/dashboard?token=secret&email=person%40example.com',
+          headers: {
+            cookie: 'session=secret',
+            accept: 'application/json',
+          },
+          data: {
+            access_token: 'secret',
+            safeField: 'keep-this',
+          },
+        },
+      }, {}),
+    ).toEqual({
+      type: 'transaction',
+      request: {
+        url: '/dashboard',
+        headers: {
+          accept: 'application/json',
+        },
+        data: {
+          safeField: 'keep-this',
+        },
+      },
+    });
+
+    expect(
+      options.beforeSendSpan?.({
+        span_id: 'abc123',
+        start_timestamp: 1,
+        trace_id: 'trace123',
+        name: 'GET https://user:pass@example.com/callback?code=secret#fragment',
+        description: 'redirect to /dashboard/settings?token=secret#fragment',
+        data: {
+          authorization: 'Bearer secret',
+          url: 'https://user:pass@example.com/api?token=secret#fragment',
+          'http.url': '/internal/jobs?password=secret#fragment',
+          safeField: 'keep-this',
+        },
+      } as never),
+    ).toEqual({
+      span_id: 'abc123',
+      start_timestamp: 1,
+      trace_id: 'trace123',
+      name: 'GET https://example.com/callback',
+      description: 'redirect to /dashboard/settings',
+      data: {
+        url: 'https://example.com/api',
+        'http.url': '/internal/jobs',
+        safeField: 'keep-this',
+      },
+    });
+  });
+});

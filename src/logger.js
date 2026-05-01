@@ -20,6 +20,7 @@ import { fileURLToPath } from 'node:url';
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
 import { sentryEnabled } from './sentry.js';
+import { AmplitudeTransport } from './transports/amplitude.js';
 import { SentryTransport } from './transports/sentry.js';
 import { WebSocketTransport } from './transports/websocket.js';
 
@@ -441,10 +442,15 @@ if (fileOutputEnabled) {
   );
 }
 
-// Add Sentry transport if enabled — all error/warn logs automatically go to Sentry
+// Add Sentry transport if enabled — error logs go to Sentry for alerting/grouping
 if (sentryEnabled) {
-  transports.push(new SentryTransport({ level: 'warn' }));
+  transports.push(new SentryTransport({ level: 'error' }));
 }
+
+// Always install the Amplitude transport so dotenv-loaded API keys that become
+// available after this module is imported can still enable info/warn telemetry.
+// trackAnalyticsEvent() reads process.env at call time and no-ops while disabled.
+transports.push(new AmplitudeTransport({ level: 'info' }));
 
 const logger = winston.createLogger({
   level: logLevel,

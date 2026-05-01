@@ -30,9 +30,9 @@ describe('SentryTransport', () => {
   });
 
   describe('constructor', () => {
-    it('should default level to warn', () => {
+    it('should default level to error', () => {
       const t = new SentryTransport();
-      expect(t.level).toBe('warn');
+      expect(t.level).toBe('error');
     });
 
     it('should allow overriding level via opts', () => {
@@ -174,7 +174,7 @@ describe('SentryTransport', () => {
   });
 
   describe('log() — warn level', () => {
-    it('should captureMessage with warning level', () => {
+    it('should leave warn-level telemetry to Amplitude', () => {
       const callback = vi.fn();
       transport.log(
         {
@@ -185,12 +185,7 @@ describe('SentryTransport', () => {
         callback,
       );
 
-      expect(Sentry.captureMessage).toHaveBeenCalledWith(
-        'Watch out',
-        expect.objectContaining({ level: 'warning' }),
-      );
-      const [, context] = Sentry.captureMessage.mock.calls[0];
-      expect(context.tags).toEqual({ source: 'health' });
+      expect(Sentry.captureMessage).not.toHaveBeenCalled();
       expect(callback).toHaveBeenCalledOnce();
     });
 
@@ -207,6 +202,138 @@ describe('SentryTransport', () => {
       expect(Sentry.captureException).not.toHaveBeenCalled();
       expect(Sentry.captureMessage).not.toHaveBeenCalled();
       expect(callback).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe('SENSITIVE_KEYS stripping', () => {
+    it('should strip ip from extra context', () => {
+      const callback = vi.fn();
+      transport.log(
+        {
+          level: 'error',
+          message: 'PII leak test',
+          ip: 'client.example',
+          safeField: 'keep-me',
+        },
+        callback,
+      );
+
+      const [, context] = Sentry.captureMessage.mock.calls[0];
+      expect(context.extra.ip).toBeUndefined();
+      expect(context.extra.safeField).toBe('keep-me');
+    });
+
+    it('should strip accessToken from extra context', () => {
+      const callback = vi.fn();
+      transport.log(
+        {
+          level: 'error',
+          message: 'Token leak test',
+          accessToken: 'Bearer tok123',
+          userId: 'user-999',
+        },
+        callback,
+      );
+
+      const [, context] = Sentry.captureMessage.mock.calls[0];
+      expect(context.extra.accessToken).toBeUndefined();
+      expect(context.extra.userId).toBe('user-999');
+    });
+
+    it('should strip all SENSITIVE_KEYS entries from extra context', () => {
+      const callback = vi.fn();
+      transport.log(
+        {
+          level: 'error',
+          message: 'All sensitive keys test',
+          ip: 'gateway.example',
+          accessToken: 'tok',
+          secret: 'shh',
+          apiKey: 'key123',
+          authorization: 'Bearer xyz',
+          password: 'hunter2',
+          token: 'tok456',
+          cookie: 'session=abc',
+          safeField: 'keep-this',
+        },
+        callback,
+      );
+
+      const [, context] = Sentry.captureMessage.mock.calls[0];
+      expect(context.extra.ip).toBeUndefined();
+      expect(context.extra.accessToken).toBeUndefined();
+      expect(context.extra.secret).toBeUndefined();
+      expect(context.extra.apiKey).toBeUndefined();
+      expect(context.extra.authorization).toBeUndefined();
+      expect(context.extra.password).toBeUndefined();
+      expect(context.extra.token).toBeUndefined();
+      expect(context.extra.cookie).toBeUndefined();
+      expect(context.extra.safeField).toBe('keep-this');
+    });
+
+    it('should not promote sensitive tag key candidates to tags', () => {
+      const callback = vi.fn();
+      transport.log(
+        {
+          level: 'error',
+          message: 'Sensitive tag test',
+          secret: 'shh',
+          password: 'pass',
+          source: 'scheduler',
+        },
+        callback,
+      );
+
+      const [, context] = Sentry.captureMessage.mock.calls[0];
+      expect(context.tags.secret).toBeUndefined();
+      expect(context.tags.password).toBeUndefined();
+      expect(context.tags.source).toBe('scheduler');
+    });
+
+    it('SENSITIVE_KEYS static set contains all expected entries', () => {
+      expect(SentryTransport.SENSITIVE_KEYS.has('ip')).toBe(true);
+      expect(SentryTransport.SENSITIVE_KEYS.has('accessToken')).toBe(true);
+      expect(SentryTransport.SENSITIVE_KEYS.has('secret')).toBe(true);
+      expect(SentryTransport.SENSITIVE_KEYS.has('apiKey')).toBe(true);
+      expect(SentryTransport.SENSITIVE_KEYS.has('authorization')).toBe(true);
+      expect(SentryTransport.SENSITIVE_KEYS.has('password')).toBe(true);
+      expect(SentryTransport.SENSITIVE_KEYS.has('token')).toBe(true);
+      expect(SentryTransport.SENSITIVE_KEYS.has('stack')).toBe(true);
+      expect(SentryTransport.SENSITIVE_KEYS.has('cookie')).toBe(true);
+    });
+  });
+
+  describe('tag value type coercion', () => {
+    it('should not promote object-valued meta fields to tags even if key is in TAG_KEYS', () => {
+      const callback = vi.fn();
+      transport.log(
+        {
+          level: 'error',
+          message: 'Object tag test',
+          source: { nested: true }, // object — should not go into tags
+          safeField: 'keep',
+        },
+        callback,
+      );
+
+      const [, context] = Sentry.captureMessage.mock.calls[0];
+      expect(context.tags.source).toBeUndefined();
+      expect(context.extra.source).toEqual({ nested: true });
+    });
+
+    it('should coerce numeric code tag value to string', () => {
+      const callback = vi.fn();
+      transport.log(
+        {
+          level: 'error',
+          message: 'Numeric code',
+          code: 404,
+        },
+        callback,
+      );
+
+      const [, context] = Sentry.captureMessage.mock.calls[0];
+      expect(context.tags.code).toBe('404');
     });
   });
 });

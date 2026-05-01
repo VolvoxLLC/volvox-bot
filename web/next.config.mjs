@@ -1,8 +1,46 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { withSentryConfig } from "@sentry/nextjs";
 import packageJson from "./package.json" with { type: "json" };
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+function getSentryConnectSrcOrigin(dsn) {
+  if (!dsn) {
+    return null;
+  }
+
+  try {
+    return new URL(dsn).origin;
+  } catch {
+    return null;
+  }
+}
+
+function getAmplitudeConnectSrcOrigin(serverZone) {
+  return String(serverZone).toUpperCase() === "EU"
+    ? "https://api.eu.amplitude.com"
+    : "https://api2.amplitude.com";
+}
+
+const connectSrc = ["'self'"];
+const sentryConnectSrcOrigin = getSentryConnectSrcOrigin(process.env.NEXT_PUBLIC_SENTRY_DSN);
+
+if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
+  if (sentryConnectSrcOrigin) {
+    connectSrc.push(sentryConnectSrcOrigin);
+  }
+
+  connectSrc.push(
+    "https://*.ingest.sentry.io",
+    "https://*.ingest.us.sentry.io",
+    "https://*.ingest.eu.sentry.io",
+  );
+}
+
+if (process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY) {
+  connectSrc.push(getAmplitudeConnectSrcOrigin(process.env.NEXT_PUBLIC_AMPLITUDE_SERVER_ZONE));
+}
 
 const securityHeaders = [
   {
@@ -31,7 +69,7 @@ const securityHeaders = [
       `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV !== "production" ? " 'unsafe-eval'" : ""}`,
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' cdn.discordapp.com data:",
-      "connect-src 'self'",
+      `connect-src ${connectSrc.join(" ")}`,
       "font-src 'self'",
       "frame-ancestors 'none'",
     ].join("; "),
@@ -70,4 +108,10 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: !process.env.CI,
+  widenClientFileUpload: Boolean(process.env.SENTRY_AUTH_TOKEN),
+});

@@ -1,12 +1,15 @@
 'use client';
 
+import * as Sentry from '@sentry/nextjs';
 import { useEffect } from 'react';
 import { logger } from '@/lib/logger';
 
 /**
- * Root-level error boundary for Next.js App Router.
- * This catches errors that propagate past the root layout,
- * so it must render its own <html> and <body> tags.
+ * Renders a root-level error UI for the Next.js App Router and reports the error to logging and Sentry.
+ *
+ * @param error - The caught Error; if `error.digest` is present it is shown as an error ID.
+ * @param reset - Callback invoked when the user requests a retry of rendering.
+ * @returns The complete `<html>`/`<body>` document fragment used as the app's global error boundary UI.
  */
 export default function RootError({
   error,
@@ -17,6 +20,7 @@ export default function RootError({
 }) {
   useEffect(() => {
     logger.error('[global-error-boundary]', error);
+    Sentry.captureException(error);
   }, [error]);
 
   return (

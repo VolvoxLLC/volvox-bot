@@ -7,13 +7,551 @@
  * Configure via environment variables:
  *   SENTRY_DSN           - Sentry project DSN (required to enable)
  *   SENTRY_ENVIRONMENT   - Environment name (default: 'production')
+ *   SENTRY_SEND_DEFAULT_PII - Opt in to Sentry default PII capture after local scrubbing
+ *                             (default: false; only true when set to 'true')
  *   SENTRY_TRACES_RATE   - Performance sampling rate 0-1 (default: 0.1)
  *   NODE_ENV             - Used as fallback for environment name
  */
 
+import 'dotenv/config';
 import * as Sentry from '@sentry/node';
 
 const dsn = process.env.SENTRY_DSN;
+// Keep Sentry default PII capture opt-in only; any value other than the explicit string "true" stays disabled.
+// dotenv/config is imported above before env reads so .env Sentry settings are available
+// even when this module is imported before other startup code.
+let sendDefaultPii = false;
+const CIRCULAR_REFERENCE_SENTINEL = '[Circular]';
+const SENSITIVE_KEY_PARTS = [
+  'authorization',
+  'cookie',
+  'csrf',
+  'email',
+  'secret',
+  'password',
+  'token',
+  'session',
+  'stack',
+  'xforwardedfor',
+  'ipaddress',
+  'xapikey',
+  'apikey',
+  'botapisecret',
+  'accesstoken',
+  'refreshtoken',
+];
+const SENSITIVE_KEY_EXACT_MATCHES = new Set(['ip']);
+const SENSITIVE_IP_KEY_SUFFIXES = [
+  'actorip',
+  'clientip',
+  'destinationip',
+  'externalip',
+  'forwardedip',
+  'hostip',
+  'internalip',
+  'lastloginip',
+  'localip',
+  'originip',
+  'peerip',
+  'privateip',
+  'publicip',
+  'realip',
+  'remoteip',
+  'requestip',
+  'responseip',
+  'serverip',
+  'socketip',
+  'sourceip',
+  'userip',
+  'visitorip',
+];
+const URL_METADATA_KEY_PATTERN = /url/i;
+const URL_HEADER_KEY_PATTERN = /^(?:referer|referrer|origin)$/i;
+const ABSOLUTE_URL_IN_TEXT_PATTERN = /\b[a-z][a-z\d+.-]*:\/\/[^\s"'<>]+/gi;
+const RELATIVE_URL_IN_TEXT_PATTERN = /(^|[\s(["'])((?:\/|\.\.?\/)[^\s"'<>?#]*(?:[?#][^\s"'<>]*)+)/g;
+const INLINE_SECRET_REPLACEMENTS = [
+  { pattern: /\bBearer\s+[\w.~+/=-]+/gi, replacement: '[REDACTED]' },
+  { pattern: /\bsk-\w[\w-]{10,}/g, replacement: '[REDACTED]' },
+  {
+    pattern: /\b(?:xox[baprs]|gh[pousr])_[\w/-]{10,}/g,
+    replacement: '[REDACTED]',
+  },
+  { pattern: /\bgithub_pat_\w{10,}/g, replacement: '[REDACTED]' },
+  {
+    pattern:
+      /([?&#]\s*(?:access[-_]?token|refresh[-_]?token|api[-_]?key|token|secret|password)\s*=)\s*[^\s&#]+/gi,
+    replacement: '$1[REDACTED]',
+  },
+  {
+    pattern:
+      /(^|[\s,;])((?:access[-_]?token|refresh[-_]?token|api[-_]?key|token|secret|password)\s*=)\s*[^\s,;&#]+/gi,
+    replacement: '$1$2[REDACTED]',
+  },
+];
+
+/**
+ * Redact secret-looking substrings from free-form strings before they reach Sentry.
+ * @param {string} value - The string to scrub.
+ * @returns {string} The string with inline secrets redacted.
+ */
+function scrubInlineSecrets(value) {
+  return INLINE_SECRET_REPLACEMENTS.reduce(
+    (scrubbedValue, { pattern, replacement }) => scrubbedValue.replaceAll(pattern, replacement),
+    value,
+  );
+}
+
+/**
+ * Normalize object keys so equivalent sensitive forms (api_key, api-key, api key) match.
+ * @param {string} key - Object key to normalize.
+ * @returns {string} Lowercase alphanumeric key.
+ */
+function normalizeSensitiveKey(key) {
+  return key.toLowerCase().replaceAll(/[^a-z0-9]/g, '');
+}
+
+/**
+ * Check whether an object key is sensitive and should be removed from Sentry metadata.
+ * @param {string} key - Object key to evaluate.
+ * @returns {boolean} True when the key represents secret or PII metadata.
+ */
+function isIpMetadataKey(key, normalizedKey) {
+  return (
+    SENSITIVE_KEY_EXACT_MATCHES.has(normalizedKey) ||
+    /(?:^|[._\-\s])ip$/i.test(key) ||
+    /[a-z0-9]I[Pp]$/.test(key) ||
+    SENSITIVE_IP_KEY_SUFFIXES.some((sensitiveSuffix) => normalizedKey.endsWith(sensitiveSuffix))
+  );
+}
+
+function isSensitiveKey(key) {
+  const normalizedKey = normalizeSensitiveKey(key);
+
+  return (
+    isIpMetadataKey(key, normalizedKey) ||
+    SENSITIVE_KEY_PARTS.some((sensitivePart) => normalizedKey.includes(sensitivePart))
+  );
+}
+
+/**
+ * Recursively removes sensitive keys from arbitrary Sentry metadata.
+ *
+ * @param {unknown} value - Metadata value to scrub.
+ * @param {WeakSet<object>} seen - Objects on the current recursion path.
+ * @returns {unknown} A copy with sensitive object keys removed.
+ */
+function scrubUnknown(value, seen = new WeakSet()) {
+  if (typeof value === 'string') {
+    return scrubInlineSecrets(value);
+  }
+
+  if (!value || typeof value !== 'object') {
+    return value;
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  if (value instanceof Error) {
+    return {
+      name: value.name,
+      message: scrubInlineSecrets(value.message),
+    };
+  }
+
+  if (seen.has(value)) {
+    return CIRCULAR_REFERENCE_SENTINEL;
+  }
+
+  seen.add(value);
+
+  if (Array.isArray(value)) {
+    const scrubbedArray = value.map((childValue) => scrubUnknown(childValue, seen));
+    seen.delete(value);
+    return scrubbedArray;
+  }
+
+  const scrubbed = {};
+
+  for (const [key, childValue] of Object.entries(value)) {
+    if (isSensitiveKey(key)) {
+      continue;
+    }
+
+    scrubbed[key] = scrubUnknown(childValue, seen);
+  }
+
+  seen.delete(value);
+  return scrubbed;
+}
+
+/**
+ * Strip query parameters and fragments from a Sentry request URL without dropping the path.
+ *
+ * @param {unknown} value - Request URL value from a Sentry event.
+ * @returns {unknown} The URL without its query or fragment component, or the original value when not a string.
+ */
+function stripRequestUrlQuery(value) {
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  try {
+    const isAbsoluteUrl = /^[a-z][a-z\d+.-]*:/i.test(value);
+    const url = new URL(value, 'https://volvox.local');
+    url.username = '';
+    url.password = '';
+    url.search = '';
+    url.hash = '';
+
+    return isAbsoluteUrl ? url.toString() : url.pathname;
+  } catch {
+    const queryIndex = value.indexOf('?');
+    const fragmentIndex = value.indexOf('#');
+    const stripIndex = [queryIndex, fragmentIndex]
+      .filter((index) => index !== -1)
+      .reduce((earliestIndex, index) => Math.min(earliestIndex, index), value.length);
+
+    return stripIndex === value.length ? value : value.slice(0, stripIndex);
+  }
+}
+
+/**
+ * Strip query strings, fragments, credentials, and inline secrets from URL-like free-form text.
+ *
+ * @param {string} value - String that may contain one or more URLs.
+ * @returns {string} The string with URL secrets removed.
+ */
+function scrubUrlLikeString(value) {
+  const scrubbedValue = scrubInlineSecrets(value).replaceAll(ABSOLUTE_URL_IN_TEXT_PATTERN, (url) =>
+    stripRequestUrlQuery(url),
+  );
+
+  return scrubbedValue.replaceAll(
+    RELATIVE_URL_IN_TEXT_PATTERN,
+    (_match, prefix, url) => `${prefix}${stripRequestUrlQuery(url)}`,
+  );
+}
+
+/**
+ * Recursively scrub breadcrumb metadata and strip query strings from URL-like values.
+ *
+ * @param {unknown} value - Breadcrumb data value to scrub.
+ * @param {WeakSet<object>} seen - Objects on the current recursion path.
+ * @returns {unknown} A scrubbed copy of the breadcrumb data value.
+ */
+function scrubBreadcrumbData(value, seen = new WeakSet()) {
+  if (typeof value === 'string') {
+    return scrubUrlLikeString(value);
+  }
+
+  if (!value || typeof value !== 'object') {
+    return value;
+  }
+
+  if (seen.has(value)) {
+    return CIRCULAR_REFERENCE_SENTINEL;
+  }
+
+  seen.add(value);
+
+  if (Array.isArray(value)) {
+    const scrubbedArray = value.map((childValue) => scrubBreadcrumbData(childValue, seen));
+    seen.delete(value);
+    return scrubbedArray;
+  }
+
+  const scrubbed = {};
+
+  for (const [key, childValue] of Object.entries(value)) {
+    if (isSensitiveKey(key)) {
+      continue;
+    }
+
+    const scrubbedValue = scrubBreadcrumbData(childValue, seen);
+    scrubbed[key] = URL_METADATA_KEY_PATTERN.test(key)
+      ? stripRequestUrlQuery(scrubbedValue)
+      : scrubbedValue;
+  }
+
+  seen.delete(value);
+  return scrubbed;
+}
+
+/**
+ * Scrubs Sentry breadcrumb payloads so URL query strings and nested secrets cannot bypass scrubbing.
+ *
+ * @param {unknown} breadcrumbs - Event breadcrumb list.
+ * @returns {unknown} Scrubbed breadcrumbs, or the original value if it is not an array.
+ */
+function scrubBreadcrumbs(breadcrumbs) {
+  // Handle Sentry v10 shape: { values?: Breadcrumb[] }
+  let crumbs = breadcrumbs;
+  const isV10Shape =
+    breadcrumbs &&
+    typeof breadcrumbs === 'object' &&
+    !Array.isArray(breadcrumbs) &&
+    'values' in breadcrumbs;
+  if (isV10Shape) {
+    crumbs = breadcrumbs.values;
+  }
+
+  if (!Array.isArray(crumbs)) {
+    return breadcrumbs;
+  }
+
+  const scrubbedCrumbs = crumbs.map((breadcrumb) => {
+    if (!breadcrumb || typeof breadcrumb !== 'object') {
+      return breadcrumb;
+    }
+
+    const scrubbedBreadcrumb = { ...breadcrumb };
+    if (typeof scrubbedBreadcrumb.message === 'string') {
+      scrubbedBreadcrumb.message = scrubUrlLikeString(scrubbedBreadcrumb.message);
+    }
+
+    if ('data' in scrubbedBreadcrumb) {
+      scrubbedBreadcrumb.data = scrubBreadcrumbData(scrubbedBreadcrumb.data);
+    }
+
+    return scrubbedBreadcrumb;
+  });
+
+  if (isV10Shape) {
+    breadcrumbs.values = scrubbedCrumbs;
+    return breadcrumbs;
+  }
+
+  return scrubbedCrumbs;
+}
+
+/**
+ * Remove Sentry user fields that may contain PII.
+ * @param {object} event - Sentry event-like payload to mutate.
+ */
+function scrubSentryUser(event) {
+  if (!event.user) {
+    return;
+  }
+
+  delete event.user.email;
+  delete event.user.ip_address;
+}
+
+/**
+ * Determine whether scrubbed request data can safely remain on the event.
+ * @param {unknown} scrubbedData - Scrubbed request data value.
+ * @param {unknown} rawData - Original request data value.
+ * @returns {boolean} True when the request data should be retained.
+ */
+function shouldKeepRequestData(scrubbedData, rawData) {
+  return (
+    (Boolean(scrubbedData) && typeof scrubbedData === 'object') ||
+    (typeof scrubbedData === 'string' && scrubbedData !== rawData)
+  );
+}
+
+/**
+ * Scrub request metadata that can carry secrets or PII.
+ * @param {object} request - Sentry request-like payload to mutate.
+ */
+function scrubRequestHeaderValue(value) {
+  if (typeof value === 'string') {
+    return scrubUrlLikeString(value);
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((headerValue) => scrubRequestHeaderValue(headerValue));
+  }
+
+  return value;
+}
+
+function scrubSentryRequest(request) {
+  delete request.cookies;
+  delete request.query_string;
+
+  if (request.url) {
+    request.url = stripRequestUrlQuery(request.url);
+  }
+
+  if (request.headers) {
+    const scrubbedHeaders = scrubUnknown(request.headers);
+
+    if (!scrubbedHeaders || typeof scrubbedHeaders !== 'object' || Array.isArray(scrubbedHeaders)) {
+      delete request.headers;
+    } else {
+      for (const [key, value] of Object.entries(scrubbedHeaders)) {
+        if (URL_HEADER_KEY_PATTERN.test(key) || URL_METADATA_KEY_PATTERN.test(key)) {
+          scrubbedHeaders[key] = scrubRequestHeaderValue(value);
+        }
+      }
+
+      request.headers = scrubbedHeaders;
+    }
+  }
+
+  if (!request.data) {
+    return;
+  }
+
+  const rawData = request.data;
+  const scrubbedData = scrubUnknown(rawData);
+
+  if (shouldKeepRequestData(scrubbedData, rawData)) {
+    request.data = scrubbedData;
+    return;
+  }
+
+  delete request.data;
+}
+
+/**
+ * Scrub optional top-level metadata collections on a Sentry event.
+ * @param {object} event - Sentry event-like payload to mutate.
+ */
+function scrubSentryMetadata(event) {
+  for (const key of ['extra', 'contexts', 'data']) {
+    if (event[key]) {
+      event[key] = scrubUnknown(event[key]);
+    }
+  }
+}
+
+/**
+ * Scrub primary Sentry message fields that are not covered by request/user/metadata scrubbers.
+ * @param {object} event - Sentry event-like payload to mutate.
+ */
+function scrubSentryMessageFields(event) {
+  if (typeof event.message === 'string') {
+    event.message = scrubUrlLikeString(event.message);
+  }
+
+  if (typeof event.transaction === 'string') {
+    event.transaction = scrubUrlLikeString(event.transaction);
+  }
+
+  if (event.logentry && typeof event.logentry === 'object') {
+    if (typeof event.logentry.formatted === 'string') {
+      event.logentry.formatted = scrubUrlLikeString(event.logentry.formatted);
+    }
+
+    if (typeof event.logentry.message === 'string') {
+      event.logentry.message = scrubUrlLikeString(event.logentry.message);
+    }
+  }
+
+  const exceptionValues = event.exception?.values;
+  if (!Array.isArray(exceptionValues)) {
+    return;
+  }
+
+  for (const exception of exceptionValues) {
+    if (exception && typeof exception.value === 'string') {
+      exception.value = scrubUrlLikeString(exception.value);
+    }
+  }
+}
+
+/**
+ * Removes sensitive fields and identifiers from a Sentry event or performance payload.
+ *
+ * Mutates the provided event in place: deletes user email and IP address, removes request cookies,
+ * replaces request headers and nested data with scrubbed copies (or deletes request.data if it cannot
+ * be represented as an object), and replaces `extra`, `contexts`, and `data` with scrubbed copies.
+ *
+ * @param {object} event - Sentry event-like payload to be sanitized; this object is modified in place.
+ * @returns {object} The same event object after in-place scrubbing.
+ */
+function scrubSentryEvent(event) {
+  scrubSentryUser(event);
+
+  if (event.request) {
+    scrubSentryRequest(event.request);
+  }
+
+  scrubSentryMetadata(event);
+  scrubSentryMessageFields(event);
+
+  if (event.breadcrumbs) {
+    event.breadcrumbs = scrubBreadcrumbs(event.breadcrumbs);
+  }
+
+  return event;
+}
+
+/**
+ * Check whether a span key can contain a URL that needs query/fragment/credential stripping.
+ * @param {string} key - Span field or nested data key.
+ * @returns {boolean} True when the field should be treated as URL-bearing.
+ */
+function isSpanUrlBearingKey(key) {
+  return key === 'description' || key === 'name' || URL_METADATA_KEY_PATTERN.test(key);
+}
+
+/**
+ * Recursively scrub span payloads while preserving non-sensitive span identifiers and attributes.
+ * @param {unknown} value - Span or nested span value.
+ * @param {string} key - The object key that contained value.
+ * @param {WeakSet<object>} seen - Objects on the current recursion path.
+ * @returns {unknown} A scrubbed span value.
+ */
+function scrubSpanValue(value, key = '', seen = new WeakSet()) {
+  if (typeof value === 'string') {
+    return isSpanUrlBearingKey(key) ? scrubUrlLikeString(value) : scrubInlineSecrets(value);
+  }
+
+  if (!value || typeof value !== 'object') {
+    return value;
+  }
+
+  if (seen.has(value)) {
+    return CIRCULAR_REFERENCE_SENTINEL;
+  }
+
+  seen.add(value);
+
+  if (Array.isArray(value)) {
+    const scrubbedArray = value.map((childValue) => scrubSpanValue(childValue, key, seen));
+    seen.delete(value);
+    return scrubbedArray;
+  }
+
+  const scrubbed = {};
+
+  for (const [childKey, childValue] of Object.entries(value)) {
+    if (isSensitiveKey(childKey)) {
+      continue;
+    }
+
+    scrubbed[childKey] = scrubSpanValue(childValue, childKey, seen);
+  }
+
+  seen.delete(value);
+  return scrubbed;
+}
+
+/**
+ * Scrub Sentry span payloads that do not use the same shape as error/transaction events.
+ *
+ * @param {object} span - Sentry serialized span; this object is modified in place.
+ * @returns {object} The same span object after in-place scrubbing.
+ */
+function scrubSentrySpan(span) {
+  if (!span || typeof span !== 'object') {
+    return span;
+  }
+
+  const scrubbedSpan = scrubSpanValue(span);
+
+  for (const key of Object.keys(span)) {
+    delete span[key];
+  }
+  Object.assign(span, scrubbedSpan);
+
+  return span;
+}
 
 /**
  * Whether Sentry is actively initialized.
@@ -22,9 +560,11 @@ const dsn = process.env.SENTRY_DSN;
 export const sentryEnabled = Boolean(dsn);
 
 if (dsn) {
+  sendDefaultPii = process.env.SENTRY_SEND_DEFAULT_PII === 'true';
   Sentry.init({
     dsn,
     environment: process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'production',
+    sendDefaultPii,
 
     // Performance monitoring — sample 10% of transactions by default
     // Use ?? so SENTRY_TRACES_RATE=0 explicitly disables tracing
@@ -43,27 +583,10 @@ if (dsn) {
       if (message.includes('AbortError') || message.includes('The operation was aborted')) {
         return null;
       }
-      // Scrub sensitive keys from extra context
-      const sensitiveKeys = [
-        'ip',
-        'accessToken',
-        'secret',
-        'apiKey',
-        'authorization',
-        'password',
-        'token',
-        'stack',
-        'cookie',
-      ];
-      if (event.extra) {
-        for (const key of sensitiveKeys) {
-          if (key in event.extra) {
-            delete event.extra[key];
-          }
-        }
-      }
-      return event;
+      return scrubSentryEvent(event);
     },
+    beforeSendTransaction: scrubSentryEvent,
+    beforeSendSpan: scrubSentrySpan,
 
     // Add useful default tags
     initialScope: {

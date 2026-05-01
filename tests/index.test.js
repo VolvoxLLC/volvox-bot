@@ -27,6 +27,14 @@ const mocks = vi.hoisted(() => ({
     error: vi.fn(),
   },
 
+  telemetry: {
+    amplitudeEnabled: false,
+    sentryEnabled: false,
+    flushAmplitude: vi.fn(),
+    sentryFlush: vi.fn(),
+    sentrySetTag: vi.fn(),
+  },
+
   db: {
     initDb: vi.fn(),
     closeDb: vi.fn(),
@@ -158,6 +166,21 @@ vi.mock('../src/logger.js', () => ({
   error: mocks.logger.error,
 }));
 
+vi.mock('../src/amplitude.js', () => ({
+  isAmplitudeEnabled: () => mocks.telemetry.amplitudeEnabled,
+  flushAmplitude: mocks.telemetry.flushAmplitude,
+}));
+
+vi.mock('../src/sentry.js', () => ({
+  get sentryEnabled() {
+    return mocks.telemetry.sentryEnabled;
+  },
+  Sentry: {
+    flush: mocks.telemetry.sentryFlush,
+    setTag: mocks.telemetry.sentrySetTag,
+  },
+}));
+
 vi.mock('../src/modules/ai.js', () => ({
   getConversationHistory: mocks.ai.getConversationHistory,
   setConversationHistory: mocks.ai.setConversationHistory,
@@ -261,6 +284,12 @@ async function importIndex({
   mocks.logger.info.mockReset();
   mocks.logger.warn.mockReset();
   mocks.logger.error.mockReset();
+
+  mocks.telemetry.amplitudeEnabled = false;
+  mocks.telemetry.sentryEnabled = false;
+  mocks.telemetry.flushAmplitude.mockReset().mockResolvedValue(false);
+  mocks.telemetry.sentryFlush.mockReset().mockResolvedValue(true);
+  mocks.telemetry.sentrySetTag.mockReset();
 
   mocks.db.initDb.mockReset();
   if (initDbReject) {
@@ -444,6 +473,57 @@ describe('index.js', () => {
     expect(mocks.db.closeDb).toHaveBeenCalled();
     expect(mocks.client.destroy).toHaveBeenCalled();
     expect(mocks.botStatus.stopBotStatus).toHaveBeenCalled();
+
+    const shutdownCompleteIndex = mocks.logger.info.mock.calls.findIndex(
+      ([message]) => message === 'Shutdown complete',
+    );
+    const shutdownCompleteOrder = mocks.logger.info.mock.invocationCallOrder[shutdownCompleteIndex];
+
+    expect(shutdownCompleteIndex).toBeGreaterThanOrEqual(0);
+    expect(mocks.client.destroy.mock.invocationCallOrder[0]).toBeLessThan(shutdownCompleteOrder);
+    expect(shutdownCompleteOrder).toBeLessThan(
+      mocks.telemetry.flushAmplitude.mock.invocationCallOrder[0],
+    );
+  });
+
+  it('should bound Amplitude shutdown flush and log timeout errors', async () => {
+    await importIndex({ token: 'abc', databaseUrl: null });
+    mocks.telemetry.amplitudeEnabled = true;
+    mocks.telemetry.flushAmplitude.mockReturnValueOnce(new Promise(() => {}));
+
+    vi.useFakeTimers();
+    try {
+      const sigintHandler = mocks.processHandlers.SIGINT;
+      const shutdownResult = sigintHandler().catch((err) => err);
+
+      await vi.waitFor(() => {
+        expect(mocks.telemetry.flushAmplitude).toHaveBeenCalled();
+      });
+      await vi.advanceTimersByTimeAsync(2_000);
+
+      const thrown = await shutdownResult;
+      expect(thrown).toEqual(expect.objectContaining({ message: 'process.exit:0' }));
+      expect(mocks.logger.warn).toHaveBeenCalledWith(
+        'Failed to flush Amplitude events on shutdown',
+        { error: 'Amplitude flush timed out' },
+      );
+      expect(mocks.telemetry.sentryFlush).toHaveBeenCalledWith(2_000);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('should log enabled Amplitude flush failures during shutdown', async () => {
+    await importIndex({ token: 'abc', databaseUrl: null });
+    mocks.telemetry.amplitudeEnabled = true;
+    mocks.telemetry.flushAmplitude.mockResolvedValueOnce(false);
+
+    const sigintHandler = mocks.processHandlers.SIGINT;
+    await expect(sigintHandler()).rejects.toThrow('process.exit:0');
+
+    expect(mocks.logger.warn).toHaveBeenCalledWith('Failed to flush Amplitude events on shutdown', {
+      error: 'Amplitude flush failed',
+    });
   });
 
   it('should log save-state failure during shutdown', async () => {
