@@ -86,6 +86,7 @@ const SENSITIVE_KEY_FRAGMENT_COMPACTS = SENSITIVE_KEY_FRAGMENTS.map((fragment) =
   fragment.replaceAll(SENSITIVE_KEY_SEPARATOR_PATTERN, ''),
 );
 const URL_METADATA_KEY_PATTERN = /url/i;
+const URL_HEADER_KEY_PATTERN = /^(?:referer|referrer|origin)$/i;
 const ABSOLUTE_URL_CREDENTIALS_PATTERN = /^([a-z][a-z\d+.-]*:\/\/)([^/?#@]*@)/i;
 const ABSOLUTE_URL_IN_TEXT_PATTERN = /\b[a-z][a-z\d+.-]*:\/\/[^\s"'<>]+/gi;
 const RELATIVE_URL_IN_TEXT_PATTERN = /(^|[\s(["'])((?:\/|\.\.?\/)[^\s"'<>?#]*(?:[?#][^\s"'<>]*)+)/g;
@@ -101,29 +102,26 @@ const BROWSER_SENTRY_ENV = {
   replaysOnErrorSampleRate: process.env.NEXT_PUBLIC_SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE,
 } as const;
 
-/**
- * Returns the first non-empty environment value from the provided key list.
- *
- * @param keys - Environment variable names ordered by precedence.
- * @returns The trimmed value, or undefined when none are set.
- */
-function getEnvValue(keys: string[]): string | undefined {
-  for (const key of keys) {
-    const value = process.env[key];
-    if (typeof value === 'string' && value.trim().length > 0) {
-      return value.trim();
-    }
-  }
-
-  return undefined;
-}
+const SERVER_SENTRY_ENV = {
+  dsn: process.env.SENTRY_DSN,
+  environment: process.env.SENTRY_ENVIRONMENT,
+  vercelEnv: process.env.VERCEL_ENV,
+  railwayEnvironmentName: process.env.RAILWAY_ENVIRONMENT_NAME,
+  nodeEnv: process.env.NODE_ENV,
+  release: process.env.SENTRY_RELEASE,
+  publicRelease: process.env.NEXT_PUBLIC_SENTRY_RELEASE,
+  vercelGitCommitSha: process.env.VERCEL_GIT_COMMIT_SHA,
+  sendDefaultPii: process.env.SENTRY_SEND_DEFAULT_PII,
+  tracesSampleRate: process.env.SENTRY_TRACES_SAMPLE_RATE,
+  tracesRate: process.env.SENTRY_TRACES_RATE,
+} as const;
 
 /**
- * Returns the first non-empty value from statically referenced browser environment values.
+ * Returns the first non-empty value from statically referenced environment values.
  *
- * Next.js only bundles client-side environment variables when they are referenced with
- * direct `process.env.NEXT_PUBLIC_*` property access, so browser options must use values
- * captured from static references instead of dynamic `process.env[key]` lookups.
+ * Next.js only bundles client-side and Edge Runtime environment variables when they are
+ * referenced with direct `process.env.MY_VAR` property access, so Sentry options must use
+ * values captured from static references instead of dynamic `process.env[key]` lookups.
  *
  * @param values - Environment values ordered by precedence.
  * @returns The trimmed value, or undefined when none are set.
@@ -179,11 +177,11 @@ function getSentryEnvironment(runtime: SentryRuntime): string {
   const environment =
     (runtime === 'browser'
       ? getStaticEnvValue([BROWSER_SENTRY_ENV.environment, process.env.NODE_ENV])
-      : getEnvValue([
-          'SENTRY_ENVIRONMENT',
-          'VERCEL_ENV',
-          'RAILWAY_ENVIRONMENT_NAME',
-          'NODE_ENV',
+      : getStaticEnvValue([
+          SERVER_SENTRY_ENV.environment,
+          SERVER_SENTRY_ENV.vercelEnv,
+          SERVER_SENTRY_ENV.railwayEnvironmentName,
+          SERVER_SENTRY_ENV.nodeEnv,
         ])) ?? 'development';
 
   const normalized = environment.replaceAll(/[\s/\\]+/g, '-').replaceAll(/[^A-Za-z0-9_.-]/g, '');
@@ -205,7 +203,11 @@ function getSentryRelease(runtime: SentryRuntime): string | undefined {
     return getStaticEnvValue([BROWSER_SENTRY_ENV.release, BROWSER_SENTRY_ENV.webAppVersion]);
   }
 
-  return getEnvValue(['SENTRY_RELEASE', 'NEXT_PUBLIC_SENTRY_RELEASE', 'VERCEL_GIT_COMMIT_SHA']);
+  return getStaticEnvValue([
+    SERVER_SENTRY_ENV.release,
+    SERVER_SENTRY_ENV.publicRelease,
+    SERVER_SENTRY_ENV.vercelGitCommitSha,
+  ]);
 }
 
 /**
@@ -476,7 +478,11 @@ function scrubHeaders(headers: unknown): Record<string, string> | undefined {
 
   for (const [key, value] of Object.entries(scrubbedHeaders)) {
     if (value !== undefined) {
-      normalizedHeaders[key] = normalizeHeaderValue(value);
+      const normalizedValue = normalizeHeaderValue(value);
+      normalizedHeaders[key] =
+        URL_HEADER_KEY_PATTERN.test(key) || URL_METADATA_KEY_PATTERN.test(key)
+          ? scrubBreadcrumbString(normalizedValue)
+          : normalizedValue;
     }
   }
 
@@ -645,12 +651,12 @@ export function getServerSentryOptions(
   runtime: Exclude<SentryRuntime, 'browser'>,
 ): SentryInitOptions {
   return {
-    dsn: getEnvValue(['SENTRY_DSN']),
+    dsn: getStaticEnvValue([SERVER_SENTRY_ENV.dsn]),
     environment: getSentryEnvironment(runtime),
     release: getSentryRelease(runtime),
-    sendDefaultPii: parseBoolean(getEnvValue(['SENTRY_SEND_DEFAULT_PII'])),
+    sendDefaultPii: parseBoolean(getStaticEnvValue([SERVER_SENTRY_ENV.sendDefaultPii])),
     tracesSampleRate: parseSampleRate(
-      getEnvValue(['SENTRY_TRACES_SAMPLE_RATE', 'SENTRY_TRACES_RATE']),
+      getStaticEnvValue([SERVER_SENTRY_ENV.tracesSampleRate, SERVER_SENTRY_ENV.tracesRate]),
       DEFAULT_TRACES_SAMPLE_RATE,
     ),
     beforeSend: (event, hint) => scrubSentryEvent(event, hint),

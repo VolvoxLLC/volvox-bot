@@ -318,6 +318,45 @@ describe('sentry-options', () => {
     ]);
   });
 
+  it('should scrub Sentry v10 object-shaped breadcrumb values before sending events', async () => {
+    const { scrubSentryEvent } = await import('@/lib/sentry-options');
+    const event = {
+      type: undefined,
+      breadcrumbs: {
+        values: [
+          {
+            category: 'fetch',
+            message: 'fetch failed at /api/auth/callback/discord?code=oauth-code#private',
+            data: {
+              url: 'https://user:pass@dashboard.example.com/api?token=secret#private',
+              nested: {
+                note: 'redirected from /api/auth/callback/discord?code=oauth-code#private',
+                email: 'person@example.com',
+                safeField: 'keep-this',
+              },
+            },
+          },
+        ],
+      },
+    } as unknown as Event;
+
+    expect(scrubSentryEvent(event)?.breadcrumbs).toEqual({
+      values: [
+        {
+          category: 'fetch',
+          message: 'fetch failed at /api/auth/callback/discord',
+          data: {
+            url: 'https://dashboard.example.com/api',
+            nested: {
+              note: 'redirected from /api/auth/callback/discord',
+              safeField: 'keep-this',
+            },
+          },
+        },
+      ],
+    });
+  });
+
   it('should normalize scrubbed request headers to strings before sending events', async () => {
     const { scrubSentryEvent } = await import('@/lib/sentry-options');
     const event = {
@@ -326,6 +365,7 @@ describe('sentry-options', () => {
         headers: {
           authorization: 'Bearer secret',
           accept: ['application/json', 'text/plain'],
+          referer: 'https://user:pass@example.com/callback?code=secret#fragment',
           'x-retry-count': 2,
           'x-feature-enabled': true,
           metadata: { safeField: 'keep-this', email: 'person@example.com' },
@@ -335,6 +375,7 @@ describe('sentry-options', () => {
 
     expect(scrubSentryEvent(event)?.request?.headers).toEqual({
       accept: 'application/json, text/plain',
+      referer: 'https://example.com/callback',
       'x-retry-count': '2',
       'x-feature-enabled': 'true',
       metadata: '{"safeField":"keep-this"}',
