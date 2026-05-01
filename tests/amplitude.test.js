@@ -6,6 +6,11 @@ const { mockFlush, mockInit, mockTrack } = vi.hoisted(() => ({
   mockTrack: vi.fn(),
 }));
 
+async function getScrub() {
+  const { scrubAmplitudeProperties } = await import('../src/amplitude.js');
+  return scrubAmplitudeProperties;
+}
+
 vi.mock('@amplitude/analytics-node', () => ({
   flush: mockFlush,
   init: mockInit,
@@ -31,9 +36,9 @@ describe('amplitude analytics', () => {
   it('does not initialize or track events without an API key', async () => {
     vi.stubEnv('AMPLITUDE_API_KEY', '');
 
-    const { amplitudeEnabled, trackAnalyticsEvent } = await import('../src/amplitude.js');
+    const { isAmplitudeEnabled, trackAnalyticsEvent } = await import('../src/amplitude.js');
 
-    expect(amplitudeEnabled).toBe(false);
+    expect(isAmplitudeEnabled()).toBe(false);
     expect(trackAnalyticsEvent('bot_log_recorded', { ok: true })).toBe(false);
     expect(mockInit).not.toHaveBeenCalled();
     expect(mockTrack).not.toHaveBeenCalled();
@@ -45,7 +50,7 @@ describe('amplitude analytics', () => {
 
     const analytics = await import('../src/amplitude.js');
 
-    expect(analytics.amplitudeEnabled).toBe(true);
+    expect(analytics.isAmplitudeEnabled()).toBe(true);
     expect(mockInit).not.toHaveBeenCalled();
 
     expect(analytics.trackAnalyticsEvent('bot_log_recorded', { ok: true })).toBe(true);
@@ -61,14 +66,14 @@ describe('amplitude analytics', () => {
 
     const analytics = await import('../src/amplitude.js');
 
-    expect(analytics.amplitudeEnabled).toBe(false);
+    expect(analytics.isAmplitudeEnabled()).toBe(false);
     expect(analytics.trackAnalyticsEvent('bot_log_recorded', { before: true })).toBe(false);
 
     vi.stubEnv('AMPLITUDE_API_KEY', 'runtime-key');
     vi.stubEnv('AMPLITUDE_SERVER_ZONE', 'EU');
 
     expect(analytics.trackAnalyticsEvent('bot_log_recorded', { after: true })).toBe(true);
-    expect(analytics.amplitudeEnabled).toBe(true);
+    expect(analytics.isAmplitudeEnabled()).toBe(true);
     expect(mockInit).toHaveBeenCalledWith('runtime-key', {
       logLevel: 'none',
       serverZone: 'EU',
@@ -168,12 +173,12 @@ describe('amplitude analytics', () => {
 
     const analytics = await import('../src/amplitude.js');
 
-    expect(analytics.amplitudeEnabled).toBe(true);
+    expect(analytics.isAmplitudeEnabled()).toBe(true);
 
     vi.stubEnv('AMPLITUDE_API_KEY', '');
 
     await expect(analytics.flushAmplitude()).resolves.toBe(false);
-    expect(analytics.amplitudeEnabled).toBe(false);
+    expect(analytics.isAmplitudeEnabled()).toBe(false);
     expect(mockFlush).not.toHaveBeenCalled();
   });
 
@@ -235,11 +240,6 @@ describe('scrubAmplitudeProperties', () => {
     vi.unstubAllEnvs();
     vi.resetModules();
   });
-
-  async function getScrub() {
-    const { scrubAmplitudeProperties } = await import('../src/amplitude.js');
-    return scrubAmplitudeProperties;
-  }
 
   it('returns primitive numbers and booleans as-is', async () => {
     const scrub = await getScrub();

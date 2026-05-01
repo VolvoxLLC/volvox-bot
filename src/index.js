@@ -266,7 +266,7 @@ async function gracefulShutdown(signal) {
       'Amplitude flush timed out',
     );
 
-    if (amplitude.amplitudeEnabled && !amplitudeFlushed) {
+    if (amplitude.isAmplitudeEnabled() && !amplitudeFlushed) {
       warn('Failed to flush Amplitude events on shutdown', { error: 'Amplitude flush failed' });
     }
   } catch (err) {

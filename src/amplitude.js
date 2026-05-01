@@ -15,12 +15,29 @@ export const AMPLITUDE_LOG_EVENT = 'bot_log_recorded';
 export const DEFAULT_AMPLITUDE_DEVICE_ID = 'volvox-bot-server';
 
 const AMPLITUDE_MIN_ID_LENGTH = 5;
-const SENSITIVE_KEY_PATTERN =
-  /(?:authorization|cookie|csrf|secret|password|token|session|stack|x[-_]?forwarded[-_]?for|ip(?:[-_]?address)?|x[-_]?api[-_]?key|api[-_]?key|bot[-_]?api[-_]?secret|access[-_]?token|refresh[-_]?token|e-?mail)/i;
+const SENSITIVE_KEY_PARTS = [
+  'authorization',
+  'cookie',
+  'csrf',
+  'secret',
+  'password',
+  'token',
+  'session',
+  'stack',
+  'xforwardedfor',
+  'ipaddress',
+  'xapikey',
+  'apikey',
+  'botapisecret',
+  'accesstoken',
+  'refreshtoken',
+  'email',
+];
+const SENSITIVE_KEY_EXACT_MATCHES = new Set(['ip']);
 const INLINE_SECRET_PATTERNS = [
-  /\bBearer\s+[A-Za-z0-9._~+/=-]+/gi,
-  /\bsk-[A-Za-z0-9][A-Za-z0-9_-]{10,}/g,
-  /\b(?:xox[baprs]|gh[pousr])_[A-Za-z0-9_/-]{10,}/g,
+  /\bBearer\s+[\w.~+/=-]+/gi,
+  /\bsk-\w[\w-]{10,}/g,
+  /\b(?:xox[baprs]|gh[pousr])_[\w/-]{10,}/g,
 ];
 
 /**
@@ -73,6 +90,29 @@ function scrubInlineSecrets(value) {
 }
 
 /**
+ * Normalize object keys so equivalent sensitive forms (api_key, api-key, api key) match.
+ * @param {string} key - Object key to normalize.
+ * @returns {string} Lowercase alphanumeric key.
+ */
+function normalizeSensitiveKey(key) {
+  return key.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+/**
+ * Check whether an object key is sensitive and should be removed from telemetry.
+ * @param {string} key - Object key to evaluate.
+ * @returns {boolean} True when the key represents secret or PII metadata.
+ */
+function isSensitiveKey(key) {
+  const normalizedKey = normalizeSensitiveKey(key);
+
+  return (
+    SENSITIVE_KEY_EXACT_MATCHES.has(normalizedKey) ||
+    SENSITIVE_KEY_PARTS.some((sensitivePart) => normalizedKey.includes(sensitivePart))
+  );
+}
+
+/**
  * Sanitize a value for Amplitude by redacting inline secrets and removing sensitive object properties.
  *
  * Handles strings (inline secrets redacted), arrays (elements sanitized), Date (converted to ISO string),
@@ -117,7 +157,7 @@ export function scrubAmplitudeProperties(value, seen = new WeakSet()) {
     const scrubbed = {};
 
     for (const [key, childValue] of Object.entries(value)) {
-      if (SENSITIVE_KEY_PATTERN.test(key)) {
+      if (isSensitiveKey(key)) {
         continue;
       }
 
@@ -144,9 +184,16 @@ export function getAmplitudeServerOptions() {
 /**
  * Whether the current runtime environment has Amplitude enabled.
  */
-export let amplitudeEnabled = Boolean(getEnvValue('AMPLITUDE_API_KEY'));
-
+let amplitudeEnabled = Boolean(getEnvValue('AMPLITUDE_API_KEY'));
 let initializedApiKey;
+
+/**
+ * Whether the current runtime environment has Amplitude enabled.
+ * @returns {boolean} True when Amplitude currently has an API key.
+ */
+export function isAmplitudeEnabled() {
+  return amplitudeEnabled;
+}
 
 /**
  * Initialize Amplitude with the current runtime environment, if configured.

@@ -18,17 +18,34 @@ const dsn = process.env.SENTRY_DSN;
 // Keep Sentry default PII capture opt-in only; any value other than the explicit string "true" stays disabled.
 const sendDefaultPii = process.env.SENTRY_SEND_DEFAULT_PII === 'true';
 const CIRCULAR_REFERENCE_SENTINEL = '[Circular]';
-const SENSITIVE_KEY_PATTERN =
-  /(?:authorization|cookie|csrf|e-?mail|secret|password|token|session|stack|x[-_]?forwarded[-_]?for|ip(?:[-_]?address)?|x[-_]?api[-_]?key|api[-_]?key|bot[-_]?api[-_]?secret|access[-_]?token|refresh[-_]?token)/i;
+const SENSITIVE_KEY_PARTS = [
+  'authorization',
+  'cookie',
+  'csrf',
+  'email',
+  'secret',
+  'password',
+  'token',
+  'session',
+  'stack',
+  'xforwardedfor',
+  'ipaddress',
+  'xapikey',
+  'apikey',
+  'botapisecret',
+  'accesstoken',
+  'refreshtoken',
+];
+const SENSITIVE_KEY_EXACT_MATCHES = new Set(['ip']);
 const URL_METADATA_KEY_PATTERN = /url/i;
 const INLINE_SECRET_REPLACEMENTS = [
-  { pattern: /\bBearer\s+[A-Za-z0-9._~+/=-]+/gi, replacement: '[REDACTED]' },
-  { pattern: /\bsk-[A-Za-z0-9][A-Za-z0-9_-]{10,}/g, replacement: '[REDACTED]' },
+  { pattern: /\bBearer\s+[\w.~+/=-]+/gi, replacement: '[REDACTED]' },
+  { pattern: /\bsk-\w[\w-]{10,}/g, replacement: '[REDACTED]' },
   {
-    pattern: /\b(?:xox[baprs]|gh[pousr])_[A-Za-z0-9_/-]{10,}/g,
+    pattern: /\b(?:xox[baprs]|gh[pousr])_[\w/-]{10,}/g,
     replacement: '[REDACTED]',
   },
-  { pattern: /\bgithub_pat_[A-Za-z0-9_]{10,}/g, replacement: '[REDACTED]' },
+  { pattern: /\bgithub_pat_\w{10,}/g, replacement: '[REDACTED]' },
   {
     pattern:
       /([?&#]\s*(?:access[-_]?token|refresh[-_]?token|api[-_]?key|token|secret|password)\s*=)\s*[^\s&#]+/gi,
@@ -50,6 +67,29 @@ function scrubInlineSecrets(value) {
   return INLINE_SECRET_REPLACEMENTS.reduce(
     (scrubbedValue, { pattern, replacement }) => scrubbedValue.replace(pattern, replacement),
     value,
+  );
+}
+
+/**
+ * Normalize object keys so equivalent sensitive forms (api_key, api-key, api key) match.
+ * @param {string} key - Object key to normalize.
+ * @returns {string} Lowercase alphanumeric key.
+ */
+function normalizeSensitiveKey(key) {
+  return key.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+/**
+ * Check whether an object key is sensitive and should be removed from Sentry metadata.
+ * @param {string} key - Object key to evaluate.
+ * @returns {boolean} True when the key represents secret or PII metadata.
+ */
+function isSensitiveKey(key) {
+  const normalizedKey = normalizeSensitiveKey(key);
+
+  return (
+    SENSITIVE_KEY_EXACT_MATCHES.has(normalizedKey) ||
+    SENSITIVE_KEY_PARTS.some((sensitivePart) => normalizedKey.includes(sensitivePart))
   );
 }
 
@@ -84,7 +124,7 @@ function scrubUnknown(value, seen = new WeakSet()) {
   const scrubbed = {};
 
   for (const [key, childValue] of Object.entries(value)) {
-    if (SENSITIVE_KEY_PATTERN.test(key)) {
+    if (isSensitiveKey(key)) {
       continue;
     }
 
@@ -155,7 +195,7 @@ function scrubBreadcrumbData(value, seen = new WeakSet()) {
   const scrubbed = {};
 
   for (const [key, childValue] of Object.entries(value)) {
-    if (SENSITIVE_KEY_PATTERN.test(key)) {
+    if (isSensitiveKey(key)) {
       continue;
     }
 
@@ -199,6 +239,75 @@ function scrubBreadcrumbs(breadcrumbs) {
 }
 
 /**
+ * Remove Sentry user fields that may contain PII.
+ * @param {object} event - Sentry event-like payload to mutate.
+ */
+function scrubSentryUser(event) {
+  if (!event.user) {
+    return;
+  }
+
+  delete event.user.email;
+  delete event.user.ip_address;
+}
+
+/**
+ * Determine whether scrubbed request data can safely remain on the event.
+ * @param {unknown} scrubbedData - Scrubbed request data value.
+ * @param {unknown} rawData - Original request data value.
+ * @returns {boolean} True when the request data should be retained.
+ */
+function shouldKeepRequestData(scrubbedData, rawData) {
+  return (
+    (Boolean(scrubbedData) && typeof scrubbedData === 'object') ||
+    (typeof scrubbedData === 'string' && scrubbedData !== rawData)
+  );
+}
+
+/**
+ * Scrub request metadata that can carry secrets or PII.
+ * @param {object} request - Sentry request-like payload to mutate.
+ */
+function scrubSentryRequest(request) {
+  delete request.cookies;
+  delete request.query_string;
+
+  if (request.url) {
+    request.url = stripRequestUrlQuery(request.url);
+  }
+
+  if (request.headers) {
+    request.headers = scrubUnknown(request.headers);
+  }
+
+  if (!request.data) {
+    return;
+  }
+
+  const rawData = request.data;
+  const scrubbedData = scrubUnknown(rawData);
+
+  if (shouldKeepRequestData(scrubbedData, rawData)) {
+    request.data = scrubbedData;
+    return;
+  }
+
+  delete request.data;
+}
+
+/**
+ * Scrub optional top-level metadata collections on a Sentry event.
+ * @param {object} event - Sentry event-like payload to mutate.
+ */
+function scrubSentryMetadata(event) {
+  for (const key of ['extra', 'contexts', 'data']) {
+    if (event[key]) {
+      event[key] = scrubUnknown(event[key]);
+    }
+  }
+}
+
+/**
  * Removes sensitive fields and identifiers from a Sentry event or performance payload.
  *
  * Mutates the provided event in place: deletes user email and IP address, removes request cookies,
@@ -209,47 +318,13 @@ function scrubBreadcrumbs(breadcrumbs) {
  * @returns {object} The same event object after in-place scrubbing.
  */
 function scrubSentryEvent(event) {
-  if (event.user) {
-    delete event.user.email;
-    delete event.user.ip_address;
-  }
+  scrubSentryUser(event);
 
   if (event.request) {
-    delete event.request.cookies;
-    delete event.request.query_string;
-
-    if (event.request.url) {
-      event.request.url = stripRequestUrlQuery(event.request.url);
-    }
-
-    if (event.request.headers) {
-      event.request.headers = scrubUnknown(event.request.headers);
-    }
-
-    if (event.request.data) {
-      const rawData = event.request.data;
-      const scrubbedData = scrubUnknown(rawData);
-      if (scrubbedData && typeof scrubbedData === 'object') {
-        event.request.data = scrubbedData;
-      } else if (typeof scrubbedData === 'string' && scrubbedData !== rawData) {
-        event.request.data = scrubbedData;
-      } else {
-        delete event.request.data;
-      }
-    }
+    scrubSentryRequest(event.request);
   }
 
-  if (event.extra) {
-    event.extra = scrubUnknown(event.extra);
-  }
-
-  if (event.contexts) {
-    event.contexts = scrubUnknown(event.contexts);
-  }
-
-  if (event.data) {
-    event.data = scrubUnknown(event.data);
-  }
+  scrubSentryMetadata(event);
 
   if (event.breadcrumbs) {
     event.breadcrumbs = scrubBreadcrumbs(event.breadcrumbs);

@@ -22,10 +22,8 @@ vi.mock('../../src/amplitude.js', async () => {
 });
 
 vi.mock('winston-transport', () => {
-  class Transport {
-    constructor(opts = {}) {
-      this.level = opts.level;
-    }
+  function Transport(opts = {}) {
+    this.level = opts.level;
   }
 
   return { default: Transport };

@@ -167,9 +167,7 @@ vi.mock('../src/logger.js', () => ({
 }));
 
 vi.mock('../src/amplitude.js', () => ({
-  get amplitudeEnabled() {
-    return mocks.telemetry.amplitudeEnabled;
-  },
+  isAmplitudeEnabled: () => mocks.telemetry.amplitudeEnabled,
   flushAmplitude: mocks.telemetry.flushAmplitude,
 }));
 
