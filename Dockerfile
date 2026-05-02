@@ -32,7 +32,9 @@ COPY --chown=botuser:botgroup migrations/ ./migrations/
 RUN chmod -R a-w node_modules && \
     find src migrations -type d -exec chmod 0555 {} + && \
     find src migrations -type f -exec chmod 0444 {} + && \
-    mkdir -p data && chown botuser:botgroup data && chmod 0700 data
+    mkdir -p data logs && \
+    chown botuser:botgroup data logs && \
+    chmod 0700 data logs
 
 USER botuser
 

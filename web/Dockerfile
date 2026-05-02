@@ -58,8 +58,11 @@ COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 RUN for path in server.js package.json node_modules; do \
       if [ -e "$path" ]; then chmod -R a-w "$path"; fi; \
     done && \
-    find .next public -type d -exec chmod 0555 {} + && \
-    find .next public -type f -exec chmod 0444 {} +
+    find .next -path .next/cache -prune -o -type d -exec chmod 0555 {} + && \
+    find .next -path .next/cache -prune -o -type f -exec chmod 0444 {} + && \
+    chmod -R u+rwX,go-rwx .next/cache && \
+    find public -type d -exec chmod 0555 {} + && \
+    find public -type f -exec chmod 0444 {} +
 
 USER nextjs
 
