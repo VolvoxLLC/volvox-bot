@@ -8,7 +8,11 @@
     "src/app/globals.css",
     "src/app/opengraph-image.tsx",
     "src/app/robots.ts",
-    "src/app/sitemap.ts"
+    "src/app/sitemap.ts",
+    "src/instrumentation-client.ts",
+    "src/instrumentation.ts",
+    "src/sentry.edge.config.ts",
+    "src/sentry.server.config.ts"
   ],
   "appStaticAndFrameworkPageShells": [
     "src/app/page.tsx",

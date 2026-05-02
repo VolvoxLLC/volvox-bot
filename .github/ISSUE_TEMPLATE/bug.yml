@@ -1,0 +1,74 @@
+name: Bug
+description: Report a confirmed defect with reproduction.
+title: "bug(scope): "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Replace `scope` in the title with a primary scope-label token (`ai`, `dashboard`, `backend`, `frontend`, `api`, `auth`, `ops`, `security`, `engagement`, `moderation`, `dependencies`) or, when clearer, a narrower title-only scope from the templates (`agents`, `design`, `readme`, `mintlify`, `deps`, `tests`, `tooling`). Treat `deps` as title shorthand for `dependencies`; labels still follow the taxonomy in `AGENTS.md`.
+
+        Start bug reports with `bug(scope): ...` for confirmed defects with reproduction. Use `fix(...)` for the implementation work that resolves the defect, or when filing an issue only to track a PR that already contains the fix.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One or two sentences describing the defect and the file(s) at fault.
+    validations:
+      required: true
+  - type: textarea
+    id: current-state
+    attributes:
+      label: Current state
+      description: What happens today. Cite file paths with line numbers and quote log lines or error messages verbatim.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Numbered steps. Include environment details (Node version, dashboard vs. bot, guild config) when relevant.
+      value: |
+        1. …
+        2. …
+        3. …
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: Be explicit about IN and OUT to keep the fix focused.
+      value: |
+        **IN**
+
+        - …
+
+        **OUT**
+
+        - …
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      value: |
+        - [ ] Defect no longer reproduces with the steps above.
+        - [ ] Regression test added.
+        - [ ] …
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: Use `**Depends on:** #N` for hard ordering. Add the `blocked` label if a dependency is open.
+  - type: textarea
+    id: files
+    attributes:
+      label: Files likely touched

@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+const { mockAmplitudeFlush, mockAmplitudeInit, mockAmplitudeTrack } = vi.hoisted(() => ({
+  mockAmplitudeFlush: vi.fn(),
+  mockAmplitudeInit: vi.fn(),
+  mockAmplitudeTrack: vi.fn(),
+}));
+
 /**
  * SHARED MOCK PATTERN for tests needing fresh logger imports:
  *
@@ -11,6 +17,21 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
  * Note: vi.mock() is hoisted, so these calls must be inline in the test body,
  * not wrapped in a helper function.
  */
+
+vi.mock('@amplitude/analytics-node', () => ({
+  flush: mockAmplitudeFlush,
+  init: mockAmplitudeInit,
+  track: mockAmplitudeTrack,
+  Types: {
+    LogLevel: {
+      None: 'none',
+    },
+    ServerZone: {
+      EU: 'EU',
+      US: 'US',
+    },
+  },
+}));
 
 // We need to test the logger module, but it reads config.json at import time.
 // Mock fs to control what it reads.
@@ -34,7 +55,9 @@ vi.mock('winston-daily-rotate-file', () => ({
 // the same import get the same winston logger instance.
 describe('logger module', () => {
   afterEach(() => {
+    vi.unstubAllEnvs();
     vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   it('should export debug, info, warn, error functions', async () => {
@@ -103,6 +126,59 @@ describe('logger module', () => {
     logger.info('test', {
       items: [{ token: 'secret', name: 'item1' }, { name: 'item2' }],
     });
+  });
+
+  it('keeps Amplitude log telemetry active when API key is loaded after logger import', async () => {
+    vi.resetModules();
+    vi.stubEnv('AMPLITUDE_API_KEY', '');
+
+    const logger = await import('../src/logger.js');
+
+    expect(
+      logger.default.logger.transports.some(
+        (transport) => transport.constructor?.name === 'AmplitudeTransport',
+      ),
+    ).toBe(true);
+
+    logger.info('before dotenv', { module: 'startup' });
+    expect(mockAmplitudeInit).not.toHaveBeenCalled();
+    expect(mockAmplitudeTrack).not.toHaveBeenCalled();
+
+    vi.stubEnv('AMPLITUDE_API_KEY', 'runtime-key');
+    vi.stubEnv('AMPLITUDE_SERVER_ZONE', 'EU');
+
+    logger.info('after dotenv', { module: 'startup' });
+
+    expect(mockAmplitudeInit).toHaveBeenCalledWith('runtime-key', {
+      logLevel: 'none',
+      serverZone: 'EU',
+    });
+    expect(mockAmplitudeTrack).toHaveBeenCalledWith(
+      'bot_log_recorded',
+      expect.objectContaining({
+        level: 'info',
+        message: 'after dotenv',
+        module: 'startup',
+      }),
+      { device_id: 'volvox-bot-server' },
+    );
+  });
+
+  it('keeps the Amplitude transport no-op safe when Amplitude remains disabled', async () => {
+    vi.resetModules();
+    vi.stubEnv('AMPLITUDE_API_KEY', '');
+
+    const logger = await import('../src/logger.js');
+
+    expect(
+      logger.default.logger.transports.some(
+        (transport) => transport.constructor?.name === 'AmplitudeTransport',
+      ),
+    ).toBe(true);
+
+    expect(() => logger.warn('amplitude disabled', { module: 'startup' })).not.toThrow();
+    expect(mockAmplitudeInit).not.toHaveBeenCalled();
+    expect(mockAmplitudeTrack).not.toHaveBeenCalled();
   });
 
   // ── filterSensitiveData: Error handling ──────────────────────────────────

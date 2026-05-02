@@ -11,14 +11,14 @@
  * - Structured logging
  */
 
-// Sentry must be imported before all other modules to instrument them
+// Sentry loads dotenv/config before initialization and must be imported before
+// application modules to instrument them.
 import './sentry.js';
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Client, Collection, GatewayIntentBits, Partials } from 'discord.js';
-import { config as dotenvConfig } from 'dotenv';
 import { startServer, stopServer, updateServerDbPool } from './api/server.js';
 import { registerConfigListeners, removeLoggingTransport } from './config-listeners.js';
 import { closeDb, getPool, initDb } from './db.js';
@@ -61,6 +61,7 @@ const __dirname = dirname(__filename);
 // State persistence path
 const dataDir = join(__dirname, '..', 'data');
 const statePath = join(dataDir, 'state.json');
+const TELEMETRY_SHUTDOWN_FLUSH_TIMEOUT_MS = 2_000;
 
 // Package version (for restart tracking)
 let BOT_VERSION = 'unknown';
@@ -70,9 +71,6 @@ try {
 } catch {
   // package.json unreadable — version stays 'unknown'
 }
-
-// Load environment variables
-dotenvConfig();
 
 // Config is loaded asynchronously after DB init (see startup below).
 // After loadConfig() resolves, `config` points to the same object as
@@ -150,6 +148,27 @@ function loadState() {
     }
   } catch (err) {
     error('Failed to load state', { error: err.message });
+  }
+}
+
+/**
+ * Await a promise with a bounded timeout, clearing the timer when either side settles.
+ * @param {Promise<unknown>} promise - Promise to await.
+ * @param {number} timeoutMs - Timeout in milliseconds.
+ * @param {string} timeoutMessage - Error message to use if the timeout wins.
+ * @returns {Promise<unknown>} The original promise resolution.
+ */
+async function withTimeout(promise, timeoutMs, timeoutMessage) {
+  let timeoutId;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
@@ -235,15 +254,36 @@ async function gracefulShutdown(signal) {
     error('Failed to close Redis connection', { error: err.message });
   }
 
-  // 5. Flush Sentry events before exit (no-op if Sentry disabled)
-  await import('./sentry.js').then(({ Sentry }) => Sentry.flush(2000)).catch(() => {});
-
-  // 6. Destroy Discord client
+  // 5. Destroy Discord client
   info('Disconnecting from Discord');
   client.destroy();
 
-  // 7. Log clean exit
+  // 6. Log clean exit before the final telemetry flush so shutdown logs are delivered
   info('Shutdown complete');
+
+  // 7. Flush telemetry events after final shutdown logs and before exit (no-op if disabled)
+  try {
+    const amplitude = await import('./amplitude.js');
+    const amplitudeFlushed = await withTimeout(
+      amplitude.flushAmplitude(),
+      TELEMETRY_SHUTDOWN_FLUSH_TIMEOUT_MS,
+      'Amplitude flush timed out',
+    );
+
+    if (amplitude.isAmplitudeEnabled() && !amplitudeFlushed) {
+      warn('Failed to flush Amplitude events on shutdown', { error: 'Amplitude flush failed' });
+    }
+  } catch (err) {
+    warn('Failed to flush Amplitude events on shutdown', { error: err.message });
+  }
+
+  try {
+    const { Sentry } = await import('./sentry.js');
+    await Sentry.flush(TELEMETRY_SHUTDOWN_FLUSH_TIMEOUT_MS);
+  } catch (err) {
+    warn('Failed to flush Sentry events on shutdown', { error: err.message });
+  }
+
   process.exit(0);
 }
 
@@ -269,6 +309,105 @@ function canContinueWithoutDatabase() {
   return process.env.ALLOW_DATABASE_STARTUP_FAILURE === 'true' || isRailwayPullRequestEnvironment;
 }
 
+async function startRestApiWithWebSocketTransport() {
+  let wsTransport = null;
+  try {
+    wsTransport = addWebSocketTransport();
+    await startServer(client, null, { wsTransport });
+  } catch (err) {
+    // Clean up orphaned transport if startServer failed after it was created.
+    if (wsTransport) {
+      removeWebSocketTransport(wsTransport);
+    }
+    error('REST API server failed to start — continuing without API', { error: err.message });
+  }
+}
+
+async function initializeDatabaseForStartup() {
+  if (!process.env.DATABASE_URL) {
+    warn('DATABASE_URL not set — using config.json only (no persistence)');
+    return null;
+  }
+
+  try {
+    const dbPool = await initDb();
+    updateServerDbPool(dbPool);
+    initRedis();
+    info('Database initialized');
+
+    await recordRestart(dbPool, 'startup', BOT_VERSION);
+    await seedBuiltinTemplates().catch((err) =>
+      warn('Failed to seed built-in role menu templates', { error: err.message }),
+    );
+
+    return dbPool;
+  } catch (err) {
+    if (!canContinueWithoutDatabase()) {
+      throw err;
+    }
+
+    warn('Database initialization failed — continuing without persistence for preview deployment', {
+      error: err.message,
+      railwayEnvironment: process.env.RAILWAY_ENVIRONMENT_NAME ?? null,
+    });
+    return null;
+  }
+}
+
+async function initializePostgresLogging(dbPool, currentConfig) {
+  if (!dbPool || !currentConfig.logging?.database?.enabled) {
+    return;
+  }
+
+  try {
+    const transport = addPostgresTransport(dbPool, currentConfig.logging.database);
+    setInitialTransport(transport);
+    info('PostgreSQL logging transport enabled');
+
+    const retentionDays = currentConfig.logging.database.retentionDays ?? 30;
+    const pruned = await pruneOldLogs(dbPool, retentionDays);
+    if (pruned > 0) {
+      info('Pruned old log entries', { pruned, retentionDays });
+    }
+  } catch (err) {
+    error('Failed to initialize PostgreSQL logging transport', { error: err.message });
+  }
+}
+
+async function checkMemoryAvailability() {
+  const healthAbort = new AbortController();
+  try {
+    await Promise.race([
+      checkMem0Health({ signal: healthAbort.signal }),
+      new Promise((_, reject) =>
+        setTimeout(() => {
+          healthAbort.abort();
+          reject(new Error('mem0 health check timed out'));
+        }, 10_000),
+      ),
+    ]);
+  } catch (err) {
+    markUnavailable();
+    warn('mem0 health check timed out or failed — continuing without memory features', {
+      error: err.message,
+    });
+  }
+}
+
+function applySentryBotContext() {
+  import('./sentry.js')
+    .then(({ Sentry, sentryEnabled }) => {
+      if (sentryEnabled) {
+        Sentry.setTag('bot.username', client.user?.tag || 'unknown');
+        Sentry.setTag('bot.version', BOT_VERSION);
+        info('Sentry error monitoring enabled', {
+          environment: process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'production',
+        });
+      }
+    })
+    .catch(() => {});
+}
+
 /**
  * Perform full application startup: initialize the database, load configuration and conversation history, start background services (conversation cleanup, memory checks, triage, tempban scheduler), register event handlers, load slash commands, and log the Discord client in.
  */
@@ -278,55 +417,10 @@ async function startup() {
 
   // Start REST API server immediately so Railway health checks can pass while
   // heavier startup work (DB migrations, config loading, Discord login) runs.
-  {
-    let wsTransport = null;
-    try {
-      wsTransport = addWebSocketTransport();
-      await startServer(client, null, { wsTransport });
-    } catch (err) {
-      // Clean up orphaned transport if startServer failed after it was created
-      if (wsTransport) {
-        removeWebSocketTransport(wsTransport);
-      }
-      error('REST API server failed to start — continuing without API', { error: err.message });
-    }
-  }
+  await startRestApiWithWebSocketTransport();
 
   // Initialize database
-  let dbPool = null;
-  if (process.env.DATABASE_URL) {
-    try {
-      dbPool = await initDb();
-
-      updateServerDbPool(dbPool);
-
-      // Initialize Redis (gracefully degrades if REDIS_URL not set)
-      initRedis();
-      info('Database initialized');
-
-      // Record this startup in the restart history table
-      await recordRestart(dbPool, 'startup', BOT_VERSION);
-
-      // Seed built-in role menu templates (idempotent)
-      await seedBuiltinTemplates().catch((err) =>
-        warn('Failed to seed built-in role menu templates', { error: err.message }),
-      );
-    } catch (err) {
-      if (!canContinueWithoutDatabase()) {
-        throw err;
-      }
-
-      warn(
-        'Database initialization failed — continuing without persistence for preview deployment',
-        {
-          error: err.message,
-          railwayEnvironment: process.env.RAILWAY_ENVIRONMENT_NAME ?? null,
-        },
-      );
-    }
-  } else {
-    warn('DATABASE_URL not set — using config.json only (no persistence)');
-  }
+  const dbPool = await initializeDatabaseForStartup();
 
   // Load config (from DB if available, else config.json)
   config = await loadConfig();
@@ -339,6 +433,7 @@ async function startup() {
   if (dbPool) {
     setPool(dbPool);
   }
+  await initializePostgresLogging(dbPool, config);
 
   // DEPRECATED: loadState() seeds conversation history from data/state.json for
   // non-DB environments. When a database is configured, initConversationHistory()
@@ -358,23 +453,7 @@ async function startup() {
   // Check mem0 availability for user memory features (with timeout to avoid blocking startup).
   // AbortController prevents a late-resolving health check from calling markAvailable()
   // after the timeout has already called markUnavailable().
-  const healthAbort = new AbortController();
-  try {
-    await Promise.race([
-      checkMem0Health({ signal: healthAbort.signal }),
-      new Promise((_, reject) =>
-        setTimeout(() => {
-          healthAbort.abort();
-          reject(new Error('mem0 health check timed out'));
-        }, 10_000),
-      ),
-    ]);
-  } catch (err) {
-    markUnavailable();
-    warn('mem0 health check timed out or failed — continuing without memory features', {
-      error: err.message,
-    });
-  }
+  await checkMemoryAvailability();
 
   // Register event handlers with live config reference
   registerEventHandlers(client, config, healthMonitor);
@@ -399,17 +478,7 @@ async function startup() {
   startBotStatus(client);
 
   // Set Sentry context now that we know the bot identity (no-op if disabled)
-  import('./sentry.js')
-    .then(({ Sentry, sentryEnabled }) => {
-      if (sentryEnabled) {
-        Sentry.setTag('bot.username', client.user?.tag || 'unknown');
-        Sentry.setTag('bot.version', BOT_VERSION);
-        info('Sentry error monitoring enabled', {
-          environment: process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'production',
-        });
-      }
-    })
-    .catch(() => {});
+  applySentryBotContext();
 }
 
 startup().catch((err) => {
