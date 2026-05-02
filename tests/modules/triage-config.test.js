@@ -12,6 +12,7 @@ import {
   isRoleEligible,
   resolveTriageConfig,
 } from '../../src/modules/triage-config.js';
+import { makeMember } from '../utils/triageRoleMocks.js';
 
 describe('triage-config', () => {
   beforeEach(() => {
@@ -169,32 +170,6 @@ describe('triage-config', () => {
   });
 
   describe('isRoleEligible', () => {
-    /**
-     * Create a mock GuildMember with specified role IDs.
-     * @param {string[]} roleIds - Array of role IDs the member has
-     * @param {string} guildId - Guild ID (used to filter @everyone role)
-     */
-    function makeMember(roleIds, guildId = 'guild-1') {
-      const roles = [
-        { id: guildId, name: '@everyone' },
-        ...roleIds.map((id) => ({ id, name: `role-${id}` })),
-      ];
-
-      return {
-        guild: { id: guildId },
-        roles: {
-          cache: {
-            filter: (predicate) => {
-              const filtered = roles.filter((role, index, array) => predicate(role, index, array));
-              return {
-                map: (mapper) => filtered.map((role, index, array) => mapper(role, index, array)),
-              };
-            },
-          },
-        },
-      };
-    }
-
     it('should return true when allowedRoles is empty (all allowed)', () => {
       const member = makeMember(['role-1', 'role-2']);
       expect(isRoleEligible(member, {})).toBe(true);

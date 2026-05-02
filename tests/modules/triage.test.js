@@ -78,6 +78,7 @@ import {
 } from '../../src/modules/triage.js';
 import { channelBuffers } from '../../src/modules/triage-buffer.js';
 import { safeSend } from '../../src/utils/safeSend.js';
+import { makeMemberWithRoles } from '../utils/triageRoleMocks.js';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -148,26 +149,6 @@ function makeMessage(channelId, content, extras = {}) {
     },
     author: { username: extras.username || 'testuser', id: extras.userId || 'u1' },
     ...extras,
-  };
-}
-
-function makeRoleCache(roleDefs, guildId = 'g1') {
-  const roles = [{ id: guildId, name: '@everyone' }, ...roleDefs];
-
-  return {
-    filter: (predicate) => {
-      const filtered = roles.filter((role, index, array) => predicate(role, index, array));
-      return {
-        map: (mapper) => filtered.map((role, index, array) => mapper(role, index, array)),
-      };
-    },
-  };
-}
-
-function makeMemberWithRoles(roleDefs, guildId = 'g1') {
-  return {
-    guild: { id: guildId },
-    roles: { cache: makeRoleCache(roleDefs, guildId) },
   };
 }
 
