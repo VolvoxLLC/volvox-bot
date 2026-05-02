@@ -3,6 +3,14 @@ title: Changelog
 description: 'Volvox.Bot release notes and changelog covering new Discord bot features, dashboard updates, moderation improvements, and bug fixes by month.'
 ---
 
+<Update label="2026-05-15" description="May 2026" tags={["Fixes"]}>
+## Fixes
+
+**Smarter link filter** — The [moderation](/features/moderation) link filter now extracts URLs hidden inside Discord markdown links (`[click here](https://example.com)`), angle-bracket links (`<https://example.com>`), and URLs embedded in surrounding text. Phishing detection also inspects query strings, so disguised scam links are caught more reliably.
+
+**More reliable AI auto-mod parsing** — [AI auto-moderation](/features/moderation) now correctly parses provider responses that include extra text or nested JSON around the main result, reducing skipped messages when the model returns chatty output.
+</Update>
+
 <Update label="2026-05-08" description="May 2026" tags={["Improvements"]}>
 ## Improvements
 
