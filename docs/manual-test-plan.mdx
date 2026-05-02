@@ -1,0 +1,43 @@
+---
+title: "Manual Test Plan"
+description: "Comprehensive manual QA plan for Volvox.Bot across bot, dashboard, API, and operations."
+---
+
+# Manual Test Plan
+
+Use this page as the canonical manual QA checklist for release candidates and broad regression passes.
+
+## Scope
+
+- Discord bot runtime and command behavior
+- Dashboard/web app UX and settings flows
+- API integration and error handling
+- Data persistence and per-guild isolation
+- Permissions, moderation safety, and auditability
+- Accessibility, resilience, and operational recovery
+
+## Execution model
+
+- Run targeted suites for normal PR validation.
+- Run the full suite set (A–O) for release candidates.
+- Capture evidence for failures (screenshots, logs, timestamps, guild/persona context).
+
+## Checklist source
+
+The full, checkbox-driven plan is maintained in:
+
+- [`docs/wiki-pages/Manual-Test-Plan.md`](https://github.com/VolvoxLLC/volvox-bot/blob/main/docs/wiki-pages/Manual-Test-Plan.md)
+
+It includes:
+
+- Environment matrix and preconditions
+- Release-blocking criteria
+- Suites A–O (bot, dashboard, moderation, tickets, AI, resilience)
+- Negative/abuse testing
+- Accessibility and performance checks
+- RC regression minimums
+- Evidence capture template and sign-off guidance
+
+## Wiki publication
+
+For GitHub Wiki publication, include `Manual-Test-Plan.md` in the wiki copy workflow described in `docs/wiki-pages/README.md`.
