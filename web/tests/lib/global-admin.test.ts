@@ -20,6 +20,7 @@ vi.mock('@/lib/auth', () => ({
 
 import {
   authorizeRequestGlobalAdmin,
+  getRequestGlobalAdminAuth,
   globalAdminAuthErrorResponse,
   isDashboardGlobalAdmin,
   isRequestGlobalAdmin,
@@ -62,6 +63,16 @@ describe('global admin helpers', () => {
 
     mockGetToken.mockResolvedValueOnce({ id: 'owner-1' });
     await expect(authorizeRequestGlobalAdmin(request())).resolves.toMatchObject({ status: 401 });
+  });
+
+  it('maps rejected route token retrieval to unauthorized', async () => {
+    mockGetToken.mockRejectedValueOnce(new Error('token retrieval failed'));
+
+    await expect(getRequestGlobalAdminAuth(request())).resolves.toEqual({
+      ok: false,
+      reason: 'unauthorized',
+      token: null,
+    });
   });
 
   it('maps global admin route authorization failures to stable response statuses', async () => {
