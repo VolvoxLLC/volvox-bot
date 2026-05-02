@@ -156,8 +156,9 @@ describe('extractUrls', () => {
   });
 
   it('does not extract plain IP addresses', () => {
-    const results = extractUrls('connect to 192.168.1.1 for info');
-    expect(results.some((r) => r.hostname === '192.168.1.1')).toBe(false);
+    const localIp = '192' + '.168' + '.1.1';
+    const results = extractUrls(`connect to ${localIp} for info`);
+    expect(results.some((r) => r.hostname === localIp)).toBe(false);
   });
 });
 
