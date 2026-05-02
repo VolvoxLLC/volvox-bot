@@ -36,7 +36,7 @@ describe('renderTemplate', () => {
     expect(result).toBe('Bob10');
   });
 
-  it('should replace null/undefined values with empty string', () => {
+  it('should replace null context values with empty string', () => {
     const result = renderTemplate('Role: {{roleName}}', { roleName: null });
     expect(result).toBe('Role: ');
   });
@@ -321,9 +321,8 @@ describe('buildTemplateContext', () => {
     expect(ctx.nextLevel).toBe('0');
   });
 
-  it('should use Object.hasOwn so a threshold value of undefined does not count as a valid level', async () => {
-    // A sparse array-like object where key exists but value is undefined:
-    // Object.hasOwn returns true for own properties regardless of the value
+  it('should treat a missing threshold key as no next level', async () => {
+    // Plain object thresholds with no key for the current level should not count as a next level.
     const member = {
       user: { id: '1', displayName: 'U', displayAvatarURL: () => '' },
       joinedAt: new Date(),

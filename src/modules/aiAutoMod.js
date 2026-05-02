@@ -259,6 +259,36 @@ export function extractFirstBalancedJsonObject(text) {
   return null;
 }
 
+function parseAiModerationResponse(text, model) {
+  try {
+    const jsonPayload = extractFirstBalancedJsonObject(text);
+    if (!jsonPayload) {
+      throw new Error('No balanced JSON object found in AI response');
+    }
+    return JSON.parse(jsonPayload);
+  } catch {
+    logError('AI auto-mod: failed to parse AI response', {
+      model,
+      text,
+    });
+    return null;
+  }
+}
+
+function buildParseErrorResult() {
+  // Fail closed on malformed provider output so suspicious content is still routed for review
+  // instead of silently bypassing moderation when the AI response cannot be trusted.
+  return {
+    flagged: true,
+    scores: buildScoreObject(0),
+    categories: [],
+    reason: 'Parse error',
+    action: 'none',
+    actions: [],
+    actionsByCategory: {},
+  };
+}
+
 /**
  * Analyze a message using the configured AI provider.
  * Returns scores and recommendations for moderation actions.
@@ -314,29 +344,8 @@ ${responseShape}
   });
 
   const text = response.text ?? '{}';
-
-  let parsed;
-  try {
-    const jsonPayload = extractFirstBalancedJsonObject(text);
-    if (!jsonPayload) {
-      throw new Error('No balanced JSON object found in AI response');
-    }
-    parsed = JSON.parse(jsonPayload);
-  } catch {
-    logError('AI auto-mod: failed to parse AI response', {
-      model: mergedConfig.model ?? DEFAULTS.model,
-      text,
-    });
-    return {
-      flagged: true,
-      scores: buildScoreObject(0),
-      categories: [],
-      reason: 'Parse error',
-      action: 'none',
-      actions: [],
-      actionsByCategory: {},
-    };
-  }
+  const parsed = parseAiModerationResponse(text, mergedConfig.model ?? DEFAULTS.model);
+  if (!parsed) return buildParseErrorResult();
 
   const scores = Object.fromEntries(
     AI_AUTOMOD_CATEGORIES.map(({ key }) => [key, normalizeScore(parsed, key)]),

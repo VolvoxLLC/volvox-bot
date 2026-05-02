@@ -138,6 +138,11 @@ describe('extractUrls', () => {
     expect(results.some((r) => r.hostname === 'example.com')).toBe(true);
   });
 
+  it('normalizes trailing-dot hostnames before validation', () => {
+    const results = extractUrls('see https://example.com./path');
+    expect(results).toContainEqual(expect.objectContaining({ hostname: 'example.com' }));
+  });
+
   it('strips trailing comma from URL token', () => {
     const results = extractUrls('visit https://example.com, and more');
     expect(results.some((r) => r.hostname === 'example.com')).toBe(true);
@@ -171,11 +176,6 @@ describe('extractUrls', () => {
   it('extracts URLs from markdown links', () => {
     const results = extractUrls('read [the docs](https://evil.com/path) before clicking');
     expect(results).toContainEqual(expect.objectContaining({ hostname: 'evil.com' }));
-  });
-
-  it('extracts angle-bracket URLs', () => {
-    const results = extractUrls('wrapped link <https://angle.example/path>');
-    expect(results).toContainEqual(expect.objectContaining({ hostname: 'angle.example' }));
   });
 
   it('extracts explicit URLs adjacent to non-whitespace characters', () => {

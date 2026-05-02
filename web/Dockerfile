@@ -60,7 +60,11 @@ RUN for path in server.js package.json node_modules; do \
     done && \
     find .next -path .next/cache -prune -o -type d -exec chmod 0555 {} + && \
     find .next -path .next/cache -prune -o -type f -exec chmod 0444 {} + && \
-    (mkdir -p .next/cache && chmod -R u+rwX,go-rwx .next/cache) && \
+    chmod u+w .next && \
+    mkdir -p .next/cache && \
+    chown -R nextjs:nodejs .next/cache && \
+    chmod -R u+rwX,go-rwx .next/cache && \
+    chmod 0555 .next && \
     find public -type d -exec chmod 0555 {} + && \
     find public -type f -exec chmod 0444 {} +
 

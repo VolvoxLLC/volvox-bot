@@ -55,8 +55,12 @@ function stripLeadingWww(hostname) {
   return lower.startsWith('www.') ? lower.slice(4) : lower;
 }
 
+function normalizeHostname(hostname) {
+  return stripLeadingWww(hostname).replace(/\.$/, '');
+}
+
 function normalizeBlockedDomain(domain) {
-  return stripLeadingWww(domain);
+  return normalizeHostname(domain);
 }
 
 function trimUrlToken(token) {
@@ -95,7 +99,7 @@ function parseUrlToken(token) {
 
   try {
     const url = new URL(candidate);
-    const hostname = stripLeadingWww(url.hostname);
+    const hostname = normalizeHostname(url.hostname);
     if (!isValidHostname(hostname)) return null;
     return {
       hostname,
