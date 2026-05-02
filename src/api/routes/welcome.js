@@ -98,61 +98,77 @@ router.get('/variables', (_req, res) => {
   });
 });
 
-// Apply the publication limiter before admin auth so status/publish routes are
-// protected before authorization and downstream Discord publishing work.
-router.use(welcomePublishRateLimit);
+// Apply the publication limiter directly on each publication/status route so
+// static analysis can recognize the protection before admin auth and downstream work.
+router.get(
+  '/status',
+  welcomePublishRateLimit,
+  requireGuildAdmin,
+  validateGuild,
+  async (req, res) => {
+    try {
+      return res.json(await getWelcomePublicationStatus(req.params.id));
+    } catch (err) {
+      logError('Failed to read welcome publication status', {
+        guildId: req.params.id,
+        userId: req.user?.userId ?? null,
+        error: err?.message,
+      });
+      return res.status(500).json({ error: 'Failed to read welcome publication status' });
+    }
+  },
+);
 
-router.get('/status', requireGuildAdmin, validateGuild, async (req, res) => {
-  try {
-    return res.json(await getWelcomePublicationStatus(req.params.id));
-  } catch (err) {
-    logError('Failed to read welcome publication status', {
-      guildId: req.params.id,
-      userId: req.user?.userId ?? null,
-      error: err?.message,
-    });
-    return res.status(500).json({ error: 'Failed to read welcome publication status' });
-  }
-});
+router.post(
+  '/publish',
+  welcomePublishRateLimit,
+  requireGuildAdmin,
+  validateGuild,
+  async (req, res) => {
+    try {
+      const result = await publishWelcomePanels(req.app.locals.client, req.params.id, {
+        source: 'dashboard',
+        userId: req.user?.userId ?? null,
+      });
+      return res.json(result);
+    } catch (err) {
+      logError('Failed to publish welcome panels from API', {
+        guildId: req.params.id,
+        userId: req.user?.userId ?? null,
+        error: err?.message,
+      });
+      return res.status(500).json({ error: 'Failed to publish welcome panels' });
+    }
+  },
+);
 
-router.post('/publish', requireGuildAdmin, validateGuild, async (req, res) => {
-  try {
-    const result = await publishWelcomePanels(req.app.locals.client, req.params.id, {
-      source: 'dashboard',
-      userId: req.user?.userId ?? null,
-    });
-    return res.json(result);
-  } catch (err) {
-    logError('Failed to publish welcome panels from API', {
-      guildId: req.params.id,
-      userId: req.user?.userId ?? null,
-      error: err?.message,
-    });
-    return res.status(500).json({ error: 'Failed to publish welcome panels' });
-  }
-});
+router.post(
+  '/publish/:panelType',
+  welcomePublishRateLimit,
+  requireGuildAdmin,
+  validateGuild,
+  async (req, res) => {
+    const panelType = req.params.panelType;
+    if (!WELCOME_PANEL_TYPES.has(panelType)) {
+      return res.status(400).json({ error: 'Invalid welcome panel type' });
+    }
 
-router.post('/publish/:panelType', requireGuildAdmin, validateGuild, async (req, res) => {
-  const panelType = req.params.panelType;
-  if (!WELCOME_PANEL_TYPES.has(panelType)) {
-    return res.status(400).json({ error: 'Invalid welcome panel type' });
-  }
-
-  try {
-    const result = await publishWelcomePanel(req.app.locals.client, req.params.id, panelType, {
-      source: 'dashboard',
-      userId: req.user?.userId ?? null,
-    });
-    return res.json(result);
-  } catch (err) {
-    logError('Failed to publish welcome panel from API', {
-      guildId: req.params.id,
-      panelType,
-      userId: req.user?.userId ?? null,
-      error: err?.message,
-    });
-    return res.status(500).json({ error: 'Failed to publish welcome panel' });
-  }
-});
+    try {
+      const result = await publishWelcomePanel(req.app.locals.client, req.params.id, panelType, {
+        source: 'dashboard',
+        userId: req.user?.userId ?? null,
+      });
+      return res.json(result);
+    } catch (err) {
+      logError('Failed to publish welcome panel from API', {
+        guildId: req.params.id,
+        panelType,
+        userId: req.user?.userId ?? null,
+        error: err?.message,
+      });
+      return res.status(500).json({ error: 'Failed to publish welcome panel' });
+    }
+  },
+);
 
 export default router;

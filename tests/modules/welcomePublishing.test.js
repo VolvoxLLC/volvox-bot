@@ -40,6 +40,7 @@ const OLD_CHANNEL = 'old-channel';
 const OLD_MESSAGE = 'old-message';
 const RULES_CHANNEL = 'rules-channel';
 const SENT_MESSAGE = 'sent-message';
+const DEFAULT_SENT_MESSAGE = { id: SENT_MESSAGE };
 const STORED_AT = '2026-01-01T00:00:00.000Z';
 const STATE_WARNING = 'Published to Discord but failed to save publication state.';
 
@@ -125,7 +126,7 @@ function resolveRulesChannel(channel = createTextChannel({ id: RULES_CHANNEL }))
   return channel;
 }
 
-function mockSuccessfulSend(message = { id: SENT_MESSAGE }) {
+function mockSuccessfulSend(message = DEFAULT_SENT_MESSAGE) {
   safeSend.mockResolvedValue(message);
 }
 

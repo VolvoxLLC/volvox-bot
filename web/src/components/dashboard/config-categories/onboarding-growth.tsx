@@ -138,7 +138,13 @@ function getWelcomePublishWarningMessage(
   const fallback = 'Published to Discord, but saving publication state failed.';
   const hasPersistWarning = (entry: WelcomePublishResult) =>
     entry.status === 'posted' && (Boolean(entry.persistWarning) || Boolean(entry.lastError));
-  const warningText = (entry: WelcomePublishResult) => entry.lastError || fallback;
+  const warningText = (entry: WelcomePublishResult) => {
+    if (entry.lastError) return entry.lastError;
+    if (typeof entry.persistWarning === 'string' && entry.persistWarning.trim()) {
+      return entry.persistWarning;
+    }
+    return fallback;
+  };
 
   if (panelType) {
     return data && hasPersistWarning(data) ? warningText(data) : null;
@@ -179,6 +185,55 @@ function getWelcomePanelStatusClassName(statusText: string) {
   if (statusText === 'posted') return 'border-primary/30 text-primary bg-primary/10';
   if (statusText === 'failed') return 'border-destructive/30 text-destructive bg-destructive/10';
   return 'border-border/50 text-muted-foreground bg-muted/30';
+}
+
+async function postWelcomePanel(
+  guildId: string,
+  panelType?: 'rules' | 'role_menu',
+): Promise<(WelcomePublishResult & WelcomeBulkPublishResult) | null> {
+  const suffix = panelType ? `/publish/${encodeURIComponent(panelType)}` : '/publish';
+  const response = await fetch(`/api/guilds/${encodeURIComponent(guildId)}/welcome${suffix}`, {
+    method: 'POST',
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(data?.error || 'Failed to publish welcome panels');
+  }
+  return data;
+}
+
+function assertWelcomePublishSucceeded(
+  data: (WelcomePublishResult & WelcomeBulkPublishResult) | null,
+  panelType?: 'rules' | 'role_menu',
+) {
+  const failureMessage = getWelcomePublishFailureMessage(data, panelType);
+  if (failureMessage) {
+    throw new Error(failureMessage);
+  }
+}
+
+function showWelcomePublishOutcome(
+  data: (WelcomePublishResult & WelcomeBulkPublishResult) | null,
+  panelType?: 'rules' | 'role_menu',
+) {
+  const warningMessage = getWelcomePublishWarningMessage(data, panelType);
+  if (warningMessage) {
+    toast.info(
+      panelType
+        ? 'Welcome panel published with a warning'
+        : 'Welcome panels published with a warning',
+      { description: warningMessage },
+    );
+    return;
+  }
+
+  const infoMessage = getWelcomePublishInfoMessage(data, panelType);
+  if (infoMessage) {
+    toast.info(infoMessage);
+    return;
+  }
+
+  toast.success(panelType ? 'Welcome panel published' : 'Welcome panels published');
 }
 
 /**
@@ -348,36 +403,10 @@ export function OnboardingGrowthCategory() {
       const publishingKey = panelType ?? 'all';
       setWelcomePublishing(publishingKey);
       try {
-        const suffix = panelType ? `/publish/${encodeURIComponent(panelType)}` : '/publish';
-        const response = await fetch(
-          `/api/guilds/${encodeURIComponent(initiatingGuildId)}/welcome${suffix}`,
-          { method: 'POST' },
-        );
-        const data = await response.json().catch(() => null);
-        if (!response.ok) {
-          throw new Error(data?.error || 'Failed to publish welcome panels');
-        }
-        const failureMessage = getWelcomePublishFailureMessage(data, panelType);
-        if (failureMessage) {
-          throw new Error(failureMessage);
-        }
+        const data = await postWelcomePanel(initiatingGuildId, panelType);
+        assertWelcomePublishSucceeded(data, panelType);
         if (!isInitiatingGuildSelected()) return;
-        const warningMessage = getWelcomePublishWarningMessage(data, panelType);
-        const infoMessage = getWelcomePublishInfoMessage(data, panelType);
-        if (warningMessage) {
-          toast.info(
-            panelType
-              ? 'Welcome panel published with a warning'
-              : 'Welcome panels published with a warning',
-            {
-              description: warningMessage,
-            },
-          );
-        } else if (infoMessage) {
-          toast.info(infoMessage);
-        } else {
-          toast.success(panelType ? 'Welcome panel published' : 'Welcome panels published');
-        }
+        showWelcomePublishOutcome(data, panelType);
         if (!isInitiatingGuildSelected()) return;
         await fetchWelcomeStatus();
       } catch (error) {

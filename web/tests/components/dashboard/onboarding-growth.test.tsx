@@ -750,6 +750,60 @@ describe('OnboardingGrowthCategory', () => {
     expect(toast.success).not.toHaveBeenCalledWith('Welcome panel published');
   });
 
+  it('shows a warning toast when bulk publish posts panels but persistence fails', async () => {
+    const user = userEvent.setup();
+    const persistWarning = 'Publication posted, but persistence needs retry.';
+    const statusResponse = {
+      guildId: 'guild-1',
+      panels: {
+        rules: {
+          status: 'posted',
+          configured: true,
+          channelId: 'rules-channel',
+          configuredChannelId: 'rules-channel',
+          messageId: 'message-1',
+          stale: false,
+        },
+        role_menu: {
+          status: 'posted',
+          configured: true,
+          channelId: 'welcome-channel',
+          configuredChannelId: 'welcome-channel',
+          messageId: 'message-2',
+          stale: false,
+        },
+      },
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(Response.json(statusResponse))
+        .mockResolvedValueOnce(
+          Response.json({
+            results: [
+              { panelType: 'rules', status: 'posted' },
+              { panelType: 'role_menu', status: 'posted', persistWarning },
+            ],
+          }),
+        )
+        .mockResolvedValueOnce(Response.json(statusResponse)),
+    );
+    mockWelcomeContext({ draftConfig: createWelcomeDraftConfig({ dynamic: { enabled: false } }) });
+
+    render(<OnboardingGrowthCategory />);
+
+    await screen.findByText('#rules');
+    await user.click(screen.getByRole('button', { name: 'Publish All' }));
+
+    await waitFor(() => {
+      expect(toast.info).toHaveBeenCalledWith('Welcome panels published with a warning', {
+        description: `role menu: ${persistWarning}`,
+      });
+    });
+    expect(toast.success).not.toHaveBeenCalledWith('Welcome panels published');
+  });
+
   it('mounts the level-up actions editor from the xp-level-actions tab', () => {
     mockUseConfigContext.mockReturnValue({
       draftConfig: {
