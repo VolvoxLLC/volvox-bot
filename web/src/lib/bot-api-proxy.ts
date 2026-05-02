@@ -12,19 +12,14 @@ const KICK_MEMBERS_PERMISSION = 0x2n;
 const BAN_MEMBERS_PERMISSION = 0x4n;
 const MODERATE_MEMBERS_PERMISSION = 0x10000000000n;
 
-export type GuildAccessLevel = 'viewer' | 'moderator' | 'admin' | 'bot-owner';
+export type GuildAccessLevel = 'viewer' | 'moderator' | 'admin';
 type RequiredGuildAccess = 'moderator' | 'admin';
 type AuthToken = {
   accessToken: string;
   id?: string;
   sub?: string;
 };
-const GUILD_ACCESS_LEVELS = new Set<GuildAccessLevel>([
-  'viewer',
-  'moderator',
-  'admin',
-  'bot-owner',
-]);
+const GUILD_ACCESS_LEVELS = new Set<GuildAccessLevel>(['viewer', 'moderator', 'admin']);
 
 /**
  * Determines whether a Discord permission bitfield includes the administrator permission.
@@ -58,7 +53,7 @@ function accessSatisfiesRequirement(
   access: GuildAccessLevel,
   required: RequiredGuildAccess,
 ): boolean {
-  if (access === 'bot-owner' || access === 'admin') return true;
+  if (access === 'admin') return true;
   return required === 'moderator' && access === 'moderator';
 }
 
@@ -262,6 +257,21 @@ export function buildUpstreamUrl(
   }
 }
 
+export interface BotApiEndpoint {
+  upstreamUrl: URL;
+  secret: string;
+}
+
+export function getBotApiEndpoint(path: string, logPrefix: string): BotApiEndpoint | NextResponse {
+  const config = getBotApiConfig(logPrefix);
+  if (config instanceof NextResponse) return config;
+
+  const upstreamUrl = buildUpstreamUrl(config.baseUrl, path, logPrefix);
+  if (upstreamUrl instanceof NextResponse) return upstreamUrl;
+
+  return { upstreamUrl, secret: config.secret };
+}
+
 export interface ProxyOptions {
   method?: string;
   headers?: Record<string, string>;
@@ -288,6 +298,18 @@ export interface ProxyOptions {
  * @param options - Optional request options (method, headers, body)
  * @returns A NextResponse containing either the upstream JSON payload (with the upstream status) or an error JSON object; returns status 500 on internal failure
  */
+export async function proxyBotApiEndpoint(
+  path: string,
+  logPrefix: string,
+  errorMessage: string,
+  options?: ProxyOptions,
+): Promise<NextResponse> {
+  const endpoint = getBotApiEndpoint(path, logPrefix);
+  if (endpoint instanceof NextResponse) return endpoint;
+
+  return proxyToBotApi(endpoint.upstreamUrl, endpoint.secret, logPrefix, errorMessage, options);
+}
+
 export async function proxyToBotApi(
   upstreamUrl: URL,
   secret: string,

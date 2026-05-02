@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 
 /** Request timeout for the guilds endpoint (10 seconds). */
 const REQUEST_TIMEOUT_MS = 10_000;
-const VALID_ACCESS_LEVELS = new Set(['admin', 'moderator', 'viewer', 'bot-owner']);
+const VALID_ACCESS_LEVELS = new Set(['admin', 'moderator', 'viewer']);
 const MAX_ACCESS_LOOKUP_GUILDS = 100;
 
 async function applyAccessLevels(
@@ -30,7 +30,7 @@ async function applyAccessLevels(
   }
 
   try {
-    const accessMap = new Map<string, 'admin' | 'moderator' | 'viewer' | 'bot-owner'>();
+    const accessMap = new Map<string, 'admin' | 'moderator' | 'viewer'>();
 
     for (let start = 0; start < botGuildIds.length; start += MAX_ACCESS_LOOKUP_GUILDS) {
       const guildIdChunk = botGuildIds.slice(start, start + MAX_ACCESS_LOOKUP_GUILDS);
@@ -70,7 +70,7 @@ async function applyAccessLevels(
         ) {
           accessMap.set(
             (entry as { id: string }).id,
-            (entry as { access: 'admin' | 'moderator' | 'viewer' | 'bot-owner' }).access,
+            (entry as { access: 'admin' | 'moderator' | 'viewer' }).access,
           );
         }
       }

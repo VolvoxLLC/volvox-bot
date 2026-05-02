@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   mockGetBotApiBaseUrl: vi.fn(),
   mockGetBotApiConfig: vi.fn(),
   mockGetToken: vi.fn(),
+  mockProxyBotApiEndpoint: vi.fn(),
   mockProxyToBotApi: vi.fn(),
 }));
 
@@ -17,6 +18,7 @@ export const mockBuildUpstreamUrl = mocks.mockBuildUpstreamUrl;
 export const mockGetBotApiBaseUrl = mocks.mockGetBotApiBaseUrl;
 export const mockGetBotApiConfig = mocks.mockGetBotApiConfig;
 export const mockGetToken = mocks.mockGetToken;
+export const mockProxyBotApiEndpoint = mocks.mockProxyBotApiEndpoint;
 export const mockProxyToBotApi = mocks.mockProxyToBotApi;
 
 vi.mock('@/lib/bot-api-proxy', () => ({
@@ -24,6 +26,7 @@ vi.mock('@/lib/bot-api-proxy', () => ({
   authorizeGuildModerator: mocks.mockAuthorizeGuildModerator,
   buildUpstreamUrl: mocks.mockBuildUpstreamUrl,
   getBotApiConfig: mocks.mockGetBotApiConfig,
+  proxyBotApiEndpoint: mocks.mockProxyBotApiEndpoint,
   proxyToBotApi: mocks.mockProxyToBotApi,
 }));
 
@@ -182,8 +185,18 @@ export function setupProxyRouteMocks() {
     mockAuthorizeGuildModerator.mockResolvedValue(null);
     mockGetBotApiConfig.mockImplementation(() => ({ ...apiConfig }));
     mockGetBotApiBaseUrl.mockReturnValue(apiConfig.baseUrl);
-    mockGetToken.mockResolvedValue({ accessToken: 'access-token' });
+    vi.stubEnv('BOT_OWNER_IDS', 'owner-1');
+    mockGetToken.mockResolvedValue({ accessToken: 'access-token', id: 'owner-1' });
     mockBuildUpstreamUrl.mockImplementation(buildTestUpstreamUrl);
+    mockProxyBotApiEndpoint.mockImplementation((path, logPrefix, errorMessage, options) => {
+      const config = mockGetBotApiConfig(logPrefix);
+      if (config instanceof NextResponse) return config;
+
+      const upstreamUrl = mockBuildUpstreamUrl(config.baseUrl, path, logPrefix);
+      if (upstreamUrl instanceof NextResponse) return upstreamUrl;
+
+      return mockProxyToBotApi(upstreamUrl, config.secret, logPrefix, errorMessage, options);
+    });
     mockProxyToBotApi.mockResolvedValue(NextResponse.json({ ok: true }));
     fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response('id,name\n1,Ada\n', {
@@ -196,5 +209,6 @@ export function setupProxyRouteMocks() {
   afterEach(() => {
     fetchSpy?.mockRestore();
     fetchSpy = undefined;
+    vi.unstubAllEnvs();
   });
 }
