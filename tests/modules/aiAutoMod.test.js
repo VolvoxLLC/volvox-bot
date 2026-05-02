@@ -110,14 +110,9 @@ function makeClient() {
   };
 }
 
-function makeClaudeResponse(scores) {
+function makeAiResponse(text) {
   return {
-    text: JSON.stringify({
-      toxicity: scores.toxicity ?? 0,
-      spam: scores.spam ?? 0,
-      harassment: scores.harassment ?? 0,
-      reason: scores.reason ?? 'test reason',
-    }),
+    text,
     costUsd: 0,
     usage: { inputTokens: 0, outputTokens: 0 },
     durationMs: 0,
@@ -125,6 +120,17 @@ function makeClaudeResponse(scores) {
     sources: [],
     providerMetadata: {},
   };
+}
+
+function makeClaudeResponse(scores) {
+  return makeAiResponse(
+    JSON.stringify({
+      toxicity: scores.toxicity ?? 0,
+      spam: scores.spam ?? 0,
+      harassment: scores.harassment ?? 0,
+      reason: scores.reason ?? 'test reason',
+    }),
+  );
 }
 
 const INVALID_AI_MODEL_SENTINEL = 'invalid-provider:not-a-real-model';
@@ -289,22 +295,18 @@ describe('analyzeMessage', () => {
   });
 
   it('flags categories when providers nest scores under a scores object', async () => {
-    mockGenerate.mockResolvedValue({
-      text: JSON.stringify({
-        scores: {
-          toxicity: 0.91,
-          spam: 0.1,
-          harassment: 0.1,
-        },
-        reason: 'toxic content',
-      }),
-      costUsd: 0,
-      usage: { inputTokens: 0, outputTokens: 0 },
-      durationMs: 0,
-      finishReason: 'stop',
-      sources: [],
-      providerMetadata: {},
-    });
+    mockGenerate.mockResolvedValue(
+      makeAiResponse(
+        JSON.stringify({
+          scores: {
+            toxicity: 0.91,
+            spam: 0.1,
+            harassment: 0.1,
+          },
+          reason: 'toxic content',
+        }),
+      ),
+    );
     const cfg = getAiAutoModConfig({
       aiAutoMod: {
         thresholds: { toxicity: 0.9 },
@@ -417,23 +419,19 @@ describe('analyzeMessage', () => {
   });
 
   it('supports snake_case score aliases for expanded policy categories', async () => {
-    mockGenerate.mockResolvedValue({
-      text: JSON.stringify({
-        toxicity: 0.1,
-        spam: 0.1,
-        harassment: 0.1,
-        hate_speech: 0.91,
-        sexual_content: 0.89,
-        self_harm: 0.8,
-        reason: 'aliased categories',
-      }),
-      costUsd: 0,
-      usage: { inputTokens: 0, outputTokens: 0 },
-      durationMs: 0,
-      finishReason: 'stop',
-      sources: [],
-      providerMetadata: {},
-    });
+    mockGenerate.mockResolvedValue(
+      makeAiResponse(
+        JSON.stringify({
+          toxicity: 0.1,
+          spam: 0.1,
+          harassment: 0.1,
+          hate_speech: 0.91,
+          sexual_content: 0.89,
+          self_harm: 0.8,
+          reason: 'aliased categories',
+        }),
+      ),
+    );
     const cfg = getAiAutoModConfig({
       aiAutoMod: {
         thresholds: { hateSpeech: 0.9, sexualContent: 0.8, selfHarm: 0.7 },
@@ -449,24 +447,20 @@ describe('analyzeMessage', () => {
   });
 
   it('flags expanded policy categories when scores meet configured thresholds', async () => {
-    mockGenerate.mockResolvedValue({
-      text: JSON.stringify({
-        toxicity: 0.1,
-        spam: 0.1,
-        harassment: 0.1,
-        hateSpeech: 0.92,
-        sexualContent: 0.2,
-        violence: 0.1,
-        selfHarm: 0.1,
-        reason: 'hate speech',
-      }),
-      costUsd: 0,
-      usage: { inputTokens: 0, outputTokens: 0 },
-      durationMs: 0,
-      finishReason: 'stop',
-      sources: [],
-      providerMetadata: {},
-    });
+    mockGenerate.mockResolvedValue(
+      makeAiResponse(
+        JSON.stringify({
+          toxicity: 0.1,
+          spam: 0.1,
+          harassment: 0.1,
+          hateSpeech: 0.92,
+          sexualContent: 0.2,
+          violence: 0.1,
+          selfHarm: 0.1,
+          reason: 'hate speech',
+        }),
+      ),
+    );
     const cfg = getAiAutoModConfig({
       aiAutoMod: {
         thresholds: { hateSpeech: 0.9 },
@@ -483,15 +477,7 @@ describe('analyzeMessage', () => {
   });
 
   it('handles malformed JSON from Claude gracefully', async () => {
-    mockGenerate.mockResolvedValue({
-      text: 'oops not json at all',
-      costUsd: 0,
-      usage: { inputTokens: 0, outputTokens: 0 },
-      durationMs: 0,
-      finishReason: 'stop',
-      sources: [],
-      providerMetadata: {},
-    });
+    mockGenerate.mockResolvedValue(makeAiResponse('oops not json at all'));
     const cfg = getAiAutoModConfig({});
     const result = await analyzeMessage('some content here', cfg);
     expect(result.flagged).toBe(true);
@@ -499,15 +485,7 @@ describe('analyzeMessage', () => {
   });
 
   it('handles invalid JSON objects from Claude gracefully', async () => {
-    mockGenerate.mockResolvedValue({
-      text: '{not valid json}',
-      costUsd: 0,
-      usage: { inputTokens: 0, outputTokens: 0 },
-      durationMs: 0,
-      finishReason: 'stop',
-      sources: [],
-      providerMetadata: {},
-    });
+    mockGenerate.mockResolvedValue(makeAiResponse('{not valid json}'));
     const cfg = getAiAutoModConfig({});
     const result = await analyzeMessage('some content here', cfg);
     expect(result.flagged).toBe(true);
@@ -531,15 +509,11 @@ describe('analyzeMessage', () => {
   });
 
   it('extracts JSON from markdown code blocks', async () => {
-    mockGenerate.mockResolvedValue({
-      text: '```json\n{"toxicity": 0.8, "spam": 0.1, "harassment": 0.1, "reason": "hateful"}\n```',
-      costUsd: 0,
-      usage: { inputTokens: 0, outputTokens: 0 },
-      durationMs: 0,
-      finishReason: 'stop',
-      sources: [],
-      providerMetadata: {},
-    });
+    mockGenerate.mockResolvedValue(
+      makeAiResponse(
+        '```json\n{"toxicity": 0.8, "spam": 0.1, "harassment": 0.1, "reason": "hateful"}\n```',
+      ),
+    );
     const cfg = getAiAutoModConfig({});
     const result = await analyzeMessage('bad message content here', cfg);
     expect(result.scores.toxicity).toBe(0.8);
@@ -547,15 +521,11 @@ describe('analyzeMessage', () => {
   });
 
   it('extracts JSON when model prepends explanatory preamble text', async () => {
-    mockGenerate.mockResolvedValue({
-      text: 'Here is my analysis of the message:\n{"toxicity": 0.9, "spam": 0.1, "harassment": 0.1, "reason": "hate speech"}',
-      costUsd: 0,
-      usage: { inputTokens: 0, outputTokens: 0 },
-      durationMs: 0,
-      finishReason: 'stop',
-      sources: [],
-      providerMetadata: {},
-    });
+    mockGenerate.mockResolvedValue(
+      makeAiResponse(
+        'Here is my analysis of the message:\n{"toxicity": 0.9, "spam": 0.1, "harassment": 0.1, "reason": "hate speech"}',
+      ),
+    );
     const cfg = getAiAutoModConfig({});
     const result = await analyzeMessage('offensive message content here', cfg);
     expect(result.scores.toxicity).toBe(0.9);
@@ -564,15 +534,11 @@ describe('analyzeMessage', () => {
   });
 
   it('parses the first balanced JSON object without swallowing later braces', async () => {
-    mockGenerate.mockResolvedValue({
-      text: 'Result: {"toxicity": 0.1, "spam": 0.1, "harassment": 0.1, "reason": "clean"} extra {ignored}',
-      costUsd: 0,
-      usage: { inputTokens: 0, outputTokens: 0 },
-      durationMs: 0,
-      finishReason: 'stop',
-      sources: [],
-      providerMetadata: {},
-    });
+    mockGenerate.mockResolvedValue(
+      makeAiResponse(
+        'Result: {"toxicity": 0.1, "spam": 0.1, "harassment": 0.1, "reason": "clean"} extra {ignored}',
+      ),
+    );
     const cfg = getAiAutoModConfig({});
     const result = await analyzeMessage('normal content here', cfg);
     expect(result.flagged).toBe(false);
@@ -580,15 +546,7 @@ describe('analyzeMessage', () => {
   });
 
   it('handles response text that is only whitespace with no JSON braces', async () => {
-    mockGenerate.mockResolvedValue({
-      text: '   ',
-      costUsd: 0,
-      usage: { inputTokens: 0, outputTokens: 0 },
-      durationMs: 0,
-      finishReason: 'stop',
-      sources: [],
-      providerMetadata: {},
-    });
+    mockGenerate.mockResolvedValue(makeAiResponse('   '));
     const cfg = getAiAutoModConfig({});
     const result = await analyzeMessage('some content here to analyze', cfg);
     // No valid JSON found → fail-closed: flagged true
@@ -596,15 +554,11 @@ describe('analyzeMessage', () => {
   });
 
   it('handles nested JSON objects correctly', async () => {
-    mockGenerate.mockResolvedValue({
-      text: '{"toxicity": 0.92, "spam": 0.1, "harassment": 0.1, "reason": "hostile", "meta": {"source": "test"}}',
-      costUsd: 0,
-      usage: { inputTokens: 0, outputTokens: 0 },
-      durationMs: 0,
-      finishReason: 'stop',
-      sources: [],
-      providerMetadata: {},
-    });
+    mockGenerate.mockResolvedValue(
+      makeAiResponse(
+        '{"toxicity": 0.92, "spam": 0.1, "harassment": 0.1, "reason": "hostile", "meta": {"source": "test"}}',
+      ),
+    );
     const cfg = getAiAutoModConfig({});
     const result = await analyzeMessage('bad message content here', cfg);
     expect(result.scores.toxicity).toBe(0.92);

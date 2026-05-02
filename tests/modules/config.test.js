@@ -19,6 +19,35 @@ vi.mock('node:fs', () => ({
   readFileSync: vi.fn(),
 }));
 
+const defaultFileConfig = {
+  ai: { enabled: true, model: 'test-model' },
+  welcome: { enabled: false },
+};
+
+async function importConfigWithMocks({ fileExists = true, fileContents, getPool = vi.fn() } = {}) {
+  vi.resetModules();
+  vi.doMock('../../src/logger.js', () => ({
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+  }));
+  vi.doMock('../../src/db.js', () => ({ getPool }));
+  vi.doMock('node:fs', () => ({
+    existsSync: vi.fn().mockReturnValue(fileExists),
+    readFileSync: vi.fn().mockReturnValue(fileContents ?? JSON.stringify(defaultFileConfig)),
+  }));
+
+  return import('../../src/modules/config.js');
+}
+
+async function mockNoDb() {
+  const { getPool: mockGetPool } = await import('../../src/db.js');
+  mockGetPool.mockImplementation(() => {
+    throw new Error('no db');
+  });
+}
+
 describe('modules/config', () => {
   let configModule;
 
@@ -28,12 +57,7 @@ describe('modules/config', () => {
     // Default mock: config.json exists with test data
     const { existsSync: mockExists, readFileSync: mockRead } = await import('node:fs');
     mockExists.mockReturnValue(true);
-    mockRead.mockReturnValue(
-      JSON.stringify({
-        ai: { enabled: true, model: 'test-model' },
-        welcome: { enabled: false },
-      }),
-    );
+    mockRead.mockReturnValue(JSON.stringify(defaultFileConfig));
 
     configModule = await import('../../src/modules/config.js');
   });
@@ -50,42 +74,12 @@ describe('modules/config', () => {
     });
 
     it('should throw if config.json does not exist', async () => {
-      vi.resetModules();
-      vi.doMock('../../src/logger.js', () => ({
-        info: vi.fn(),
-        error: vi.fn(),
-        warn: vi.fn(),
-        debug: vi.fn(),
-      }));
-      vi.doMock('../../src/db.js', () => ({
-        getPool: vi.fn(),
-      }));
-      vi.doMock('node:fs', () => ({
-        existsSync: vi.fn().mockReturnValue(false),
-        readFileSync: vi.fn(),
-      }));
-
-      const mod = await import('../../src/modules/config.js');
+      const mod = await importConfigWithMocks({ fileExists: false });
       expect(() => mod.loadConfigFromFile()).toThrow('config.json not found');
     });
 
     it('should throw on JSON parse error', async () => {
-      vi.resetModules();
-      vi.doMock('../../src/logger.js', () => ({
-        info: vi.fn(),
-        error: vi.fn(),
-        warn: vi.fn(),
-        debug: vi.fn(),
-      }));
-      vi.doMock('../../src/db.js', () => ({
-        getPool: vi.fn(),
-      }));
-      vi.doMock('node:fs', () => ({
-        existsSync: vi.fn().mockReturnValue(true),
-        readFileSync: vi.fn().mockReturnValue('invalid json{'),
-      }));
-
-      const mod = await import('../../src/modules/config.js');
+      const mod = await importConfigWithMocks({ fileContents: 'invalid json{' });
       expect(() => mod.loadConfigFromFile()).toThrow('Failed to load config.json');
     });
   });
@@ -569,10 +563,7 @@ describe('modules/config', () => {
 
   describe('resetConfig', () => {
     it('should reset specific section to defaults', async () => {
-      const { getPool: mockGetPool } = await import('../../src/db.js');
-      mockGetPool.mockImplementation(() => {
-        throw new Error('no db');
-      });
+      await mockNoDb();
 
       await configModule.loadConfig();
       await configModule.setConfigValue('ai.model', 'changed');
@@ -583,10 +574,7 @@ describe('modules/config', () => {
     });
 
     it('should reset all sections to defaults', async () => {
-      const { getPool: mockGetPool } = await import('../../src/db.js');
-      mockGetPool.mockImplementation(() => {
-        throw new Error('no db');
-      });
+      await mockNoDb();
 
       await configModule.loadConfig();
       await configModule.setConfigValue('ai.model', 'changed');
@@ -596,10 +584,7 @@ describe('modules/config', () => {
     });
 
     it('should throw if section not found in file defaults', async () => {
-      const { getPool: mockGetPool } = await import('../../src/db.js');
-      mockGetPool.mockImplementation(() => {
-        throw new Error('no db');
-      });
+      await mockNoDb();
 
       await configModule.loadConfig();
       await expect(configModule.resetConfig('nonexistent')).rejects.toThrow(
@@ -659,10 +644,7 @@ describe('modules/config', () => {
     // these tests will break and need to be updated.
 
     it('should remove stale keys from cache on full reset', async () => {
-      const { getPool: mockGetPool } = await import('../../src/db.js');
-      mockGetPool.mockImplementation(() => {
-        throw new Error('no db');
-      });
+      await mockNoDb();
 
       await configModule.loadConfig();
       // Directly mutates the live cache reference to inject a stale key
@@ -673,10 +655,7 @@ describe('modules/config', () => {
     });
 
     it('should handle section reset where cache has non-object value', async () => {
-      const { getPool: mockGetPool } = await import('../../src/db.js');
-      mockGetPool.mockImplementation(() => {
-        throw new Error('no db');
-      });
+      await mockNoDb();
 
       await configModule.loadConfig();
       // Directly mutates the live cache reference to replace section with a non-object
@@ -687,10 +666,7 @@ describe('modules/config', () => {
     });
 
     it('should handle full reset where some cache values are non-objects', async () => {
-      const { getPool: mockGetPool } = await import('../../src/db.js');
-      mockGetPool.mockImplementation(() => {
-        throw new Error('no db');
-      });
+      await mockNoDb();
 
       await configModule.loadConfig();
       // Directly mutates the live cache reference to replace section with a string
