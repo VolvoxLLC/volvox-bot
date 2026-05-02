@@ -40,17 +40,28 @@ describe('global admin helpers', () => {
   });
 
   it('authorizes route requests by BOT_OWNER_IDS and fails closed on refresh errors', async () => {
-    mockGetToken.mockResolvedValueOnce({ id: 'owner-1' });
+    mockGetToken.mockResolvedValueOnce({ accessToken: 'token', id: 'owner-1' });
     await expect(isRequestGlobalAdmin(request())).resolves.toBe(true);
+
+    mockGetToken.mockResolvedValueOnce({ accessToken: 'token', sub: 'owner-2' });
+    await expect(isRequestGlobalAdmin(request())).resolves.toBe(true);
+
+    mockGetToken.mockResolvedValueOnce({ accessToken: 'token', id: 'owner-1', error: 'RefreshTokenError' });
+    await expect(isRequestGlobalAdmin(request())).resolves.toBe(false);
+
+    mockGetToken.mockResolvedValueOnce({ accessToken: 'token', id: 'other-user' });
+    await expect(isRequestGlobalAdmin(request())).resolves.toBe(false);
+  });
+
+  it('fails closed when owner tokens are missing an access token', async () => {
+    mockGetToken.mockResolvedValueOnce({ id: 'owner-1' });
+    await expect(isRequestGlobalAdmin(request())).resolves.toBe(false);
 
     mockGetToken.mockResolvedValueOnce({ sub: 'owner-2' });
-    await expect(isRequestGlobalAdmin(request())).resolves.toBe(true);
-
-    mockGetToken.mockResolvedValueOnce({ id: 'owner-1', error: 'RefreshTokenError' });
     await expect(isRequestGlobalAdmin(request())).resolves.toBe(false);
 
-    mockGetToken.mockResolvedValueOnce({ id: 'other-user' });
-    await expect(isRequestGlobalAdmin(request())).resolves.toBe(false);
+    mockGetToken.mockResolvedValueOnce({ id: 'owner-1' });
+    await expect(authorizeRequestGlobalAdmin(request())).resolves.toMatchObject({ status: 401 });
   });
 
   it('maps global admin route authorization failures to stable response statuses', async () => {

@@ -30,14 +30,6 @@ function isGlobalAdminUserId(userId: string | null | undefined): boolean {
   return getGlobalAdminIds().has(userId);
 }
 
-function isAuthorizedToken(token: JWT | null): boolean {
-  if (!token || token.error === 'RefreshTokenError') {
-    return false;
-  }
-
-  return isGlobalAdminUserId(getTokenUserId(token));
-}
-
 export type RequestGlobalAdminAuthResult =
   | { ok: true; token: JWT }
   | { ok: false; reason: 'unauthorized' | 'token-expired' | 'forbidden'; token: JWT | null };
@@ -93,11 +85,8 @@ export async function authorizeRequestGlobalAdmin(
 }
 
 export async function isRequestGlobalAdmin(request: NextRequest): Promise<boolean> {
-  try {
-    return isAuthorizedToken(await getToken({ req: request }));
-  } catch {
-    return false;
-  }
+  const auth = await getRequestGlobalAdminAuth(request);
+  return auth.ok;
 }
 
 export async function isDashboardGlobalAdmin(): Promise<boolean> {
