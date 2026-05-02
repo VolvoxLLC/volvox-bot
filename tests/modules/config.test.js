@@ -442,6 +442,56 @@ describe('modules/config', () => {
         await configModule.setConfigValue('ai.num', 42);
         expect(configModule.getConfig().ai.num).toBe(42);
       });
+
+      it('should parse leading-decimal floats like ".5" as numbers', async () => {
+        await configModule.setConfigValue('ai.temperature', '.5');
+        expect(configModule.getConfig().ai.temperature).toBe(0.5);
+      });
+
+      it('should parse negative leading-decimal floats like "-.5" as numbers', async () => {
+        await configModule.setConfigValue('ai.temperature', '-.5');
+        expect(configModule.getConfig().ai.temperature).toBe(-0.5);
+      });
+
+      it('should parse trailing-decimal numbers like "1." as numbers', async () => {
+        await configModule.setConfigValue('ai.val', '1.');
+        expect(configModule.getConfig().ai.val).toBe(1);
+      });
+
+      it('should parse negative integers like "-42" as numbers', async () => {
+        await configModule.setConfigValue('ai.val', '-42');
+        expect(configModule.getConfig().ai.val).toBe(-42);
+      });
+
+      it('should keep double-dot strings like "1.2.3" as strings', async () => {
+        await configModule.setConfigValue('ai.version', '1.2.3');
+        expect(configModule.getConfig().ai.version).toBe('1.2.3');
+      });
+
+      it('should keep scientific notation like "1e5" as a string', async () => {
+        await configModule.setConfigValue('ai.val', '1e5');
+        expect(configModule.getConfig().ai.val).toBe('1e5');
+      });
+
+      it('should keep a bare minus sign "-" as a string', async () => {
+        await configModule.setConfigValue('ai.val', '-');
+        expect(configModule.getConfig().ai.val).toBe('-');
+      });
+
+      it('should keep a double-minus "--1" as a string', async () => {
+        await configModule.setConfigValue('ai.val', '--1');
+        expect(configModule.getConfig().ai.val).toBe('--1');
+      });
+
+      it('should parse zero as a number', async () => {
+        await configModule.setConfigValue('ai.val', '0');
+        expect(configModule.getConfig().ai.val).toBe(0);
+      });
+
+      it('should parse "-0" as a number', async () => {
+        await configModule.setConfigValue('ai.val', '-0');
+        expect(typeof configModule.getConfig().ai.val).toBe('number');
+      });
     });
 
     it('should persist to database when available', async () => {

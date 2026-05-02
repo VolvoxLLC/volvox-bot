@@ -499,4 +499,60 @@ describe('parseTime', () => {
   it('should return null for invalid ISO date (bad hour)', () => {
     expect(parseTime('2026-06-15 25:00')).toBeNull();
   });
+
+  it('should parse verbose "in X hours" form', () => {
+    const before = Date.now();
+    const result = parseTime('in 3 hours');
+    expect(result).toBeInstanceOf(Date);
+    const diff = result.getTime() - before;
+    expect(diff).toBeGreaterThanOrEqual(3 * 60 * 60 * 1000 - 1000);
+    expect(diff).toBeLessThanOrEqual(3 * 60 * 60 * 1000 + 5000);
+  });
+
+  it('should parse verbose "in X minutes" form', () => {
+    const before = Date.now();
+    const result = parseTime('in 45 minutes');
+    expect(result).toBeInstanceOf(Date);
+    const diff = result.getTime() - before;
+    expect(diff).toBeGreaterThanOrEqual(44 * 60 * 1000);
+    expect(diff).toBeLessThanOrEqual(46 * 60 * 1000);
+  });
+
+  it('should parse "in X hours Y minutes" verbose form', () => {
+    const before = Date.now();
+    const result = parseTime('in 2 hours 15 minutes');
+    expect(result).toBeInstanceOf(Date);
+    const expected = 2 * 60 * 60 * 1000 + 15 * 60 * 1000;
+    const diff = result.getTime() - before;
+    expect(diff).toBeGreaterThanOrEqual(expected - 1000);
+    expect(diff).toBeLessThanOrEqual(expected + 5000);
+  });
+
+  it('should parse "in X hour" (singular) form', () => {
+    const result = parseTime('in 1 hour');
+    expect(result).toBeInstanceOf(Date);
+  });
+
+  it('should parse "in X min" abbreviated form', () => {
+    const before = Date.now();
+    const result = parseTime('in 10 min');
+    expect(result).toBeInstanceOf(Date);
+    const diff = result.getTime() - before;
+    expect(diff).toBeGreaterThanOrEqual(9 * 60 * 1000);
+    expect(diff).toBeLessThanOrEqual(11 * 60 * 1000);
+  });
+
+  it('should return null when "in" is given alone with no time', () => {
+    expect(parseTime('in')).toBeNull();
+  });
+
+  it('should return null for "in 0 minutes" (zero time)', () => {
+    expect(parseTime('in 0 minutes')).toBeNull();
+  });
+
+  it('should not parse free-form relative strings as in-duration', () => {
+    // These should not match the relative pattern and return null
+    expect(parseTime('in a while')).toBeNull();
+    expect(parseTime('in some time')).toBeNull();
+  });
 });

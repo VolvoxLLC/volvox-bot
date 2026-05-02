@@ -518,6 +518,72 @@ describe('analyzeMessage', () => {
     expect(result.scores.toxicity).toBe(0.8);
     expect(result.flagged).toBe(true);
   });
+
+  it('extracts JSON when model prepends explanatory preamble text', async () => {
+    mockGenerate.mockResolvedValue({
+      text: 'Here is my analysis of the message:\n{"toxicity": 0.9, "spam": 0.1, "harassment": 0.1, "reason": "hate speech"}',
+      costUsd: 0,
+      usage: { inputTokens: 0, outputTokens: 0 },
+      durationMs: 0,
+      finishReason: 'stop',
+      sources: [],
+      providerMetadata: {},
+    });
+    const cfg = getAiAutoModConfig({});
+    const result = await analyzeMessage('offensive message content here', cfg);
+    expect(result.scores.toxicity).toBe(0.9);
+    expect(result.flagged).toBe(true);
+    expect(result.reason).toBe('hate speech');
+  });
+
+  it('extracts JSON when model appends trailing explanation after the closing brace', async () => {
+    mockGenerate.mockResolvedValue({
+      text: '{"toxicity": 0.85, "spam": 0.1, "harassment": 0.1, "reason": "toxic"} [end of analysis]',
+      costUsd: 0,
+      usage: { inputTokens: 0, outputTokens: 0 },
+      durationMs: 0,
+      finishReason: 'stop',
+      sources: [],
+      providerMetadata: {},
+    });
+    const cfg = getAiAutoModConfig({});
+    const result = await analyzeMessage('bad message content here', cfg);
+    expect(result.scores.toxicity).toBe(0.85);
+    expect(result.flagged).toBe(true);
+  });
+
+  it('handles response text that is only whitespace with no JSON braces', async () => {
+    mockGenerate.mockResolvedValue({
+      text: '   ',
+      costUsd: 0,
+      usage: { inputTokens: 0, outputTokens: 0 },
+      durationMs: 0,
+      finishReason: 'stop',
+      sources: [],
+      providerMetadata: {},
+    });
+    const cfg = getAiAutoModConfig({});
+    const result = await analyzeMessage('some content here to analyze', cfg);
+    // No braces → parsed as {} → all scores = 0 → not flagged
+    expect(result.flagged).toBe(false);
+    expect(result.action).toBe('none');
+  });
+
+  it('uses lastIndexOf so outer braces encompass the full JSON including nested objects', async () => {
+    mockGenerate.mockResolvedValue({
+      text: '{"toxicity": 0.92, "spam": 0.1, "harassment": 0.1, "reason": "hostile", "meta": {"source": "test"}}',
+      costUsd: 0,
+      usage: { inputTokens: 0, outputTokens: 0 },
+      durationMs: 0,
+      finishReason: 'stop',
+      sources: [],
+      providerMetadata: {},
+    });
+    const cfg = getAiAutoModConfig({});
+    const result = await analyzeMessage('bad message content here', cfg);
+    expect(result.scores.toxicity).toBe(0.92);
+    expect(result.flagged).toBe(true);
+  });
 });
 
 describe('checkAiAutoMod', () => {

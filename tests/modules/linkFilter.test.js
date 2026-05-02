@@ -127,6 +127,47 @@ describe('extractUrls', () => {
   it('returns empty array for empty string', () => {
     expect(extractUrls('')).toEqual([]);
   });
+
+  it('extracts URLs wrapped in Discord angle-bracket syntax <url>', () => {
+    const results = extractUrls('check out <https://example.com/path>');
+    expect(results.some((r) => r.hostname === 'example.com')).toBe(true);
+  });
+
+  it('strips trailing period from URL token', () => {
+    const results = extractUrls('see https://example.com.');
+    expect(results.some((r) => r.hostname === 'example.com')).toBe(true);
+  });
+
+  it('strips trailing comma from URL token', () => {
+    const results = extractUrls('visit https://example.com, and more');
+    expect(results.some((r) => r.hostname === 'example.com')).toBe(true);
+  });
+
+  it('extracts URL in parentheses', () => {
+    const results = extractUrls('(https://example.com)');
+    expect(results.some((r) => r.hostname === 'example.com')).toBe(true);
+  });
+
+  it('extracts bare domain without http prefix', () => {
+    const results = extractUrls('visit evil.xyz for free stuff');
+    expect(results.some((r) => r.hostname === 'evil.xyz')).toBe(true);
+  });
+
+  it('extracts bare domain with www prefix', () => {
+    const results = extractUrls('go to www.example.com today');
+    expect(results.some((r) => r.hostname === 'example.com')).toBe(true);
+  });
+
+  it('does not extract localhost or bare single-label hostnames', () => {
+    const results = extractUrls('visit localhost or some-host');
+    expect(results).toHaveLength(0);
+  });
+
+  it('does not extract plain IP addresses', () => {
+    const results = extractUrls('connect to 192.168.1.1 for info');
+    // IP addresses have a numeric TLD — isValidHostname returns false
+    expect(results.some((r) => r.hostname === '192.168.1.1')).toBe(false);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -173,6 +214,30 @@ describe('matchPhishingPattern', () => {
 
   it('returns null for clean messages', () => {
     expect(matchPhishingPattern('hello world')).toBeNull();
+  });
+
+  it('detects phishing URL in angle brackets', () => {
+    // Discord wraps pasted links in angle brackets; the filter should still catch them
+    expect(matchPhishingPattern('<https://discord-nitro.xyz/claim>')).not.toBeNull();
+  });
+
+  it('detects phishing URL with trailing punctuation', () => {
+    expect(matchPhishingPattern('claim your gift: https://free-nitro.xyz.')).not.toBeNull();
+  });
+
+  it('detects bare phishing domain without http scheme', () => {
+    expect(matchPhishingPattern('visit discord-nitro.xyz for free')).not.toBeNull();
+  });
+
+  it('returns the full URL string of the matched phishing token', () => {
+    const result = matchPhishingPattern('claim https://discord-nitro.xyz/win');
+    expect(typeof result).toBe('string');
+    expect(result).toContain('discord-nitro.xyz');
+  });
+
+  it('does NOT flag .xyz domain with only safe path content', () => {
+    // Path contains none of the phishing keywords
+    expect(matchPhishingPattern('https://design.xyz/portfolio/work')).toBeNull();
   });
 });
 

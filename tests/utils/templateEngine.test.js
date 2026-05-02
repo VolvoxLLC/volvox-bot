@@ -269,4 +269,84 @@ describe('buildTemplateContext', () => {
     expect(ctx.daysActive).toBe('0');
     expect(ctx.voiceHours).toBe('0');
   });
+
+  it('should correctly compute xpToNext when the threshold for the current level is 0', async () => {
+    // Object.hasOwn(levelThresholds, 0) is true, so hasNextLevel=true and nextThreshold=0
+    // xpToNext = 0 - xp = negative → Math.max(0, xpToNext) → "0"
+    const member = {
+      user: { id: '1', displayName: 'U', displayAvatarURL: () => '' },
+      joinedAt: new Date(),
+    };
+    const guild = { id: 'guild1', name: 'S', iconURL: () => '', memberCount: 1 };
+
+    const ctx = await buildTemplateContext({
+      member,
+      message: { channel: { name: 'ch' } },
+      guild,
+      level: 0,
+      previousLevel: 0,
+      xp: 50,
+      levelThresholds: [0, 100, 300],
+      roleName: null,
+      roleId: null,
+    });
+
+    // Level 0 threshold is 0; xpToNext = 0 - 50 = -50, clamped to 0
+    expect(ctx.xpToNext).toBe('0');
+    // nextLevel should be level + 1 = 1 (not '0' since hasNextLevel is true)
+    expect(ctx.nextLevel).toBe('1');
+  });
+
+  it('should return nextLevel "0" and xpToNext "0" when level is beyond the last threshold index', async () => {
+    // Level 5 with only 3 thresholds → Object.hasOwn([...], 5) = false → hasNextLevel=false
+    const member = {
+      user: { id: '1', displayName: 'U', displayAvatarURL: () => '' },
+      joinedAt: new Date(),
+    };
+    const guild = { id: 'guild1', name: 'S', iconURL: () => '', memberCount: 1 };
+
+    const ctx = await buildTemplateContext({
+      member,
+      message: { channel: { name: 'ch' } },
+      guild,
+      level: 5,
+      previousLevel: 4,
+      xp: 9999,
+      levelThresholds: [100, 300, 600],
+      roleName: null,
+      roleId: null,
+    });
+
+    expect(ctx.xpToNext).toBe('0');
+    expect(ctx.nextLevel).toBe('0');
+  });
+
+  it('should use Object.hasOwn so a threshold value of undefined does not count as a valid level', async () => {
+    // A sparse array-like object where key exists but value is undefined:
+    // Object.hasOwn returns true for own properties regardless of the value
+    const member = {
+      user: { id: '1', displayName: 'U', displayAvatarURL: () => '' },
+      joinedAt: new Date(),
+    };
+    const guild = { id: 'guild1', name: 'S', iconURL: () => '', memberCount: 1 };
+
+    // Plain object thresholds — key 1 does not exist, so Object.hasOwn(thresholds, 1) = false
+    const thresholdsWithGap = { 0: 100, 2: 600 }; // key 1 is absent
+
+    const ctx = await buildTemplateContext({
+      member,
+      message: { channel: { name: 'ch' } },
+      guild,
+      level: 1,
+      previousLevel: 0,
+      xp: 200,
+      levelThresholds: thresholdsWithGap,
+      roleName: null,
+      roleId: null,
+    });
+
+    // key 1 absent → hasNextLevel=false → xpToNext=0, nextLevel='0'
+    expect(ctx.xpToNext).toBe('0');
+    expect(ctx.nextLevel).toBe('0');
+  });
 });
