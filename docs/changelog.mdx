@@ -3,6 +3,22 @@ title: Volvox.Bot Changelog and Release Notes
 description: 'Volvox.Bot release notes and changelog covering new Discord bot features, dashboard updates, moderation improvements, and bug fixes by month.'
 ---
 
+<Update label="2026-05-15" description="May 2026" tags={["Fixes"]}>
+## Fixes
+
+**Smarter link filter** — The [moderation](/features/moderation) link filter now extracts URLs hidden inside Discord markdown links (`[click here](https://example.com)`), angle-bracket links (`<https://example.com>`), and URLs embedded in surrounding text. Phishing detection also inspects query strings, so disguised scam links are caught more reliably.
+
+**More reliable AI auto-mod parsing** — [AI auto-moderation](/features/moderation) now correctly parses provider responses that include extra text or nested JSON around the main result, reducing skipped messages when the model returns chatty output.
+</Update>
+
+<Update label="2026-05-08" description="May 2026" tags={["Improvements"]}>
+## Improvements
+
+**Global admin access for ops pages** — The dashboard's **Logs** and **Performance** pages are now restricted to global admins (configured via `BOT_OWNER_IDS`). Server admins and moderators continue to manage their servers as usual, while infrastructure-level views are reserved for operators. See [Permissions](/configuration/permissions) for the full role breakdown.
+
+**Cleaner access levels** — Server access roles are now consistently `admin`, `moderator`, or `viewer` across the dashboard and API. Global admin status is surfaced separately, so sidebar navigation and protected pages reflect the correct permissions for every user.
+</Update>
+
 <Update label="2026-05-03" description="May 2026" tags={["Fixes"]}>
 ## Fixes
 
@@ -15,14 +31,6 @@ description: 'Volvox.Bot release notes and changelog covering new Discord bot fe
 ## Improvements
 
 **Better reliability monitoring** — Volvox.Bot now tracks dashboard errors and performance issues in the background so problems get spotted and fixed faster. Sensitive data — Discord IDs, message content, tokens, query params, headers, and request bodies — is scrubbed before anything leaves your browser, keeping your server's data private by default.
-</Update>
-
-<Update label="2026-05-08" description="May 2026" tags={["Improvements"]}>
-## Improvements
-
-**Global admin access for ops pages** — The dashboard's **Logs** and **Performance** pages are now restricted to global admins (configured via `BOT_OWNER_IDS`). Server admins and moderators continue to manage their servers as usual, while infrastructure-level views are reserved for operators. See [Permissions](/configuration/permissions) for the full role breakdown.
-
-**Cleaner access levels** — Server access roles are now consistently `admin`, `moderator`, or `viewer` across the dashboard and API. Global admin status is surfaced separately, so sidebar navigation and protected pages reflect the correct permissions for every user.
 </Update>
 
 <Update label="2026-05-01" description="May 2026" tags={["Features", "Improvements", "Fixes"]}>
