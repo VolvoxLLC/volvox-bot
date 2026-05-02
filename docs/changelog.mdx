@@ -4,6 +4,12 @@ sidebarTitle: Changelog
 description: 'Volvox.Bot release notes and changelog covering new Discord bot features, dashboard updates, moderation improvements, and bug fixes by month.'
 ---
 
+<Update label="2026-05-09" description="May 2026" tags={["Fixes"]}>
+## Fixes
+
+**More resilient `/poll`, `/remind`, and `/modlog`** — These commands now route channel messages through the same safe-send wrappers used elsewhere in the bot, so transient Discord errors (missing permissions, deleted channels, rate limits) are handled gracefully instead of leaving commands in a half-finished state.
+</Update>
+
 <Update label="2026-05-03" description="May 2026" tags={["Fixes"]}>
 ## Fixes
 
