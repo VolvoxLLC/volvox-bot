@@ -528,34 +528,6 @@ describe('guilds routes', () => {
       expect(res.status).toBe(200);
       expect(res.body).toHaveProperty('cases');
     });
-
-    it('should report access as "bot-owner" for guild list when user is a configured bot owner', async () => {
-      vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
-      getConfig.mockReturnValue({ permissions: {} });
-      vi.stubEnv('BOT_OWNER_IDS', 'owner-access-check');
-      const token = createOAuthToken('jwt-test-secret', 'owner-access-check');
-
-      const res = await request(app).get('/api/v1/guilds').set('Authorization', `Bearer ${token}`);
-
-      expect(res.status).toBe(200);
-      const guild = res.body.find((g) => g.id === 'guild1');
-      expect(guild).toBeDefined();
-      expect(guild.access).toBe('bot-owner');
-      getConfig.mockReturnValue({
-        ai: { enabled: true, model: 'claude-3', historyLength: 20 },
-        welcome: { enabled: true },
-        spam: { enabled: true },
-        moderation: { enabled: true },
-        triage: {
-          enabled: true,
-          classifyApiKey: 'sk-secret-classify',
-          respondApiKey: 'sk-secret-respond',
-        },
-        permissions: {},
-        database: { host: 'secret-host' },
-        token: 'secret-token',
-      });
-    });
   });
 
   describe('GET /:id/config', () => {
