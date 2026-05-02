@@ -531,7 +531,8 @@ describe('guilds routes', () => {
 
     it('should report access as "bot-owner" for guild list when user is a configured bot owner', async () => {
       vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
-      getConfig.mockReturnValueOnce({ permissions: {} });
+      const originalImpl = getConfig.getMockImplementation();
+      getConfig.mockReturnValue({ permissions: {} });
       vi.stubEnv('BOT_OWNER_IDS', 'owner-access-check');
       const token = createOAuthToken('jwt-test-secret', 'owner-access-check');
 
@@ -541,6 +542,7 @@ describe('guilds routes', () => {
       const guild = res.body.find((g) => g.id === 'guild1');
       expect(guild).toBeDefined();
       expect(guild.access).toBe('bot-owner');
+      getConfig.mockImplementation(originalImpl);
     });
   });
 
