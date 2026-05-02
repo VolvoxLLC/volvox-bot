@@ -37,6 +37,39 @@ function isAuthorizedToken(token: JWT | null): boolean {
   return isGlobalAdminUserId(getTokenUserId(token));
 }
 
+export type RequestGlobalAdminAuthResult =
+  | { ok: true; token: JWT }
+  | { ok: false; reason: 'unauthorized' | 'token-expired' | 'forbidden'; token: JWT | null };
+
+export async function getRequestGlobalAdminAuth(
+  request: NextRequest,
+): Promise<RequestGlobalAdminAuthResult> {
+  let token: JWT | null;
+  try {
+    token = await getToken({ req: request });
+  } catch {
+    return { ok: false, reason: 'unauthorized', token: null };
+  }
+
+  if (!token) {
+    return { ok: false, reason: 'unauthorized', token: null };
+  }
+
+  if (token.error === 'RefreshTokenError') {
+    return { ok: false, reason: 'token-expired', token };
+  }
+
+  if (typeof token.accessToken !== 'string' || token.accessToken.length === 0) {
+    return { ok: false, reason: 'unauthorized', token };
+  }
+
+  if (!isGlobalAdminUserId(getTokenUserId(token))) {
+    return { ok: false, reason: 'forbidden', token };
+  }
+
+  return { ok: true, token };
+}
+
 export async function isRequestGlobalAdmin(request: NextRequest): Promise<boolean> {
   try {
     return isAuthorizedToken(await getToken({ req: request }));
