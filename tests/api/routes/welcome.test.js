@@ -1,3 +1,4 @@
+import jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -46,7 +47,9 @@ vi.mock('../../../src/modules/welcomePublishing.js', () => ({
   }),
 }));
 
+import { _resetSecretCache } from '../../../src/api/middleware/verifyJwt.js';
 import { createApp } from '../../../src/api/server.js';
+import { sessionStore } from '../../../src/api/utils/sessionStore.js';
 import {
   getWelcomePublicationStatus,
   publishWelcomePanel,
@@ -68,6 +71,8 @@ describe('welcome routes', () => {
   });
 
   afterEach(() => {
+    sessionStore.clear();
+    _resetSecretCache();
     vi.unstubAllEnvs();
   });
 
@@ -226,6 +231,27 @@ describe('welcome routes', () => {
         'rules',
         expect.objectContaining({ source: 'dashboard' }),
       );
+    });
+
+    it('rate limits welcome publication endpoints for OAuth requests', async () => {
+      const userId = '123456789012345678';
+      const jti = 'welcome-rate-limit-test';
+      vi.stubEnv('SESSION_SECRET', 'session-secret');
+      vi.stubEnv('BOT_OWNER_IDS', userId);
+      _resetSecretCache();
+      sessionStore.set(userId, { accessToken: 'discord-access-token', jti });
+      const token = jwt.sign({ userId, jti }, 'session-secret');
+
+      let res;
+      for (let i = 0; i < 31; i++) {
+        res = await request(app)
+          .get('/api/v1/guilds/guild1/welcome/status')
+          .set('Authorization', `Bearer ${token}`);
+      }
+
+      expect(res.status).toBe(429);
+      expect(res.body.error).toBe('Too many requests, please try again later');
+      expect(res.headers['x-ratelimit-limit']).toBe('30');
     });
   });
 });
