@@ -98,6 +98,7 @@ type WelcomePublishResult = {
   panelType?: 'rules' | 'role_menu';
   status?: WelcomePanelStatus['status'];
   lastError?: string | null;
+  persistWarning?: boolean | string | null;
 };
 
 type WelcomeBulkPublishResult = {
@@ -128,6 +129,30 @@ function getWelcomePublishFailureMessage(
   }
 
   return 'No welcome panels were published. Check that channels are configured.';
+}
+
+function getWelcomePublishWarningMessage(
+  data: (WelcomePublishResult & WelcomeBulkPublishResult) | null,
+  panelType?: 'rules' | 'role_menu',
+) {
+  const fallback = 'Published to Discord, but saving publication state failed.';
+  const hasPersistWarning = (entry: WelcomePublishResult) =>
+    entry.status === 'posted' && (Boolean(entry.persistWarning) || Boolean(entry.lastError));
+  const warningText = (entry: WelcomePublishResult) => entry.lastError || fallback;
+
+  if (panelType) {
+    return data && hasPersistWarning(data) ? warningText(data) : null;
+  }
+
+  const warnings = (Array.isArray(data?.results) ? data.results : []).filter(hasPersistWarning);
+  if (warnings.length === 0) return null;
+
+  return warnings
+    .map((entry) => {
+      const label = entry.panelType === 'role_menu' ? 'role menu' : entry.panelType || 'panel';
+      return `${label}: ${warningText(entry)}`;
+    })
+    .join('; ');
 }
 
 function getWelcomePublishInfoMessage(
@@ -337,8 +362,18 @@ export function OnboardingGrowthCategory() {
           throw new Error(failureMessage);
         }
         if (!isInitiatingGuildSelected()) return;
+        const warningMessage = getWelcomePublishWarningMessage(data, panelType);
         const infoMessage = getWelcomePublishInfoMessage(data, panelType);
-        if (infoMessage) {
+        if (warningMessage) {
+          toast.info(
+            panelType
+              ? 'Welcome panel published with a warning'
+              : 'Welcome panels published with a warning',
+            {
+              description: warningMessage,
+            },
+          );
+        } else if (infoMessage) {
           toast.info(infoMessage);
         } else {
           toast.success(panelType ? 'Welcome panel published' : 'Welcome panels published');

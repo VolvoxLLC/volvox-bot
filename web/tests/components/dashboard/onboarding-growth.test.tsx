@@ -696,6 +696,60 @@ describe('OnboardingGrowthCategory', () => {
     expect(toast.success).not.toHaveBeenCalledWith('Welcome panel published');
   });
 
+  it('shows a warning toast when a single panel publishes but persistence fails', async () => {
+    const user = userEvent.setup();
+    const persistWarning = 'Published to Discord but failed to save publication state.';
+    const statusResponse = {
+      guildId: 'guild-1',
+      panels: {
+        rules: {
+          status: 'posted',
+          configured: true,
+          channelId: 'rules-channel',
+          configuredChannelId: 'rules-channel',
+          messageId: 'message-1',
+          stale: false,
+        },
+        role_menu: {
+          status: 'missing',
+          configured: true,
+          channelId: 'welcome-channel',
+          configuredChannelId: 'welcome-channel',
+          messageId: null,
+          stale: false,
+        },
+      },
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(Response.json(statusResponse))
+        .mockResolvedValueOnce(
+          Response.json({
+            panelType: 'rules',
+            status: 'posted',
+            persistWarning: true,
+            lastError: persistWarning,
+          }),
+        )
+        .mockResolvedValueOnce(Response.json(statusResponse)),
+    );
+    mockWelcomeContext({ draftConfig: createWelcomeDraftConfig({ dynamic: { enabled: false } }) });
+
+    render(<OnboardingGrowthCategory />);
+
+    await screen.findByText('#rules');
+    await user.click(screen.getAllByRole('button', { name: 'Publish' })[0]);
+
+    await waitFor(() => {
+      expect(toast.info).toHaveBeenCalledWith('Welcome panel published with a warning', {
+        description: persistWarning,
+      });
+    });
+    expect(toast.success).not.toHaveBeenCalledWith('Welcome panel published');
+  });
+
   it('mounts the level-up actions editor from the xp-level-actions tab', () => {
     mockUseConfigContext.mockReturnValue({
       draftConfig: {
