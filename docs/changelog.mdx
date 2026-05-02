@@ -3,6 +3,14 @@ title: Changelog
 description: Latest updates and improvements to Volvox.Bot.
 ---
 
+<Update label="2026-05-08" description="May 2026" tags={["Improvements"]}>
+## Improvements
+
+**Global admin access for ops pages** — The dashboard's **Logs** and **Performance** pages are now restricted to global admins (configured via `BOT_OWNER_IDS`). Server admins and moderators continue to manage their guilds as usual, while infrastructure-level views are reserved for operators. See [Permissions](/configuration/permissions) for the full role breakdown.
+
+**Cleaner access levels** — Guild access roles are now consistently `admin`, `moderator`, or `viewer` across the dashboard and API. Global admin status is surfaced separately, so sidebar navigation and protected pages reflect the correct permissions for every user.
+</Update>
+
 <Update label="2026-05-01" description="May 2026" tags={["Features", "Improvements", "Fixes"]}>
 ## New features
 
