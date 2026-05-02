@@ -365,6 +365,35 @@ describe('previously unexcluded app pages', () => {
     expect(stream.clearLogs).toHaveBeenCalled();
   });
 
+  it.each<{ state: string; mockGlobalAdminCheck: () => void }>([
+    {
+      state: 'denied',
+      mockGlobalAdminCheck: () => vi.mocked(fetch).mockResolvedValue(jsonResponse({ isGlobalAdmin: false })),
+    },
+    {
+      state: 'errored',
+      mockGlobalAdminCheck: () => vi.mocked(fetch).mockRejectedValue(new Error('global admin check failed')),
+    },
+  ])(
+    'redirects logs page and keeps stream disabled when global admin check is $state',
+    async ({ mockGlobalAdminCheck }) => {
+      mockGlobalAdminCheck();
+
+      render(<LogsPage />);
+
+      await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/dashboard'));
+      expect(screen.queryByRole('heading', { name: /log\s*stream/i })).not.toBeInTheDocument();
+      expect(mockUseGuildChannels).toHaveBeenCalledWith(null);
+      expect(mockUseLogStream).toHaveBeenCalledWith({ enabled: false, guildId: null });
+      expect(
+        mockUseLogStream.mock.calls.every(([options]) => {
+          const streamOptions = options as { enabled?: boolean; guildId?: string | null };
+          return streamOptions.enabled === false && streamOptions.guildId === null;
+        }),
+      ).toBe(true);
+    },
+  );
+
   it('renders audit log rows, filters, expansion, pagination, and copy controls', async () => {
     render(<AuditLogPage />);
 

@@ -43,6 +43,9 @@ describe('global admin helpers', () => {
     mockGetToken.mockResolvedValueOnce({ id: 'owner-1' });
     await expect(isRequestGlobalAdmin(request())).resolves.toBe(true);
 
+    mockGetToken.mockResolvedValueOnce({ sub: 'owner-2' });
+    await expect(isRequestGlobalAdmin(request())).resolves.toBe(true);
+
     mockGetToken.mockResolvedValueOnce({ id: 'owner-1', error: 'RefreshTokenError' });
     await expect(isRequestGlobalAdmin(request())).resolves.toBe(false);
 
@@ -53,7 +56,10 @@ describe('global admin helpers', () => {
   it('maps global admin route authorization failures to stable response statuses', async () => {
     mockGetToken.mockResolvedValueOnce({ accessToken: 'token', id: 'owner-1' });
     await expect(authorizeRequestGlobalAdmin(request())).resolves.toBeNull();
-    expect(mockGetToken).toHaveBeenCalledTimes(1);
+
+    mockGetToken.mockResolvedValueOnce({ accessToken: 'token', sub: 'owner-2' });
+    await expect(authorizeRequestGlobalAdmin(request())).resolves.toBeNull();
+    expect(mockGetToken).toHaveBeenCalledTimes(2);
 
     mockGetToken.mockResolvedValueOnce({ accessToken: 'token', id: 'other-user' });
     await expect(authorizeRequestGlobalAdmin(request())).resolves.toMatchObject({ status: 403 });
