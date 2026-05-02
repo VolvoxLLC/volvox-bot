@@ -206,6 +206,60 @@ function normalizeReason(reason) {
 }
 
 /**
+ * Extract the first balanced JSON object substring from provider output.
+ *
+ * The scanner is string-aware so braces inside JSON strings do not affect nesting, and escaped
+ * quotes do not incorrectly terminate strings.
+ *
+ * @param {string} text - Provider output that may contain a JSON object plus surrounding text.
+ * @returns {string|null} The first balanced object substring, or null when none is found.
+ */
+export function extractFirstBalancedJsonObject(text) {
+  if (typeof text !== 'string') return null;
+
+  let start = -1;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i];
+
+    if (start === -1) {
+      if (char === '{') {
+        start = i;
+        depth = 1;
+      }
+      continue;
+    }
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (char === '\\') {
+        escaped = true;
+      } else if (char === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+    } else if (char === '{') {
+      depth += 1;
+    } else if (char === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        return text.slice(start, i + 1);
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
  * Analyze a message using the configured AI provider.
  * Returns scores and recommendations for moderation actions.
  *
@@ -263,10 +317,10 @@ ${responseShape}
 
   let parsed;
   try {
-    const jsonStart = text.indexOf('{');
-    const jsonEnd = text.lastIndexOf('}');
-    const jsonPayload =
-      jsonStart >= 0 && jsonEnd >= jsonStart ? text.slice(jsonStart, jsonEnd + 1) : '{}';
+    const jsonPayload = extractFirstBalancedJsonObject(text);
+    if (!jsonPayload) {
+      throw new Error('No balanced JSON object found in AI response');
+    }
     parsed = JSON.parse(jsonPayload);
   } catch {
     logError('AI auto-mod: failed to parse AI response', {
@@ -274,7 +328,7 @@ ${responseShape}
       text,
     });
     return {
-      flagged: false,
+      flagged: true,
       scores: buildScoreObject(0),
       categories: [],
       reason: 'Parse error',

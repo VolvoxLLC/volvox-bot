@@ -53,7 +53,12 @@ vi.mock('../../src/modules/auditLogger.js', () => ({
 
 // Import after mocks
 import { warn as logWarn } from '../../src/logger.js';
-import { analyzeMessage, checkAiAutoMod, getAiAutoModConfig } from '../../src/modules/aiAutoMod.js';
+import {
+  analyzeMessage,
+  checkAiAutoMod,
+  extractFirstBalancedJsonObject,
+  getAiAutoModConfig,
+} from '../../src/modules/aiAutoMod.js';
 import { logAuditEvent } from '../../src/modules/auditLogger.js';
 import {
   checkEscalation,
@@ -216,6 +221,28 @@ describe('getAiAutoModConfig', () => {
 
     expect(cfg.actions.toxicity).toEqual(['warn', 'delete']);
     expect(cfg.actions.spam).toEqual([]);
+  });
+});
+
+describe('extractFirstBalancedJsonObject', () => {
+  it('returns the first balanced JSON object from surrounding provider text', () => {
+    const text = 'Here is the result: {"toxicity":0.1,"reason":"clean"} trailing {"x":true}';
+
+    expect(extractFirstBalancedJsonObject(text)).toBe('{"toxicity":0.1,"reason":"clean"}');
+  });
+
+  it('ignores braces inside strings and escaped quotes while scanning', () => {
+    const text =
+      '```json\n{"reason":"literal {brace} and escaped \\"quote\\"","scores":{"toxicity":0.2}}\n```';
+
+    expect(extractFirstBalancedJsonObject(text)).toBe(
+      '{"reason":"literal {brace} and escaped \\"quote\\"","scores":{"toxicity":0.2}}',
+    );
+  });
+
+  it('returns null when no balanced object is present', () => {
+    expect(extractFirstBalancedJsonObject('no json here')).toBeNull();
+    expect(extractFirstBalancedJsonObject('prefix {"toxicity": 0.2')).toBeNull();
   });
 });
 
@@ -467,7 +494,7 @@ describe('analyzeMessage', () => {
     });
     const cfg = getAiAutoModConfig({});
     const result = await analyzeMessage('some content here', cfg);
-    expect(result.flagged).toBe(false);
+    expect(result.flagged).toBe(true);
     expect(result.action).toBe('none');
   });
 
@@ -483,7 +510,7 @@ describe('analyzeMessage', () => {
     });
     const cfg = getAiAutoModConfig({});
     const result = await analyzeMessage('some content here', cfg);
-    expect(result.flagged).toBe(false);
+    expect(result.flagged).toBe(true);
     expect(result.reason).toBe('Parse error');
   });
 
@@ -536,9 +563,9 @@ describe('analyzeMessage', () => {
     expect(result.reason).toBe('hate speech');
   });
 
-  it('extracts JSON when model appends trailing explanation after the closing brace', async () => {
+  it('parses the first balanced JSON object without swallowing later braces', async () => {
     mockGenerate.mockResolvedValue({
-      text: '{"toxicity": 0.85, "spam": 0.1, "harassment": 0.1, "reason": "toxic"} [end of analysis]',
+      text: 'Result: {"toxicity": 0.1, "spam": 0.1, "harassment": 0.1, "reason": "clean"} extra {ignored}',
       costUsd: 0,
       usage: { inputTokens: 0, outputTokens: 0 },
       durationMs: 0,
@@ -547,9 +574,9 @@ describe('analyzeMessage', () => {
       providerMetadata: {},
     });
     const cfg = getAiAutoModConfig({});
-    const result = await analyzeMessage('bad message content here', cfg);
-    expect(result.scores.toxicity).toBe(0.85);
-    expect(result.flagged).toBe(true);
+    const result = await analyzeMessage('normal content here', cfg);
+    expect(result.flagged).toBe(false);
+    expect(result.reason).toBe('clean');
   });
 
   it('handles response text that is only whitespace with no JSON braces', async () => {
@@ -564,12 +591,11 @@ describe('analyzeMessage', () => {
     });
     const cfg = getAiAutoModConfig({});
     const result = await analyzeMessage('some content here to analyze', cfg);
-    // No braces → parsed as {} → all scores = 0 → not flagged
-    expect(result.flagged).toBe(false);
-    expect(result.action).toBe('none');
+    // No valid JSON found → fail-closed: flagged true
+    expect(result.flagged).toBe(true);
   });
 
-  it('uses lastIndexOf so outer braces encompass the full JSON including nested objects', async () => {
+  it('handles nested JSON objects correctly', async () => {
     mockGenerate.mockResolvedValue({
       text: '{"toxicity": 0.92, "spam": 0.1, "harassment": 0.1, "reason": "hostile", "meta": {"source": "test"}}',
       costUsd: 0,
