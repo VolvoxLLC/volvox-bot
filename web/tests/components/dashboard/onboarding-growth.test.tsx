@@ -652,6 +652,43 @@ describe('OnboardingGrowthCategory', () => {
     expect(screen.getByRole('button', { name: 'Copy Rules Agreement channel ID' })).toBeInTheDocument();
   });
 
+  it('shows failed panel status before stale state', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        Response.json({
+          guildId: 'guild-1',
+          panels: {
+            rules: {
+              status: 'failed',
+              configured: true,
+              channelId: 'rules-channel',
+              configuredChannelId: 'rules-channel',
+              messageId: 'message-1',
+              stale: true,
+              lastError: 'Discord message missing',
+            },
+            role_menu: {
+              status: 'posted',
+              configured: true,
+              channelId: 'welcome-channel',
+              configuredChannelId: 'welcome-channel',
+              messageId: 'message-2',
+              stale: false,
+            },
+          },
+        }),
+      ),
+    );
+    mockWelcomeContext({ draftConfig: createWelcomeDraftConfig({ dynamic: { enabled: false } }) });
+
+    render(<OnboardingGrowthCategory />);
+
+    expect(await screen.findByText('failed')).toBeInTheDocument();
+    expect(screen.queryByText('stale')).not.toBeInTheDocument();
+    expect(screen.getByText('Discord message missing')).toBeInTheDocument();
+  });
+
   it('uses an info toast instead of success when a single panel is unconfigured', async () => {
     const user = userEvent.setup();
     const statusResponse = {

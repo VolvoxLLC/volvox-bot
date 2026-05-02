@@ -176,6 +176,7 @@ function getWelcomePanelStatusText(
   status: WelcomePanelStatus | undefined,
   welcomeStatusLoading: boolean,
 ) {
+  if (status?.status === 'failed') return status.status;
   if (status?.stale) return 'stale';
   if (status?.status) return status.status;
   return welcomeStatusLoading ? 'loading' : 'unknown';
