@@ -11,25 +11,36 @@ import { isExempt } from '../utils/modExempt.js';
 import { safeSend } from '../utils/safeSend.js';
 import { sanitizeMentions } from '../utils/sanitizeMentions.js';
 
-/**
- * Regex to extract URLs from message content.
- * Matches http/https URLs and bare domain.tld patterns.
- */
-const URL_REGEX =
-  /https?:\/\/(?:www\.)?([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z]{2,})+)(\/[^\s]*)?|(?:^|\s)(?:www\.)?([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z]{2,})+)(\/[^\s]*)?/gi;
-
-/**
- * Phishing TLD patterns: .xyz links whose path/subdomain contains scam keywords.
- * Catches "discord-nitro-free.xyz", "free-nitro.xyz/claim", etc.
- */
-const PHISHING_PATTERNS = [
-  // .xyz domains with suspicious keywords anywhere in the URL
-  /(?:discord|nitro|free|gift|giveaway|steam|crypto|nft|airdrop)[a-z0-9\-_.]*\.xyz(?:\/[^\s]*)?/i,
-  // Any .xyz URL that contains those keywords in the path
-  /[a-z0-9\-_.]+\.xyz\/[^\s]*(?:discord|nitro|free|gift|steam|crypto)[^\s]*/i,
-  // Common phishing subdomains regardless of TLD
-  /(?:discord-nitro|discordnitro|free-nitro|steamgift)\.[a-z]{2,}(?:\/[^\s]*)?/i,
+const PHISHING_KEYWORDS = [
+  'discord',
+  'nitro',
+  'free',
+  'gift',
+  'giveaway',
+  'steam',
+  'crypto',
+  'nft',
+  'airdrop',
 ];
+const COMMON_PHISHING_HOST_MARKERS = ['discord-nitro', 'discordnitro', 'free-nitro', 'steamgift'];
+const LEADING_URL_DELIMITERS = new Set(['<', '(', '[', '{', '"', "'"]);
+const TRAILING_URL_DELIMITERS = new Set([
+  '>',
+  ')',
+  ']',
+  '}',
+  '"',
+  "'",
+  '.',
+  ',',
+  ';',
+  ':',
+  '!',
+  '?',
+]);
+const MARKDOWN_LINK_URL_PATTERN = /\[[^\]\r\n]{0,512}\]\((https?:\/\/[^\s<>()]{1,2048})\)/giu;
+const ANGLE_BRACKET_URL_PATTERN = /<(https?:\/\/[^\s<>]{1,2048})>/giu;
+const EMBEDDED_URL_PATTERN = /https?:\/\/[^\s<>"'`[\]{}]{1,2048}/giu;
 
 /**
  * Normalize a domain entry from the blocklist.
@@ -39,8 +50,101 @@ const PHISHING_PATTERNS = [
  * @param {string} domain
  * @returns {string}
  */
+function stripLeadingWww(hostname) {
+  const lower = hostname.toLowerCase();
+  return lower.startsWith('www.') ? lower.slice(4) : lower;
+}
+
+function normalizeHostname(hostname) {
+  return stripLeadingWww(hostname).replace(/\.$/, '');
+}
+
 function normalizeBlockedDomain(domain) {
-  return domain.toLowerCase().replace(/^www\./, '');
+  return normalizeHostname(domain);
+}
+
+function trimUrlToken(token) {
+  let start = 0;
+  let end = token.length;
+
+  while (start < end && LEADING_URL_DELIMITERS.has(token[start])) start += 1;
+  while (end > start && TRAILING_URL_DELIMITERS.has(token[end - 1])) end -= 1;
+
+  return token.slice(start, end);
+}
+
+function isValidHostname(hostname) {
+  const labels = hostname.split('.');
+  if (labels.length < 2) return false;
+  const tld = labels.at(-1);
+  if (!tld || tld.length < 2 || ![...tld].every((char) => char >= 'a' && char <= 'z')) {
+    return false;
+  }
+
+  return labels.every((label) => {
+    if (!label || label.length > 63 || label.startsWith('-') || label.endsWith('-')) return false;
+    return [...label].every(
+      (char) => (char >= 'a' && char <= 'z') || (char >= '0' && char <= '9') || char === '-',
+    );
+  });
+}
+
+function parseUrlToken(token) {
+  const trimmed = trimUrlToken(token);
+  if (!trimmed) return null;
+
+  const lower = trimmed.toLowerCase();
+  const isExplicitUrl = lower.startsWith('http://') || lower.startsWith('https://');
+  const candidate = isExplicitUrl ? trimmed : `http://${trimmed}`;
+
+  try {
+    const url = new URL(candidate);
+    const hostname = normalizeHostname(url.hostname);
+    if (!isValidHostname(hostname)) return null;
+    return {
+      hostname,
+      fullUrl: trimmed,
+      pathname: url.pathname.toLowerCase(),
+      search: url.search.toLowerCase(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function collectParsedUrls(content) {
+  const parsedUrls = [];
+  const seen = new Set();
+  const tokens = content.split(/\s+/);
+
+  const addCandidate = (candidate) => {
+    const parsed = parseUrlToken(candidate);
+    if (!parsed) return;
+
+    const key = `${parsed.hostname}\u0000${parsed.fullUrl}`;
+    if (seen.has(key)) return;
+
+    seen.add(key);
+    parsedUrls.push(parsed);
+  };
+
+  for (const match of content.matchAll(MARKDOWN_LINK_URL_PATTERN)) {
+    addCandidate(match[1]);
+  }
+
+  for (const match of content.matchAll(ANGLE_BRACKET_URL_PATTERN)) {
+    addCandidate(match[1]);
+  }
+
+  for (const token of tokens) {
+    addCandidate(token);
+  }
+
+  for (const match of content.matchAll(EMBEDDED_URL_PATTERN)) {
+    addCandidate(match[0]);
+  }
+
+  return parsedUrls;
 }
 
 /**
@@ -51,17 +155,11 @@ function normalizeBlockedDomain(domain) {
 export function extractUrls(content) {
   const results = [];
   const seen = new Set();
-  let match;
-  URL_REGEX.lastIndex = 0;
 
-  for (match = URL_REGEX.exec(content); match; match = URL_REGEX.exec(content)) {
-    // Group 1: hostname from http(s):// URL, Group 3: bare domain
-    const hostname = (match[1] || match[3] || '').toLowerCase().replace(/^www\./, '');
-    const fullUrl = match[0].trim();
-
-    if (hostname && !seen.has(hostname)) {
-      seen.add(hostname);
-      results.push({ hostname, fullUrl });
+  for (const parsed of collectParsedUrls(content)) {
+    if (!seen.has(parsed.hostname)) {
+      seen.add(parsed.hostname);
+      results.push({ hostname: parsed.hostname, fullUrl: parsed.fullUrl });
     }
   }
 
@@ -74,9 +172,15 @@ export function extractUrls(content) {
  * @returns {string|null} matched pattern string or null
  */
 export function matchPhishingPattern(content) {
-  for (const pattern of PHISHING_PATTERNS) {
-    const m = content.match(pattern);
-    if (m) return m[0];
+  for (const parsed of collectParsedUrls(content)) {
+    const hostAndPath = `${parsed.hostname}${parsed.pathname}${parsed.search}`;
+    if (
+      COMMON_PHISHING_HOST_MARKERS.some((marker) => parsed.hostname.includes(marker)) ||
+      (parsed.hostname.endsWith('.xyz') &&
+        PHISHING_KEYWORDS.some((keyword) => hostAndPath.includes(keyword)))
+    ) {
+      return parsed.fullUrl;
+    }
   }
   return null;
 }

@@ -4,6 +4,7 @@ import { getToken } from 'next-auth/jwt';
 import { getBotApiBaseUrl } from '@/lib/bot-api';
 import { getMutualGuilds } from '@/lib/discord.server';
 import { logger } from '@/lib/logger';
+import { trimTrailingSlashes } from '@/lib/url';
 
 const REQUEST_TIMEOUT_MS = 10_000;
 const ADMINISTRATOR_PERMISSION = 0x8n;
@@ -248,7 +249,7 @@ export function buildUpstreamUrl(
   logPrefix: string,
 ): URL | NextResponse {
   try {
-    const normalizedBase = baseUrl.replace(/\/+$/, '');
+    const normalizedBase = trimTrailingSlashes(baseUrl);
     const normalizedPath = path.startsWith('/') ? path : `/${path}`;
     return new URL(`${normalizedBase}${normalizedPath}`);
   } catch {

@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { authorizeRequestGlobalAdmin } from '@/lib/global-admin';
 import { logger } from '@/lib/logger';
+import { trimTrailingSlashes } from '@/lib/url';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,7 +54,7 @@ export async function GET(request: NextRequest) {
   // Convert http(s):// to ws(s):// for WebSocket connection
   let wsUrl: string;
   try {
-    const url = new URL(botApiUrl.replace(/\/+$/, ''));
+    const url = new URL(trimTrailingSlashes(botApiUrl));
     url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
     wsUrl = `${url.origin}/ws/logs`;
   } catch {

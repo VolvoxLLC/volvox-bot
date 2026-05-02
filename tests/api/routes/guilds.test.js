@@ -508,6 +508,26 @@ describe('guilds routes', () => {
       expect(res.status).toBe(200);
       expect(fetchSpy).not.toHaveBeenCalled();
     });
+
+    it('should allow bot-owner OAuth users to access moderator-only endpoints', async () => {
+      vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
+      getConfig.mockReturnValueOnce({
+        ai: { model: 'claude-3' },
+        permissions: {},
+      });
+      vi.stubEnv('BOT_OWNER_IDS', 'owner-mod');
+      const token = createOAuthToken('jwt-test-secret', 'owner-mod');
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [{ count: 0 }] })
+        .mockResolvedValueOnce({ rows: [] });
+
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1/moderation')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('cases');
+    });
   });
 
   describe('GET /:id/config', () => {

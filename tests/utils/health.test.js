@@ -1,5 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+function expectSuffixedNonNegativeInteger(part, unit) {
+  expect(part.endsWith(unit)).toBe(true);
+  const raw = part.slice(0, -unit.length);
+  const value = Number(raw);
+  expect(Number.isInteger(value)).toBe(true);
+  expect(value).toBeGreaterThanOrEqual(0);
+}
+
 describe('HealthMonitor', () => {
   let HealthMonitor;
 
@@ -73,28 +81,39 @@ describe('HealthMonitor', () => {
     const monitor = HealthMonitor.getInstance();
     monitor.startTime = Date.now() - 30 * 1000;
     const formatted = monitor.getFormattedUptime();
-    expect(formatted).toMatch(/\d+s/);
+    expectSuffixedNonNegativeInteger(formatted, 's');
   });
 
   it('should format uptime as minutes', () => {
     const monitor = HealthMonitor.getInstance();
     monitor.startTime = Date.now() - 5 * 60 * 1000;
     const formatted = monitor.getFormattedUptime();
-    expect(formatted).toMatch(/\d+m \d+s/);
+    const parts = formatted.split(' ');
+    expect(parts).toHaveLength(2);
+    expectSuffixedNonNegativeInteger(parts[0], 'm');
+    expectSuffixedNonNegativeInteger(parts[1], 's');
   });
 
   it('should format uptime as hours', () => {
     const monitor = HealthMonitor.getInstance();
     monitor.startTime = Date.now() - 2 * 60 * 60 * 1000;
     const formatted = monitor.getFormattedUptime();
-    expect(formatted).toMatch(/\d+h \d+m \d+s/);
+    const parts = formatted.split(' ');
+    expect(parts).toHaveLength(3);
+    expectSuffixedNonNegativeInteger(parts[0], 'h');
+    expectSuffixedNonNegativeInteger(parts[1], 'm');
+    expectSuffixedNonNegativeInteger(parts[2], 's');
   });
 
   it('should format uptime as days', () => {
     const monitor = HealthMonitor.getInstance();
     monitor.startTime = Date.now() - 3 * 24 * 60 * 60 * 1000;
     const formatted = monitor.getFormattedUptime();
-    expect(formatted).toMatch(/\d+d \d+h \d+m/);
+    const parts = formatted.split(' ');
+    expect(parts).toHaveLength(3);
+    expectSuffixedNonNegativeInteger(parts[0], 'd');
+    expectSuffixedNonNegativeInteger(parts[1], 'h');
+    expectSuffixedNonNegativeInteger(parts[2], 'm');
   });
 
   it('should return memory usage stats', () => {
@@ -109,7 +128,15 @@ describe('HealthMonitor', () => {
   it('should return formatted memory string', () => {
     const monitor = HealthMonitor.getInstance();
     const formatted = monitor.getFormattedMemory();
-    expect(formatted).toMatch(/\d+MB \/ \d+MB \(RSS: \d+MB\)/);
+    const [heapUsed, slash, heapTotal, rssLabel, rss] = formatted.split(' ');
+    expectSuffixedNonNegativeInteger(heapUsed, 'MB');
+    expect(slash).toBe('/');
+    expectSuffixedNonNegativeInteger(heapTotal, 'MB');
+    expect(rssLabel).toBe('(RSS:');
+    expect(rss.endsWith('MB)')).toBe(true);
+    const rssValue = Number(rss.slice(0, -3));
+    expect(Number.isFinite(rssValue)).toBe(true);
+    expect(rssValue).toBeGreaterThanOrEqual(0);
   });
 
   it('should return complete status', () => {
