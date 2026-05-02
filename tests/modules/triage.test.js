@@ -78,7 +78,6 @@ import {
 } from '../../src/modules/triage.js';
 import { channelBuffers } from '../../src/modules/triage-buffer.js';
 import { safeSend } from '../../src/utils/safeSend.js';
-import { makeMemberWithRoles } from '../utils/triageRoleMocks.js';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
