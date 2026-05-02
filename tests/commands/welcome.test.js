@@ -138,4 +138,40 @@ describe('welcome command', () => {
     expect(reply).toContain('Posted rules agreement panel');
     expect(reply).toContain('Updated role menu panel');
   });
+
+  it('should surface persistence warnings on posted onboarding panels', async () => {
+    isModerator.mockReturnValueOnce(true);
+    publishWelcomePanels.mockResolvedValueOnce({
+      guildId: 'guild-1',
+      results: [
+        {
+          panelType: 'rules',
+          status: 'posted',
+          action: 'created',
+          channelId: 'rules-channel',
+          persistWarning: true,
+          lastError: 'Published to Discord but failed to save publication state.',
+        },
+        {
+          panelType: 'role_menu',
+          status: 'posted',
+          action: 'updated',
+          channelId: 'welcome-channel',
+          lastError: 'Database pool unavailable',
+        },
+      ],
+    });
+
+    const interaction = mockInteraction({ client: {} });
+
+    await execute(interaction);
+
+    const reply = safeEditReply.mock.calls.at(-1)?.[1]?.content ?? '';
+    expect(reply).toContain(
+      'Posted rules agreement panel in <#rules-channel>. Warning: Published to Discord but failed to save publication state.',
+    );
+    expect(reply).toContain(
+      'Updated role menu panel in <#welcome-channel>. Warning: Database pool unavailable.',
+    );
+  });
 });

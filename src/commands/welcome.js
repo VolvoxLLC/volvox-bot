@@ -14,11 +14,21 @@ export const data = new SlashCommandBuilder()
     sub.setName('setup').setDescription('Publish or refresh rules and role menu onboarding panels'),
   );
 
+function formatPublishWarning(result) {
+  if (!result.persistWarning && !result.lastError) {
+    return '';
+  }
+
+  const warning = result.lastError || 'Published to Discord but failed to save publication state.';
+  const punctuation = /[.!?]$/.test(warning) ? '' : '.';
+  return ` Warning: ${warning}${punctuation}`;
+}
+
 function formatPublishLine(result) {
   const label = result.panelType === 'rules' ? 'Rules agreement panel' : 'Role menu panel';
   if (result.status === 'posted') {
     const action = result.action === 'updated' ? 'Updated' : 'Posted';
-    return `${action} ${label.toLowerCase()} in <#${result.channelId}>.`;
+    return `${action} ${label.toLowerCase()} in <#${result.channelId}>.${formatPublishWarning(result)}`;
   }
   if (result.status === 'unconfigured') {
     return `${label} is not configured.`;
