@@ -22,6 +22,9 @@ import { requireGuildAdmin, validateGuild } from './guilds.js';
 
 const router = Router({ mergeParams: true });
 
+/** Rate limiter for welcome publication endpoints — 30 req/min per IP. */
+const welcomePublishRateLimit = rateLimit({ windowMs: 60 * 1000, max: 30 });
+
 /**
  * POST /guilds/:id/welcome/preview
  *
@@ -98,10 +101,12 @@ router.get('/variables', (_req, res) => {
 });
 
 // Apply the publication limiter directly on each publication/status route so
-// static analysis can recognize the protection before admin auth and downstream work.
+// runtime behavior protects admin auth and downstream publishing work.
 router.get(
   '/status',
-  rateLimit({ windowMs: 60 * 1000, max: 30 }),
+  welcomePublishRateLimit,
+  // Protected by welcomePublishRateLimit earlier in this route chain.
+  // lgtm[js/missing-rate-limiting]
   requireGuildAdmin,
   validateGuild,
   async (req, res) => {
@@ -120,7 +125,9 @@ router.get(
 
 router.post(
   '/publish',
-  rateLimit({ windowMs: 60 * 1000, max: 30 }),
+  welcomePublishRateLimit,
+  // Protected by welcomePublishRateLimit earlier in this route chain.
+  // lgtm[js/missing-rate-limiting]
   requireGuildAdmin,
   validateGuild,
   async (req, res) => {
@@ -143,7 +150,9 @@ router.post(
 
 router.post(
   '/publish/:panelType',
-  rateLimit({ windowMs: 60 * 1000, max: 30 }),
+  welcomePublishRateLimit,
+  // Protected by welcomePublishRateLimit earlier in this route chain.
+  // lgtm[js/missing-rate-limiting]
   requireGuildAdmin,
   validateGuild,
   async (req, res) => {

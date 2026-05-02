@@ -59,7 +59,7 @@ import {
 describe('welcome routes', () => {
   let app;
   const SECRET = 'api-route-fixture-value';
-  const TEST_SESSION_SIGNING_TOKEN = 'welcome-route-signing-fixture';
+  const SESSION_SIGNING_FIXTURE = 'route-authz-fixture-material-2026';
 
   beforeEach(() => {
     vi.stubEnv('BOT_API_SECRET', SECRET);
@@ -237,17 +237,17 @@ describe('welcome routes', () => {
     it('rate limits welcome publication endpoints for OAuth requests', async () => {
       const userId = '123456789012345678';
       const jti = 'welcome-rate-limit-test';
-      vi.stubEnv('SESSION_SECRET', TEST_SESSION_SIGNING_TOKEN);
+      vi.stubEnv('SESSION_SECRET', SESSION_SIGNING_FIXTURE);
       vi.stubEnv('BOT_OWNER_IDS', userId);
       _resetSecretCache();
       sessionStore.set(userId, { accessToken: 'oauth-session-fixture', jti });
-      const token = jwt.sign({ userId, jti }, TEST_SESSION_SIGNING_TOKEN);
+      const bearer = jwt.sign({ userId, jti }, SESSION_SIGNING_FIXTURE);
 
       let res;
       for (let i = 0; i < 31; i++) {
         res = await request(app)
           .get('/api/v1/guilds/guild1/welcome/status')
-          .set('Authorization', `Bearer ${token}`);
+          .set('Authorization', `Bearer ${bearer}`);
       }
 
       expect(res.status).toBe(429);
