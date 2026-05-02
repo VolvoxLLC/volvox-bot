@@ -4,6 +4,7 @@ import { getToken } from 'next-auth/jwt';
 import { getBotApiBaseUrl } from '@/lib/bot-api';
 import { getMutualGuilds } from '@/lib/discord.server';
 import { logger } from '@/lib/logger';
+import { trimTrailingSlashes } from '@/lib/url';
 
 const REQUEST_TIMEOUT_MS = 10_000;
 const ADMINISTRATOR_PERMISSION = 0x8n;
@@ -247,12 +248,6 @@ export function getBotApiConfig(logPrefix: string): BotApiConfig | NextResponse 
  * @param logPrefix - Prefix used when logging errors for context
  * @returns A `URL` for the resolved upstream endpoint, or a `NextResponse` containing a 500 error if the URL cannot be constructed
  */
-function trimTrailingSlashes(value: string): string {
-  let end = value.length;
-  while (end > 0 && value[end - 1] === '/') end -= 1;
-  return value.slice(0, end);
-}
-
 export function buildUpstreamUrl(
   baseUrl: string,
   path: string,

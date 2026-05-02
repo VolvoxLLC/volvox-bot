@@ -3,14 +3,9 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { authorizeGuildAdmin } from '@/lib/bot-api-proxy';
 import { logger } from '@/lib/logger';
+import { trimTrailingSlashes } from '@/lib/url';
 
 export const dynamic = 'force-dynamic';
-
-function trimTrailingSlashes(value: string): string {
-  let end = value.length;
-  while (end > 0 && value[end - 1] === '/') end -= 1;
-  return value.slice(0, end);
-}
 
 /** Ticket lifetime — 30 seconds is plenty to open a WebSocket. */
 const TICKET_TTL_MS = 30_000;
