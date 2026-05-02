@@ -1,4 +1,4 @@
-# Volvox.Bot Manual Test Plan
+# Volvox Bot Manual Test Plan
 
 Last updated: 2026-05-01
 
