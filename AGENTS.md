@@ -151,5 +151,25 @@ Docs updates are part of done criteria, not optional cleanup.
 - Update `CONTRIBUTING.md` when contribution workflow or review expectations change.
 - Update Mintlify docs (`docs/**/*.mdx`) and `docs/docs.json` when user-facing feature/config/security/help docs, dashboard docs, public behavior, or docs navigation changes.
 - Update `.github/workflows/maintain-docs.md` when the automated doc-maintenance scope or rules change.
+- Update `.github/workflows/weekly-changelog.md` when the weekly changelog format, schedule, or agent instructions change.
 - Update the `Issue Conventions` section above and the templates in `.github/ISSUE_TEMPLATE/` when title grammar, label taxonomy, or body structure changes.
 - Do not bury agent-only rules in `README.md`; keep them here.
+
+## Weekly Changelog
+
+Every week, the Copilot coding agent (`.github/workflows/weekly-changelog.md`) runs
+automatically on Fridays at 6 PM UTC and updates **both** changelog surfaces:
+
+| File | Format | Purpose |
+|------|--------|---------|
+| `docs/changelog.mdx` | MDX `<Update>` components | Mintlify docs site changelog — weekly recap + daily entries |
+| `docs/wiki-pages/Changelog.md` | Plain Markdown `## Week` sections | GitHub wiki changelog — weekly summaries only |
+
+**Weekly recap label format**: `YYYY-W##` (ISO week, zero-padded). Example: `2026-W18`.
+**Daily entry label format**: `YYYY-MM-DD`. Example: `2026-04-29`.
+
+When writing or reviewing changelog entries:
+- The weekly recap block always appears before the daily entries for that week.
+- All `<Update>` `label` values must be unique across the entire `docs/changelog.mdx` file.
+- The wiki `Changelog.md` uses `## Week YYYY-W## (Mon D – Fri D, YYYY)` section headers and plain Markdown bullets — no MDX.
+- `docs/wiki-pages/Changelog.md` is validated by `tests/docs/docs.test.js` and must be included in the wiki publish `cp` command in `docs/wiki-pages/README.md`.
