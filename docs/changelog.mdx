@@ -6,9 +6,9 @@ description: Latest updates and improvements to Volvox.Bot.
 <Update label="2026-05-08" description="May 2026" tags={["Improvements"]}>
 ## Improvements
 
-**Global admin access for ops pages** — The dashboard's **Logs** and **Performance** pages are now restricted to global admins (configured via `BOT_OWNER_IDS`). Server admins and moderators continue to manage their guilds as usual, while infrastructure-level views are reserved for operators. See [Permissions](/configuration/permissions) for the full role breakdown.
+**Global admin access for ops pages** — The dashboard's **Logs** and **Performance** pages are now restricted to global admins (configured via `BOT_OWNER_IDS`). Server admins and moderators continue to manage their servers as usual, while infrastructure-level views are reserved for operators. See [Permissions](/configuration/permissions) for the full role breakdown.
 
-**Cleaner access levels** — Guild access roles are now consistently `admin`, `moderator`, or `viewer` across the dashboard and API. Global admin status is surfaced separately, so sidebar navigation and protected pages reflect the correct permissions for every user.
+**Cleaner access levels** — Server access roles are now consistently `admin`, `moderator`, or `viewer` across the dashboard and API. Global admin status is surfaced separately, so sidebar navigation and protected pages reflect the correct permissions for every user.
 </Update>
 
 <Update label="2026-05-01" description="May 2026" tags={["Features", "Improvements", "Fixes"]}>
@@ -48,7 +48,7 @@ description: Latest updates and improvements to Volvox.Bot.
 
 ## Fixes
 
-**Automod flag embeds** — Flag embeds now show the global actions that ran for an automod violation, so moderators can see exactly what was applied at a glance.
+**Auto-mod flag embeds** — Flag embeds now show the global actions that ran for an auto-mod violation, so moderators can see exactly what was applied at a glance.
 
 **Welcome publish reliability** — Several edge cases in welcome panel publishing have been resolved: split payloads, status mismatches, persistence gaps, channel-change cleanup, and rate-limited publish routes are all handled more gracefully.
 
@@ -112,7 +112,7 @@ description: Latest updates and improvements to Volvox.Bot.
 
 **Dashboard permission controls** — The dashboard now enforces role-based access. Viewers get read-only access, moderators can manage moderation features, and admins have full control.
 
-**Guild-scoped log viewer** — The log viewer now shows logs scoped to your current server. A new channel filter lets you narrow the live log stream to specific Discord channels.
+**Server-scoped log viewer** — The log viewer now shows logs scoped to your current server. A new channel filter lets you narrow the live log stream to specific Discord channels.
 
 ## Improvements
 
