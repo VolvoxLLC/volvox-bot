@@ -2,15 +2,37 @@
 
 import { ScrollText } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { HealthSection } from '@/components/dashboard/health-section';
 import { LogFilters } from '@/components/dashboard/log-filters';
 import { LogViewer } from '@/components/dashboard/log-viewer';
 import { useGuildChannels } from '@/components/layout/channel-directory-context';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
+import { useGlobalAdminStatus } from '@/hooks/use-global-admin-status';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
 import { useLogStream } from '@/lib/log-ws';
 import { cn } from '@/lib/utils';
+
+interface LogsAccessStateProps {
+  title: string;
+  description: string;
+}
+
+function LogsAccessState({ title, description }: Readonly<LogsAccessStateProps>) {
+  return (
+    <ErrorBoundary title="Logs failed to load">
+      <div className="flex min-h-[30rem] items-center justify-center px-4 pb-12">
+        <div className="max-w-md rounded-[32px] border border-white/10 bg-card/40 p-8 text-center shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] backdrop-blur-3xl">
+          <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-[18px] border border-white/10 bg-background/40 shadow-xl backdrop-blur-xl">
+            <ScrollText className="h-6 w-6 text-primary/60" />
+          </div>
+          <h1 className="text-2xl font-black tracking-tight text-foreground">{title}</h1>
+          <p className="mt-3 text-sm font-medium leading-6 text-muted-foreground">{description}</p>
+        </div>
+      </div>
+    </ErrorBoundary>
+  );
+}
 
 /**
  * Dashboard page that streams real-time bot logs and displays health and restart history.
@@ -21,11 +43,10 @@ import { cn } from '@/lib/utils';
 export default function LogsPage() {
   const guildId = useGuildSelection();
   const router = useRouter();
-  const [isGlobalAdmin, setIsGlobalAdmin] = useState<boolean | null>(null);
-  const isAuthorized = isGlobalAdmin === true;
-  const authorizedGuildId = isAuthorized ? guildId : null;
+  const { isGlobalAdmin, isLoading, status: globalAdminStatus } = useGlobalAdminStatus();
+  const authorizedGuildId = isGlobalAdmin ? guildId : null;
   const { logs, status, sendFilter, clearLogs } = useLogStream({
-    enabled: isAuthorized && Boolean(guildId),
+    enabled: isGlobalAdmin && Boolean(guildId),
     guildId: authorizedGuildId,
   });
   const { channels } = useGuildChannels(authorizedGuildId);
@@ -44,30 +65,26 @@ export default function LogsPage() {
   );
 
   useEffect(() => {
-    let mounted = true;
-    const load = async () => {
-      try {
-        const response = await fetch('/api/global-admin', { cache: 'no-store' });
-        const data = response.ok
-          ? ((await response.json()) as { isGlobalAdmin?: boolean })
-          : { isGlobalAdmin: false };
-        if (!mounted) return;
-        const allowed = data.isGlobalAdmin === true;
-        setIsGlobalAdmin(allowed);
-        if (!allowed) router.replace('/dashboard');
-      } catch {
-        if (!mounted) return;
-        setIsGlobalAdmin(false);
-        router.replace('/dashboard');
-      }
-    };
-    void load();
-    return () => {
-      mounted = false;
-    };
-  }, [router]);
+    if (globalAdminStatus === 'denied') router.replace('/dashboard');
+  }, [globalAdminStatus, router]);
 
-  if (!isAuthorized) return null;
+  if (isLoading) {
+    return (
+      <LogsAccessState
+        title="Checking log access"
+        description="Verifying your global admin permissions before opening the live log stream."
+      />
+    );
+  }
+
+  if (!isGlobalAdmin) {
+    return (
+      <LogsAccessState
+        title="Redirecting to dashboard"
+        description="Live bot logs are only available to global admins. Taking you back to the dashboard."
+      />
+    );
+  }
 
   return (
     <ErrorBoundary title="Logs failed to load">

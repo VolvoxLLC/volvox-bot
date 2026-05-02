@@ -19,9 +19,10 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { type ComponentType, useEffect, useMemo, useState } from 'react';
+import { type ComponentType, useMemo } from 'react';
 import { useConfigContext } from '@/components/dashboard/config-context';
 import { CONFIG_NAVIGATION } from '@/components/dashboard/config-workspace/navigation';
+import { useGlobalAdminStatus } from '@/hooks/use-global-admin-status';
 import { useGuildSelection } from '@/hooks/use-guild-selection';
 import { WEB_APP_VERSION } from '@/lib/app-version';
 import { cn } from '@/lib/utils';
@@ -175,7 +176,7 @@ function renderNavItem(item: NavItem, isActive: boolean, onNavClick?: () => void
 export function Sidebar({ className, onNavClick }: SidebarProps) {
   const pathname = usePathname();
   const _guildId = useGuildSelection();
-  const [isGlobalAdmin, setIsGlobalAdmin] = useState(false);
+  const { isGlobalAdmin } = useGlobalAdminStatus();
   const { activeCategoryId, activeTabId, setActiveCategoryId, setActiveTabId } = useConfigContext();
 
   const isSettingsMode = pathname.startsWith('/dashboard/settings');
@@ -183,33 +184,16 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
   const isNavItemActive = (href: string) =>
     pathname === href || (href !== '/dashboard' && pathname.startsWith(`${href}/`));
 
-  useEffect(() => {
-    let mounted = true;
-    const load = async () => {
-      try {
-        const response = await fetch('/api/global-admin', { cache: 'no-store' });
-        const data = response.ok
-          ? ((await response.json()) as { isGlobalAdmin?: boolean })
-          : { isGlobalAdmin: false };
-        if (mounted) setIsGlobalAdmin(data.isGlobalAdmin === true);
-      } catch {
-        if (mounted) setIsGlobalAdmin(false);
-      }
-    };
-    void load();
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
   const visibleNavGroups = useMemo(
     () =>
-      navGroups.map((group) => ({
-        ...group,
-        items: group.items.filter(
-          (item) => isGlobalAdmin || !GLOBAL_ADMIN_ONLY_HREFS.has(item.href),
-        ),
-      })),
+      navGroups
+        .map((group) => ({
+          ...group,
+          items: group.items.filter(
+            (item) => isGlobalAdmin || !GLOBAL_ADMIN_ONLY_HREFS.has(item.href),
+          ),
+        }))
+        .filter((group) => group.items.length > 0),
     [isGlobalAdmin],
   );
 
