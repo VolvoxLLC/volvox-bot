@@ -247,13 +247,19 @@ export function getBotApiConfig(logPrefix: string): BotApiConfig | NextResponse 
  * @param logPrefix - Prefix used when logging errors for context
  * @returns A `URL` for the resolved upstream endpoint, or a `NextResponse` containing a 500 error if the URL cannot be constructed
  */
+function trimTrailingSlashes(value: string): string {
+  let end = value.length;
+  while (end > 0 && value[end - 1] === '/') end -= 1;
+  return value.slice(0, end);
+}
+
 export function buildUpstreamUrl(
   baseUrl: string,
   path: string,
   logPrefix: string,
 ): URL | NextResponse {
   try {
-    const normalizedBase = baseUrl.replace(/\/+$/, '');
+    const normalizedBase = trimTrailingSlashes(baseUrl);
     const normalizedPath = path.startsWith('/') ? path : `/${path}`;
     return new URL(`${normalizedBase}${normalizedPath}`);
   } catch {

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -26,10 +27,14 @@ import {
 
 describe('temp roles routes', () => {
   let app;
+  let sessionSecret;
+  let botApiSecret;
 
   beforeEach(() => {
-    vi.stubEnv('BOT_API_SECRET', 'test-secret');
-    vi.stubEnv('SESSION_SECRET', 'jwt-test-secret');
+    sessionSecret = randomUUID();
+    botApiSecret = randomUUID();
+    vi.stubEnv('BOT_API_SECRET', botApiSecret);
+    vi.stubEnv('SESSION_SECRET', sessionSecret);
 
     const client = {
       guilds: {
@@ -54,14 +59,14 @@ describe('temp roles routes', () => {
 
   function createOAuthToken(userId = '123') {
     const jti = `test-jti-${userId}`;
-    sessionStore.set(userId, { accessToken: 'discord-access-token', jti });
+    sessionStore.set(userId, { accessToken: `discord-access-token-${randomUUID()}`, jti });
     return jwt.sign(
       {
         userId,
         username: 'testuser',
         jti,
       },
-      'jwt-test-secret',
+      sessionSecret,
       { algorithm: 'HS256' },
     );
   }
@@ -84,7 +89,7 @@ describe('temp roles routes', () => {
   });
 
   it('returns 400 when listing temp roles without guildId', async () => {
-    const res = await request(app).get('/api/v1/temp-roles').set('x-api-secret', 'test-secret');
+    const res = await request(app).get('/api/v1/temp-roles').set('x-api-secret', botApiSecret);
 
     expect(res.status).toBe(400);
     expect(res.body.error).toContain('guildId is required');
@@ -99,7 +104,7 @@ describe('temp roles routes', () => {
 
     const res = await request(app)
       .get('/api/v1/temp-roles?guildId=guild-123&userId=user-1&page=2&limit=10')
-      .set('x-api-secret', 'test-secret');
+      .set('x-api-secret', botApiSecret);
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({
@@ -118,7 +123,7 @@ describe('temp roles routes', () => {
 
     const res = await request(app)
       .get('/api/v1/temp-roles?guildId=guild-123')
-      .set('x-api-secret', 'test-secret');
+      .set('x-api-secret', botApiSecret);
 
     expect(res.status).toBe(500);
     expect(res.body.error).toBe('Failed to fetch temp roles');
@@ -127,7 +132,7 @@ describe('temp roles routes', () => {
   it('returns 400 when deleting a temp role without guildId', async () => {
     const res = await request(app)
       .delete('/api/v1/temp-roles/55')
-      .set('x-api-secret', 'test-secret');
+      .set('x-api-secret', botApiSecret);
 
     expect(res.status).toBe(400);
     expect(res.body.error).toContain('guildId is required');
@@ -137,7 +142,7 @@ describe('temp roles routes', () => {
   it('returns 400 when deleting a temp role with an invalid id', async () => {
     const res = await request(app)
       .delete('/api/v1/temp-roles/nope?guildId=guild-123')
-      .set('x-api-secret', 'test-secret');
+      .set('x-api-secret', botApiSecret);
 
     expect(res.status).toBe(400);
     expect(res.body.error).toBe('Invalid id');
@@ -149,7 +154,7 @@ describe('temp roles routes', () => {
 
     const res = await request(app)
       .delete('/api/v1/temp-roles/55?guildId=guild-123')
-      .set('x-api-secret', 'test-secret');
+      .set('x-api-secret', botApiSecret);
 
     expect(res.status).toBe(404);
     expect(res.body.error).toContain('not found');
@@ -174,7 +179,7 @@ describe('temp roles routes', () => {
 
     const res = await request(app)
       .delete('/api/v1/temp-roles/55?guildId=guild-123')
-      .set('x-api-secret', 'test-secret');
+      .set('x-api-secret', botApiSecret);
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -186,7 +191,7 @@ describe('temp roles routes', () => {
   it('returns 400 when creating a temp role without required fields', async () => {
     const res = await request(app)
       .post('/api/v1/temp-roles')
-      .set('x-api-secret', 'test-secret')
+      .set('x-api-secret', botApiSecret)
       .send({ guildId: 'guild-123', userId: 'user-1' });
 
     expect(res.status).toBe(400);
@@ -197,7 +202,7 @@ describe('temp roles routes', () => {
   it('returns 400 when creating a temp role with an invalid duration', async () => {
     const res = await request(app)
       .post('/api/v1/temp-roles')
-      .set('x-api-secret', 'test-secret')
+      .set('x-api-secret', botApiSecret)
       .send({
         guildId: 'guild-123',
         userId: 'user-1',
@@ -215,7 +220,7 @@ describe('temp roles routes', () => {
 
     const res = await request(app)
       .post('/api/v1/temp-roles')
-      .set('x-api-secret', 'test-secret')
+      .set('x-api-secret', botApiSecret)
       .send({
         guildId: 'guild-123',
         userId: 'user-1',
@@ -241,7 +246,7 @@ describe('temp roles routes', () => {
 
     const res = await request(app)
       .post('/api/v1/temp-roles')
-      .set('x-api-secret', 'test-secret')
+      .set('x-api-secret', botApiSecret)
       .send({
         guildId: 'guild-123',
         userId: 'user-1',
@@ -274,7 +279,7 @@ describe('temp roles routes', () => {
 
     const res = await request(app)
       .post('/api/v1/temp-roles')
-      .set('x-api-secret', 'test-secret')
+      .set('x-api-secret', botApiSecret)
       .send({
         guildId: 'guild-123',
         userId: 'user-1',

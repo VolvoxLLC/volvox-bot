@@ -263,8 +263,11 @@ ${responseShape}
 
   let parsed;
   try {
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
+    const jsonStart = text.indexOf('{');
+    const jsonEnd = text.lastIndexOf('}');
+    const jsonPayload =
+      jsonStart >= 0 && jsonEnd >= jsonStart ? text.slice(jsonStart, jsonEnd + 1) : '{}';
+    parsed = JSON.parse(jsonPayload);
   } catch {
     logError('AI auto-mod: failed to parse AI response', {
       model: mergedConfig.model ?? DEFAULTS.model,

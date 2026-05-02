@@ -81,8 +81,9 @@ export async function buildTemplateContext({
   roleName,
   roleId,
 }) {
-  const nextThreshold = levelThresholds[level] ?? null;
-  const xpToNext = nextThreshold !== null ? nextThreshold - xp : 0;
+  const hasNextLevel = Object.hasOwn(levelThresholds, level);
+  const nextThreshold = hasNextLevel ? levelThresholds[level] : 0;
+  const xpToNext = hasNextLevel ? nextThreshold - xp : 0;
   const userId = member.user?.id ?? member.id ?? '';
   const guildId = guild.id ?? member.guild?.id ?? '';
   const serverName = guild.name ?? '';
@@ -140,7 +141,7 @@ export async function buildTemplateContext({
     xp: formatNumber(xp),
     xpToNext: formatNumber(Math.max(0, xpToNext)),
     // nextLevel should be level + 1, not the XP threshold
-    nextLevel: nextThreshold !== null ? String(level + 1) : '0',
+    nextLevel: hasNextLevel ? String(level + 1) : '0',
     serverName,
     serverId: guildId,
     server: serverName,

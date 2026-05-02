@@ -151,6 +151,26 @@ function makeMessage(channelId, content, extras = {}) {
   };
 }
 
+function makeRoleCache(roleDefs, guildId = 'g1') {
+  const roles = [{ id: guildId, name: '@everyone' }, ...roleDefs];
+
+  return {
+    filter: (predicate) => {
+      const filtered = roles.filter((role, index, array) => predicate(role, index, array));
+      return {
+        map: (mapper) => filtered.map((role, index, array) => mapper(role, index, array)),
+      };
+    },
+  };
+}
+
+function makeMemberWithRoles(roleDefs, guildId = 'g1') {
+  return {
+    guild: { id: guildId },
+    roles: { cache: makeRoleCache(roleDefs, guildId) },
+  };
+}
+
 /** Shared mocks for message.react and reaction removal — reset in beforeEach */
 let mockReact;
 let mockRemove;
@@ -470,21 +490,7 @@ describe('triage module', () => {
         guild: { id: 'g1' },
       });
       // Mock member with excluded role
-      msg.member = {
-        guild: { id: 'g1' },
-        roles: {
-          cache: {
-            filter: (fn) => {
-              const roles = [
-                { id: 'g1', name: '@everyone' },
-                { id: 'bot-role', name: 'Bot' },
-              ];
-              const filtered = roles.filter(fn);
-              return { map: (mapFn) => filtered.map(mapFn) };
-            },
-          },
-        },
-      };
+      msg.member = makeMemberWithRoles([{ id: 'bot-role', name: 'Bot' }]);
 
       accumulateMessage(msg, roleConfig);
       await evaluateNow('ch1', roleConfig, client, healthMonitor);
@@ -512,21 +518,7 @@ describe('triage module', () => {
       });
       msg.type = 0; // MessageType.Default
       // Mock member with allowed role
-      msg.member = {
-        guild: { id: 'g1' },
-        roles: {
-          cache: {
-            filter: (fn) => {
-              const roles = [
-                { id: 'g1', name: '@everyone' },
-                { id: 'vip-role', name: 'VIP' },
-              ];
-              const filtered = roles.filter(fn);
-              return { map: (mapFn) => filtered.map(mapFn) };
-            },
-          },
-        },
-      };
+      msg.member = makeMemberWithRoles([{ id: 'vip-role', name: 'VIP' }]);
 
       accumulateMessage(msg, roleConfig);
       await evaluateNow('ch1', roleConfig, client, healthMonitor);
@@ -546,21 +538,7 @@ describe('triage module', () => {
         guild: { id: 'g1' },
       });
       // Mock member without the allowed role
-      msg.member = {
-        guild: { id: 'g1' },
-        roles: {
-          cache: {
-            filter: (fn) => {
-              const roles = [
-                { id: 'g1', name: '@everyone' },
-                { id: 'other-role', name: 'Other' },
-              ];
-              const filtered = roles.filter(fn);
-              return { map: (mapFn) => filtered.map(mapFn) };
-            },
-          },
-        },
-      };
+      msg.member = makeMemberWithRoles([{ id: 'other-role', name: 'Other' }]);
 
       accumulateMessage(msg, roleConfig);
       await evaluateNow('ch1', roleConfig, client, healthMonitor);
@@ -580,18 +558,7 @@ describe('triage module', () => {
         guild: { id: 'g1' },
       });
       // Mock member with no roles (only @everyone, which gets filtered out)
-      msg.member = {
-        guild: { id: 'g1' },
-        roles: {
-          cache: {
-            filter: (fn) => {
-              const roles = [{ id: 'g1', name: '@everyone' }];
-              const filtered = roles.filter(fn);
-              return { map: (mapFn) => filtered.map(mapFn) };
-            },
-          },
-        },
-      };
+      msg.member = makeMemberWithRoles([]);
 
       accumulateMessage(msg, roleConfig);
       await evaluateNow('ch1', roleConfig, client, healthMonitor);

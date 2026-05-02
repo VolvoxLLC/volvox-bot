@@ -175,24 +175,19 @@ describe('triage-config', () => {
      * @param {string} guildId - Guild ID (used to filter @everyone role)
      */
     function makeMember(roleIds, guildId = 'guild-1') {
-      const rolesMap = new Map();
-      // Add @everyone role (id === guildId)
-      rolesMap.set(guildId, { id: guildId, name: '@everyone' });
-      // Add specified roles
-      for (const id of roleIds) {
-        rolesMap.set(id, { id, name: `role-${id}` });
-      }
+      const roles = [
+        { id: guildId, name: '@everyone' },
+        ...roleIds.map((id) => ({ id, name: `role-${id}` })),
+      ];
+
       return {
         guild: { id: guildId },
         roles: {
           cache: {
-            filter: (fn) => {
-              const filtered = [];
-              for (const [, role] of rolesMap) {
-                if (fn(role)) filtered.push(role);
-              }
+            filter: (predicate) => {
+              const filtered = roles.filter((role, index, array) => predicate(role, index, array));
               return {
-                map: (mapFn) => filtered.map(mapFn),
+                map: (mapper) => filtered.map((role, index, array) => mapper(role, index, array)),
               };
             },
           },

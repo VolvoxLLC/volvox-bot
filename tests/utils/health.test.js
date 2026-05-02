@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+function expectDurationPart(part, unit) {
+  expect(part.endsWith(unit)).toBe(true);
+  expect(Number.parseInt(part.slice(0, -unit.length), 10)).toBeGreaterThanOrEqual(0);
+}
+
 describe('HealthMonitor', () => {
   let HealthMonitor;
 
@@ -73,28 +78,39 @@ describe('HealthMonitor', () => {
     const monitor = HealthMonitor.getInstance();
     monitor.startTime = Date.now() - 30 * 1000;
     const formatted = monitor.getFormattedUptime();
-    expect(formatted).toMatch(/\d+s/);
+    expectDurationPart(formatted, 's');
   });
 
   it('should format uptime as minutes', () => {
     const monitor = HealthMonitor.getInstance();
     monitor.startTime = Date.now() - 5 * 60 * 1000;
     const formatted = monitor.getFormattedUptime();
-    expect(formatted).toMatch(/\d+m \d+s/);
+    const parts = formatted.split(' ');
+    expect(parts).toHaveLength(2);
+    expectDurationPart(parts[0], 'm');
+    expectDurationPart(parts[1], 's');
   });
 
   it('should format uptime as hours', () => {
     const monitor = HealthMonitor.getInstance();
     monitor.startTime = Date.now() - 2 * 60 * 60 * 1000;
     const formatted = monitor.getFormattedUptime();
-    expect(formatted).toMatch(/\d+h \d+m \d+s/);
+    const parts = formatted.split(' ');
+    expect(parts).toHaveLength(3);
+    expectDurationPart(parts[0], 'h');
+    expectDurationPart(parts[1], 'm');
+    expectDurationPart(parts[2], 's');
   });
 
   it('should format uptime as days', () => {
     const monitor = HealthMonitor.getInstance();
     monitor.startTime = Date.now() - 3 * 24 * 60 * 60 * 1000;
     const formatted = monitor.getFormattedUptime();
-    expect(formatted).toMatch(/\d+d \d+h \d+m/);
+    const parts = formatted.split(' ');
+    expect(parts).toHaveLength(3);
+    expectDurationPart(parts[0], 'd');
+    expectDurationPart(parts[1], 'h');
+    expectDurationPart(parts[2], 'm');
   });
 
   it('should return memory usage stats', () => {
@@ -109,7 +125,13 @@ describe('HealthMonitor', () => {
   it('should return formatted memory string', () => {
     const monitor = HealthMonitor.getInstance();
     const formatted = monitor.getFormattedMemory();
-    expect(formatted).toMatch(/\d+MB \/ \d+MB \(RSS: \d+MB\)/);
+    const [heapUsed, slash, heapTotal, rssLabel, rss] = formatted.split(' ');
+    expectDurationPart(heapUsed, 'MB');
+    expect(slash).toBe('/');
+    expectDurationPart(heapTotal, 'MB');
+    expect(rssLabel).toBe('(RSS:');
+    expect(rss.endsWith('MB)')).toBe(true);
+    expect(Number.parseInt(rss.slice(0, -3), 10)).toBeGreaterThanOrEqual(0);
   });
 
   it('should return complete status', () => {

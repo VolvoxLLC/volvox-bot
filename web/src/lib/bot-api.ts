@@ -1,3 +1,9 @@
+function trimTrailingSlashes(value: string): string {
+  let end = value.length;
+  while (end > 0 && value[end - 1] === '/') end -= 1;
+  return value.slice(0, end);
+}
+
 /**
  * Normalize BOT_API_URL into a stable v1 API base URL.
  *
@@ -11,7 +17,7 @@ export function getBotApiBaseUrl(fallback?: string): string | null {
   const raw = process.env.BOT_API_URL || fallback;
   if (!raw) return null;
 
-  const trimmed = raw.replace(/\/+$/, '');
+  const trimmed = trimTrailingSlashes(raw);
   if (trimmed.endsWith('/api/v1')) {
     return trimmed;
   }

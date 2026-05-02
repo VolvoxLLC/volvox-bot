@@ -36,6 +36,14 @@ const UNIT_MS = {
   w: 604_800_000,
 };
 
+const TIME_OF_DAY_SOURCE = String.raw`\d{1,2}(?::\d{2})?\s*(?:[ap]m)?`;
+const TOMORROW_PATTERN = new RegExp(
+  String.raw`^tomorrow(?:\s+at\s+(${TIME_OF_DAY_SOURCE}))?(?:\s|$)`,
+);
+const NEXT_DAY_PATTERN = new RegExp(
+  String.raw`^next\s+([a-z]{3,9})(?:\s+at\s+(${TIME_OF_DAY_SOURCE}))?(?:\s|$)`,
+);
+
 /** Day name → JS getDay() index */
 const DAY_NAMES = {
   sunday: 0,
@@ -149,11 +157,13 @@ function tryParseInDuration(trimmed, ref) {
  * @returns {{ date: Date, consumed: string } | null}
  */
 function tryParseTomorrow(trimmed, ref) {
-  const match = trimmed.match(/^tomorrow(?:\s+at\s+(.+?(?:\s+[ap]m)?))?(?:\s|$)/);
+  const match = trimmed.match(TOMORROW_PATTERN);
   if (!match) return null;
+  const parsedTime = match[1] ? parseTimeOfDay(match[1]) : null;
+  if (match[1] && !parsedTime) return null;
   const tomorrow = new Date(ref.getTime());
   tomorrow.setDate(tomorrow.getDate() + 1);
-  applyTimeOfDay(tomorrow, match[1] ? parseTimeOfDay(match[1]) : null);
+  applyTimeOfDay(tomorrow, parsedTime);
   return { date: tomorrow, consumed: match[0].trim() };
 }
 
@@ -164,15 +174,17 @@ function tryParseTomorrow(trimmed, ref) {
  * @returns {{ date: Date, consumed: string } | null}
  */
 function tryParseNextDay(trimmed, ref) {
-  const match = trimmed.match(/^next\s+([a-z]+)(?:\s+at\s+(.+?(?:\s+[ap]m)?))?(?:\s|$)/);
+  const match = trimmed.match(NEXT_DAY_PATTERN);
   if (!match) return null;
   const targetDay = DAY_NAMES[match[1]];
   if (targetDay === undefined) return null;
+  const parsedTime = match[2] ? parseTimeOfDay(match[2]) : null;
+  if (match[2] && !parsedTime) return null;
   const result = new Date(ref.getTime());
   let daysAhead = targetDay - result.getDay();
   if (daysAhead <= 0) daysAhead += 7;
   result.setDate(result.getDate() + daysAhead);
-  applyTimeOfDay(result, match[2] ? parseTimeOfDay(match[2]) : null);
+  applyTimeOfDay(result, parsedTime);
   return { date: result, consumed: match[0].trim() };
 }
 

@@ -6,6 +6,12 @@ import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
+function trimTrailingSlashes(value: string): string {
+  let end = value.length;
+  while (end > 0 && value[end - 1] === '/') end -= 1;
+  return value.slice(0, end);
+}
+
 /** Ticket lifetime — 30 seconds is plenty to open a WebSocket. */
 const TICKET_TTL_MS = 30_000;
 
@@ -53,7 +59,7 @@ export async function GET(request: NextRequest) {
   // Convert http(s):// to ws(s):// for WebSocket connection
   let wsUrl: string;
   try {
-    const url = new URL(botApiUrl.replace(/\/+$/, ''));
+    const url = new URL(trimTrailingSlashes(botApiUrl));
     url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
     wsUrl = `${url.origin}/ws/logs`;
   } catch {
