@@ -23,6 +23,24 @@ const PHISHING_KEYWORDS = [
   'airdrop',
 ];
 const COMMON_PHISHING_HOST_MARKERS = ['discord-nitro', 'discordnitro', 'free-nitro', 'steamgift'];
+const LEADING_URL_DELIMITERS = new Set(['<', '(', '[', '{', '"', "'"]);
+const TRAILING_URL_DELIMITERS = new Set([
+  '>',
+  ')',
+  ']',
+  '}',
+  '"',
+  "'",
+  '.',
+  ',',
+  ';',
+  ':',
+  '!',
+  '?',
+]);
+const MARKDOWN_LINK_URL_PATTERN = /\[[^\]\r\n]{0,512}\]\((https?:\/\/[^\s<>()]{1,2048})\)/giu;
+const ANGLE_BRACKET_URL_PATTERN = /<(https?:\/\/[^\s<>]{1,2048})>/giu;
+const EMBEDDED_URL_PATTERN = /https?:\/\/[^\s<>"'`[\]{}]{1,2048}/giu;
 
 /**
  * Normalize a domain entry from the blocklist.
@@ -44,11 +62,9 @@ function normalizeBlockedDomain(domain) {
 function trimUrlToken(token) {
   let start = 0;
   let end = token.length;
-  const leadingDelimiters = new Set(['<', '(', '[', '{', '"', "'"]);
-  const trailingDelimiters = new Set(['>', ')', ']', '}', '"', "'", '.', ',', ';', ':', '!', '?']);
 
-  while (start < end && leadingDelimiters.has(token[start])) start += 1;
-  while (end > start && trailingDelimiters.has(token[end - 1])) end -= 1;
+  while (start < end && LEADING_URL_DELIMITERS.has(token[start])) start += 1;
+  while (end > start && TRAILING_URL_DELIMITERS.has(token[end - 1])) end -= 1;
 
   return token.slice(start, end);
 }
@@ -81,10 +97,50 @@ function parseUrlToken(token) {
     const url = new URL(candidate);
     const hostname = stripLeadingWww(url.hostname);
     if (!isValidHostname(hostname)) return null;
-    return { hostname, fullUrl: trimmed, pathname: url.pathname.toLowerCase() };
+    return {
+      hostname,
+      fullUrl: trimmed,
+      pathname: url.pathname.toLowerCase(),
+      search: url.search.toLowerCase(),
+    };
   } catch {
     return null;
   }
+}
+
+function collectParsedUrls(content) {
+  const parsedUrls = [];
+  const seen = new Set();
+  const tokens = content.split(/\s+/);
+
+  const addCandidate = (candidate) => {
+    const parsed = parseUrlToken(candidate);
+    if (!parsed) return;
+
+    const key = `${parsed.hostname}\u0000${parsed.fullUrl}`;
+    if (seen.has(key)) return;
+
+    seen.add(key);
+    parsedUrls.push(parsed);
+  };
+
+  for (const match of content.matchAll(MARKDOWN_LINK_URL_PATTERN)) {
+    addCandidate(match[1]);
+  }
+
+  for (const match of content.matchAll(ANGLE_BRACKET_URL_PATTERN)) {
+    addCandidate(match[1]);
+  }
+
+  for (const token of tokens) {
+    addCandidate(token);
+  }
+
+  for (const match of content.matchAll(EMBEDDED_URL_PATTERN)) {
+    addCandidate(match[0]);
+  }
+
+  return parsedUrls;
 }
 
 /**
@@ -96,9 +152,8 @@ export function extractUrls(content) {
   const results = [];
   const seen = new Set();
 
-  for (const token of content.split(/\s+/)) {
-    const parsed = parseUrlToken(token);
-    if (parsed && !seen.has(parsed.hostname)) {
+  for (const parsed of collectParsedUrls(content)) {
+    if (!seen.has(parsed.hostname)) {
       seen.add(parsed.hostname);
       results.push({ hostname: parsed.hostname, fullUrl: parsed.fullUrl });
     }
@@ -113,11 +168,8 @@ export function extractUrls(content) {
  * @returns {string|null} matched pattern string or null
  */
 export function matchPhishingPattern(content) {
-  for (const token of content.split(/\s+/)) {
-    const parsed = parseUrlToken(token);
-    if (!parsed) continue;
-
-    const hostAndPath = `${parsed.hostname}${parsed.pathname}`;
+  for (const parsed of collectParsedUrls(content)) {
+    const hostAndPath = `${parsed.hostname}${parsed.pathname}${parsed.search}`;
     if (
       COMMON_PHISHING_HOST_MARKERS.some((marker) => parsed.hostname.includes(marker)) ||
       (parsed.hostname.endsWith('.xyz') &&

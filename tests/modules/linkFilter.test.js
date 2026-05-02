@@ -165,8 +165,25 @@ describe('extractUrls', () => {
 
   it('does not extract plain IP addresses', () => {
     const results = extractUrls('connect to 192.168.1.1 for info');
-    // IP addresses have a numeric TLD — isValidHostname returns false
     expect(results.some((r) => r.hostname === '192.168.1.1')).toBe(false);
+  });
+
+  it('extracts URLs from markdown links', () => {
+    const results = extractUrls('read [the docs](https://evil.com/path) before clicking');
+    expect(results).toContainEqual(expect.objectContaining({ hostname: 'evil.com' }));
+  });
+
+  it('extracts angle-bracket URLs', () => {
+    const results = extractUrls('wrapped link <https://angle.example/path>');
+    expect(results).toContainEqual(expect.objectContaining({ hostname: 'angle.example' }));
+  });
+
+  it('extracts explicit URLs adjacent to non-whitespace characters', () => {
+    const results = extractUrls('check:https://evil.xyz/free >https://format.example/path');
+    const hostnames = results.map((r) => r.hostname);
+
+    expect(hostnames).toContain('evil.xyz');
+    expect(hostnames).toContain('format.example');
   });
 });
 
@@ -185,6 +202,21 @@ describe('matchPhishingPattern', () => {
 
   it('detects .xyz domain with nitro in path', () => {
     expect(matchPhishingPattern('https://random.xyz/nitro-free')).not.toBeNull();
+  });
+
+  it('detects .xyz domain with phishing keywords in query string', () => {
+    expect(matchPhishingPattern('https://site.xyz/?gift=nitro')).not.toBeNull();
+  });
+
+  it('detects .xyz phishing URLs inside markdown links', () => {
+    expect(
+      matchPhishingPattern('claim [free nitro](https://site.xyz/claim?gift=nitro)'),
+    ).not.toBeNull();
+  });
+
+  it('detects .xyz phishing URLs adjacent to formatting characters', () => {
+    expect(matchPhishingPattern('check:https://site.xyz/?gift=nitro')).not.toBeNull();
+    expect(matchPhishingPattern('>https://site.xyz/free')).not.toBeNull();
   });
 
   it('detects .xyz domain with discord in URL', () => {
