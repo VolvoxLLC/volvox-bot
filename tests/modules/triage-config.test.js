@@ -188,6 +188,21 @@ describe('triage-config', () => {
       expect(isRoleEligible(member, { allowedRoles: ['role-3', 'role-2'] })).toBe(true);
     });
 
+    it('should support role-like objects when building member role mocks', () => {
+      const member = makeMember([
+        { id: 'role-1', name: 'Role One' },
+        { id: 'role-2', name: 'Role Two' },
+      ]);
+
+      const memberRoleIds = member.roles.cache
+        .filter((role) => role.id !== member.guild.id)
+        .map((role) => role.id);
+
+      expect(memberRoleIds).toEqual(['role-1', 'role-2']);
+      expect(isRoleEligible(member, { allowedRoles: ['role-2'] })).toBe(true);
+      expect(isRoleEligible(member, { excludedRoles: ['role-1'] })).toBe(false);
+    });
+
     it('should return false when user has no allowed roles (allowedRoles non-empty)', () => {
       const member = makeMember(['role-1', 'role-2']);
       expect(isRoleEligible(member, { allowedRoles: ['role-3', 'role-4'] })).toBe(false);
