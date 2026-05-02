@@ -535,9 +535,7 @@ describe('guilds routes', () => {
       vi.stubEnv('BOT_OWNER_IDS', 'owner-access-check');
       const token = createOAuthToken('jwt-test-secret', 'owner-access-check');
 
-      const res = await request(app)
-        .get('/api/v1/guilds')
-        .set('Authorization', `Bearer ${token}`);
+      const res = await request(app).get('/api/v1/guilds').set('Authorization', `Bearer ${token}`);
 
       expect(res.status).toBe(200);
       const guild = res.body.find((g) => g.id === 'guild1');
