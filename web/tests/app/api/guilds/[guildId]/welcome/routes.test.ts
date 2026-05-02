@@ -25,7 +25,7 @@ import { POST as publishWelcomePanel } from '@/app/api/guilds/[guildId]/welcome/
 import { GET as getWelcomeStatus } from '@/app/api/guilds/[guildId]/welcome/status/route';
 
 const BOT_API_BASE_URL = 'https://bot.internal:3001/api/v1';
-const BOT_API_SECRET = 'bot-secret';
+const BOT_API_SECRET = 'bot-api-fixture-value';
 const GUILD_ID = 'guild-1';
 
 type ProxyExpectation = {
