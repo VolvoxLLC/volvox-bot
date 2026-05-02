@@ -1,5 +1,5 @@
 import { PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
-import { info } from '../logger.js';
+import { info, error as logError } from '../logger.js';
 import { getConfig } from '../modules/config.js';
 import { publishWelcomePanels } from '../modules/welcomePublishing.js';
 import { isModerator } from '../utils/permissions.js';
@@ -44,29 +44,42 @@ function formatPublishLine(result) {
 export async function execute(interaction) {
   await interaction.deferReply({ ephemeral: true });
 
-  const guildConfig = getConfig(interaction.guildId);
-  if (
-    !interaction.member.permissions.has(PermissionFlagsBits.Administrator) &&
-    !isModerator(interaction.member, guildConfig)
-  ) {
-    await safeEditReply(interaction, {
-      content: 'You need moderator or administrator permissions to run this command.',
+  try {
+    const guildConfig = getConfig(interaction.guildId);
+    if (
+      !interaction.member.permissions.has(PermissionFlagsBits.Administrator) &&
+      !isModerator(interaction.member, guildConfig)
+    ) {
+      await safeEditReply(interaction, {
+        content: 'You need moderator or administrator permissions to run this command.',
+      });
+      return;
+    }
+
+    const publishResult = await publishWelcomePanels(interaction.client, interaction.guildId, {
+      source: 'slash-command',
+      userId: interaction.user.id,
     });
-    return;
+
+    await safeEditReply(interaction, {
+      content: publishResult.results.map(formatPublishLine).join('\n'),
+    });
+
+    info('Welcome setup command executed', {
+      guildId: interaction.guildId,
+      channelId: interaction.channelId,
+      userId: interaction.user.id,
+    });
+  } catch (err) {
+    logError('Welcome setup command failed', {
+      guildId: interaction.guildId,
+      channelId: interaction.channelId,
+      userId: interaction.user?.id,
+      error: err?.message,
+    });
+
+    await safeEditReply(interaction, {
+      content: 'Failed to publish welcome setup panels. Please try again later.',
+    });
   }
-
-  const publishResult = await publishWelcomePanels(interaction.client, interaction.guildId, {
-    source: 'slash-command',
-    userId: interaction.user.id,
-  });
-
-  await safeEditReply(interaction, {
-    content: publishResult.results.map(formatPublishLine).join('\n'),
-  });
-
-  info('Welcome setup command executed', {
-    guildId: interaction.guildId,
-    channelId: interaction.channelId,
-    userId: interaction.user.id,
-  });
 }

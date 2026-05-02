@@ -42,6 +42,7 @@ vi.mock('../../src/utils/safeSend.js', () => ({
 
 import { PermissionsBitField } from 'discord.js';
 import { adminOnly, data, execute } from '../../src/commands/welcome.js';
+import { error as logError } from '../../src/logger.js';
 import { publishWelcomePanels } from '../../src/modules/welcomePublishing.js';
 import { isModerator } from '../../src/utils/permissions.js';
 import { safeEditReply } from '../../src/utils/safeSend.js';
@@ -173,5 +174,25 @@ describe('welcome command', () => {
     expect(reply).toContain(
       'Updated role menu panel in <#welcome-channel>. Warning: Database pool unavailable.',
     );
+  });
+
+  it('should report an error instead of leaving the deferred reply hanging', async () => {
+    isModerator.mockReturnValueOnce(true);
+    publishWelcomePanels.mockRejectedValueOnce(new Error('Discord publish failed'));
+    const interaction = mockInteraction({ client: {} });
+
+    await execute(interaction);
+
+    expect(logError).toHaveBeenCalledWith(
+      'Welcome setup command failed',
+      expect.objectContaining({
+        guildId: 'guild-1',
+        userId: 'user-1',
+        error: 'Discord publish failed',
+      }),
+    );
+    expect(safeEditReply).toHaveBeenCalledWith(interaction, {
+      content: 'Failed to publish welcome setup panels. Please try again later.',
+    });
   });
 });

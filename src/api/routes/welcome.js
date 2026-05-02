@@ -21,7 +21,6 @@ import { rateLimit } from '../middleware/rateLimit.js';
 import { requireGuildAdmin, validateGuild } from './guilds.js';
 
 const router = Router({ mergeParams: true });
-const welcomePublishRateLimit = rateLimit({ windowMs: 60 * 1000, max: 30 });
 
 /**
  * POST /guilds/:id/welcome/preview
@@ -102,7 +101,7 @@ router.get('/variables', (_req, res) => {
 // static analysis can recognize the protection before admin auth and downstream work.
 router.get(
   '/status',
-  welcomePublishRateLimit,
+  rateLimit({ windowMs: 60 * 1000, max: 30 }),
   requireGuildAdmin,
   validateGuild,
   async (req, res) => {
@@ -121,7 +120,7 @@ router.get(
 
 router.post(
   '/publish',
-  welcomePublishRateLimit,
+  rateLimit({ windowMs: 60 * 1000, max: 30 }),
   requireGuildAdmin,
   validateGuild,
   async (req, res) => {
@@ -144,7 +143,7 @@ router.post(
 
 router.post(
   '/publish/:panelType',
-  welcomePublishRateLimit,
+  rateLimit({ windowMs: 60 * 1000, max: 30 }),
   requireGuildAdmin,
   validateGuild,
   async (req, res) => {

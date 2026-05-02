@@ -58,8 +58,8 @@ import {
 
 describe('welcome routes', () => {
   let app;
-  const SECRET = 'test-secret';
-  const TEST_SESSION_SIGNING_TOKEN = 'welcome-route-test-signing-token';
+  const SECRET = 'api-route-fixture-value';
+  const TEST_SESSION_SIGNING_TOKEN = 'welcome-route-signing-fixture';
 
   beforeEach(() => {
     vi.stubEnv('BOT_API_SECRET', SECRET);
@@ -240,7 +240,7 @@ describe('welcome routes', () => {
       vi.stubEnv('SESSION_SECRET', TEST_SESSION_SIGNING_TOKEN);
       vi.stubEnv('BOT_OWNER_IDS', userId);
       _resetSecretCache();
-      sessionStore.set(userId, { accessToken: 'discord-access-token', jti });
+      sessionStore.set(userId, { accessToken: 'oauth-session-fixture', jti });
       const token = jwt.sign({ userId, jti }, TEST_SESSION_SIGNING_TOKEN);
 
       let res;
