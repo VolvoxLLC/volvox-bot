@@ -257,6 +257,21 @@ export function buildUpstreamUrl(
   }
 }
 
+export interface BotApiEndpoint {
+  upstreamUrl: URL;
+  secret: string;
+}
+
+export function getBotApiEndpoint(path: string, logPrefix: string): BotApiEndpoint | NextResponse {
+  const config = getBotApiConfig(logPrefix);
+  if (config instanceof NextResponse) return config;
+
+  const upstreamUrl = buildUpstreamUrl(config.baseUrl, path, logPrefix);
+  if (upstreamUrl instanceof NextResponse) return upstreamUrl;
+
+  return { upstreamUrl, secret: config.secret };
+}
+
 export interface ProxyOptions {
   method?: string;
   headers?: Record<string, string>;
@@ -283,6 +298,18 @@ export interface ProxyOptions {
  * @param options - Optional request options (method, headers, body)
  * @returns A NextResponse containing either the upstream JSON payload (with the upstream status) or an error JSON object; returns status 500 on internal failure
  */
+export async function proxyBotApiEndpoint(
+  path: string,
+  logPrefix: string,
+  errorMessage: string,
+  options?: ProxyOptions,
+): Promise<NextResponse> {
+  const endpoint = getBotApiEndpoint(path, logPrefix);
+  if (endpoint instanceof NextResponse) return endpoint;
+
+  return proxyToBotApi(endpoint.upstreamUrl, endpoint.secret, logPrefix, errorMessage, options);
+}
+
 export async function proxyToBotApi(
   upstreamUrl: URL,
   secret: string,

@@ -18,7 +18,12 @@ vi.mock('@/lib/auth', () => ({
   getAuthOptions: () => ({}),
 }));
 
-import { isDashboardGlobalAdmin, isRequestGlobalAdmin } from '@/lib/global-admin';
+import {
+  authorizeRequestGlobalAdmin,
+  globalAdminAuthErrorResponse,
+  isDashboardGlobalAdmin,
+  isRequestGlobalAdmin,
+} from '@/lib/global-admin';
 
 function request() {
   return new NextRequest('http://localhost/api/global-admin');
@@ -43,6 +48,26 @@ describe('global admin helpers', () => {
 
     mockGetToken.mockResolvedValueOnce({ id: 'other-user' });
     await expect(isRequestGlobalAdmin(request())).resolves.toBe(false);
+  });
+
+  it('maps global admin route authorization failures to stable response statuses', async () => {
+    mockGetToken.mockResolvedValueOnce({ accessToken: 'token', id: 'owner-1' });
+    await expect(authorizeRequestGlobalAdmin(request())).resolves.toBeNull();
+    expect(mockGetToken).toHaveBeenCalledTimes(1);
+
+    mockGetToken.mockResolvedValueOnce({ accessToken: 'token', id: 'other-user' });
+    await expect(authorizeRequestGlobalAdmin(request())).resolves.toMatchObject({ status: 403 });
+
+    expect(globalAdminAuthErrorResponse({ ok: false, reason: 'unauthorized', token: null }).status).toBe(
+      401,
+    );
+    expect(
+      globalAdminAuthErrorResponse({
+        ok: false,
+        reason: 'token-expired',
+        token: { error: 'RefreshTokenError' },
+      }).status,
+    ).toBe(401);
   });
 
   it('authorizes server components from the session user id and fails closed on errors', async () => {

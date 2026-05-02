@@ -1,4 +1,5 @@
 import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { getToken, type JWT } from 'next-auth/jwt';
 import { getAuthOptions } from '@/lib/auth';
@@ -68,6 +69,27 @@ export async function getRequestGlobalAdminAuth(
   }
 
   return { ok: true, token };
+}
+
+export function globalAdminAuthErrorResponse(
+  auth: Extract<RequestGlobalAdminAuthResult, { ok: false }>,
+): NextResponse {
+  if (auth.reason === 'token-expired') {
+    return NextResponse.json({ error: 'Token expired. Please sign in again.' }, { status: 401 });
+  }
+
+  if (auth.reason === 'unauthorized') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+}
+
+export async function authorizeRequestGlobalAdmin(
+  request: NextRequest,
+): Promise<NextResponse | null> {
+  const auth = await getRequestGlobalAdminAuth(request);
+  return auth.ok ? null : globalAdminAuthErrorResponse(auth);
 }
 
 export async function isRequestGlobalAdmin(request: NextRequest): Promise<boolean> {
