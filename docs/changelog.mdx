@@ -10,6 +10,14 @@ description: 'Volvox.Bot release notes and changelog covering new Discord bot fe
 **More resilient `/poll`, `/remind`, and `/modlog`** — These commands now route channel messages through the same safe-send wrappers used elsewhere in the bot, so transient Discord errors (missing permissions, deleted channels, rate limits) are handled gracefully instead of leaving commands in a half-finished state.
 </Update>
 
+<Update label="2026-05-08" description="May 2026" tags={["Improvements"]}>
+## Improvements
+
+**Global admin access for ops pages** — The dashboard's **Logs** and **Performance** pages are now restricted to global admins (configured via `BOT_OWNER_IDS`). Server admins and moderators continue to manage their servers as usual, while infrastructure-level views are reserved for operators. See [Permissions](/configuration/permissions) for the full role breakdown.
+
+**Cleaner access levels** — Server access roles are now consistently `admin`, `moderator`, or `viewer` across the dashboard and API. Global admin status is surfaced separately, so sidebar navigation and protected pages reflect the correct permissions for every user.
+</Update>
+
 <Update label="2026-05-03" description="May 2026" tags={["Fixes"]}>
 ## Fixes
 
@@ -28,14 +36,6 @@ description: 'Volvox.Bot release notes and changelog covering new Discord bot fe
 ## Fixes
 
 **More reliable AI auto-moderation** — [AI auto-moderation](/features/moderation) now parses AI provider responses correctly even when they include extra text or nested braces, and treats unparseable responses as "needs review" instead of letting them through. Fewer missed flags, fewer surprises.
-</Update>
-
-<Update label="2026-05-08" description="May 2026" tags={["Improvements"]}>
-## Improvements
-
-**Global admin access for ops pages** — The dashboard's **Logs** and **Performance** pages are now restricted to global admins (configured via `BOT_OWNER_IDS`). Server admins and moderators continue to manage their servers as usual, while infrastructure-level views are reserved for operators. See [Permissions](/configuration/permissions) for the full role breakdown.
-
-**Cleaner access levels** — Server access roles are now consistently `admin`, `moderator`, or `viewer` across the dashboard and API. Global admin status is surfaced separately, so sidebar navigation and protected pages reflect the correct permissions for every user.
 </Update>
 
 <Update label="2026-05-01" description="May 2026" tags={["Features", "Improvements", "Fixes"]}>
