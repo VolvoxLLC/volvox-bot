@@ -229,6 +229,14 @@ describe('triage-config', () => {
       ]);
     });
 
+    it('should keep shared role cache and member defaults on the same guild ID', () => {
+      const member = makeMember([]);
+      const roleIds = makeRoleCache([]).map((role) => role.id);
+
+      expect(member.guild.id).toBe('guild-1');
+      expect(roleIds).toEqual(['guild-1']);
+    });
+
     it('should return false when user has no allowed roles (allowedRoles non-empty)', () => {
       const member = makeMember(['role-1', 'role-2']);
       expect(isRoleEligible(member, { allowedRoles: ['role-3', 'role-4'] })).toBe(false);
