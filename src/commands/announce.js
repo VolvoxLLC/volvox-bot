@@ -87,11 +87,11 @@ export function parseTime(timeStr) {
 
   // "in Xh", "in Xm", "in XhYm", "in X hours", "in X minutes"
   const relativeMatch = str.match(
-    /^in\s+(?:(\d+)\s*h(?:ours?)?)?(?:\s*(\d+)\s*m(?:in(?:utes?)?)?)?$/,
+    /^in\s+(?:(\d+)\s*h(?:ours?)?(?:\s*(\d+)\s*m(?:in(?:utes?)?)?)?|(\d+)\s*m(?:in(?:utes?)?)?)$/,
   );
   if (relativeMatch) {
     const hours = Number.parseInt(relativeMatch[1] || '0', 10);
-    const minutes = Number.parseInt(relativeMatch[2] || '0', 10);
+    const minutes = Number.parseInt(relativeMatch[2] || relativeMatch[3] || '0', 10);
     if (hours === 0 && minutes === 0) return null;
     const scheduledDate = new Date();
     scheduledDate.setHours(scheduledDate.getHours() + hours);

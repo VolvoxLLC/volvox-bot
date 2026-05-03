@@ -54,6 +54,20 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
+# Runtime image serves static build output only; keep copied artifacts read-only.
+RUN for path in server.js package.json node_modules; do \
+      if [ -e "$path" ]; then chmod -R a-w "$path"; fi; \
+    done && \
+    find .next -path .next/cache -prune -o -type d -exec chmod 0555 {} + && \
+    find .next -path .next/cache -prune -o -type f -exec chmod 0444 {} + && \
+    chmod u+w .next && \
+    mkdir -p .next/cache && \
+    chown -R nextjs:nodejs .next/cache && \
+    chmod -R u+rwX,go-rwx .next/cache && \
+    chmod 0555 .next && \
+    find public -type d -exec chmod 0555 {} + && \
+    find public -type f -exec chmod 0444 {} +
+
 USER nextjs
 
 EXPOSE 3000

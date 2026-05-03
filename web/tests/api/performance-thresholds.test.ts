@@ -29,6 +29,10 @@ describe('performance and threshold proxy routes', () => {
       expect.objectContaining({ method: 'PUT' }),
     );
 
+    mockGetToken.mockResolvedValueOnce({ accessToken: 'token', id: 'not-owner' });
+    const forbidden = await performanceRoute.GET(request('http://localhost/api'));
+    expect(forbidden.status).toBe(403);
+
     mockGetToken.mockResolvedValueOnce(null);
     const unauthorized = await performanceRoute.GET(request('http://localhost/api'));
     expect(unauthorized.status).toBe(401);

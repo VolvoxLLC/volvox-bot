@@ -1,6 +1,7 @@
 ---
-title: Changelog
-description: Latest updates and improvements to Volvox.Bot.
+title: Volvox.Bot Changelog and Release Notes
+sidebarTitle: Changelog
+description: 'Volvox.Bot release notes and changelog covering new Discord bot features, dashboard updates, moderation improvements, and bug fixes by month.'
 ---
 
 <Update label="2026-W18" description="Week of April 27 – May 1, 2026" tags={["Weekly recap"]}>
@@ -29,6 +30,34 @@ A big week for AI and dashboard polish. Highlights:
 For day-by-day details, see the entries below.
 </Update>
 
+<Update label="2026-05-03" description="May 2026" tags={["Fixes"]}>
+## Fixes
+
+**More reliable AI auto-moderation** — [AI auto-moderation](/features/moderation) now parses model responses more robustly, so messages are scored and acted on correctly even when the model wraps its output in extra text or nested formatting. Fewer skipped messages, fewer "no decision" outcomes.
+
+**Stronger link filter and phishing detection** — The link filter now extracts URLs more accurately from messages, catching more obfuscated and disguised links. Phishing detection has been hardened against common evasion tricks (extra punctuation, mixed casing, embedded characters), so suspicious links are flagged even when posters try to sneak them past.
+</Update>
+
+<Update label="2026-05-02" description="May 2026" tags={["Improvements", "Fixes"]}>
+## Improvements
+
+**Stronger phishing and link filtering** — The link filter now catches malicious URLs hidden inside markdown links (`[click here](https://...)`), angle-bracket links (`<https://...>`), and links wedged against punctuation. Phishing keywords in URL query strings (for example, `?gift=nitro` on a `.xyz` domain) are also detected. See [moderation](/features/moderation) for the full set of safeguards.
+
+**Better reliability monitoring** — Volvox.Bot now tracks dashboard errors and performance issues in the background so problems get spotted and fixed faster. Sensitive data — Discord IDs, message content, tokens, query params, headers, and request bodies — is scrubbed before anything leaves your browser, keeping your server's data private by default.
+
+## Fixes
+
+**More reliable AI auto-moderation** — [AI auto-moderation](/features/moderation) now parses AI provider responses correctly even when they include extra text or nested braces, and treats unparseable responses as "needs review" instead of letting them through. Fewer missed flags, fewer surprises.
+</Update>
+
+<Update label="2026-05-08" description="May 2026" tags={["Improvements"]}>
+## Improvements
+
+**Global admin access for ops pages** — The dashboard's **Logs** and **Performance** pages are now restricted to global admins (configured via `BOT_OWNER_IDS`). Server admins and moderators continue to manage their servers as usual, while infrastructure-level views are reserved for operators. See [Permissions](/configuration/permissions) for the full role breakdown.
+
+**Cleaner access levels** — Server access roles are now consistently `admin`, `moderator`, or `viewer` across the dashboard and API. Global admin status is surfaced separately, so sidebar navigation and protected pages reflect the correct permissions for every user.
+</Update>
+
 <Update label="2026-05-01" description="May 2026" tags={["Features", "Improvements", "Fixes"]}>
 ## New features
 
@@ -48,9 +77,9 @@ For day-by-day details, see the entries below.
 <Update label="2026-04-29" description="April 2026" tags={["Features", "Improvements", "Fixes"]}>
 ## New features
 
-**AI Auto-Moderation** — Active Sentry now scores incoming messages with AI across toxicity, spam, harassment, hate speech, sexual content, violence, and self-harm. Pick a detection model, set per-category sensitivity thresholds, and configure response actions (ignore, delete, flag, warn, timeout, kick, or ban) — including multiple actions per violation. AI auto-mod actions are logged alongside classic moderation cases. Configure under **Config → Moderation & Safety → Content Safety** in the [dashboard](/dashboard). See the [moderation docs](/features/moderation) for details.
+**AI Auto-Moderation** — Active Sentry now scores incoming messages with AI across toxicity, spam, harassment, hate speech, sexual content, violence, and self-harm. Choose a detection model, set per-category sensitivity thresholds, and configure response actions (ignore, delete, flag, warn, timeout, kick, or ban) — including multiple actions per violation. AI auto-mod actions are logged alongside classic moderation cases. Configure under **Config → Moderation & Safety → Content Safety** in the [dashboard](/dashboard). See the [moderation docs](/features/moderation) for details.
 
-**Configurable model for `/tldr`** — You can now pick which provider/model the [TL;DR command](/features/tldr) uses to generate summaries, right from the dashboard. MiniMax M2.7 is the new default.
+**Configurable model for `/tldr`** — You can now choose which provider/model the [TL;DR command](/features/tldr) uses to generate summaries, right from the dashboard. MiniMax M2.7 is the new default.
 
 **MiniMax provider** — MiniMax is now a first-class AI provider, with models like **MiniMax M2.7** and **MiniMax M2.7 Highspeed** available across [AI automation](/features/ai-conversations) and [TL;DR](/features/tldr).
 
@@ -66,7 +95,7 @@ For day-by-day details, see the entries below.
 
 ## Fixes
 
-**Automod flag embeds** — Flag embeds now show the global actions that ran for an automod violation, so moderators can see exactly what was applied at a glance.
+**Auto-mod flag embeds** — Flag embeds now show the global actions that ran for an auto-mod violation, so moderators can see exactly what was applied at a glance.
 
 **Welcome publish reliability** — Several edge cases in welcome panel publishing have been resolved: split payloads, status mismatches, persistence gaps, channel-change cleanup, and rate-limited publish routes are all handled more gracefully.
 
@@ -92,7 +121,7 @@ For day-by-day details, see the entries below.
 <Update label="2026-04-24" description="April 2026" tags={["Features", "Improvements"]}>
 ## New features
 
-**More AI providers** — Moonshot and OpenRouter are now first-class providers for [AI automation](/features/ai-conversations) and [TL;DR](/features/tldr). Pick models from these providers in your AI settings using the `provider:model` format (for example, `moonshot:kimi-k2.6`).
+**More AI providers** — Moonshot and OpenRouter are now first-class providers for [AI automation](/features/ai-conversations) and [TL;DR](/features/tldr). Choose models from these providers in your AI settings using the `provider:model` format (for example, `moonshot:kimi-k2.6`).
 
 **TL;DR is now front and center** — The `/tldr` command is highlighted on the landing page and has a [dedicated docs page](/features/tldr) covering setup, configuration, and examples.
 
@@ -102,7 +131,7 @@ For day-by-day details, see the entries below.
 
 **Starboard moved to Community Tools** — Starboard settings now live under **Community Tools** in the [dashboard](/dashboard) instead of **Moderation & Safety**, grouping it with other member-facing utilities.
 
-**Version label in the dashboard** — The dashboard sidebar and landing footer now display the current Volvox.Bot version, making it easier to confirm which build you are on.
+**Version label in the dashboard** — The dashboard sidebar and landing footer now display the current Volvox.Bot version, making it easier to confirm which build you're on.
 </Update>
 
 <Update label="2026-04-23" description="April 2026" tags={["Fixes"]}>
@@ -122,7 +151,7 @@ For day-by-day details, see the entries below.
 
 **Role-based triage filtering** — You can now control which users the AI responds to by role. Set allowed roles (whitelist) or excluded roles (blacklist) in your AI Automation settings. Bot, webhook, and system messages are automatically filtered out.
 
-**Configurable level-up DMs** — Server admins can set custom DM messages sent to members when they level up. Supports per-level message overrides, a live Discord-style preview, and built-in rate limiting to prevent spam.
+**Configurable level-up DMs** — You can now set custom DM messages sent to members when they level up. Supports per-level message overrides, a live Discord-style preview, and built-in rate limiting to prevent spam.
 
 **Discord markdown editor** — A new rich-text editor for Discord-formatted messages is available in the dashboard. Includes a formatting toolbar, variable inserter, split raw/preview mode, character counter, and keyboard shortcuts.
 
@@ -130,11 +159,11 @@ For day-by-day details, see the entries below.
 
 **Dashboard permission controls** — The dashboard now enforces role-based access. Viewers get read-only access, moderators can manage moderation features, and admins have full control.
 
-**Guild-scoped log viewer** — The log viewer now shows logs scoped to your current server. A new channel filter lets you narrow the live log stream to specific Discord channels.
+**Server-scoped log viewer** — The log viewer now shows logs scoped to your current server. A new channel filter lets you narrow the live log stream to specific Discord channels.
 
 ## Improvements
 
-**Landing page redesign** — The landing page has been completely rebuilt with a new visual style, interactive feature previews in a bento-box grid, animated stats, and a redesigned pricing section.
+**Landing page redesign** — We completely rebuilt the landing page with a new visual style, interactive feature previews in a bento-box grid, animated stats, and a redesigned pricing section.
 
 **Dashboard polish** — Row hover highlighting on tables, animated KPI counters, visible heatmap tooltips, clickable member rows, corrected XP progress bars, and a live commands-served counter. Thin scrollbars on all inputs and dropdowns for a cleaner look.
 
@@ -146,11 +175,11 @@ For day-by-day details, see the entries below.
 
 **OpenGraph previews** — Sharing Volvox.Bot links now shows rich previews on social media, Discord, and Slack. A sitemap and robots.txt have been added for better search engine discoverability.
 
-**Branding update** — All visible branding has been standardized to "Volvox.Bot" across the product.
+**Branding update** — We standardized all visible branding to "Volvox.Bot" across the product.
 
 ## Fixes
 
 **More reliable bot responses** — Command responses across reminders, moderation, reaction roles, and other features now handle failures gracefully (e.g., blocked DMs or deleted channels) instead of silently failing.
 
-**Bot owners setting removed** — The "Bot Owners" editor was removed from dashboard Permissions settings. Bot ownership is now managed via environment configuration only.
+**Bot owners setting removed** — We removed the "Bot Owners" editor from dashboard Permissions settings. Bot ownership is now managed via environment configuration only.
 </Update>

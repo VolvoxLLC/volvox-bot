@@ -1,6 +1,7 @@
 ---
-title: Permissions
-description: 'How Volvox.Bot uses Discord permissions and dashboard access control'
+title: Discord Permissions and Dashboard Access Control
+sidebarTitle: Permissions
+description: 'Understand the Discord permissions Volvox.Bot requires and how dashboard role-based access control protects server settings and member data.'
 ---
 
 # Permissions
@@ -36,3 +37,30 @@ Configure who has access in **Settings → Dashboard Access**:
 ## Per-feature permissions
 
 Each feature can be restricted to specific roles. For example, you can allow all moderators to view the audit log but restrict config changes to admins only.
+
+## Global admin access
+
+Some dashboard pages expose infrastructure-level data that isn't tied to a single server. These pages are reserved for **global admins** — operators of the Volvox.Bot deployment itself, not server admins.
+
+### What requires global admin
+
+The following dashboard pages and APIs are restricted to global admins:
+
+- **Performance** (`/dashboard/performance`) — Bot uptime, latency, and resource trends across all guilds.
+- **Logs** (`/dashboard/logs`) — Live log stream and the underlying log-stream WebSocket ticket endpoint.
+
+If you aren't a global admin, these entries are hidden from the sidebar and visiting their URLs redirects you back to the dashboard. All other dashboard features (moderation, tickets, AI, analytics, configuration) continue to follow your per-server role.
+
+### Configuring global admins
+
+Global admins are set via the `BOT_OWNER_IDS` environment variable on the server running the bot and dashboard. Provide a comma-separated list of Discord user IDs:
+
+```bash
+BOT_OWNER_IDS=123456789012345678,987654321098765432
+```
+
+Each ID must be a Discord user ID (snowflake) for an account that signs in to the dashboard with Discord OAuth. Changes take effect after the dashboard process is restarted.
+
+<Callout type="info">
+Global admin status is independent of any server's roles. A user listed in `BOT_OWNER_IDS` only gains access to the operator-only pages above — they are still bound by normal Discord permissions for the servers they belong to.
+</Callout>

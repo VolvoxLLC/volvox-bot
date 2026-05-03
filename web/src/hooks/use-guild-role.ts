@@ -27,7 +27,6 @@ export type GuildDashboardRole = 'owner' | 'admin' | 'moderator' | 'viewer';
  */
 export function getGuildDashboardRole(guild: MutualGuild): GuildDashboardRole {
   if (guild.access === 'owner' || guild.owner) return 'owner';
-  if (guild.access === 'bot-owner') return 'admin';
   if (guild.access === 'admin') return 'admin';
   if (guild.access === 'moderator') return 'moderator';
   if (guild.access === 'viewer') return 'viewer';

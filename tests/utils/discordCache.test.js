@@ -84,11 +84,10 @@ describe('discordCache.js', () => {
 
     it('returns a rechecked Discord.js cache hit after metadata lookup', async () => {
       const mockChannel = { id: '789', name: 'alerts', type: 0 };
-      const cacheStore = new Map();
       const client = {
         channels: {
           cache: {
-            get: vi.fn((channelId) => cacheStore.get(channelId)),
+            get: vi.fn(),
           },
           fetch: vi.fn(),
         },
@@ -272,12 +271,11 @@ describe('discordCache.js', () => {
 
     it('rechecks the Discord.js member cache after a metadata hit', async () => {
       const cachedMember = { id: 'member-2', displayName: 'Member Two' };
-      const memberCache = new Map();
       const guild = {
         id: 'guild-cache',
         members: {
           cache: {
-            get: vi.fn((userId) => memberCache.get(userId)),
+            get: vi.fn(),
           },
           fetch: vi.fn(),
         },

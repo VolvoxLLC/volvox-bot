@@ -1,8 +1,9 @@
 import { createHmac, randomBytes } from 'node:crypto';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { authorizeGuildAdmin } from '@/lib/bot-api-proxy';
+import { authorizeRequestGlobalAdmin } from '@/lib/global-admin';
 import { logger } from '@/lib/logger';
+import { trimTrailingSlashes } from '@/lib/url';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,7 +30,7 @@ function createTicket(secret: string, guildId: string): string {
 /**
  * Returns WebSocket connection info for the log stream.
  *
- * Validates the session and guild-level authorization, generates a short-lived
+ * Validates the session with global-admin authorization, generates a short-lived
  * HMAC ticket, and returns the WS URL + ticket. The raw BOT_API_SECRET never
  * leaves the server.
  */
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Missing guildId' }, { status: 400 });
   }
 
-  const authError = await authorizeGuildAdmin(request, guildId, '[api/logs/ws-ticket]');
+  const authError = await authorizeRequestGlobalAdmin(request);
   if (authError) return authError;
 
   const botApiUrl = process.env.BOT_API_URL;
@@ -53,7 +54,7 @@ export async function GET(request: NextRequest) {
   // Convert http(s):// to ws(s):// for WebSocket connection
   let wsUrl: string;
   try {
-    const url = new URL(botApiUrl.replace(/\/+$/, ''));
+    const url = new URL(trimTrailingSlashes(botApiUrl));
     url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
     wsUrl = `${url.origin}/ws/logs`;
   } catch {

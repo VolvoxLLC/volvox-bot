@@ -78,6 +78,7 @@ import {
 } from '../../src/modules/triage.js';
 import { channelBuffers } from '../../src/modules/triage-buffer.js';
 import { safeSend } from '../../src/utils/safeSend.js';
+import { makeMemberWithRoles } from '../utils/triageRoleMocks.js';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -470,21 +471,7 @@ describe('triage module', () => {
         guild: { id: 'g1' },
       });
       // Mock member with excluded role
-      msg.member = {
-        guild: { id: 'g1' },
-        roles: {
-          cache: {
-            filter: (fn) => {
-              const roles = [
-                { id: 'g1', name: '@everyone' },
-                { id: 'bot-role', name: 'Bot' },
-              ];
-              const filtered = roles.filter(fn);
-              return { map: (mapFn) => filtered.map(mapFn) };
-            },
-          },
-        },
-      };
+      msg.member = makeMemberWithRoles([{ id: 'bot-role', name: 'Bot' }]);
 
       accumulateMessage(msg, roleConfig);
       await evaluateNow('ch1', roleConfig, client, healthMonitor);
@@ -512,21 +499,7 @@ describe('triage module', () => {
       });
       msg.type = 0; // MessageType.Default
       // Mock member with allowed role
-      msg.member = {
-        guild: { id: 'g1' },
-        roles: {
-          cache: {
-            filter: (fn) => {
-              const roles = [
-                { id: 'g1', name: '@everyone' },
-                { id: 'vip-role', name: 'VIP' },
-              ];
-              const filtered = roles.filter(fn);
-              return { map: (mapFn) => filtered.map(mapFn) };
-            },
-          },
-        },
-      };
+      msg.member = makeMemberWithRoles([{ id: 'vip-role', name: 'VIP' }]);
 
       accumulateMessage(msg, roleConfig);
       await evaluateNow('ch1', roleConfig, client, healthMonitor);
@@ -546,21 +519,7 @@ describe('triage module', () => {
         guild: { id: 'g1' },
       });
       // Mock member without the allowed role
-      msg.member = {
-        guild: { id: 'g1' },
-        roles: {
-          cache: {
-            filter: (fn) => {
-              const roles = [
-                { id: 'g1', name: '@everyone' },
-                { id: 'other-role', name: 'Other' },
-              ];
-              const filtered = roles.filter(fn);
-              return { map: (mapFn) => filtered.map(mapFn) };
-            },
-          },
-        },
-      };
+      msg.member = makeMemberWithRoles([{ id: 'other-role', name: 'Other' }]);
 
       accumulateMessage(msg, roleConfig);
       await evaluateNow('ch1', roleConfig, client, healthMonitor);
@@ -580,18 +539,7 @@ describe('triage module', () => {
         guild: { id: 'g1' },
       });
       // Mock member with no roles (only @everyone, which gets filtered out)
-      msg.member = {
-        guild: { id: 'g1' },
-        roles: {
-          cache: {
-            filter: (fn) => {
-              const roles = [{ id: 'g1', name: '@everyone' }];
-              const filtered = roles.filter(fn);
-              return { map: (mapFn) => filtered.map(mapFn) };
-            },
-          },
-        },
-      };
+      msg.member = makeMemberWithRoles([]);
 
       accumulateMessage(msg, roleConfig);
       await evaluateNow('ch1', roleConfig, client, healthMonitor);

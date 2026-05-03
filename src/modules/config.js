@@ -1068,6 +1068,32 @@ function isPlainObject(val) {
  * @param {string} value - String value to parse
  * @returns {*} Parsed value
  */
+function isAsciiDigit(char) {
+  return char >= '0' && char <= '9';
+}
+
+function isDecimalNumberLiteral(value) {
+  if (!value) return false;
+
+  let index = value[0] === '-' ? 1 : 0;
+  let digits = 0;
+
+  while (index < value.length && isAsciiDigit(value[index])) {
+    digits += 1;
+    index += 1;
+  }
+
+  if (value[index] === '.') {
+    index += 1;
+    while (index < value.length && isAsciiDigit(value[index])) {
+      digits += 1;
+      index += 1;
+    }
+  }
+
+  return digits > 0 && index === value.length;
+}
+
 function parseValue(value) {
   if (typeof value !== 'string') return value;
 
@@ -1080,7 +1106,7 @@ function parseValue(value) {
 
   // Numbers (keep as string if beyond safe integer range to avoid precision loss)
   // Matches: 123, -123, 1.5, -1.5, 1., .5, -.5
-  if (/^-?(\d+\.?\d*|\.\d+)$/.test(value)) {
+  if (isDecimalNumberLiteral(value)) {
     const num = Number(value);
     if (!Number.isFinite(num)) return value;
     if (!value.includes('.') && !Number.isSafeInteger(num)) return value;

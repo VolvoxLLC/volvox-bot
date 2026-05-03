@@ -1,6 +1,7 @@
 ---
-title: Moderation
-description: 'Auto-moderation, warnings, bans, timeouts, and case management'
+title: Active Sentry Auto-Moderation and Case Management
+sidebarTitle: Moderation
+description: 'Active Sentry automates Discord moderation with spam filters, warnings, bans, timeouts, and a full case management system inside the dashboard.'
 ---
 
 # Moderation (Active Sentry)
@@ -10,7 +11,7 @@ Active Sentry is Volvox.Bot's moderation engine. It runs automatically and can b
 ## What it does
 
 - **Auto-moderation** — Automatically detect and act on spam, slurs, invite links, and more
-- **Content Safety** — Score incoming messages for toxicity, spam, harassment, hate speech, sexual content, violence, and self-harm, then run the configured actions when a score meets its threshold
+- **Content Safety** — Score incoming messages for toxicity, spam, harassment, hate speech, sexual content, violence, and self-harm. The bot runs the configured actions when a score meets its threshold
 - **Warnings** — Issue warnings that accumulate and trigger escalating actions
 - **Bans & Kicks** — Full ban and kick support with reason tracking
 - **Timeouts** — Discord native timeouts with configurable durations
@@ -50,7 +51,7 @@ AI moderation settings are in **Config → Moderation & Safety → Content Safet
 | Sensitivity thresholds | Per-category score required before action runs |
 | Response actions | Choose any combination of flag, delete, warn, timeout, kick, or ban per category. Leave a category empty to skip category-specific responses. `warn` creates a warning record, sends the warning DM when enabled, and checks escalation rules. |
 
-Every triggered AI moderation response is recorded in the audit log as `ai_automod.<action>` for each action that actually runs. `ai_automod.none` is recorded only when a threshold is hit and no action runs; global instant enforcement (`autoDelete`) or an incident report channel (`flagChannelId`) can still produce delete or flag actions even when no category-specific response action is selected.
+Every triggered AI moderation response is recorded in the audit log as `ai_automod.<action>` for each action that actually runs. `ai_automod.none` is recorded only when a threshold is hit and no action runs. Global instant enforcement (`autoDelete`) or an incident report channel (`flagChannelId`) can still produce delete or flag actions even when no category-specific response action is selected.
 
 Triage model settings are in **Config → AI & Automation → Triage**. The classifier and response engines use the same supported model dropdown as Content Safety; custom model strings are rejected.
 

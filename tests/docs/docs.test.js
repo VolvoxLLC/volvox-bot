@@ -248,7 +248,7 @@ describe('docs/wiki-pages/Home.md', () => {
   });
 
   it('contains a link to Manual-Test-Plan', () => {
-    expect(content).toContain('[Manual Test Plan](Manual-Test-Plan)');
+    expect(content).toContain('[Manual Test Plan](./Manual-Test-Plan.md)');
   });
 
   it('includes Manual-Test-Plan in the recommended path steps', () => {
@@ -272,9 +272,9 @@ describe('docs/wiki-pages/Home.md', () => {
 
   it('retains existing links (Configuration Reference, Operations Runbook, Troubleshooting)', () => {
     expectContainsAll(content, [
-      '[Configuration Reference](Configuration-Reference)',
-      '[Operations Runbook](Operations-Runbook)',
-      '[Troubleshooting](Troubleshooting)',
+      '[Configuration Reference](./Configuration-Reference.md)',
+      '[Operations Runbook](./Operations-Runbook.md)',
+      '[Troubleshooting](./Troubleshooting.md)',
     ]);
   });
 
@@ -312,8 +312,8 @@ describe('docs/wiki-pages/Manual-Test-Plan.md', () => {
     expect(existsSync(planPath)).toBe(true);
   });
 
-  it('has a top-level heading "Volvox.Bot Manual Test Plan"', () => {
-    expect(content.split('\n')).toContain('# Volvox.Bot Manual Test Plan');
+  it('has a top-level heading "Volvox Bot Manual Test Plan"', () => {
+    expect(content.split('\n')).toContain('# Volvox Bot Manual Test Plan');
   });
 
   it('contains a "Last updated" date field', () => {

@@ -23,13 +23,18 @@ RUN addgroup --system --gid 1001 botgroup && \
 COPY --from=deps --chown=botuser:botgroup /app/node_modules ./node_modules
 
 # Copy application source, config, and migrations
-COPY --chown=botuser:botgroup package.json ./
-COPY --chown=botuser:botgroup config.json ./
+COPY --chown=botuser:botgroup --chmod=0444 package.json ./
+COPY --chown=botuser:botgroup --chmod=0444 config.json ./
 COPY --chown=botuser:botgroup src/ ./src/
 COPY --chown=botuser:botgroup migrations/ ./migrations/
 
-# Create data directory for state persistence
-RUN mkdir -p data && chown botuser:botgroup data
+# Keep immutable application files read-only; data remains writable for state persistence.
+RUN chmod -R a-w node_modules && \
+    find src migrations -type d -exec chmod 0555 {} + && \
+    find src migrations -type f -exec chmod 0444 {} + && \
+    mkdir -p data logs && \
+    chown botuser:botgroup data logs && \
+    chmod 0700 data logs
 
 USER botuser
 

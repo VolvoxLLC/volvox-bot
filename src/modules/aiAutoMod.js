@@ -206,6 +206,90 @@ function normalizeReason(reason) {
 }
 
 /**
+ * Extract the first balanced JSON object substring from provider output.
+ *
+ * The scanner is string-aware so braces inside JSON strings do not affect nesting, and escaped
+ * quotes do not incorrectly terminate strings.
+ *
+ * @param {string} text - Provider output that may contain a JSON object plus surrounding text.
+ * @returns {string|null} The first balanced object substring, or null when none is found.
+ */
+export function extractFirstBalancedJsonObject(text) {
+  if (typeof text !== 'string') return null;
+
+  let start = -1;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i];
+
+    if (start === -1) {
+      if (char === '{') {
+        start = i;
+        depth = 1;
+      }
+      continue;
+    }
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (char === '\\') {
+        escaped = true;
+      } else if (char === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+    } else if (char === '{') {
+      depth += 1;
+    } else if (char === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        return text.slice(start, i + 1);
+      }
+    }
+  }
+
+  return null;
+}
+
+function parseAiModerationResponse(text, model) {
+  try {
+    const jsonPayload = extractFirstBalancedJsonObject(text);
+    if (!jsonPayload) {
+      throw new Error('No balanced JSON object found in AI response');
+    }
+    return JSON.parse(jsonPayload);
+  } catch {
+    logError('AI auto-mod: failed to parse AI response', {
+      model,
+      text,
+    });
+    return null;
+  }
+}
+
+function buildParseErrorResult() {
+  // Fail closed on malformed provider output so suspicious content is still routed for review
+  // instead of silently bypassing moderation when the AI response cannot be trusted.
+  return {
+    flagged: true,
+    scores: buildScoreObject(0),
+    categories: [],
+    reason: 'Parse error',
+    action: 'none',
+    actions: [],
+    actionsByCategory: {},
+  };
+}
+
+/**
  * Analyze a message using the configured AI provider.
  * Returns scores and recommendations for moderation actions.
  *
@@ -260,26 +344,8 @@ ${responseShape}
   });
 
   const text = response.text ?? '{}';
-
-  let parsed;
-  try {
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
-  } catch {
-    logError('AI auto-mod: failed to parse AI response', {
-      model: mergedConfig.model ?? DEFAULTS.model,
-      text,
-    });
-    return {
-      flagged: false,
-      scores: buildScoreObject(0),
-      categories: [],
-      reason: 'Parse error',
-      action: 'none',
-      actions: [],
-      actionsByCategory: {},
-    };
-  }
+  const parsed = parseAiModerationResponse(text, mergedConfig.model ?? DEFAULTS.model);
+  if (!parsed) return buildParseErrorResult();
 
   const scores = Object.fromEntries(
     AI_AUTOMOD_CATEGORIES.map(({ key }) => [key, normalizeScore(parsed, key)]),
