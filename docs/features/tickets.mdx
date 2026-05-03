@@ -1,7 +1,7 @@
 ---
 title: Discord Support Tickets and Transcripts
 sidebarTitle: Tickets
-description: 'Run a Discord support ticket system with Volvox.Bot — ticket panels, multi-category routing, private channels, automatic transcripts, and dashboard tools.'
+description: 'Run a Discord support ticket system with Volvox.Bot — ticket panels, a root category, private channels, automatic transcripts, and dashboard tools.'
 ---
 
 # Tickets
@@ -11,7 +11,7 @@ A built-in support ticket system for your Discord server. Your members can open 
 ## What it does
 
 - **Ticket creation** — Your members open tickets via a panel or command
-- **Categories** — Organize tickets by type (support, bug, appeal, etc.)
+- **Ticket location** — Create ticket channels under one configured category
 - **Transcripts** — The bot saves a transcript automatically when a ticket closes
 
 ## How to use
@@ -23,15 +23,15 @@ A built-in support ticket system for your Discord server. Your members can open 
 5. The bot saves the transcript so you can view it in the dashboard
 
 <Callout type="tip">
-Set up multiple categories and staff roles so the bot routes tickets to the right team automatically.
+Choose the ticket category and support role so new tickets land where your team expects.
 </Callout>
 
 ## Configuration
 
 | Setting | Description |
 |---------|-------------|
-| Ticket categories | Define ticket types and their channels |
+| Ticket category | Root category where the bot creates ticket channels |
 | Auto-close | Automatically close stale tickets after N hours |
 | Transcript channel | Where the bot posts transcripts |
-| Staff roles | Which roles can see and manage tickets |
+| Support role | Which role can see and manage tickets |
 | Welcome message | The message the bot sends automatically when a ticket opens |
