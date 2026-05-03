@@ -191,8 +191,8 @@ describe('docs/manual-test-plan.mdx', () => {
     expect(descriptionLine.slice(descriptionPrefix.length, -1).trim().length).toBeGreaterThan(0);
   });
 
-  it('has a top-level # Manual Test Plan heading', () => {
-    expect(content.split('\n')).toContain('# Manual Test Plan');
+  it('has a top-level # Manual test plan heading', () => {
+    expect(content.split('\n')).toContain('# Manual test plan');
   });
 
   it('contains link to the rendered GitHub wiki page', () => {
@@ -218,8 +218,8 @@ describe('docs/manual-test-plan.mdx', () => {
     });
   }
 
-  it('has a "Publish to GitHub Wiki" section', () => {
-    expect(content).toContain('## Publish to GitHub Wiki');
+  it('has a "Publish to GitHub wiki" section', () => {
+    expect(content).toContain('## Publish to GitHub wiki');
   });
 
   it('instructs to include Manual-Test-Plan.md when publishing', () => {
