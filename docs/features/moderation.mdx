@@ -6,12 +6,12 @@ description: 'Active Sentry handles Discord auto-moderation with AI content safe
 
 # Moderation (Active Sentry)
 
-Active Sentry is Volvox.Bot's moderation engine. It runs automatically and can be configured from the dashboard.
+Active Sentry is Volvox.Bot's moderation engine. It runs automatically, and you can configure it from the dashboard.
 
 ## What it does
 
 - **Auto-moderation** — Automatically detect and act on spam, slurs, invite links, and more
-- **Content Safety** — Score incoming messages for toxicity, spam, harassment, hate speech, sexual content, violence, and self-harm. The bot runs the configured actions when a score meets its threshold
+- **Content Safety** — Score incoming messages for toxicity, spam, harassment, hate speech, sexual content, violence, and self-harm. The bot runs your configured actions when a score meets its threshold
 - **Warnings** — Issue warnings that accumulate and trigger escalating actions
 - **Bans & Kicks** — Full ban and kick support with reason tracking
 - **Timeouts** — Discord native timeouts with configurable durations
@@ -39,20 +39,20 @@ All moderation settings are in **Config → Moderation & Safety → Moderation**
 | Spam threshold | Messages per minute before flagging |
 | Word filter | Custom list of blocked words |
 | Invite blocking | Block Discord invite links |
-| Log channel | Where moderation actions are posted |
+| Log channel | Where the bot posts moderation actions |
 
 AI moderation settings are in **Config → Moderation & Safety → Content Safety**:
 
 | Setting | Description |
 |---------|-------------|
 | Detection model | The supported provider/model used to score incoming messages |
-| Incident report channel | Where flagged AI moderation reports are posted |
+| Incident report channel | Where the bot posts flagged AI moderation reports |
 | Instant enforcement | Global auto-delete for messages that trigger AI moderation |
 | Sensitivity thresholds | Per-category score required before action runs |
-| Response actions | Choose any combination of flag, delete, warn, timeout, kick, or ban per category. Leave a category empty to skip category-specific responses. `warn` creates a warning record, sends the warning DM when enabled, and checks escalation rules. |
+| Response actions | Choose any combination of flag, delete, warn, timeout, kick, or ban per category. Leave a category empty to skip category-specific responses. `warn` creates a warning record, sends the warning DM when enabled, and checks your escalation rules. |
 
-The audit log records every triggered AI moderation response as `ai_automod.<action>` for each action that actually runs. It records `ai_automod.none` only when a threshold is hit but no action runs. Global instant enforcement (`autoDelete`) or an incident report channel (`flagChannelId`) can still trigger delete or flag actions, even if you haven't selected a category-specific response.
+The bot records every triggered AI moderation response in the audit log as `ai_automod.<action>` for each action that actually runs. The bot only records `ai_automod.none` when a threshold is hit and no action runs. Global instant enforcement (`autoDelete`) or an incident report channel (`flagChannelId`) can still produce delete or flag actions, even when you haven't chosen a category-specific response action.
 
-Triage model settings are in **Config → AI & Automation → Triage**. Triage uses the same supported model dropdown as Content Safety for both classification and responses — you can't enter a custom model string.
+Triage model settings are in **Config → AI & Automation → Triage**. The classifier and response engines use the same supported model dropdown as Content Safety; the bot rejects custom model strings.
 
 Changes apply instantly — no bot restart needed.
