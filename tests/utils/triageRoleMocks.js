@@ -10,12 +10,12 @@
 
 /**
  * @typedef {object} MockRoleCollection
- * @property {(mapper: (role: MockRole, index: number, array: MockRole[]) => unknown) => unknown[]} map
+ * @property {(predicate: (role: MockRole, key: string, collection: MockRoleCollection) => boolean) => MockRoleCollection} filter
+ * @property {(mapper: (role: MockRole, key: string, collection: MockRoleCollection) => unknown) => unknown[]} map
  */
 
 /**
- * @typedef {object} MockRoleCache
- * @property {(predicate: (role: MockRole, index: number, array: MockRole[]) => boolean) => MockRoleCollection} filter
+ * @typedef {MockRoleCollection} MockRoleCache
  */
 
 /**
@@ -38,6 +38,21 @@ function normalizeRole(roleDef) {
 }
 
 /**
+ * Create a small Discord.js Collection-shaped wrapper for role mocks.
+ * @param {MockRole[]} roles - Role mocks keyed by role ID.
+ * @returns {MockRoleCollection}
+ */
+function makeRoleCollection(roles) {
+  const collection = {
+    filter: (predicate) =>
+      makeRoleCollection(roles.filter((role) => predicate(role, role.id, collection))),
+    map: (mapper) => roles.map((role) => mapper(role, role.id, collection)),
+  };
+
+  return collection;
+}
+
+/**
  * Create a minimal Discord.js-like role cache that supports filter().map().
  * The guild ID role is included as @everyone so production eligibility code can filter it out.
  * @param {MockRoleDefinition[]} roleDefs - Role IDs or role-like objects assigned to the member.
@@ -47,14 +62,7 @@ function normalizeRole(roleDef) {
 export function makeRoleCache(roleDefs, guildId = 'g1') {
   const roles = [{ id: guildId, name: '@everyone' }, ...roleDefs.map(normalizeRole)];
 
-  return {
-    filter: (predicate) => {
-      const filtered = roles.filter((role, index, array) => predicate(role, index, array));
-      return {
-        map: (mapper) => filtered.map((role, index, array) => mapper(role, index, array)),
-      };
-    },
-  };
+  return makeRoleCollection(roles);
 }
 
 /**
@@ -63,7 +71,7 @@ export function makeRoleCache(roleDefs, guildId = 'g1') {
  * @param {string} [guildId='g1'] - Guild ID used for the member and @everyone role.
  * @returns {MockGuildMember}
  */
-export function makeMemberWithRoles(roleDefs, guildId = 'g1') {
+function makeMemberWithRoles(roleDefs, guildId = 'g1') {
   return {
     guild: { id: guildId },
     roles: { cache: makeRoleCache(roleDefs, guildId) },
