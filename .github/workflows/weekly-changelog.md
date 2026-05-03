@@ -80,7 +80,7 @@ Rules:
 - `label` must be the ISO week string (e.g., `2026-W18`). Zero-pad single-digit weeks.
 - `description` uses the Monday–Friday date range of the week (not Monday–Sunday).
 - `tags` is always `{["Weekly recap"]}`.
-- List each notable change as a `**bold heading** — one sentence` bullet.
+- Format each notable change as a standalone paragraph: `**bold heading** — one sentence`.
 - Link to relevant Mintlify docs pages using relative paths (e.g., `/features/moderation`,
   `/dashboard`, `/features/tldr`).
 - End with `For day-by-day details, see the entries below.`
