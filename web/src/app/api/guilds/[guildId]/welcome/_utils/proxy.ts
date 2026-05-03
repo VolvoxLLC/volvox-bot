@@ -42,9 +42,5 @@ export async function proxyWelcomeRequest({
   );
   if (upstreamUrl instanceof NextResponse) return upstreamUrl;
 
-  if (proxyOptions) {
-    return proxyToBotApi(upstreamUrl, apiConfig.secret, logPrefix, errorMessage, proxyOptions);
-  }
-
-  return proxyToBotApi(upstreamUrl, apiConfig.secret, logPrefix, errorMessage);
+  return proxyToBotApi(upstreamUrl, apiConfig.secret, logPrefix, errorMessage, proxyOptions);
 }

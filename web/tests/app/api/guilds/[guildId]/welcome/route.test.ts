@@ -65,7 +65,7 @@ function expectWelcomeProxy({
     BOT_API_SECRET,
     routeLabel,
     failureMessage,
-    ...(proxyOptions ? [proxyOptions] : []),
+    proxyOptions,
   );
 }
 

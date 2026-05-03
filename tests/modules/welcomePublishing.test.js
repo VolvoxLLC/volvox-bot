@@ -472,19 +472,20 @@ describe('welcomePublishing module', () => {
     });
   });
 
-  it('surfaces persistence warnings when the database pool is unavailable', async () => {
-    resolveRulesChannel();
-    mockSuccessfulSend();
+  it('skips Discord publishing when stored publication state cannot be read', async () => {
     getPool.mockImplementation(() => {
       throw new Error('pool unavailable');
     });
 
     await expect(publishRules()).resolves.toMatchObject({
-      status: 'posted',
-      messageId: SENT_MESSAGE,
-      persistWarning: true,
-      lastError: STATE_WARNING,
+      status: 'failed',
+      action: 'failed',
+      messageId: null,
+      lastError:
+        'Unable to read stored welcome publication state; publish was skipped to avoid duplicate Discord messages.',
     });
+    expect(fetchChannelCached).not.toHaveBeenCalled();
+    expect(safeSend).not.toHaveBeenCalled();
   });
 
   it('records failed status when Discord publish throws', async () => {

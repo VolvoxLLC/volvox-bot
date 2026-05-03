@@ -117,7 +117,13 @@ function getWelcomePublishFailureMessage(
   const results = Array.isArray(data?.results) ? data.results : [];
   const failed = results.filter((entry) => entry.status === 'failed');
   const posted = results.filter((entry) => entry.status === 'posted');
-  if (failed.length === 0 && posted.length > 0) return null;
+  const unconfigured = results.filter((entry) => entry.status === 'unconfigured');
+  if (
+    failed.length === 0 &&
+    (posted.length > 0 || (results.length > 0 && unconfigured.length === results.length))
+  ) {
+    return null;
+  }
 
   if (failed.length > 0) {
     return failed
@@ -167,6 +173,11 @@ function getWelcomePublishInfoMessage(
 ) {
   if (panelType && data?.status === 'unconfigured') {
     return 'Panel is not configured — set a channel first.';
+  }
+
+  const results = Array.isArray(data?.results) ? data.results : [];
+  if (results.length > 0 && results.every((entry) => entry.status === 'unconfigured')) {
+    return 'No welcome panels are configured — set channels first.';
   }
 
   return null;
@@ -415,6 +426,7 @@ export function OnboardingGrowthCategory() {
         toast.error('Failed to publish welcome panel', {
           description: error instanceof Error ? error.message : 'A network error occurred.',
         });
+        await fetchWelcomeStatus().catch(() => undefined);
       } finally {
         if (isInitiatingGuildSelected()) {
           setWelcomePublishing(null);

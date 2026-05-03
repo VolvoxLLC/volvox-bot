@@ -76,16 +76,18 @@ export function hashWelcomePanelConfig(panelType, welcomeConfig = {}) {
   return createHash('sha256').update(stableStringify(relevant)).digest('hex');
 }
 
-function getPublicationPool() {
+function getPublicationPool({ throwOnError = false } = {}) {
   try {
     return getPool();
-  } catch {
+  } catch (err) {
+    warn('Database pool unavailable for welcome publications', { error: err?.message });
+    if (throwOnError) throw err;
     return null;
   }
 }
 
-async function getStoredPublication(guildId, panelType) {
-  const pool = getPublicationPool();
+async function getStoredPublication(guildId, panelType, { requirePool = false } = {}) {
+  const pool = getPublicationPool({ throwOnError: requirePool });
   if (!pool) return null;
 
   const { rows } = await pool.query(
@@ -239,7 +241,28 @@ export async function publishWelcomePanel(client, guildId, panelType, actor = {}
     };
   }
 
-  const stored = await getStoredPublication(guildId, panelType).catch(() => null);
+  let stored;
+  try {
+    stored = await getStoredPublication(guildId, panelType, { requirePool: true });
+  } catch (err) {
+    const lastError =
+      'Unable to read stored welcome publication state; publish was skipped to avoid duplicate Discord messages.';
+    warn('Failed to read stored welcome publication before publishing', {
+      guildId,
+      panelType,
+      error: err.message,
+    });
+    return {
+      panelType,
+      status: 'failed',
+      configured: true,
+      channelId: payload.channelId,
+      messageId: null,
+      action: 'failed',
+      lastError,
+    };
+  }
+
   const storedChannelId = stored?.channel_id ?? payload.channelId;
   const storedMessageId = stored?.message_id ?? null;
 

@@ -733,6 +733,125 @@ describe('OnboardingGrowthCategory', () => {
     expect(toast.success).not.toHaveBeenCalledWith('Welcome panel published');
   });
 
+  it('uses an info toast instead of an error when bulk publish finds no configured panels', async () => {
+    const user = userEvent.setup();
+    const statusResponse = {
+      guildId: 'guild-1',
+      panels: {
+        rules: {
+          status: 'unconfigured',
+          configured: false,
+          channelId: null,
+          configuredChannelId: null,
+          messageId: null,
+          stale: false,
+        },
+        role_menu: {
+          status: 'unconfigured',
+          configured: false,
+          channelId: null,
+          configuredChannelId: null,
+          messageId: null,
+          stale: false,
+        },
+      },
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(Response.json(statusResponse))
+        .mockResolvedValueOnce(
+          Response.json({
+            results: [
+              { panelType: 'rules', status: 'unconfigured' },
+              { panelType: 'role_menu', status: 'unconfigured' },
+            ],
+          }),
+        )
+        .mockResolvedValueOnce(Response.json(statusResponse)),
+    );
+    mockWelcomeContext({ draftConfig: createWelcomeDraftConfig({ dynamic: { enabled: false } }) });
+
+    render(<OnboardingGrowthCategory />);
+
+    await screen.findAllByText('No channel configured');
+    await user.click(screen.getByRole('button', { name: 'Publish All' }));
+
+    await waitFor(() => {
+      expect(toast.info).toHaveBeenCalledWith(
+        'No welcome panels are configured — set channels first.',
+      );
+    });
+    expect(toast.error).not.toHaveBeenCalledWith('Failed to publish welcome panel', expect.anything());
+    expect(toast.success).not.toHaveBeenCalledWith('Welcome panels published');
+  });
+
+  it('refreshes welcome status after a partial bulk publish error', async () => {
+    const user = userEvent.setup();
+    const initialStatusResponse = {
+      guildId: 'guild-1',
+      panels: {
+        rules: {
+          status: 'missing',
+          configured: true,
+          channelId: 'rules-channel',
+          configuredChannelId: 'rules-channel',
+          messageId: null,
+          stale: false,
+        },
+        role_menu: {
+          status: 'missing',
+          configured: true,
+          channelId: 'welcome-channel',
+          configuredChannelId: 'welcome-channel',
+          messageId: null,
+          stale: false,
+        },
+      },
+    };
+    const refreshedStatusResponse = {
+      guildId: 'guild-1',
+      panels: {
+        ...initialStatusResponse.panels,
+        rules: {
+          ...initialStatusResponse.panels.rules,
+          status: 'posted',
+          messageId: 'message-1',
+        },
+      },
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json(initialStatusResponse))
+      .mockResolvedValueOnce(
+        Response.json({
+          results: [
+            { panelType: 'rules', status: 'posted' },
+            { panelType: 'role_menu', status: 'failed', lastError: 'Missing channel' },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(Response.json(refreshedStatusResponse));
+    vi.stubGlobal('fetch', fetchMock);
+    mockWelcomeContext({ draftConfig: createWelcomeDraftConfig({ dynamic: { enabled: false } }) });
+
+    render(<OnboardingGrowthCategory />);
+
+    await screen.findByText('#rules');
+    await user.click(screen.getByRole('button', { name: 'Publish All' }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Failed to publish welcome panel', {
+        description: 'role menu: Missing channel',
+      });
+    });
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+    });
+    expect(fetchMock.mock.calls[2]?.[0]).toBe('/api/guilds/guild-1/welcome/status');
+  });
+
   it('shows a warning toast when a single panel publishes but persistence fails', async () => {
     const user = userEvent.setup();
     const persistWarning = 'Published to Discord but failed to save publication state.';

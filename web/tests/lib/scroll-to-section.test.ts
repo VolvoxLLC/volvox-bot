@@ -4,13 +4,14 @@ import { scrollToLandingSection } from '@/lib/scroll-to-section';
 describe('scrollToLandingSection', () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
     document.body.innerHTML = '';
   });
 
   it('scrolls to an element by id', () => {
     vi.spyOn(globalThis, 'scrollTo').mockImplementation(() => {});
-    Object.defineProperty(globalThis, 'innerWidth', { configurable: true, value: 1024 });
-    Object.defineProperty(globalThis, 'scrollY', { configurable: true, value: 25 });
+    vi.stubGlobal('innerWidth', 1024);
+    vi.stubGlobal('scrollY', 25);
     vi.spyOn(globalThis, 'matchMedia').mockReturnValue({ matches: false } as MediaQueryList);
 
     const section = document.createElement('section');
@@ -34,8 +35,8 @@ describe('scrollToLandingSection', () => {
 
   it('uses nested scroll content and reduced-motion behavior', () => {
     vi.spyOn(globalThis, 'scrollTo').mockImplementation(() => {});
-    Object.defineProperty(globalThis, 'innerWidth', { configurable: true, value: 375 });
-    Object.defineProperty(globalThis, 'scrollY', { configurable: true, value: 10 });
+    vi.stubGlobal('innerWidth', 375);
+    vi.stubGlobal('scrollY', 10);
     vi.spyOn(globalThis, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList);
 
     const section = document.createElement('section');
