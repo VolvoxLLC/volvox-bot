@@ -12,7 +12,7 @@ import {
   isRoleEligible,
   resolveTriageConfig,
 } from '../../src/modules/triage-config.js';
-import { makeMember } from '../utils/triageRoleMocks.js';
+import { makeMember, makeRoleCache } from '../utils/triageRoleMocks.js';
 
 describe('triage-config', () => {
   beforeEach(() => {
@@ -201,6 +201,32 @@ describe('triage-config', () => {
       expect(memberRoleIds).toEqual(['role-1', 'role-2']);
       expect(isRoleEligible(member, { allowedRoles: ['role-2'] })).toBe(true);
       expect(isRoleEligible(member, { excludedRoles: ['role-1'] })).toBe(false);
+    });
+
+    it('should mimic Discord.js Collection callback signatures for role cache helpers', () => {
+      const cache = makeRoleCache(['role-1', 'role-2'], 'guild-1');
+      const filterCalls = [];
+
+      const filtered = cache.filter((role, key, collection) => {
+        filterCalls.push({ roleId: role.id, key, collection });
+        return role.id !== 'guild-1';
+      });
+
+      const mapCalls = filtered.map((role, key, collection) => ({
+        roleId: role.id,
+        key,
+        collection,
+      }));
+
+      expect(filterCalls).toEqual([
+        { roleId: 'guild-1', key: 'guild-1', collection: cache },
+        { roleId: 'role-1', key: 'role-1', collection: cache },
+        { roleId: 'role-2', key: 'role-2', collection: cache },
+      ]);
+      expect(mapCalls).toEqual([
+        { roleId: 'role-1', key: 'role-1', collection: filtered },
+        { roleId: 'role-2', key: 'role-2', collection: filtered },
+      ]);
     });
 
     it('should return false when user has no allowed roles (allowedRoles non-empty)', () => {
