@@ -73,7 +73,7 @@ description: Release notes for Volvox.Bot covering new features, dashboard impro
 
 **Welcome publish reliability** — We resolved several edge cases in welcome panel publishing — split payloads, status mismatches, persistence gaps, channel-change cleanup, and rate-limited publish routes — and now handle them all more gracefully.
 
-**AI auto-mod stability** — Hardened prompt handling, action reporting, and case/flag log writes so AI auto-moderation behaves predictably under unusual server conditions.
+**AI auto-mod stability** — We hardened prompt handling, action reporting, and case/flag log writes so AI auto-moderation behaves predictably under unusual server conditions.
 </Update>
 
 <Update label="2026-04-26" description="April 2026" tags={["Features", "Improvements"]}>
@@ -155,5 +155,5 @@ description: Release notes for Volvox.Bot covering new features, dashboard impro
 
 **More reliable bot responses** — Command responses across reminders, moderation, reaction roles, and other features now handle failures gracefully (e.g., blocked DMs or deleted channels) instead of silently failing.
 
-**Bot owners setting removed** — We removed the "Bot Owners" editor from dashboard Permissions settings. Bot ownership is now managed via environment configuration only.
+**Bot owners setting removed** — We removed the "Bot Owners" editor from dashboard Permissions settings. You now manage bot ownership via environment configuration only.
 </Update>

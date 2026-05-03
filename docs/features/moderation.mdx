@@ -49,7 +49,7 @@ AI moderation settings are in **Config → Moderation & Safety → Content Safet
 | Incident report channel | Where the bot posts flagged AI moderation reports |
 | Instant enforcement | Global auto-delete for messages that trigger AI moderation |
 | Sensitivity thresholds | Per-category score required before action runs |
-| Response actions | Choose any combination of flag, delete, warn, timeout, kick, or ban per category. Leave a category empty to skip category-specific responses. `warn` creates a warning record, sends the warning DM when enabled, and checks your escalation rules. |
+| Response actions | Choose any combination of flag, delete, warn, timeout, kick, or ban per category. Leave a category empty to skip category-specific responses. `warn` creates a warning record and sends the warning DM when enabled. It also checks your escalation rules. |
 
 The bot records every triggered AI moderation response in the audit log as `ai_automod.<action>` for each action that actually runs. The bot only records `ai_automod.none` when a threshold is hit and no action runs. Global instant enforcement (`autoDelete`) or an incident report channel (`flagChannelId`) can still produce delete or flag actions, even when you haven't chosen a category-specific response action.
 

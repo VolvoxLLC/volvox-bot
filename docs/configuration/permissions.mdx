@@ -53,13 +53,13 @@ If you aren't a global admin, these entries are hidden from the sidebar and visi
 
 ### Configuring global admins
 
-Global admins are set via the `BOT_OWNER_IDS` environment variable on the server running the bot and dashboard. Provide a comma-separated list of Discord user IDs:
+Set global admins via the `BOT_OWNER_IDS` environment variable on the server running the bot and dashboard. Provide a comma-separated list of Discord user IDs:
 
 ```bash
 BOT_OWNER_IDS=123456789012345678,987654321098765432
 ```
 
-Each ID must be a Discord user ID (snowflake) for an account that signs in to the dashboard with Discord OAuth. Changes take effect after the dashboard process is restarted.
+Each ID must be a Discord user ID (snowflake) for an account that signs in to the dashboard with Discord OAuth. Changes take effect after you restart the dashboard process.
 
 <Callout type="info">
 Global admin status is independent of any server's roles. A user listed in `BOT_OWNER_IDS` only gains access to the operator-only pages above — they are still bound by normal Discord permissions for the servers they belong to.
