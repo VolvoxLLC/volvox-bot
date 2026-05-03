@@ -7,15 +7,15 @@ description: 'Volvox.Bot release notes and changelog covering new Discord bot fe
 <Update label="2026-05-03" description="May 2026" tags={["Improvements", "Fixes"]}>
 ## Improvements
 
-**More forgiving `/announce` scheduling** — You can now schedule announcements with minutes-only relative times like `in 30m`, in addition to the existing `in 2h` and `in 2h 30m` formats.
+**Minutes-only `/announce` scheduling** — You can now schedule announcements with minutes-only relative times like `in 30m`, in addition to the existing `in 2h` and `in 2h 30m` formats.
 
 ## Fixes
 
-**More reliable AI auto-moderation** — [AI auto-moderation](/features/moderation) now parses model responses more robustly, so messages are scored and acted on correctly even when the model wraps its output in extra text or nested formatting. If malformed output still can't be parsed, the moderation result is marked `flagged: true` with reason `Parse error`; configured incident-report channels can create moderator-facing flags, and `autoDelete` can still remove the message according to your settings.
+**AI auto-moderation parse-error outcomes** — [AI auto-moderation](/features/moderation) now marks unparseable model output as `flagged: true` with reason `Parse error` instead of treating it as no decision. Servers with an incident-report channel can create moderator-facing flags, and servers with `autoDelete` enabled can still remove the message according to their settings.
 
-**Stronger link filter and phishing detection** — The link filter now extracts URLs more accurately from messages, catching Markdown links (`[text](url)`), angle-bracketed links (`<url>`), punctuation-wrapped URLs, and other disguised links. Hostname validation rejects malformed labels before scoring, so suspicious links are flagged even when posters try to sneak them past.
+**Wrapped-link extraction and hostname validation** — The link filter now extracts URLs from Markdown links (`[text](url)`), angle-bracketed links (`<url>`), punctuation-wrapped URLs, and other disguised links. Hostname validation rejects malformed labels before scoring, so suspicious links are flagged even when posters try to sneak them past.
 
-**Stricter `/remind` time parsing** — `/remind` now rejects invalid `tomorrow at ...` and `next monday at ...` time strings outright instead of falling back to midnight.
+**Invalid `/remind` time rejection** — `/remind` now rejects invalid `tomorrow at ...` and `next monday at ...` time strings outright instead of falling back to midnight.
 </Update>
 
 <Update label="2026-05-02" description="May 2026" tags={["Improvements", "Fixes"]}>

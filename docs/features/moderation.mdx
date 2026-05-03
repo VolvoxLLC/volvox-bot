@@ -54,7 +54,7 @@ AI moderation settings are in **Config → Moderation & Safety → Content Safet
 Every triggered AI moderation response is recorded in the audit log as `ai_automod.<action>` for each action that actually runs. `ai_automod.none` is recorded only when a threshold is hit and no action runs. Global instant enforcement (`autoDelete`) or an incident report channel (`flagChannelId`) can still produce delete or flag actions even when no category-specific response action is selected.
 
 <Callout type="info">
-**Fail-closed on malformed AI output** — If the detection model returns a response that can't be parsed as valid JSON, the moderation result is marked `flagged: true` with reason `Parse error` instead of being silently allowed. Servers with an incident report channel receive a moderator-facing flag; servers with `autoDelete` enabled can still remove the message according to their settings.
+**Malformed AI output handling** — If the detection model returns a response that can't be parsed as valid JSON, the moderation result is marked `flagged: true` with reason `Parse error` instead of being treated as no decision. A moderator-facing flag is posted only when an incident report channel is configured; servers with `autoDelete` enabled can still remove the message according to their settings.
 </Callout>
 
 Triage model settings are in **Config → AI & Automation → Triage**. The classifier and response engines use the same supported model dropdown as Content Safety; custom model strings are rejected.
