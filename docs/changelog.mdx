@@ -1,15 +1,10 @@
 ---
 title: Volvox.Bot Changelog and Release Notes
+sidebarTitle: Changelog
 description: 'Volvox.Bot release notes and changelog covering new Discord bot features, dashboard updates, moderation improvements, and bug fixes by month.'
 ---
 
-<Update label="2026-05-15" description="May 2026" tags={["Improvements", "Fixes"]}>
-## Improvements
-
-**Smarter link filter** — The [link filter](/features/moderation) now catches URLs hidden inside markdown links (`[click me](https://example.com)`), angle brackets (`<https://example.com>`), and other embedded formats — not just plain whitespace-separated URLs. Phishing detection also looks at query strings, so suspicious links can no longer slip through by stuffing keywords into URL parameters.
-
-**Resilient AI moderation verdict parsing** — [AI auto-moderation](/features/moderation) handles malformed or chatty AI provider responses more gracefully. Verdicts are now extracted from balanced JSON objects even when the model wraps its output in extra prose, so action enforcement stays consistent.
-
+<Update label="2026-05-15" description="May 2026" tags={["Fixes"]}>
 ## Fixes
 
 **`/announce` accepts minute-only delays** — Scheduling an announcement with a relative time like `in 30m` or `in 5 minutes` now works without needing to specify hours. Hour-only and combined `in 1h30m` formats continue to work as before.
