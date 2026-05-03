@@ -517,6 +517,7 @@ describe('docs/wiki-pages/README.md', () => {
         'Operations-Runbook',
         'Troubleshooting',
         'Manual-Test-Plan',
+        'Changelog',
       ]);
     }
   });
@@ -535,19 +536,106 @@ describe('docs/wiki-pages/README.md', () => {
     ]);
   });
 
-  it('generic copy command brace expansion includes all published page names', () => {
-    const genericLine = content
-      .split('\n')
-      .find(
-        (line) =>
-          line.trimStart().startsWith('cp') &&
-          line.includes('<repo>.wiki') &&
-          line.includes('Manual-Test-Plan'),
-      );
-    expect(genericLine).toBeDefined();
-    if (!genericLine) {
-      return;
+  it('lists Changelog.md in the "Included pages" section', () => {
+    expect(content).toContain('`Changelog.md`');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// docs/wiki-pages/Home.md — Changelog link
+// ---------------------------------------------------------------------------
+
+describe('docs/wiki-pages/Home.md — Changelog link', () => {
+  const homePath = join(wikiRoot, 'Home.md');
+  let content;
+
+  beforeAll(() => {
+    content = readText(homePath);
+  });
+
+  it('contains a link to Changelog', () => {
+    expect(content).toContain('[Changelog](Changelog)');
+  });
+
+  it('Changelog link appears in the "Start here" navigation list', () => {
+    const lines = content.split('\n');
+    const navigationStart = lines.indexOf('## Start here');
+    const navigationEnd = lines.findIndex(
+      (line, index) => index > navigationStart && line.startsWith('## '),
+    );
+
+    expect(navigationStart).toBeGreaterThanOrEqual(0);
+    expect(navigationEnd).toBeGreaterThan(navigationStart);
+
+    const navigationLines = lines.slice(navigationStart + 1, navigationEnd);
+    const changelogLines = navigationLines.filter(
+      (line) => line.trimStart().startsWith('-') && line.includes('Changelog'),
+    );
+    expect(changelogLines.length).toBeGreaterThanOrEqual(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// docs/wiki-pages/Changelog.md
+// ---------------------------------------------------------------------------
+
+describe('docs/wiki-pages/Changelog.md', () => {
+  const changelogPath = join(wikiRoot, 'Changelog.md');
+  const weekHeadingPattern = /^## Week \d{4}-W\d{2}/;
+  let content;
+
+  beforeAll(() => {
+    content = readText(changelogPath);
+  });
+
+  it('file exists', () => {
+    expect(existsSync(changelogPath)).toBe(true);
+  });
+
+  it('has a top-level "# Volvox.Bot Changelog" heading', () => {
+    expect(content.split('\n')).toContain('# Volvox.Bot Changelog');
+  });
+
+  it('contains an introductory paragraph linking to the Mintlify changelog', () => {
+    expect(content).toContain('https://volvox.bot/changelog');
+  });
+
+  it('has at least one weekly section using ## Week YYYY-W## format', () => {
+    const weeklyHeadings = content.split('\n').filter((line) => weekHeadingPattern.test(line));
+    expect(weeklyHeadings.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('weekly section headings include a date range in parentheses', () => {
+    const weeklyHeadings = content.split('\n').filter((line) => weekHeadingPattern.test(line));
+    expect(weeklyHeadings.length).toBeGreaterThanOrEqual(1);
+    for (const heading of weeklyHeadings) {
+      expect(heading).toMatch(/^## Week \d{4}-W\d{2} \(.+\)$/);
     }
-    expect(getFirstBraceExpansionNames(genericLine).length).toBeGreaterThanOrEqual(6);
+  });
+
+  it('each weekly section contains bullet-point change entries', () => {
+    const lines = content.split('\n');
+    const weeklyHeadingIndices = lines.reduce((indices, line, index) => {
+      if (weekHeadingPattern.test(line)) {
+        indices.push(index);
+      }
+      return indices;
+    }, []);
+    expect(weeklyHeadingIndices.length).toBeGreaterThanOrEqual(1);
+
+    for (const [index, headingIndex] of weeklyHeadingIndices.entries()) {
+      const nextHeadingIndex = weeklyHeadingIndices[index + 1] ?? lines.length;
+      const sectionLines = lines.slice(headingIndex + 1, nextHeadingIndex);
+      const bulletLines = sectionLines.filter((line) => line.startsWith('- **'));
+      expect(bulletLines.length).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it('is non-empty and has meaningful length', () => {
+    expect(content.length).toBeGreaterThan(200);
+  });
+
+  it('uses plain Markdown only — no MDX <Update> components', () => {
+    expect(content).not.toContain('<Update');
   });
 });

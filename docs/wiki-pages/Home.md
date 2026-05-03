@@ -9,6 +9,7 @@ Welcome to the Volvox Bot wiki. This wiki is organized for fast setup, safe oper
 - [Operations Runbook](Operations-Runbook)
 - [Troubleshooting](Troubleshooting)
 - [Manual Test Plan](Manual-Test-Plan)
+- [Changelog](Changelog)
 
 ## Recommended path
 
