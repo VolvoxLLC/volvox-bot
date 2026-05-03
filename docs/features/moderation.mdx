@@ -51,8 +51,8 @@ AI moderation settings are in **Config → Moderation & Safety → Content Safet
 | Sensitivity thresholds | Per-category score required before action runs |
 | Response actions | Choose any combination of flag, delete, warn, timeout, kick, or ban per category. Leave a category empty to skip category-specific responses. `warn` creates a warning record, sends the warning DM when enabled, and checks escalation rules. |
 
-The audit log records every triggered AI moderation response as `ai_automod.<action>` for each action that actually runs. `ai_automod.none` is recorded only when a threshold is hit and no action runs. Global instant enforcement (`autoDelete`) or an incident report channel (`flagChannelId`) can still produce delete or flag actions even when no category-specific response action is selected.
+The audit log records every triggered AI moderation response as `ai_automod.<action>` for each action that actually runs. It records `ai_automod.none` only when a threshold is hit but no action runs. Global instant enforcement (`autoDelete`) or an incident report channel (`flagChannelId`) can still trigger delete or flag actions, even if you haven't selected a category-specific response.
 
-Triage model settings are in **Config → AI & Automation → Triage**. The classifier and response engines use the same supported model dropdown as Content Safety; custom model strings are rejected.
+Triage model settings are in **Config → AI & Automation → Triage**. Triage uses the same supported model dropdown as Content Safety for both classification and responses — you can't enter a custom model string.
 
 Changes apply instantly — no bot restart needed.
