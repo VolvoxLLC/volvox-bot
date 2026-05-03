@@ -1,5 +1,5 @@
 ---
-title: Changelog
+title: Volvox.Bot Changelog and Release Notes
 description: 'Volvox.Bot release notes and changelog covering new Discord bot features, dashboard updates, moderation improvements, and bug fixes by month.'
 ---
 
@@ -18,9 +18,23 @@ description: 'Volvox.Bot release notes and changelog covering new Discord bot fe
 <Update label="2026-05-08" description="May 2026" tags={["Improvements"]}>
 ## Improvements
 
-**Global admin access for ops pages** — The dashboard's **Logs** and **Performance** pages are now restricted to global admins (configured via `BOT_OWNER_IDS`). Server admins and moderators continue to manage their guilds as usual, while infrastructure-level views are reserved for operators. See [Permissions](/configuration/permissions) for the full role breakdown.
+**Global admin access for ops pages** — The dashboard's **Logs** and **Performance** pages are now restricted to global admins (configured via `BOT_OWNER_IDS`). Server admins and moderators continue to manage their servers as usual, while infrastructure-level views are reserved for operators. See [Permissions](/configuration/permissions) for the full role breakdown.
 
-**Cleaner access levels** — Guild access roles are now consistently `admin`, `moderator`, or `viewer` across the dashboard and API. Global admin status is surfaced separately, so sidebar navigation and protected pages reflect the correct permissions for every user.
+**Cleaner access levels** — Server access roles are now consistently `admin`, `moderator`, or `viewer` across the dashboard and API. Global admin status is surfaced separately, so sidebar navigation and protected pages reflect the correct permissions for every user.
+</Update>
+
+<Update label="2026-05-03" description="May 2026" tags={["Fixes"]}>
+## Fixes
+
+**More reliable AI auto-moderation** — [AI auto-moderation](/features/moderation) now parses model responses more robustly, so messages are scored and acted on correctly even when the model wraps its output in extra text or nested formatting. Fewer skipped messages, fewer "no decision" outcomes.
+
+**Stronger link filter and phishing detection** — The link filter now extracts URLs more accurately from messages, catching more obfuscated and disguised links. Phishing detection has been hardened against common evasion tricks (extra punctuation, mixed casing, embedded characters), so suspicious links are flagged even when posters try to sneak them past.
+</Update>
+
+<Update label="2026-05-02" description="May 2026" tags={["Improvements"]}>
+## Improvements
+
+**Better reliability monitoring** — Volvox.Bot now tracks dashboard errors and performance issues in the background so problems get spotted and fixed faster. Sensitive data — Discord IDs, message content, tokens, query params, headers, and request bodies — is scrubbed before anything leaves your browser, keeping your server's data private by default.
 </Update>
 
 <Update label="2026-05-01" description="May 2026" tags={["Features", "Improvements", "Fixes"]}>
@@ -60,7 +74,7 @@ description: 'Volvox.Bot release notes and changelog covering new Discord bot fe
 
 ## Fixes
 
-**Automod flag embeds** — Flag embeds now show the global actions that ran for an automod violation, so moderators can see exactly what was applied at a glance.
+**Auto-mod flag embeds** — Flag embeds now show the global actions that ran for an auto-mod violation, so moderators can see exactly what was applied at a glance.
 
 **Welcome publish reliability** — Several edge cases in welcome panel publishing have been resolved: split payloads, status mismatches, persistence gaps, channel-change cleanup, and rate-limited publish routes are all handled more gracefully.
 
@@ -96,7 +110,7 @@ description: 'Volvox.Bot release notes and changelog covering new Discord bot fe
 
 **Starboard moved to Community Tools** — Starboard settings now live under **Community Tools** in the [dashboard](/dashboard) instead of **Moderation & Safety**, grouping it with other member-facing utilities.
 
-**Version label in the dashboard** — The dashboard sidebar and landing footer now display the current Volvox.Bot version, making it easier to confirm which build you are on.
+**Version label in the dashboard** — The dashboard sidebar and landing footer now display the current Volvox.Bot version, making it easier to confirm which build you're on.
 </Update>
 
 <Update label="2026-04-23" description="April 2026" tags={["Fixes"]}>
@@ -124,7 +138,7 @@ description: 'Volvox.Bot release notes and changelog covering new Discord bot fe
 
 **Dashboard permission controls** — The dashboard now enforces role-based access. Viewers get read-only access, moderators can manage moderation features, and admins have full control.
 
-**Guild-scoped log viewer** — The log viewer now shows logs scoped to your current server. A new channel filter lets you narrow the live log stream to specific Discord channels.
+**Server-scoped log viewer** — The log viewer now shows logs scoped to your current server. A new channel filter lets you narrow the live log stream to specific Discord channels.
 
 ## Improvements
 
