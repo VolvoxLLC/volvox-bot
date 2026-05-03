@@ -39,7 +39,7 @@ function normalizeRole(roleDef) {
 
 /**
  * Create a small Discord.js Collection-shaped wrapper for role mocks.
- * @param {MockRole[]} roles - Role mocks keyed by role ID.
+ * @param {MockRole[]} roles - Ordered array of role mocks.
  * @returns {MockRoleCollection}
  */
 function makeRoleCollection(roles) {
@@ -56,10 +56,10 @@ function makeRoleCollection(roles) {
  * Create a minimal Discord.js-like role cache that supports filter().map().
  * The guild ID role is included as @everyone so production eligibility code can filter it out.
  * @param {MockRoleDefinition[]} roleDefs - Role IDs or role-like objects assigned to the member.
- * @param {string} [guildId='g1'] - Guild ID used for the @everyone role.
+ * @param {string} [guildId='guild-1'] - Guild ID used for the @everyone role.
  * @returns {MockRoleCache}
  */
-export function makeRoleCache(roleDefs, guildId = 'g1') {
+export function makeRoleCache(roleDefs, guildId = 'guild-1') {
   const roles = [{ id: guildId, name: '@everyone' }, ...roleDefs.map(normalizeRole)];
 
   return makeRoleCollection(roles);
@@ -71,7 +71,7 @@ export function makeRoleCache(roleDefs, guildId = 'g1') {
  * @param {string} [guildId='g1'] - Guild ID used for the member and @everyone role.
  * @returns {MockGuildMember}
  */
-function makeMemberWithRoles(roleDefs, guildId = 'g1') {
+export function makeMemberWithRoles(roleDefs, guildId = 'g1') {
   return {
     guild: { id: guildId },
     roles: { cache: makeRoleCache(roleDefs, guildId) },
