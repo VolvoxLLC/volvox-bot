@@ -554,7 +554,7 @@ describe('docs/wiki-pages/Home.md — Changelog link', () => {
   });
 
   it('contains a link to Changelog', () => {
-    expect(content).toContain('[Changelog](Changelog)');
+    expect(content).toContain('[Changelog](./Changelog.md)');
   });
 
   it('Changelog link appears in the "Start here" navigation list', () => {
