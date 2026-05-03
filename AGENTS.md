@@ -158,7 +158,7 @@ Docs updates are part of done criteria, not optional cleanup.
 ## Weekly Changelog
 
 Every week, the Copilot coding agent (`.github/workflows/weekly-changelog.md`) runs
-automatically on Fridays at 6 PM UTC and updates **both** changelog surfaces:
+automatically on Mondays at 2 PM UTC after the prior ISO week closes and updates **both** changelog surfaces:
 
 | File | Format | Purpose |
 |------|--------|---------|

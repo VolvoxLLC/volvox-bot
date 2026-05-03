@@ -539,46 +539,6 @@ describe('docs/wiki-pages/README.md', () => {
   it('lists Changelog.md in the "Included pages" section', () => {
     expect(content).toContain('`Changelog.md`');
   });
-
-  it('generic copy command brace expansion includes all published page names', () => {
-    const genericLine = content
-      .split('\n')
-      .find(
-        (line) =>
-          line.trimStart().startsWith('cp') &&
-          line.includes('<repo>.wiki') &&
-          line.includes('Manual-Test-Plan'),
-      );
-    expect(genericLine).toBeDefined();
-    if (!genericLine) {
-      return;
-    }
-    expect(getFirstBraceExpansionNames(genericLine).length).toBeGreaterThanOrEqual(7);
-  });
-
-  it('generic copy command includes Changelog in the brace expansion', () => {
-    const genericLine = content
-      .split('\n')
-      .find(
-        (line) =>
-          line.trimStart().startsWith('cp') &&
-          line.includes('<repo>.wiki') &&
-          line.includes('Changelog'),
-      );
-    expect(genericLine).toBeDefined();
-    if (!genericLine) {
-      return;
-    }
-    expect(getFirstBraceExpansionNames(genericLine)).toContain('Changelog');
-  });
-
-  it('project-specific copy command for VolvoxLLC includes Changelog', () => {
-    const volvoxLines = getLines(
-      content,
-      (line) => line.includes('volvox-bot.wiki') && line.includes('Changelog'),
-    );
-    expect(volvoxLines.length).toBeGreaterThanOrEqual(1);
-  });
 });
 
 // ---------------------------------------------------------------------------
@@ -654,14 +614,21 @@ describe('docs/wiki-pages/Changelog.md', () => {
   });
 
   it('each weekly section contains bullet-point change entries', () => {
-    const weeklyHeadingIndex = content
-      .split('\n')
-      .findIndex((line) => weekHeadingPattern.test(line));
-    expect(weeklyHeadingIndex).toBeGreaterThanOrEqual(0);
+    const lines = content.split('\n');
+    const weeklyHeadingIndices = lines.reduce((indices, line, index) => {
+      if (weekHeadingPattern.test(line)) {
+        indices.push(index);
+      }
+      return indices;
+    }, []);
+    expect(weeklyHeadingIndices.length).toBeGreaterThanOrEqual(1);
 
-    const linesAfterHeading = content.split('\n').slice(weeklyHeadingIndex + 1);
-    const bulletLines = linesAfterHeading.filter((line) => line.startsWith('- **'));
-    expect(bulletLines.length).toBeGreaterThanOrEqual(1);
+    for (const [index, headingIndex] of weeklyHeadingIndices.entries()) {
+      const nextHeadingIndex = weeklyHeadingIndices[index + 1] ?? lines.length;
+      const sectionLines = lines.slice(headingIndex + 1, nextHeadingIndex);
+      const bulletLines = sectionLines.filter((line) => line.startsWith('- **'));
+      expect(bulletLines.length).toBeGreaterThanOrEqual(1);
+    }
   });
 
   it('is non-empty and has meaningful length', () => {

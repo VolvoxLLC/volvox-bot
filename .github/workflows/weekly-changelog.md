@@ -3,13 +3,12 @@
 ---
 on:
   schedule:
-    - cron: '0 18 * * 5'  # Fridays at 6 PM UTC
+    - cron: '0 14 * * 1'  # Mondays at 2 PM UTC, after the previous ISO week closes
   workflow_dispatch: {}
 
 permissions:
   contents: write
   pull-requests: write
-  issues: write
 
 tools:
   github:
@@ -23,22 +22,25 @@ engine: copilot
 
 ## Purpose
 
-At the end of each ISO week, compile a recap of all user-facing changes shipped
-and add it to **both** changelog surfaces:
+After each ISO week ends, compile a recap of all user-facing changes shipped
+during the most recently completed ISO week and add it to **both** changelog surfaces:
 
 1. `docs/changelog.mdx` — Mintlify changelog (MDX `<Update>` components).
 2. `docs/wiki-pages/Changelog.md` — GitHub wiki changelog (plain Markdown).
 
 ## Instructions for the Agent
 
-### 1. Determine the current ISO week
+### 1. Determine the completed ISO week
 
-Calculate the ISO week number and date range for the current run date.
+Calculate the ISO week number and date range for the most recently completed ISO week.
+For the scheduled Monday run, this is the Monday–Sunday week that ended the previous day.
+For manual `workflow_dispatch` runs, do not summarize the in-progress week; use the latest
+fully completed ISO week unless the user explicitly asks for another range.
 Examples: `2026-W18` covers April 27–May 3, 2026; `2026-W19` covers May 4–10, 2026.
 
-### 2. Fetch merged PRs for the week
+### 2. Fetch merged PRs for the completed week
 
-Query the repository for all PRs merged during Monday–Sunday of the current ISO week.
+Query the repository for all PRs merged during Monday–Sunday of the completed ISO week.
 Examine each PR's title, description, labels, and changed files.
 
 ### 3. Filter to user-facing changes
@@ -87,7 +89,7 @@ Rules:
 
 ### 5. Write individual daily entries in `docs/changelog.mdx`
 
-For each day in the current week that had at least one merged user-facing PR and does
+For each day in the completed week that had at least one merged user-facing PR and does
 **not** already have a `<Update label="YYYY-MM-DD" ...>` entry, add a new daily entry.
 Insert daily entries in reverse-chronological order, below the weekly recap block and
 above the previous week's entries.
@@ -164,6 +166,6 @@ If any changes were made to either file, create a PR:
 - Wiki `Changelog.md` sections use `## Week YYYY-W##` headers.
 - All relative links in MDX entries point to pages that exist in `docs/docs.json`.
 
-### 9. If no user-facing changes were merged this week
+### 9. If no user-facing changes were merged during the completed week
 
-Skip creating a PR. Log a note that no user-facing changes were found for the week.
+Skip creating a PR. Log a note that no user-facing changes were found for the completed week.
