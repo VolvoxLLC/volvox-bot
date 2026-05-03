@@ -8,7 +8,7 @@ description: 'Volvox.Bot release notes and changelog covering new Discord bot fe
 
 **Smarter link filter** — The [link filter](/features/moderation) now catches URLs hidden inside markdown links (`[click me](https://example.com)`), angle brackets (`<https://example.com>`), and other embedded formats — not just plain whitespace-separated URLs. Phishing detection also looks at query strings, so suspicious links can no longer slip through by stuffing keywords into URL parameters.
 
-**More reliable AI auto-moderation** — [AI auto-moderation](/features/moderation) handles malformed or chatty AI provider responses more gracefully. Verdicts are now extracted from balanced JSON objects even when the model wraps its output in extra prose, so action enforcement stays consistent.
+**Resilient AI moderation verdict parsing** — [AI auto-moderation](/features/moderation) handles malformed or chatty AI provider responses more gracefully. Verdicts are now extracted from balanced JSON objects even when the model wraps its output in extra prose, so action enforcement stays consistent.
 
 ## Fixes
 

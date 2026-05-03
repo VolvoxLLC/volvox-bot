@@ -4,7 +4,7 @@ Welcome to the Volvox Bot wiki. This wiki is organized for fast setup, safe oper
 
 ## Start here
 
-- [Quick Start](Quick-Start)
+- [Quick Start](./Quick-Start.md)
 - [Configuration Reference](./Configuration-Reference.md)
 - [Operations Runbook](./Operations-Runbook.md)
 - [Troubleshooting](./Troubleshooting.md)
@@ -12,7 +12,7 @@ Welcome to the Volvox Bot wiki. This wiki is organized for fast setup, safe oper
 
 ## Recommended path
 
-1. Complete [Quick Start](Quick-Start).
+1. Complete [Quick Start](./Quick-Start.md).
 2. Review [Configuration Reference](./Configuration-Reference.md) for per-feature settings.
 3. Keep [Operations Runbook](./Operations-Runbook.md) handy for production workflows.
 4. Use [Troubleshooting](./Troubleshooting.md) for common failure modes.
