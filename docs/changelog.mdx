@@ -3,6 +3,14 @@ title: Changelog
 description: 'Volvox.Bot release notes and changelog covering new Discord bot features, dashboard updates, moderation improvements, and bug fixes by month.'
 ---
 
+<Update label="2026-05-03" description="May 2026" tags={["Fixes"]}>
+## Fixes
+
+**More reliable AI auto-moderation** — [AI auto-moderation](/features/moderation) now parses model responses more robustly, so messages are scored and acted on correctly even when the model wraps its output in extra text or nested formatting. Fewer skipped messages, fewer "no decision" outcomes.
+
+**Stronger link filter and phishing detection** — The link filter now extracts URLs more accurately from messages, catching more obfuscated and disguised links. Phishing detection has been hardened against common evasion tricks (extra punctuation, mixed casing, embedded characters), so suspicious links are flagged even when posters try to sneak them past.
+</Update>
+
 <Update label="2026-05-02" description="May 2026" tags={["Improvements"]}>
 ## Improvements
 
