@@ -4,6 +4,7 @@
  */
 
 import { Router } from 'express';
+import { rateLimit as expressRateLimit } from 'express-rate-limit';
 import { error as logError } from '../../logger.js';
 import { getConfig } from '../../modules/config.js';
 import {
@@ -17,13 +18,21 @@ import {
   publishWelcomePanels,
   WELCOME_PANEL_TYPES,
 } from '../../modules/welcomePublishing.js';
-import { rateLimit } from '../middleware/rateLimit.js';
+import { isTrustedInternalRequest } from '../middleware/trustedInternalRequest.js';
 import { requireGuildAdmin, validateGuild } from './guilds.js';
 
 const router = Router({ mergeParams: true });
 
 /** Rate limiter for welcome publication endpoints — 30 req/min per IP. */
-const welcomePublishRateLimit = rateLimit({ windowMs: 60 * 1000, max: 30 });
+const welcomePublishRateLimit = expressRateLimit({
+  windowMs: 60 * 1000,
+  limit: 30,
+  legacyHeaders: true,
+  standardHeaders: false,
+  skip: isTrustedInternalRequest,
+  handler: (_req, res) =>
+    res.status(429).json({ error: 'Too many requests, please try again later' }),
+});
 
 /**
  * POST /guilds/:id/welcome/preview
@@ -105,8 +114,6 @@ router.get('/variables', (_req, res) => {
 router.get(
   '/status',
   welcomePublishRateLimit,
-  // Protected by welcomePublishRateLimit earlier in this route chain.
-  // lgtm[js/missing-rate-limiting]
   requireGuildAdmin,
   validateGuild,
   async (req, res) => {
@@ -126,8 +133,6 @@ router.get(
 router.post(
   '/publish',
   welcomePublishRateLimit,
-  // Protected by welcomePublishRateLimit earlier in this route chain.
-  // lgtm[js/missing-rate-limiting]
   requireGuildAdmin,
   validateGuild,
   async (req, res) => {
@@ -151,8 +156,6 @@ router.post(
 router.post(
   '/publish/:panelType',
   welcomePublishRateLimit,
-  // Protected by welcomePublishRateLimit earlier in this route chain.
-  // lgtm[js/missing-rate-limiting]
   requireGuildAdmin,
   validateGuild,
   async (req, res) => {
