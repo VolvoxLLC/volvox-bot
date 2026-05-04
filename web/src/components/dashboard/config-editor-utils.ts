@@ -15,22 +15,52 @@ export const inputClasses = [
   'dark:bg-black/40 dark:shadow-[inset_0_2px_4px_rgba(0,0,0,0.4),0_1px_1px_rgba(255,255,255,0.05)]',
 ].join(' ');
 
+const UUID_BYTE_TO_HEX = Array.from({ length: 256 }, (_, index) =>
+  index.toString(16).padStart(2, '0'),
+);
+
 /**
- * Generate a UUID with fallback for environments without crypto.randomUUID.
+ * Generate a UUID using browser/Node cryptographic randomness.
  *
  * @returns A UUID v4 string.
  */
 export function generateId(): string {
-  // Use crypto.randomUUID if available
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
+  const browserCrypto = globalThis.crypto;
+
+  if (typeof browserCrypto?.randomUUID === 'function') {
+    return browserCrypto.randomUUID();
   }
-  // Fallback: generate a UUID-like string
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
+
+  if (typeof browserCrypto?.getRandomValues === 'function') {
+    const bytes = browserCrypto.getRandomValues(new Uint8Array(16));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+
+    return [
+      UUID_BYTE_TO_HEX[bytes[0]],
+      UUID_BYTE_TO_HEX[bytes[1]],
+      UUID_BYTE_TO_HEX[bytes[2]],
+      UUID_BYTE_TO_HEX[bytes[3]],
+      '-',
+      UUID_BYTE_TO_HEX[bytes[4]],
+      UUID_BYTE_TO_HEX[bytes[5]],
+      '-',
+      UUID_BYTE_TO_HEX[bytes[6]],
+      UUID_BYTE_TO_HEX[bytes[7]],
+      '-',
+      UUID_BYTE_TO_HEX[bytes[8]],
+      UUID_BYTE_TO_HEX[bytes[9]],
+      '-',
+      UUID_BYTE_TO_HEX[bytes[10]],
+      UUID_BYTE_TO_HEX[bytes[11]],
+      UUID_BYTE_TO_HEX[bytes[12]],
+      UUID_BYTE_TO_HEX[bytes[13]],
+      UUID_BYTE_TO_HEX[bytes[14]],
+      UUID_BYTE_TO_HEX[bytes[15]],
+    ].join('');
+  }
+
+  throw new Error('Secure random number generation is unavailable.');
 }
 
 export const DEFAULT_ACTIVITY_BADGES = [
