@@ -175,8 +175,8 @@ describe('docs/manual-test-plan.mdx', () => {
     expect(getFrontmatter(content).length).toBeGreaterThan(0);
   });
 
-  it('frontmatter contains unquoted title "Manual Test Plan"', () => {
-    expect(getFrontmatter(content)).toContain('title: Manual Test Plan');
+  it('frontmatter contains unquoted SEO title "Volvox.Bot Manual QA and Release Test Plan"', () => {
+    expect(getFrontmatter(content)).toContain('title: Volvox.Bot Manual QA and Release Test Plan');
   });
 
   it('frontmatter contains a non-empty single-quoted description', () => {
