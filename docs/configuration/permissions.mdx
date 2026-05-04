@@ -49,7 +49,7 @@ The following dashboard pages and APIs are restricted to global admins:
 - **Performance** (`/dashboard/performance`) — Bot uptime, latency, and resource trends across all guilds.
 - **Logs** (`/dashboard/logs`) — Live log stream and the underlying log-stream WebSocket ticket endpoint.
 
-If you aren't a global admin, these entries are hidden from the sidebar and visiting their URLs redirects you back to the dashboard. All other dashboard features (moderation, tickets, AI, analytics, configuration) continue to follow your per-server role.
+If you aren't a global admin, the sidebar hides these entries, and visiting their URLs redirects you back to the dashboard. All other dashboard features (moderation, tickets, AI, analytics, configuration) continue to follow your per-server role.
 
 ### Configuring global admins
 
@@ -62,5 +62,5 @@ BOT_OWNER_IDS=123456789012345678,987654321098765432
 Each ID must be a Discord user ID (snowflake) for an account that signs in to the dashboard with Discord OAuth. Changes take effect after you restart the dashboard process.
 
 <Callout type="info">
-Global admin status is independent of any server's roles. A user listed in `BOT_OWNER_IDS` only gains access to the operator-only pages above — they are still bound by normal Discord permissions for the servers they belong to.
+Global admin status is independent of any server's roles. A user listed in `BOT_OWNER_IDS` only gains access to the operator-only pages above. They still follow normal Discord permissions for the servers they belong to.
 </Callout>
