@@ -10,7 +10,7 @@ Active Sentry is Volvox.Bot's moderation engine. It runs automatically, and you 
 
 ## What it does
 
-- **Auto-moderation** — Automatically detect and act on spam, slurs, invite links, and more
+- **Auto-mod** — Automatically detect and act on spam, slurs, invite links, and more
 - **Content Safety** — Score incoming messages for toxicity, spam, harassment, hate speech, sexual content, violence, and self-harm. The bot runs your configured actions when a score meets its threshold
 - **Warnings** — Issue warnings that accumulate and trigger escalating actions
 - **Bans & Kicks** — Full ban and kick support with reason tracking
@@ -51,7 +51,7 @@ AI moderation settings are in **Config → Moderation & Safety → Content Safet
 | Sensitivity thresholds | Per-category score required before action runs |
 | Response actions | Choose any combination of flag, delete, warn, timeout, kick, or ban per category. Leave a category empty to skip category-specific responses. `warn` creates a warning record and sends the warning DM when enabled. It also checks your escalation rules. |
 
-The bot records every triggered AI moderation response in the audit log as `ai_automod.<action>` for each action that actually runs. The bot only records `ai_automod.none` when a threshold is hit and no action runs. Global instant enforcement (`autoDelete`) or an incident report channel (`flagChannelId`) can still produce delete or flag actions, even when you haven't chosen a category-specific response action.
+The bot records every triggered AI moderation response in the audit log as `ai_automod.<action>` for each action that actually runs. The bot only records `ai_automod.none` when a threshold is hit and no action runs. Global instant enforcement (`autoDelete`) and the incident report channel (`flagChannelId`) can still produce delete or flag actions. They run even when you haven't chosen a category-specific response action.
 
 Triage model settings are in **Config → AI & Automation → Triage**. The classifier and response engines use the same supported model dropdown as Content Safety. If saved config contains an invalid or unsupported model string, the bot logs a warning and tries supported configured values in the fixed precedence order. If none are supported, the bot falls back to the default AI model.
 
