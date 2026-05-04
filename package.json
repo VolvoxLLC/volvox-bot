@@ -41,7 +41,7 @@
     "@amplitude/analytics-node": "^1.5.57",
     "@sentry/node": "^10.51.0",
     "ai": "^6.0.172",
-    "discord.js": "^14.26.3",
+    "discord.js": "^14.26.4",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "ioredis": "^5.10.1",
