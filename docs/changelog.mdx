@@ -7,21 +7,21 @@ description: Release notes for Volvox.Bot covering new features, dashboard impro
 <Update label="2026-05-03" description="May 2026" tags={["Fixes"]}>
 ## Fixes
 
-**More reliable AI auto-moderation** — [AI auto-moderation](/features/moderation) now parses model responses more robustly, so messages are scored and acted on correctly even when the model wraps its output in extra text or nested formatting. Fewer skipped messages, fewer "no decision" outcomes.
+**More reliable AI auto-moderation** — [AI auto-moderation](/features/moderation) now parses model responses more robustly. The bot scores and acts on messages correctly even when the model wraps its output in extra text or nested formatting. Fewer skipped messages, fewer "no decision" outcomes.
 
-**Stronger link filter and phishing detection** — The link filter now extracts URLs more accurately from messages, catching more obfuscated and disguised links. Phishing detection has been hardened against common evasion tricks (extra punctuation, mixed casing, embedded characters), so suspicious links are flagged even when posters try to sneak them past.
+**Stronger link filter and phishing detection** — The link filter now extracts URLs more accurately from messages, catching more obfuscated and disguised links. We hardened phishing detection against common evasion tricks (extra punctuation, mixed casing, embedded characters), so the bot flags suspicious links even when posters try to sneak them past.
 </Update>
 
 <Update label="2026-05-02" description="May 2026" tags={["Improvements", "Fixes"]}>
 ## Improvements
 
-**Stronger phishing and link filtering** — The link filter now catches malicious URLs hidden inside markdown links (`[click here](https://...)`), angle-bracket links (`<https://...>`), and links wedged against punctuation. Phishing keywords in URL query strings (for example, `?gift=nitro` on a `.xyz` domain) are also detected. See [moderation](/features/moderation) for the full set of safeguards.
+**Stronger phishing and link filtering** — The link filter now catches malicious URLs hidden inside markdown links (`[click here](https://...)`), angle-bracket links (`<https://...>`), and links wedged against punctuation. It also catches phishing keywords in URL query strings (for example, `?gift=nitro` on a `.xyz` domain). See [moderation](/features/moderation) for the full set of safeguards.
 
-**Better reliability monitoring** — Volvox.Bot now tracks dashboard errors and performance issues in the background so problems get spotted and fixed faster. Sensitive data — Discord IDs, message content, tokens, query params, headers, and request bodies — is scrubbed before anything leaves your browser, keeping your server's data private by default.
+**Better reliability monitoring** — Volvox.Bot now tracks dashboard errors and performance issues in the background, so the team spots and fixes problems faster. Before anything leaves your browser, the bot scrubs sensitive data — Discord IDs, message content, tokens, query params, headers, and request bodies — keeping your server's data private by default.
 
 ## Fixes
 
-**More reliable AI auto-moderation** — [AI auto-moderation](/features/moderation) now parses AI provider responses correctly even when they include extra text or nested braces, and treats unparseable responses as "needs review" instead of letting them through. Fewer missed flags, fewer surprises.
+**More reliable AI auto-moderation** — [AI auto-moderation](/features/moderation) now parses AI provider responses correctly even when they include extra text or nested braces. The bot treats unparseable responses as "needs review" instead of letting them through. Fewer missed flags, fewer surprises.
 </Update>
 
 <Update label="2026-05-08" description="May 2026" tags={["Improvements"]}>
@@ -39,7 +39,7 @@ description: Release notes for Volvox.Bot covering new features, dashboard impro
 
 ## Improvements
 
-**Audit trail for AI triage moderation** — Moderation actions taken by [AI automation](/features/ai-conversations) now write to the audit log, so mods can see exactly which AI decisions led to deletes, warnings, timeouts, kicks, or bans. Triage budget alerts are also throttled to avoid noisy duplicate notifications when usage limits are hit.
+**Audit trail for AI triage moderation** — Moderation actions taken by [AI automation](/features/ai-conversations) now write to the audit log, so mods can see exactly which AI decisions led to deletes, warnings, timeouts, kicks, or bans. The bot also throttles triage budget alerts to cut down on noisy duplicate notifications when usage hits its limits.
 
 ## Fixes
 
@@ -51,7 +51,7 @@ description: Release notes for Volvox.Bot covering new features, dashboard impro
 <Update label="2026-04-29" description="April 2026" tags={["Features", "Improvements", "Fixes"]}>
 ## New features
 
-**AI Auto-Moderation** — Active Sentry now scores incoming messages with AI across toxicity, spam, harassment, hate speech, sexual content, violence, and self-harm. Choose a detection model, set per-category sensitivity thresholds, and configure response actions (ignore, delete, flag, warn, timeout, kick, or ban) — including multiple actions per violation. AI auto-mod actions are logged alongside classic moderation cases. Configure under **Config → Moderation & Safety → Content Safety** in the [dashboard](/dashboard). See the [moderation docs](/features/moderation) for details.
+**AI Auto-Moderation** — Active Sentry now scores incoming messages with AI across toxicity, spam, harassment, hate speech, sexual content, violence, and self-harm. Choose a detection model and set per-category sensitivity thresholds. Configure response actions (ignore, delete, flag, warn, timeout, kick, or ban), including multiple actions per violation. The bot logs AI auto-mod actions alongside classic moderation cases. Configure under **Config → Moderation & Safety → Content Safety** in the [dashboard](/dashboard). See the [moderation docs](/features/moderation) for details.
 
 **Configurable model for `/tldr`** — You can now choose which provider/model the [TL;DR command](/features/tldr) uses to generate summaries, right from the dashboard. MiniMax M2.7 is the new default.
 
@@ -63,17 +63,17 @@ description: Release notes for Volvox.Bot covering new features, dashboard impro
 
 ## Improvements
 
-**Cleaner model selectors** — Dashboard provider/model pickers now hide models that aren't available to your server, so you only see options you can actually use. Saved selections with `provider:model` IDs (including those containing colons) are preserved correctly.
+**Cleaner model selectors** — Dashboard provider/model pickers now hide models that aren't available to your server, so you only see options you can actually use. The bot also preserves saved selections with `provider:model` IDs (including those containing colons) correctly.
 
-**Streamlined dashboard overview** — The AI cost tile has been removed from the dashboard overview to keep the page focused on activity and health metrics.
+**Streamlined dashboard overview** — We removed the AI cost tile from the dashboard overview to keep the page focused on activity and health metrics.
 
 ## Fixes
 
 **Auto-mod flag embeds** — Flag embeds now show the global actions that ran for an auto-mod violation, so moderators can see exactly what was applied at a glance.
 
-**Welcome publish reliability** — Several edge cases in welcome panel publishing have been resolved: split payloads, status mismatches, persistence gaps, channel-change cleanup, and rate-limited publish routes are all handled more gracefully.
+**Welcome publish reliability** — We resolved several edge cases in welcome panel publishing: split payloads, status mismatches, persistence gaps, channel-change cleanup, and rate-limited publish routes now all behave more gracefully.
 
-**AI auto-mod stability** — Hardened prompt handling, action reporting, and case/flag log writes so AI auto-moderation behaves predictably under unusual server conditions.
+**AI auto-mod stability** — We hardened prompt handling, action reporting, and case/flag log writes, so AI auto-moderation behaves predictably under unusual server conditions.
 </Update>
 
 <Update label="2026-04-26" description="April 2026" tags={["Features", "Improvements"]}>
@@ -127,7 +127,7 @@ description: Release notes for Volvox.Bot covering new features, dashboard impro
 
 **Configurable level-up DMs** — You can now set custom DM messages sent to members when they level up. Supports per-level message overrides, a live Discord-style preview, and built-in rate limiting to prevent spam.
 
-**Discord markdown editor** — A new rich-text editor for Discord-formatted messages is available in the dashboard. Includes a formatting toolbar, variable inserter, split raw/preview mode, character counter, and keyboard shortcuts.
+**Discord markdown editor** — A new rich-text editor for Discord-formatted messages is available in the dashboard. It includes a formatting toolbar, variable inserter, split raw/preview mode, character counter, and keyboard shortcuts.
 
 **Visual embed builder** — Create Discord embeds visually in the dashboard with a color picker, field management, thumbnail selector, and a live embed preview.
 
@@ -139,15 +139,15 @@ description: Release notes for Volvox.Bot covering new features, dashboard impro
 
 **Landing page redesign** — We completely rebuilt the landing page with a new visual style, interactive feature previews in a bento-box grid, animated stats, and a redesigned pricing section.
 
-**Dashboard polish** — Row hover highlighting on tables, animated KPI counters, visible heatmap tooltips, clickable member rows, corrected XP progress bars, and a live commands-served counter. Thin scrollbars on all inputs and dropdowns for a cleaner look.
+**Dashboard polish** — We added row hover highlighting on tables, animated KPI counters, visible heatmap tooltips, clickable member rows, corrected XP progress bars, and a live commands-served counter. Inputs and dropdowns now use thin scrollbars for a cleaner look.
 
-**Identity resolution** — Conversation replays now show real Discord profile icons. Mentions are resolved to actual usernames, and audit logs display rich user identity (display name + username).
+**Identity resolution** — Conversation replays now show real Discord profile icons. The bot resolves mentions to actual usernames, and audit logs display rich user identity (display name + username).
 
 **Improved AI reliability** — The AI triage system now includes retry logic, timeout handling, and per-role budget support. You can configure separate models for classification vs. responding to optimize costs.
 
-**Mobile experience** — The settings save toolbar, header, and sidebar are now fully responsive on smaller screens. Reduced-motion accessibility support is available across all animated components.
+**Mobile experience** — The settings save toolbar, header, and sidebar are now fully responsive on smaller screens. All animated components now support reduced-motion accessibility preferences.
 
-**OpenGraph previews** — Sharing Volvox.Bot links now shows rich previews on social media, Discord, and Slack. A sitemap and robots.txt have been added for better search engine discoverability.
+**OpenGraph previews** — Sharing Volvox.Bot links now shows rich previews on social media, Discord, and Slack. We also added a sitemap and robots.txt for better search engine discoverability.
 
 **Branding update** — We standardized all visible branding to "Volvox.Bot" across the product.
 
