@@ -53,6 +53,6 @@ AI moderation settings are in **Config → Moderation & Safety → Content Safet
 
 The bot records every triggered AI moderation response in the audit log as `ai_automod.<action>` for each action that actually runs. The bot only records `ai_automod.none` when a threshold is hit and no action runs. Global instant enforcement (`autoDelete`) or an incident report channel (`flagChannelId`) can still produce delete or flag actions, even when you haven't chosen a category-specific response action.
 
-Triage model settings are in **Config → AI & Automation → Triage**. The classifier and response engines use the same supported model dropdown as Content Safety; if saved config contains an invalid or unsupported model string, the bot logs a warning, tries supported configured values in the fixed precedence order, and uses the default AI model if none are supported.
+Triage model settings are in **Config → AI & Automation → Triage**. The classifier and response engines use the same supported model dropdown as Content Safety. If saved config contains an invalid or unsupported model string, the bot logs a warning and tries supported configured values in the fixed precedence order. If none are supported, the bot falls back to the default AI model.
 
 Changes apply instantly — no bot restart needed.
