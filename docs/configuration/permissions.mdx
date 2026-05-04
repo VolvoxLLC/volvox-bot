@@ -59,8 +59,8 @@ Set global admins via the `BOT_OWNER_IDS` environment variable on the server run
 BOT_OWNER_IDS=123456789012345678,987654321098765432
 ```
 
-Each ID must be a Discord user ID (snowflake) for an account that signs in to the dashboard with Discord OAuth. Changes take effect after you restart the dashboard process.
+Each ID must be a Discord user ID (snowflake) for an account that logs in to the dashboard with Discord OAuth. Changes take effect after you restart every process or container that reads `BOT_OWNER_IDS`, including both the bot and dashboard when they run separately.
 
 <Callout type="info">
-Global admin status is independent of any server's roles. A user listed in `BOT_OWNER_IDS` only gains access to the operator-only pages above. They still follow normal Discord permissions for the servers they belong to.
+Global admin status is independent of any server's roles. A user listed in `BOT_OWNER_IDS` only gains access to the operator-only pages above — normal Discord permissions still apply for the servers they belong to.
 </Callout>
