@@ -41,7 +41,7 @@
     "@amplitude/analytics-node": "^1.5.57",
     "@sentry/node": "^10.51.0",
     "ai": "^6.0.174",
-    "discord.js": "^14.26.3",
+    "discord.js": "^14.26.4",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "ioredis": "^5.10.1",
@@ -68,11 +68,11 @@
     "node": ">=22.0.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.13",
+    "@biomejs/biome": "^2.4.14",
     "@changesets/cli": "^2.31.0",
     "@vitest/coverage-v8": "^4.1.5",
     "supertest": "^7.2.2",
-    "turbo": "^2.9.7",
+    "turbo": "^2.9.8",
     "vitest": "^4.1.5"
   }
 }
