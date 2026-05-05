@@ -100,7 +100,7 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-      - name: Check SonarQube Cloud token availability
+      - name: Check SonarCloud token availability
         id: sonar-token
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -111,7 +111,7 @@ jobs:
             echo "available=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: SonarQube Cloud Scan
+      - name: SonarCloud Scan
         if: >-
           ${{
             steps.sonar-token.outputs.available == 'true' &&
