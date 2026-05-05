@@ -114,7 +114,8 @@ jobs:
             steps.sonar-token.outputs.available == 'true' &&
             (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)
           }}
-        uses: SonarSource/sonarqube-scan-action@v7
+        # Pinned to a full commit SHA for GitHub Actions supply-chain/Sonar hotspot compliance.
+        uses: SonarSource/sonarqube-scan-action@c7ee0f9df90b7aa20e8dcf9695dcfe2e7da5b4f2
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
