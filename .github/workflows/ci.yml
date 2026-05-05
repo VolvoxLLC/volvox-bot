@@ -13,6 +13,7 @@ concurrency:
 permissions:
   actions: read
   contents: read
+  pull-requests: read
 
 jobs:
   lint:
@@ -48,6 +49,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v6.0.5
@@ -93,6 +96,27 @@ jobs:
           path: web/coverage/
           if-no-files-found: error
           retention-days: 7
+
+      - name: Check SonarQube Cloud token availability
+        id: sonar-token
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          if [ -n "$SONAR_TOKEN" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: SonarQube Cloud Scan
+        if: >-
+          ${{
+            steps.sonar-token.outputs.available == 'true' &&
+            (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)
+          }}
+        uses: SonarSource/sonarqube-scan-action@v7
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   build:
     name: Typecheck & Build
