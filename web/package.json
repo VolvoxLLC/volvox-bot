@@ -17,7 +17,7 @@
     "test:e2e:headed": "playwright test --headed"
   },
   "dependencies": {
-    "@amplitude/analytics-browser": "^2.42.0",
+    "@amplitude/analytics-browser": "^2.42.1",
     "@gsap/react": "^2.1.2",
     "@paper-design/shaders-react": "^0.0.76",
     "@radix-ui/react-avatar": "^1.1.11",
