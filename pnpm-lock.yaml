@@ -25,8 +25,8 @@ importers:
         specifier: ^10.51.0
         version: 10.51.0
       ai:
-        specifier: ^6.0.174
-        version: 6.0.174(zod@4.3.6)
+        specifier: ^6.0.175
+        version: 6.0.175(zod@4.3.6)
       discord.js:
         specifier: ^14.26.4
         version: 14.26.4
@@ -242,8 +242,8 @@ packages:
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
-  '@ai-sdk/gateway@3.0.109':
-    resolution: {integrity: sha512-r6dOqThjODp1vOhGRJg2OCmyB/ZOQtGx1esZ2SDvwDX5XoX8dBqYaYjLg8MPXTzMGJSgOkJyCxWgUcZtAl16pw==}
+  '@ai-sdk/gateway@3.0.110':
+    resolution: {integrity: sha512-sbv8+1L9/BRKydn8dMNwoMQKupA4iLJ9N+yvxgW6wMQ/94UepDf3FeYWMj/dLdzolAHZ6izRUP4s5WqQkmJ2Zg==}
     engines: {node: '>=18'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -3137,8 +3137,8 @@ packages:
     resolution: {integrity: sha512-kja8j7PjmncONqaTsB8fQ+wE2mSU2DJ9D4XKoJ5PFWIdRMa6SLSN1ff4mOr4jCbfRSsxR4keIiySJU0N9T5hIQ==}
     engines: {node: '>= 8.0.0'}
 
-  ai@6.0.174:
-    resolution: {integrity: sha512-bTrfLUWHWtkjzWyCY4bmyuk4Qvmj4S4NSNsXyNSVVqkmftQNtxRj7dzUoMeQDBBwlJO6fC7m2Q/lNOPqQQfAGA==}
+  ai@6.0.175:
+    resolution: {integrity: sha512-6fFFHzbh6FIZnYc31V6osOxq25ABJYCShfG0O6ajHiA4FB/DgnPi1mP8cO5aAU3HNSbQHiMazdlh9bIsp97mVA==}
     engines: {node: '>=18'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -3800,8 +3800,8 @@ packages:
   fast-safe-stringify@2.1.1:
     resolution: {integrity: sha512-W+KJc2dmILlPplD/H4K9l9LcAHAfPtP6BY84uVLXQ6Evcz9Lcg33Y2z1IVblT6xdY54PXYVHEv+0Wpq8Io6zkA==}
 
-  fast-uri@3.1.0:
-    resolution: {integrity: sha512-iPeeDKJSWf4IEOasVVrknXpaBV0IApz/gp7S2bb7Z4Lljbl2MGJRqInZiUrQwV16cpzw/D3S5j5Julj/gT52AA==}
+  fast-uri@3.1.1:
+    resolution: {integrity: sha512-h2r7rcm6Ee/J8o0LD5djLuFVcfbZxhvho4vvsbeV0aMvXjUgqv4YpxpkEx0d68l6+IleVfLAdVEfhR7QNMkGHQ==}
 
   fastq@1.20.1:
     resolution: {integrity: sha512-GGToxJ/w1x32s/D2EKND7kTil4n8OVk/9mycTc4VDza13lOvpUZTGX3mFSCtV9ksdGBVzvsyAVLM6mHFThxXxw==}
@@ -5668,8 +5668,8 @@ packages:
     deprecated: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
     hasBin: true
 
-  uuid@13.0.1:
-    resolution: {integrity: sha512-9ezox2roIft6ExBVTVqibSd5dc5/47Sw/uY6b4SjQUT2TzQ0tltNquWA46y4xPQmdZYqvnio22SgWd41M86+jw==}
+  uuid@13.0.2:
+    resolution: {integrity: sha512-vzi9uRZ926x4XV73S/4qQaTwPXM2JBj6/6lI/byHH1jOpCzb0zDbfytgA9LcN/hzb2l7WQSQnxITOVx5un/wGw==}
     hasBin: true
 
   uuid@8.3.2:
@@ -5972,7 +5972,7 @@ snapshots:
       '@ai-sdk/provider-utils': 4.0.25(zod@4.3.6)
       zod: 4.3.6
 
-  '@ai-sdk/gateway@3.0.109(zod@4.3.6)':
+  '@ai-sdk/gateway@3.0.110(zod@4.3.6)':
     dependencies:
       '@ai-sdk/provider': 3.0.10
       '@ai-sdk/provider-utils': 4.0.26(zod@4.3.6)
@@ -8971,9 +8971,9 @@ snapshots:
     dependencies:
       humanize-ms: 1.2.1
 
-  ai@6.0.174(zod@4.3.6):
+  ai@6.0.175(zod@4.3.6):
     dependencies:
-      '@ai-sdk/gateway': 3.0.109(zod@4.3.6)
+      '@ai-sdk/gateway': 3.0.110(zod@4.3.6)
       '@ai-sdk/provider': 3.0.10
       '@ai-sdk/provider-utils': 4.0.26(zod@4.3.6)
       '@opentelemetry/api': 1.9.0
@@ -8991,7 +8991,7 @@ snapshots:
   ajv@8.20.0:
     dependencies:
       fast-deep-equal: 3.1.3
-      fast-uri: 3.1.0
+      fast-uri: 3.1.1
       json-schema-traverse: 1.0.0
       require-from-string: 2.0.2
 
@@ -9624,7 +9624,7 @@ snapshots:
 
   fast-safe-stringify@2.1.1: {}
 
-  fast-uri@3.1.0: {}
+  fast-uri@3.1.1: {}
 
   fastq@1.20.1:
     dependencies:
@@ -10479,7 +10479,7 @@ snapshots:
       stopwords-iso: 1.1.0
       sylvester: 0.0.21
       underscore: 1.13.8
-      uuid: 13.0.1
+      uuid: 13.0.2
       wordnet-db: 3.1.14
     transitivePeerDependencies:
       - '@aws-sdk/credential-providers'
@@ -11591,7 +11591,7 @@ snapshots:
 
   uuid@10.0.0: {}
 
-  uuid@13.0.1: {}
+  uuid@13.0.2: {}
 
   uuid@8.3.2: {}
 
