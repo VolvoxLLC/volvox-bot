@@ -7,7 +7,7 @@ description: Release notes for Volvox.Bot covering new features, dashboard impro
 <Update label="2026-05-03" description="May 2026" tags={["Fixes"]}>
 ## Fixes
 
-**More reliable AI auto-moderation** — [AI auto-moderation](/features/moderation) now parses model responses more robustly, so messages are scored and acted on correctly even when the model wraps its output in extra text or nested formatting. Fewer skipped messages, fewer "no decision" outcomes.
+**More reliable AI auto-moderation** — [AI auto-moderation](/features/moderation) now parses model responses more robustly. The bot scores and acts on messages correctly, even when the model buries its verdict in extra text or nested formatting. Fewer skipped messages, fewer "no decision" outcomes.
 
 **Stronger link filter and phishing detection** — The link filter now extracts URLs more accurately from messages, catching more obfuscated and disguised links. We hardened phishing detection against common evasion tricks (extra punctuation, mixed casing, embedded characters), so the filter flags suspicious links even when posters try to sneak them past.
 </Update>
@@ -21,7 +21,7 @@ description: Release notes for Volvox.Bot covering new features, dashboard impro
 
 ## Fixes
 
-**More reliable AI auto-moderation** — [AI auto-moderation](/features/moderation) now parses AI provider responses correctly even when they include extra text or nested braces, and treats unparseable responses as "needs review" instead of letting them through. Fewer missed flags, fewer surprises.
+**More reliable AI auto-moderation** — [AI auto-moderation](/features/moderation) now parses provider responses correctly, even when they arrive wrapped in extra text or nested braces. Unparseable responses route to "needs review" instead of slipping through. Fewer missed flags, fewer surprises.
 </Update>
 
 <Update label="2026-05-08" description="May 2026" tags={["Improvements"]}>
@@ -39,7 +39,7 @@ description: Release notes for Volvox.Bot covering new features, dashboard impro
 
 ## Improvements
 
-**Audit trail for AI triage moderation** — Moderation actions taken by [AI automation](/features/ai-conversations) now write to the audit log, so mods can see exactly which AI decisions led to deletes, warnings, timeouts, kicks, or bans. The bot also throttles triage budget alerts, so usage-limit notifications stop duplicating noisily.
+**Audit trail for AI triage moderation** — [AI automation](/features/ai-conversations) now writes its moderation actions to the audit log, so mods can trace exactly which AI decisions led to deletes, warnings, timeouts, kicks, or bans. The bot also throttles triage budget alerts, so usage-limit notifications stop duplicating noisily.
 
 ## Fixes
 
@@ -153,7 +153,7 @@ description: Release notes for Volvox.Bot covering new features, dashboard impro
 
 ## Fixes
 
-**More reliable bot responses** — Command responses across reminders, moderation, reaction roles, and other features now handle failures gracefully (e.g., blocked DMs or deleted channels) instead of silently failing.
+**More reliable bot responses** — Reminders, moderation, reaction roles, and other features now handle command-response failures gracefully (e.g., blocked DMs or deleted channels) instead of failing silently.
 
 **Bot owners setting removed** — We removed the "Bot Owners" editor from dashboard Permissions settings. You now manage bot ownership via environment configuration only.
 </Update>
