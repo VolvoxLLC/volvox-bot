@@ -1119,6 +1119,116 @@ describe('guilds routes', () => {
       expect(mockPool.query.mock.calls.length).toBe(queryCountAfterFirst + 1);
     });
 
+    it('should not count bot members toward newMembers', async () => {
+      const recentTimestamp = Date.now();
+      mockGuild.members.cache.set('botuser', {
+        id: 'botuser',
+        user: { username: 'SomeBot', bot: true },
+        joinedTimestamp: recentTimestamp,
+        presence: null,
+      });
+
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [{ total_messages: 5, ai_requests: 2, active_users: 1 }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [{ count: 0 }] }); // activeAiConversations
+
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1/analytics?range=week')
+        .set('x-api-secret', SECRET);
+
+      expect(res.status).toBe(200);
+      // mockMember (non-bot) joined in 2024, outside the week range → 0
+      // botuser joined recently but is a bot → excluded
+      expect(res.body.kpis.newMembers).toBe(0);
+    });
+
+    it('should return null for comparison when compare param is not present', async () => {
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [{ total_messages: 5, ai_requests: 2, active_users: 1 }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [{ count: 0 }] }); // activeAiConversations
+
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1/analytics?range=week')
+        .set('x-api-secret', SECRET);
+
+      expect(res.status).toBe(200);
+      expect(res.body.comparison).toBeNull();
+    });
+
+    it('should return 0 for comparison.kpis.newMembers when no members joined in the comparison period', async () => {
+      // A member who joined "now" falls in the current week range but not the previous week range
+      const recentTimestamp = Date.now();
+      mockGuild.members.cache.set('recent-member', {
+        id: 'recent-member',
+        user: { username: 'recentuser', bot: false },
+        joinedTimestamp: recentTimestamp,
+        presence: null,
+      });
+
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [{ total_messages: 5, ai_requests: 2, active_users: 1 }] })
+        .mockResolvedValueOnce({ rows: [{ total_messages: 3, ai_requests: 1, active_users: 1 }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [{ count: 0 }] }); // activeAiConversations
+
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1/analytics?range=week&compare=1')
+        .set('x-api-secret', SECRET);
+
+      expect(res.status).toBe(200);
+      expect(res.body.kpis.newMembers).toBe(1);
+      expect(res.body.comparison).toBeTruthy();
+      expect(res.body.comparison.kpis.newMembers).toBe(0);
+    });
+
+    it('should count a member whose joinedTimestamp falls exactly on the range from boundary', async () => {
+      const fromDate = '2026-01-01T00:00:00.000Z';
+      const toDate = '2026-01-07T23:59:59.999Z';
+      const fromMs = new Date(fromDate).getTime();
+
+      mockGuild.members.cache.set('boundary-member', {
+        id: 'boundary-member',
+        user: { username: 'boundaryuser', bot: false },
+        joinedTimestamp: fromMs,
+        presence: null,
+      });
+
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [{ total_messages: 1, ai_requests: 0, active_users: 1 }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [{ count: 0 }] }); // activeAiConversations
+
+      const res = await request(app)
+        .get(`/api/v1/guilds/guild1/analytics?range=custom&from=${fromDate}&to=${toDate}`)
+        .set('x-api-secret', SECRET);
+
+      expect(res.status).toBe(200);
+      // boundary-member joined exactly at fromMs — inclusive lower bound should count
+      expect(res.body.kpis.newMembers).toBe(1);
+    });
+
     it('should return 400 for invalid custom range params', async () => {
       const res = await request(app)
         .get('/api/v1/guilds/guild1/analytics?range=custom')
