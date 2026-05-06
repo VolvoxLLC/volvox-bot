@@ -1,10 +1,15 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { toast } from 'sonner';
 
 const mockUseConfigContext = vi.fn();
 
 vi.mock('@/components/ui/select', () => import('../../helpers/mock-select'));
+
+vi.mock('sonner', () => ({
+  toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() },
+}));
 
 vi.mock('framer-motion', () => ({
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -17,6 +22,20 @@ vi.mock('framer-motion', () => ({
 
 vi.mock('@/components/dashboard/config-context', () => ({
   useConfigContext: () => mockUseConfigContext(),
+}));
+
+vi.mock('@/components/layout/channel-directory-context', () => ({
+  useGuildChannels: () => ({
+    channels: [
+      { id: 'rules-channel', name: 'rules', type: 0 },
+      { id: 'welcome-channel', name: 'welcome', type: 0 },
+      { id: 'new-channel', name: 'introductions', type: 0 },
+    ],
+    error: null,
+    loading: false,
+    ensureChannelsLoaded: vi.fn(),
+    refreshChannels: vi.fn(),
+  }),
 }));
 
 vi.mock('@/components/ui/channel-selector', () => ({
@@ -406,6 +425,36 @@ describe('OnboardingGrowthCategory', () => {
     expect(updateDraftConfig).not.toHaveBeenCalled();
   });
 
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn(async () =>
+      Response.json({
+        guildId: 'guild-1',
+        panels: {
+          rules: {
+            status: 'posted',
+            configured: true,
+            channelId: 'rules-channel',
+            configuredChannelId: 'rules-channel',
+            messageId: 'message-1',
+            stale: false,
+          },
+          role_menu: {
+            status: 'missing',
+            configured: true,
+            channelId: 'welcome-channel',
+            configuredChannelId: 'welcome-channel',
+            messageId: null,
+            stale: false,
+          },
+        },
+      }),
+    ));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it('shows the full dynamic variable guide for welcome messages', async () => {
     const user = userEvent.setup();
 
@@ -442,6 +491,14 @@ describe('OnboardingGrowthCategory', () => {
       'data-placeholder',
       'Welcome back, {{user}}! Glad to see you again.',
     );
+    expect(editors[2]).toHaveAttribute(
+      'data-placeholder',
+      'Read the server rules, then click below to verify your access.',
+    );
+    expect(editors[3]).toHaveAttribute(
+      'data-placeholder',
+      'Welcome {{user}}! Drop a quick intro so we can meet you.',
+    );
   });
 
   it('hides returning member editor when disabled', () => {
@@ -466,7 +523,7 @@ describe('OnboardingGrowthCategory', () => {
     render(<OnboardingGrowthCategory />);
 
     const editors = screen.getAllByTestId('discord-markdown-editor');
-    expect(editors).toHaveLength(1);
+    expect(editors).toHaveLength(4);
     expect(editors[0]).toHaveAttribute(
       'data-placeholder',
       'Welcome {{user}} to {{server}}!',
@@ -570,6 +627,337 @@ describe('OnboardingGrowthCategory', () => {
 
     expect(updateDraftConfig).toHaveBeenCalledTimes(1);
     expect(updateDraftConfig.mock.results[0]?.value.welcome.channelId).toBe('new-channel');
+  });
+
+  it('shows publish setup actions before message editing with operational copy', async () => {
+    mockWelcomeContext({ draftConfig: createWelcomeDraftConfig({ dynamic: { enabled: false } }) });
+
+    render(<OnboardingGrowthCategory />);
+
+    const publishHeading = await screen.findByText('Publish setup actions');
+    const messageHeading = screen.getByText('Welcome message');
+    expect(publishHeading.compareDocumentPosition(messageHeading)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(screen.getByText(/What this does: posts or updates the rules agreement/)).toBeInTheDocument();
+  });
+
+  it('shows published panel channel names with copy id actions', async () => {
+    mockWelcomeContext({ draftConfig: createWelcomeDraftConfig({ dynamic: { enabled: false } }) });
+
+    render(<OnboardingGrowthCategory />);
+
+    expect(await screen.findByText('#rules')).toBeInTheDocument();
+    expect(await screen.findByText('#welcome')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Copy Rules Agreement channel ID' })).toBeInTheDocument();
+  });
+
+  it('shows failed panel status before stale state', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        Response.json({
+          guildId: 'guild-1',
+          panels: {
+            rules: {
+              status: 'failed',
+              configured: true,
+              channelId: 'rules-channel',
+              configuredChannelId: 'rules-channel',
+              messageId: 'message-1',
+              stale: true,
+              lastError: 'Discord message missing',
+            },
+            role_menu: {
+              status: 'posted',
+              configured: true,
+              channelId: 'welcome-channel',
+              configuredChannelId: 'welcome-channel',
+              messageId: 'message-2',
+              stale: false,
+            },
+          },
+        }),
+      ),
+    );
+    mockWelcomeContext({ draftConfig: createWelcomeDraftConfig({ dynamic: { enabled: false } }) });
+
+    render(<OnboardingGrowthCategory />);
+
+    expect(await screen.findByText('failed')).toBeInTheDocument();
+    expect(screen.queryByText('stale')).not.toBeInTheDocument();
+    expect(screen.getByText('Discord message missing')).toBeInTheDocument();
+  });
+
+  it('uses an info toast instead of success when a single panel is unconfigured', async () => {
+    const user = userEvent.setup();
+    const statusResponse = {
+      guildId: 'guild-1',
+      panels: {
+        rules: {
+          status: 'unconfigured',
+          configured: false,
+          channelId: null,
+          configuredChannelId: null,
+          messageId: null,
+          stale: false,
+        },
+        role_menu: {
+          status: 'missing',
+          configured: true,
+          channelId: 'welcome-channel',
+          configuredChannelId: 'welcome-channel',
+          messageId: null,
+          stale: false,
+        },
+      },
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(Response.json(statusResponse))
+        .mockResolvedValueOnce(Response.json({ panelType: 'rules', status: 'unconfigured' }))
+        .mockResolvedValueOnce(Response.json(statusResponse)),
+    );
+    mockWelcomeContext({ draftConfig: createWelcomeDraftConfig({ dynamic: { enabled: false } }) });
+
+    render(<OnboardingGrowthCategory />);
+
+    await screen.findByText('No channel configured');
+    await user.click(screen.getAllByRole('button', { name: 'Publish' })[0]);
+
+    await waitFor(() => {
+      expect(toast.info).toHaveBeenCalledWith('Panel is not configured — set a channel first.');
+    });
+    expect(toast.success).not.toHaveBeenCalledWith('Welcome panel published');
+  });
+
+  it('uses an info toast instead of an error when bulk publish finds no configured panels', async () => {
+    const user = userEvent.setup();
+    const statusResponse = {
+      guildId: 'guild-1',
+      panels: {
+        rules: {
+          status: 'unconfigured',
+          configured: false,
+          channelId: null,
+          configuredChannelId: null,
+          messageId: null,
+          stale: false,
+        },
+        role_menu: {
+          status: 'unconfigured',
+          configured: false,
+          channelId: null,
+          configuredChannelId: null,
+          messageId: null,
+          stale: false,
+        },
+      },
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(Response.json(statusResponse))
+        .mockResolvedValueOnce(
+          Response.json({
+            results: [
+              { panelType: 'rules', status: 'unconfigured' },
+              { panelType: 'role_menu', status: 'unconfigured' },
+            ],
+          }),
+        )
+        .mockResolvedValueOnce(Response.json(statusResponse)),
+    );
+    mockWelcomeContext({ draftConfig: createWelcomeDraftConfig({ dynamic: { enabled: false } }) });
+
+    render(<OnboardingGrowthCategory />);
+
+    await screen.findAllByText('No channel configured');
+    await user.click(screen.getByRole('button', { name: 'Publish All' }));
+
+    await waitFor(() => {
+      expect(toast.info).toHaveBeenCalledWith(
+        'No welcome panels are configured — set channels first.',
+      );
+    });
+    expect(toast.error).not.toHaveBeenCalledWith('Failed to publish welcome panel', expect.anything());
+    expect(toast.success).not.toHaveBeenCalledWith('Welcome panels published');
+  });
+
+  it('refreshes welcome status after a partial bulk publish error', async () => {
+    const user = userEvent.setup();
+    const initialStatusResponse = {
+      guildId: 'guild-1',
+      panels: {
+        rules: {
+          status: 'missing',
+          configured: true,
+          channelId: 'rules-channel',
+          configuredChannelId: 'rules-channel',
+          messageId: null,
+          stale: false,
+        },
+        role_menu: {
+          status: 'missing',
+          configured: true,
+          channelId: 'welcome-channel',
+          configuredChannelId: 'welcome-channel',
+          messageId: null,
+          stale: false,
+        },
+      },
+    };
+    const refreshedStatusResponse = {
+      guildId: 'guild-1',
+      panels: {
+        ...initialStatusResponse.panels,
+        rules: {
+          ...initialStatusResponse.panels.rules,
+          status: 'posted',
+          messageId: 'message-1',
+        },
+      },
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json(initialStatusResponse))
+      .mockResolvedValueOnce(
+        Response.json({
+          results: [
+            { panelType: 'rules', status: 'posted' },
+            { panelType: 'role_menu', status: 'failed', lastError: 'Missing channel' },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(Response.json(refreshedStatusResponse));
+    vi.stubGlobal('fetch', fetchMock);
+    mockWelcomeContext({ draftConfig: createWelcomeDraftConfig({ dynamic: { enabled: false } }) });
+
+    render(<OnboardingGrowthCategory />);
+
+    await screen.findByText('#rules');
+    await user.click(screen.getByRole('button', { name: 'Publish All' }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Failed to publish welcome panel', {
+        description: 'role menu: Missing channel',
+      });
+    });
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+    });
+    expect(fetchMock.mock.calls[2]?.[0]).toBe('/api/guilds/guild-1/welcome/status');
+  });
+
+  it('shows a warning toast when a single panel publishes but persistence fails', async () => {
+    const user = userEvent.setup();
+    const persistWarning = 'Published to Discord but failed to save publication state.';
+    const statusResponse = {
+      guildId: 'guild-1',
+      panels: {
+        rules: {
+          status: 'posted',
+          configured: true,
+          channelId: 'rules-channel',
+          configuredChannelId: 'rules-channel',
+          messageId: 'message-1',
+          stale: false,
+        },
+        role_menu: {
+          status: 'missing',
+          configured: true,
+          channelId: 'welcome-channel',
+          configuredChannelId: 'welcome-channel',
+          messageId: null,
+          stale: false,
+        },
+      },
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(Response.json(statusResponse))
+        .mockResolvedValueOnce(
+          Response.json({
+            panelType: 'rules',
+            status: 'posted',
+            persistWarning: true,
+            lastError: persistWarning,
+          }),
+        )
+        .mockResolvedValueOnce(Response.json(statusResponse)),
+    );
+    mockWelcomeContext({ draftConfig: createWelcomeDraftConfig({ dynamic: { enabled: false } }) });
+
+    render(<OnboardingGrowthCategory />);
+
+    await screen.findByText('#rules');
+    await user.click(screen.getAllByRole('button', { name: 'Publish' })[0]);
+
+    await waitFor(() => {
+      expect(toast.info).toHaveBeenCalledWith('Welcome panel published with a warning', {
+        description: persistWarning,
+      });
+    });
+    expect(toast.success).not.toHaveBeenCalledWith('Welcome panel published');
+  });
+
+  it('shows a warning toast when bulk publish posts panels but persistence fails', async () => {
+    const user = userEvent.setup();
+    const persistWarning = 'Publication posted, but persistence needs retry.';
+    const statusResponse = {
+      guildId: 'guild-1',
+      panels: {
+        rules: {
+          status: 'posted',
+          configured: true,
+          channelId: 'rules-channel',
+          configuredChannelId: 'rules-channel',
+          messageId: 'message-1',
+          stale: false,
+        },
+        role_menu: {
+          status: 'posted',
+          configured: true,
+          channelId: 'welcome-channel',
+          configuredChannelId: 'welcome-channel',
+          messageId: 'message-2',
+          stale: false,
+        },
+      },
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(Response.json(statusResponse))
+        .mockResolvedValueOnce(
+          Response.json({
+            results: [
+              { panelType: 'rules', status: 'posted' },
+              { panelType: 'role_menu', status: 'posted', persistWarning },
+            ],
+          }),
+        )
+        .mockResolvedValueOnce(Response.json(statusResponse)),
+    );
+    mockWelcomeContext({ draftConfig: createWelcomeDraftConfig({ dynamic: { enabled: false } }) });
+
+    render(<OnboardingGrowthCategory />);
+
+    await screen.findByText('#rules');
+    await user.click(screen.getByRole('button', { name: 'Publish All' }));
+
+    await waitFor(() => {
+      expect(toast.info).toHaveBeenCalledWith('Welcome panels published with a warning', {
+        description: `role menu: ${persistWarning}`,
+      });
+    });
+    expect(toast.success).not.toHaveBeenCalledWith('Welcome panels published');
   });
 
   it('mounts the level-up actions editor from the xp-level-actions tab', () => {

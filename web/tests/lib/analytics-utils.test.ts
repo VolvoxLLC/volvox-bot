@@ -25,6 +25,9 @@ describe('analytics-utils', () => {
 
   it('formats currency with extra precision for sub-dollar values', () => {
     expect(formatUsd(12)).toBe('$12.00');
+    expect(formatUsd(2)).toBe('$2.00');
+    expect(formatUsd(1)).toBe('$1.00');
+    expect(formatUsd(0)).toBe('$0.0000');
     expect(formatUsd(0.1234)).toBe('$0.1234');
   });
 

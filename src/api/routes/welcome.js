@@ -4,14 +4,35 @@
  */
 
 import { Router } from 'express';
+import { rateLimit as expressRateLimit } from 'express-rate-limit';
+import { error as logError } from '../../logger.js';
 import { getConfig } from '../../modules/config.js';
 import {
   pickWelcomeVariant,
   renderWelcomeMessage,
   resolveWelcomeTemplate,
 } from '../../modules/welcome.js';
+import {
+  getWelcomePublicationStatus,
+  publishWelcomePanel,
+  publishWelcomePanels,
+  WELCOME_PANEL_TYPES,
+} from '../../modules/welcomePublishing.js';
+import { isTrustedInternalRequest } from '../middleware/trustedInternalRequest.js';
+import { requireGuildAdmin, validateGuild } from './guilds.js';
 
 const router = Router({ mergeParams: true });
+
+/** Rate limiter for welcome publication endpoints — 30 req/min per IP. */
+const welcomePublishRateLimit = expressRateLimit({
+  windowMs: 60 * 1000,
+  limit: 30,
+  legacyHeaders: true,
+  standardHeaders: false,
+  skip: isTrustedInternalRequest,
+  handler: (_req, res) =>
+    res.status(429).json({ error: 'Too many requests, please try again later' }),
+});
 
 /**
  * POST /guilds/:id/welcome/preview
@@ -87,5 +108,78 @@ router.get('/variables', (_req, res) => {
     ],
   });
 });
+
+// Apply the publication limiter directly on each publication/status route so
+// runtime behavior protects admin auth and downstream publishing work.
+router.get(
+  '/status',
+  welcomePublishRateLimit,
+  requireGuildAdmin,
+  validateGuild,
+  async (req, res) => {
+    try {
+      return res.json(await getWelcomePublicationStatus(req.params.id));
+    } catch (err) {
+      logError('Failed to read welcome publication status', {
+        guildId: req.params.id,
+        userId: req.user?.userId ?? null,
+        error: err?.message,
+      });
+      return res.status(500).json({ error: 'Failed to read welcome publication status' });
+    }
+  },
+);
+
+router.post(
+  '/publish',
+  welcomePublishRateLimit,
+  requireGuildAdmin,
+  validateGuild,
+  async (req, res) => {
+    try {
+      const result = await publishWelcomePanels(req.app.locals.client, req.params.id, {
+        source: 'dashboard',
+        userId: req.user?.userId ?? null,
+      });
+      return res.json(result);
+    } catch (err) {
+      logError('Failed to publish welcome panels from API', {
+        guildId: req.params.id,
+        userId: req.user?.userId ?? null,
+        error: err?.message,
+      });
+      return res.status(500).json({ error: 'Failed to publish welcome panels' });
+    }
+  },
+);
+
+router.post(
+  '/publish/:panelType',
+  welcomePublishRateLimit,
+  requireGuildAdmin,
+  validateGuild,
+  async (req, res) => {
+    const panelType = req.params.panelType;
+    if (!WELCOME_PANEL_TYPES.has(panelType)) {
+      return res.status(400).json({ error: 'Invalid welcome panel type' });
+    }
+
+    try {
+      const result = await publishWelcomePanel(req.app.locals.client, req.params.id, panelType, {
+        source: 'dashboard',
+        userId: req.user?.userId ?? null,
+      });
+      return res.json(result);
+    } catch (err) {
+      logError('Failed to publish welcome panel from API', {
+        guildId: req.params.id,
+        panelType,
+        userId: req.user?.userId ?? null,
+        error: err?.message,
+      });
+      return res.status(500).json({ error: 'Failed to publish welcome panel' });
+    }
+  },
+);
 
 export default router;

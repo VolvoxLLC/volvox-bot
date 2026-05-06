@@ -1,3 +1,5 @@
+import { randomBytes } from 'node:crypto';
+import jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -26,16 +28,46 @@ vi.mock('../../../src/modules/config.js', () => ({
   }),
 }));
 
+vi.mock('../../../src/modules/welcomePublishing.js', () => ({
+  WELCOME_PANEL_TYPES: new Set(['rules', 'role_menu']),
+  getWelcomePublicationStatus: vi.fn().mockResolvedValue({
+    guildId: 'guild1',
+    panels: {
+      rules: { panelType: 'rules', status: 'missing', configured: true },
+      role_menu: { panelType: 'role_menu', status: 'missing', configured: false },
+    },
+  }),
+  publishWelcomePanel: vi.fn().mockResolvedValue({
+    panelType: 'rules',
+    status: 'posted',
+    channelId: 'rules-channel',
+  }),
+  publishWelcomePanels: vi.fn().mockResolvedValue({
+    guildId: 'guild1',
+    results: [{ panelType: 'rules', status: 'posted', channelId: 'rules-channel' }],
+  }),
+}));
+
+import { _resetSecretCache } from '../../../src/api/middleware/verifyJwt.js';
 import { createApp } from '../../../src/api/server.js';
+import { sessionStore } from '../../../src/api/utils/sessionStore.js';
+import {
+  getWelcomePublicationStatus,
+  publishWelcomePanel,
+  publishWelcomePanels,
+} from '../../../src/modules/welcomePublishing.js';
 
 describe('welcome routes', () => {
   let app;
-  const SECRET = 'test-secret';
+  let secret;
+  let sessionSigningFixture;
 
   beforeEach(() => {
-    vi.stubEnv('BOT_API_SECRET', SECRET);
+    secret = randomBytes(32).toString('hex');
+    sessionSigningFixture = randomBytes(32).toString('hex');
+    vi.stubEnv('BOT_API_SECRET', secret);
     const client = {
-      guilds: { cache: new Map() },
+      guilds: { cache: new Map([['guild1', { id: 'guild1' }]]) },
       ws: { status: 0, ping: 42 },
       user: { tag: 'Bot#1234' },
     };
@@ -43,6 +75,8 @@ describe('welcome routes', () => {
   });
 
   afterEach(() => {
+    sessionStore.clear();
+    _resetSecretCache();
     vi.unstubAllEnvs();
   });
 
@@ -50,7 +84,7 @@ describe('welcome routes', () => {
     it('renders a template provided in the body', async () => {
       const res = await request(app)
         .post('/api/v1/guilds/guild1/welcome/preview')
-        .set('x-api-secret', SECRET)
+        .set('x-api-secret', secret)
         .send({
           template: 'Hello {{user}} in {{server}}!',
           guild: { name: 'Test Guild', memberCount: 5 },
@@ -65,7 +99,7 @@ describe('welcome routes', () => {
       const variants = ['Variant A {{user}}', 'Variant B {{user}}'];
       const res = await request(app)
         .post('/api/v1/guilds/guild1/welcome/preview')
-        .set('x-api-secret', SECRET)
+        .set('x-api-secret', secret)
         .send({ variants });
 
       expect(res.status).toBe(200);
@@ -75,7 +109,7 @@ describe('welcome routes', () => {
     it('leaves single-brace placeholders as plain text', async () => {
       const res = await request(app)
         .post('/api/v1/guilds/guild1/welcome/preview')
-        .set('x-api-secret', SECRET)
+        .set('x-api-secret', secret)
         .send({
           template: 'Hello {user} in {server}!',
           guild: { name: 'Test Guild', memberCount: 5 },
@@ -89,7 +123,7 @@ describe('welcome routes', () => {
     it('resolves per-channel config when channelId provided', async () => {
       const res = await request(app)
         .post('/api/v1/guilds/guild1/welcome/preview')
-        .set('x-api-secret', SECRET)
+        .set('x-api-secret', secret)
         .send({ channelId: 'ch-specific' });
 
       expect(res.status).toBe(200);
@@ -100,7 +134,7 @@ describe('welcome routes', () => {
     it('falls back to global config when no body overrides', async () => {
       const res = await request(app)
         .post('/api/v1/guilds/guild1/welcome/preview')
-        .set('x-api-secret', SECRET)
+        .set('x-api-secret', secret)
         .send({});
 
       expect(res.status).toBe(200);
@@ -111,7 +145,7 @@ describe('welcome routes', () => {
     it('uses provided member data', async () => {
       const res = await request(app)
         .post('/api/v1/guilds/guild1/welcome/preview')
-        .set('x-api-secret', SECRET)
+        .set('x-api-secret', secret)
         .send({
           template: '{{username}} joined!',
           member: { id: '999', username: 'alice' },
@@ -134,7 +168,7 @@ describe('welcome routes', () => {
     it('returns supported variable list', async () => {
       const res = await request(app)
         .get('/api/v1/guilds/guild1/welcome/variables')
-        .set('x-api-secret', SECRET);
+        .set('x-api-secret', secret);
 
       expect(res.status).toBe(200);
       expect(Array.isArray(res.body.variables)).toBe(true);
@@ -152,7 +186,7 @@ describe('welcome routes', () => {
     it('each variable entry has description', async () => {
       const res = await request(app)
         .get('/api/v1/guilds/guild1/welcome/variables')
-        .set('x-api-secret', SECRET);
+        .set('x-api-secret', secret);
 
       for (const v of res.body.variables) {
         expect(typeof v.variable).toBe('string');
@@ -164,6 +198,64 @@ describe('welcome routes', () => {
     it('returns 401 without auth', async () => {
       const res = await request(app).get('/api/v1/guilds/guild1/welcome/variables');
       expect(res.status).toBe(401);
+    });
+  });
+
+  describe('welcome publishing routes', () => {
+    it('returns publication status', async () => {
+      const res = await request(app)
+        .get('/api/v1/guilds/guild1/welcome/status')
+        .set('x-api-secret', secret);
+
+      expect(res.status).toBe(200);
+      expect(res.body.panels.rules.status).toBe('missing');
+      expect(getWelcomePublicationStatus).toHaveBeenCalledWith('guild1');
+    });
+
+    it('publishes all panels', async () => {
+      const res = await request(app)
+        .post('/api/v1/guilds/guild1/welcome/publish')
+        .set('x-api-secret', secret);
+
+      expect(res.status).toBe(200);
+      expect(res.body.results[0].status).toBe('posted');
+      expect(publishWelcomePanels).toHaveBeenCalled();
+    });
+
+    it('publishes a single panel', async () => {
+      const res = await request(app)
+        .post('/api/v1/guilds/guild1/welcome/publish/rules')
+        .set('x-api-secret', secret);
+
+      expect(res.status).toBe(200);
+      expect(res.body.panelType).toBe('rules');
+      expect(publishWelcomePanel).toHaveBeenCalledWith(
+        expect.anything(),
+        'guild1',
+        'rules',
+        expect.objectContaining({ source: 'dashboard' }),
+      );
+    });
+
+    it('rate limits welcome publication endpoints for OAuth requests', async () => {
+      const userId = '123456789012345678';
+      const jti = 'welcome-rate-limit-test';
+      vi.stubEnv('SESSION_SECRET', sessionSigningFixture);
+      vi.stubEnv('BOT_OWNER_IDS', userId);
+      _resetSecretCache();
+      sessionStore.set(userId, { accessToken: 'oauth-session-fixture', jti });
+      const bearer = jwt.sign({ userId, jti }, sessionSigningFixture);
+
+      let res;
+      for (let i = 0; i < 31; i++) {
+        res = await request(app)
+          .get('/api/v1/guilds/guild1/welcome/status')
+          .set('Authorization', `Bearer ${bearer}`);
+      }
+
+      expect(res.status).toBe(429);
+      expect(res.body.error).toBe('Too many requests, please try again later');
+      expect(res.headers['x-ratelimit-limit']).toBe('30');
     });
   });
 });

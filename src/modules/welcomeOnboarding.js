@@ -8,11 +8,49 @@ import {
 import { info } from '../logger.js';
 import { fetchChannelCached } from '../utils/discordCache.js';
 import { safeEditReply, safeSend } from '../utils/safeSend.js';
+import { renderTemplate } from '../utils/templateEngine.js';
 
 export const RULES_ACCEPT_BUTTON_ID = 'welcome_rules_accept';
 export const ROLE_MENU_SELECT_ID = 'welcome_role_select';
+export const DEFAULT_RULES_AGREEMENT_MESSAGE =
+  'Read the server rules, then click below to verify your access.';
+export const DEFAULT_ROLE_MENU_MESSAGE = 'Pick your roles below. You can update them anytime.';
+export const DEFAULT_INTRODUCTION_MESSAGE =
+  'Welcome {{user}}! Drop a quick intro so we can meet you.';
 
 const MAX_ROLE_MENU_OPTIONS = 25;
+
+function getTrimmedString(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function getOptionalString(value) {
+  return getTrimmedString(value) || null;
+}
+
+function getStringOrDefault(value, fallback) {
+  return getTrimmedString(value) || fallback;
+}
+
+function normalizeRoleMenuOptions(options) {
+  if (!Array.isArray(options)) return [];
+
+  return options
+    .filter((opt) => opt && typeof opt === 'object')
+    .map((opt) => ({
+      label: String(opt.label || '').trim(),
+      roleId: String(opt.roleId || '').trim(),
+      ...(opt.description ? { description: String(opt.description).trim() } : {}),
+    }))
+    .filter((opt) => opt.label && opt.roleId)
+    .slice(0, MAX_ROLE_MENU_OPTIONS);
+}
+
+function normalizeDmSteps(steps) {
+  if (!Array.isArray(steps)) return [];
+
+  return steps.map((step) => String(step || '').trim()).filter(Boolean);
+}
 
 /**
  * Normalize welcome onboarding settings and apply safe defaults.
@@ -20,49 +58,33 @@ const MAX_ROLE_MENU_OPTIONS = 25;
  * @param {object} welcomeConfig
  * @returns {{
  *   rulesChannel: string|null,
+ *   roleMenuChannel: string|null,
  *   verifiedRole: string|null,
  *   introChannel: string|null,
- *   roleMenu: {enabled: boolean, options: Array<{label: string, roleId: string, description?: string}>},
+ *   rulesMessage: string,
+ *   roleMenu: {enabled: boolean, message: string, options: Array<{label: string, roleId: string, description?: string}>},
+ *   introMessage: string,
  *   dmSequence: {enabled: boolean, steps: string[]},
  * }}
  */
 export function normalizeWelcomeOnboardingConfig(welcomeConfig = {}) {
-  const roleMenuOptions = Array.isArray(welcomeConfig?.roleMenu?.options)
-    ? welcomeConfig.roleMenu.options
-        .filter((opt) => opt && typeof opt === 'object')
-        .map((opt) => ({
-          label: String(opt.label || '').trim(),
-          roleId: String(opt.roleId || '').trim(),
-          ...(opt.description ? { description: String(opt.description).trim() } : {}),
-        }))
-        .filter((opt) => opt.label && opt.roleId)
-        .slice(0, MAX_ROLE_MENU_OPTIONS)
-    : [];
-
-  const dmSteps = Array.isArray(welcomeConfig?.dmSequence?.steps)
-    ? welcomeConfig.dmSequence.steps.map((step) => String(step || '').trim()).filter(Boolean)
-    : [];
+  const legacyRoleMenuChannel = getOptionalString(welcomeConfig?.channelId);
 
   return {
-    rulesChannel:
-      typeof welcomeConfig?.rulesChannel === 'string' && welcomeConfig.rulesChannel.trim()
-        ? welcomeConfig.rulesChannel.trim()
-        : null,
-    verifiedRole:
-      typeof welcomeConfig?.verifiedRole === 'string' && welcomeConfig.verifiedRole.trim()
-        ? welcomeConfig.verifiedRole.trim()
-        : null,
-    introChannel:
-      typeof welcomeConfig?.introChannel === 'string' && welcomeConfig.introChannel.trim()
-        ? welcomeConfig.introChannel.trim()
-        : null,
+    rulesChannel: getOptionalString(welcomeConfig?.rulesChannel),
+    roleMenuChannel: getOptionalString(welcomeConfig?.roleMenuChannel) ?? legacyRoleMenuChannel,
+    verifiedRole: getOptionalString(welcomeConfig?.verifiedRole),
+    introChannel: getOptionalString(welcomeConfig?.introChannel),
+    rulesMessage: getStringOrDefault(welcomeConfig?.rulesMessage, DEFAULT_RULES_AGREEMENT_MESSAGE),
     roleMenu: {
       enabled: welcomeConfig?.roleMenu?.enabled === true,
-      options: roleMenuOptions,
+      message: getStringOrDefault(welcomeConfig?.roleMenu?.message, DEFAULT_ROLE_MENU_MESSAGE),
+      options: normalizeRoleMenuOptions(welcomeConfig?.roleMenu?.options),
     },
+    introMessage: getStringOrDefault(welcomeConfig?.introMessage, DEFAULT_INTRODUCTION_MESSAGE),
     dmSequence: {
       enabled: welcomeConfig?.dmSequence?.enabled === true,
-      steps: dmSteps,
+      steps: normalizeDmSteps(welcomeConfig?.dmSequence?.steps),
     },
   };
 }
@@ -77,7 +99,8 @@ export function isReturningMember(member) {
   return member?.flags?.has?.(GuildMemberFlagsBitField.Flags.DidRejoin) === true;
 }
 
-export function buildRulesAgreementMessage() {
+export function buildRulesAgreementMessage(welcomeConfig = {}) {
+  const onboarding = normalizeWelcomeOnboardingConfig(welcomeConfig);
   const button = new ButtonBuilder()
     .setCustomId(RULES_ACCEPT_BUTTON_ID)
     .setLabel('Accept Rules')
@@ -86,7 +109,7 @@ export function buildRulesAgreementMessage() {
   const row = new ActionRowBuilder().addComponents(button);
 
   return {
-    content: '✅ Read the server rules, then click below to verify your access.',
+    content: onboarding.rulesMessage,
     components: [row],
   };
 }
@@ -113,9 +136,17 @@ export function buildRoleMenuMessage(welcomeConfig) {
   const row = new ActionRowBuilder().addComponents(select);
 
   return {
-    content: '🎭 Pick your roles below. You can update them anytime.',
+    content: onboarding.roleMenu.message,
     components: [row],
   };
+}
+
+export function renderIntroductionMessage(template, member, guild) {
+  return renderTemplate(template || DEFAULT_INTRODUCTION_MESSAGE, {
+    user: `<@${member.id}>`,
+    username: member.user?.username || member.username || 'Unknown',
+    server: guild?.name ?? '',
+  });
 }
 
 async function fetchRole(guild, roleId) {
@@ -179,7 +210,7 @@ export async function handleRulesAcceptButton(interaction, config) {
     if (introChannel?.isTextBased?.()) {
       await safeSend(
         introChannel,
-        `👋 Welcome <@${member.id}>! Drop a quick intro so we can meet you.`,
+        renderIntroductionMessage(welcome.introMessage, member, interaction.guild),
       );
     }
   }

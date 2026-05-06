@@ -1,7 +1,8 @@
 'use client';
 
-import { Info } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Copy, Info, RefreshCw, Send } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { AiModelSelect } from '@/components/dashboard/ai-model-select';
 import { useConfigContext } from '@/components/dashboard/config-context';
 import {
@@ -12,6 +13,7 @@ import {
 } from '@/components/dashboard/config-editor-utils';
 import type { ConfigFeatureId } from '@/components/dashboard/config-workspace/types';
 import { XpLevelActionsEditor } from '@/components/dashboard/xp-level-actions-editor';
+import { useGuildChannels } from '@/components/layout/channel-directory-context';
 import { Button } from '@/components/ui/button';
 import { ChannelSelector } from '@/components/ui/channel-selector';
 import { DiscordMarkdownEditor } from '@/components/ui/discord-markdown-editor';
@@ -66,6 +68,185 @@ const DYNAMIC_VARIABLE_DEFINITIONS = [
     sample: '#general, #projects, #showcase',
   },
 ] as const;
+const INTRODUCTION_VARIABLE_DEFINITIONS = [
+  { name: 'user', description: 'Mention member (pings)', sample: '@johndoe' },
+  { name: 'username', description: 'Plain name (no ping)', sample: 'johndoe' },
+  { name: 'server', description: 'Server name', sample: 'Volvox' },
+] as const;
+
+type WelcomePanelStatus = {
+  panelType: 'rules' | 'role_menu';
+  configured: boolean;
+  status: 'unconfigured' | 'missing' | 'posted' | 'failed';
+  channelId: string | null;
+  configuredChannelId?: string | null;
+  messageId: string | null;
+  stale: boolean;
+  lastPublishedAt: string | null;
+  lastError: string | null;
+};
+
+type WelcomePublicationStatus = {
+  guildId: string;
+  panels: {
+    rules?: WelcomePanelStatus;
+    role_menu?: WelcomePanelStatus;
+  };
+};
+
+type WelcomePublishResult = {
+  panelType?: 'rules' | 'role_menu';
+  status?: WelcomePanelStatus['status'];
+  lastError?: string | null;
+  persistWarning?: boolean | string | null;
+};
+
+type WelcomeBulkPublishResult = {
+  results?: WelcomePublishResult[];
+};
+
+function getWelcomePublishFailureMessage(
+  data: (WelcomePublishResult & WelcomeBulkPublishResult) | null,
+  panelType?: 'rules' | 'role_menu',
+) {
+  if (panelType) {
+    if (data?.status === 'posted' || data?.status === 'unconfigured') return null;
+    return data?.lastError || `Publish returned status "${data?.status ?? 'unknown'}"`;
+  }
+
+  const results = Array.isArray(data?.results) ? data.results : [];
+  const failed = results.filter((entry) => entry.status === 'failed');
+  const posted = results.filter((entry) => entry.status === 'posted');
+  const unconfigured = results.filter((entry) => entry.status === 'unconfigured');
+  if (
+    failed.length === 0 &&
+    (posted.length > 0 || (results.length > 0 && unconfigured.length === results.length))
+  ) {
+    return null;
+  }
+
+  if (failed.length > 0) {
+    return failed
+      .map((entry) => {
+        const label = entry.panelType === 'role_menu' ? 'role menu' : entry.panelType || 'panel';
+        return `${label}: ${entry.lastError || entry.status || 'unknown'}`;
+      })
+      .join('; ');
+  }
+
+  return 'No welcome panels were published. Check that channels are configured.';
+}
+
+function getWelcomePublishWarningMessage(
+  data: (WelcomePublishResult & WelcomeBulkPublishResult) | null,
+  panelType?: 'rules' | 'role_menu',
+) {
+  const fallback = 'Published to Discord, but saving publication state failed.';
+  const hasPersistWarning = (entry: WelcomePublishResult) =>
+    entry.status === 'posted' && (Boolean(entry.persistWarning) || Boolean(entry.lastError));
+  const warningText = (entry: WelcomePublishResult) => {
+    if (entry.lastError) return entry.lastError;
+    if (typeof entry.persistWarning === 'string' && entry.persistWarning.trim()) {
+      return entry.persistWarning;
+    }
+    return fallback;
+  };
+
+  if (panelType) {
+    return data && hasPersistWarning(data) ? warningText(data) : null;
+  }
+
+  const warnings = (Array.isArray(data?.results) ? data.results : []).filter(hasPersistWarning);
+  if (warnings.length === 0) return null;
+
+  return warnings
+    .map((entry) => {
+      const label = entry.panelType === 'role_menu' ? 'role menu' : entry.panelType || 'panel';
+      return `${label}: ${warningText(entry)}`;
+    })
+    .join('; ');
+}
+
+function getWelcomePublishInfoMessage(
+  data: (WelcomePublishResult & WelcomeBulkPublishResult) | null,
+  panelType?: 'rules' | 'role_menu',
+) {
+  if (panelType && data?.status === 'unconfigured') {
+    return 'Panel is not configured — set a channel first.';
+  }
+
+  const results = Array.isArray(data?.results) ? data.results : [];
+  if (results.length > 0 && results.every((entry) => entry.status === 'unconfigured')) {
+    return 'No welcome panels are configured — set channels first.';
+  }
+
+  return null;
+}
+
+function getWelcomePanelStatusText(
+  status: WelcomePanelStatus | undefined,
+  welcomeStatusLoading: boolean,
+) {
+  if (status?.status === 'failed') return status.status;
+  if (status?.stale) return 'stale';
+  if (status?.status) return status.status;
+  return welcomeStatusLoading ? 'loading' : 'unknown';
+}
+
+function getWelcomePanelStatusClassName(statusText: string) {
+  if (statusText === 'posted') return 'border-primary/30 text-primary bg-primary/10';
+  if (statusText === 'failed') return 'border-destructive/30 text-destructive bg-destructive/10';
+  return 'border-border/50 text-muted-foreground bg-muted/30';
+}
+
+async function postWelcomePanel(
+  guildId: string,
+  panelType?: 'rules' | 'role_menu',
+): Promise<(WelcomePublishResult & WelcomeBulkPublishResult) | null> {
+  const suffix = panelType ? `/publish/${encodeURIComponent(panelType)}` : '/publish';
+  const response = await fetch(`/api/guilds/${encodeURIComponent(guildId)}/welcome${suffix}`, {
+    method: 'POST',
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(data?.error || 'Failed to publish welcome panels');
+  }
+  return data;
+}
+
+function assertWelcomePublishSucceeded(
+  data: (WelcomePublishResult & WelcomeBulkPublishResult) | null,
+  panelType?: 'rules' | 'role_menu',
+) {
+  const failureMessage = getWelcomePublishFailureMessage(data, panelType);
+  if (failureMessage) {
+    throw new Error(failureMessage);
+  }
+}
+
+function showWelcomePublishOutcome(
+  data: (WelcomePublishResult & WelcomeBulkPublishResult) | null,
+  panelType?: 'rules' | 'role_menu',
+) {
+  const warningMessage = getWelcomePublishWarningMessage(data, panelType);
+  if (warningMessage) {
+    toast.info(
+      panelType
+        ? 'Welcome panel published with a warning'
+        : 'Welcome panels published with a warning',
+      { description: warningMessage },
+    );
+    return;
+  }
+
+  const infoMessage = getWelcomePublishInfoMessage(data, panelType);
+  if (infoMessage) {
+    toast.info(infoMessage);
+    return;
+  }
+
+  toast.success(panelType ? 'Welcome panel published' : 'Welcome panels published');
+}
 
 /**
  * Renders the Onboarding & Growth configuration category UI that allows editing multiple feature sections based on the active tab.
@@ -76,10 +257,17 @@ const DYNAMIC_VARIABLE_DEFINITIONS = [
  */
 export function OnboardingGrowthCategory() {
   const { draftConfig, saving, guildId, updateDraftConfig, activeTabId } = useConfigContext();
+  const { channels: guildChannels } = useGuildChannels(guildId || null);
 
   const activeTab = activeTabId as ConfigFeatureId | null;
 
   const [dmStepsRaw, setDmStepsRaw] = useState('');
+  const [welcomeStatus, setWelcomeStatus] = useState<WelcomePublicationStatus | null>(null);
+  const [welcomeStatusLoading, setWelcomeStatusLoading] = useState(false);
+  const [welcomePublishing, setWelcomePublishing] = useState<string | null>(null);
+  const selectedGuildIdRef = useRef(guildId);
+  const welcomeStatusRequestIdRef = useRef(0);
+  selectedGuildIdRef.current = guildId;
 
   useEffect(() => {
     if (draftConfig?.welcome?.dmSequence?.steps) {
@@ -166,6 +354,103 @@ export function OnboardingGrowthCategory() {
     return samples;
   }, [draftConfig?.welcome?.dynamic?.enabled]);
 
+  const introductionVariableSamples = useMemo(
+    () =>
+      Object.fromEntries(
+        INTRODUCTION_VARIABLE_DEFINITIONS.map((variable) => [variable.name, variable.sample]),
+      ) as Record<string, string>,
+    [],
+  );
+
+  const fetchWelcomeStatus = useCallback(async () => {
+    if (!guildId || activeTab !== 'welcome') return;
+
+    const requestGuildId = guildId;
+    const requestId = ++welcomeStatusRequestIdRef.current;
+    setWelcomeStatusLoading(true);
+    try {
+      const response = await fetch(
+        `/api/guilds/${encodeURIComponent(requestGuildId)}/welcome/status`,
+        {
+          cache: 'no-store',
+        },
+      );
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error || 'Failed to fetch welcome publish status');
+      }
+      if (welcomeStatusRequestIdRef.current !== requestId || data?.guildId !== requestGuildId) {
+        return;
+      }
+      setWelcomeStatus(data);
+    } catch (error) {
+      if (welcomeStatusRequestIdRef.current !== requestId) return;
+      toast.error('Failed to load welcome publish status', {
+        description: error instanceof Error ? error.message : 'A network error occurred.',
+      });
+    } finally {
+      if (welcomeStatusRequestIdRef.current === requestId) {
+        setWelcomeStatusLoading(false);
+      }
+    }
+  }, [activeTab, guildId]);
+
+  useEffect(() => {
+    setWelcomeStatus((current) => (current?.guildId === guildId ? current : null));
+    welcomeStatusRequestIdRef.current += 1;
+    setWelcomeStatusLoading(false);
+    setWelcomePublishing(null);
+  }, [guildId]);
+
+  useEffect(() => {
+    fetchWelcomeStatus().catch(() => undefined);
+  }, [fetchWelcomeStatus]);
+
+  const publishWelcomePanel = useCallback(
+    async (panelType?: 'rules' | 'role_menu') => {
+      if (!guildId) return;
+
+      const initiatingGuildId = guildId;
+      const isInitiatingGuildSelected = () => selectedGuildIdRef.current === initiatingGuildId;
+      const publishingKey = panelType ?? 'all';
+      setWelcomePublishing(publishingKey);
+      try {
+        const data = await postWelcomePanel(initiatingGuildId, panelType);
+        assertWelcomePublishSucceeded(data, panelType);
+        if (!isInitiatingGuildSelected()) return;
+        showWelcomePublishOutcome(data, panelType);
+        if (!isInitiatingGuildSelected()) return;
+        await fetchWelcomeStatus();
+      } catch (error) {
+        if (!isInitiatingGuildSelected()) return;
+        toast.error('Failed to publish welcome panel', {
+          description: error instanceof Error ? error.message : 'A network error occurred.',
+        });
+        await fetchWelcomeStatus().catch(() => undefined);
+      } finally {
+        if (isInitiatingGuildSelected()) {
+          setWelcomePublishing(null);
+        }
+      }
+    },
+    [fetchWelcomeStatus, guildId],
+  );
+
+  const handleRefreshWelcomeStatus = useCallback(() => {
+    fetchWelcomeStatus().catch(() => undefined);
+  }, [fetchWelcomeStatus]);
+
+  const handlePublishAllWelcomePanels = useCallback(() => {
+    publishWelcomePanel().catch(() => undefined);
+  }, [publishWelcomePanel]);
+
+  const handlePublishWelcomePanel = useCallback(
+    (panelType: 'rules' | 'role_menu') => {
+      publishWelcomePanel(panelType).catch(() => undefined);
+    },
+    [publishWelcomePanel],
+  );
+
   const welcomeRoleOptions = useMemo(
     () =>
       (draftConfig?.welcome?.roleMenu?.options ?? []).map((option) => ({
@@ -173,6 +458,26 @@ export function OnboardingGrowthCategory() {
         id: option.id ?? generateId(),
       })),
     [draftConfig?.welcome?.roleMenu?.options],
+  );
+  const channelNameById = useMemo(
+    () => new Map(guildChannels.map((channel) => [channel.id, channel.name])),
+    [guildChannels],
+  );
+
+  const copyChannelId = useCallback(async (channelId: string) => {
+    try {
+      await navigator.clipboard.writeText(channelId);
+      toast.success('Channel ID copied');
+    } catch {
+      toast.error('Failed to copy channel ID');
+    }
+  }, []);
+
+  const handleCopyChannelId = useCallback(
+    (channelId: string) => {
+      copyChannelId(channelId).catch(() => undefined);
+    },
+    [copyChannelId],
   );
 
   useEffect(() => {
@@ -211,6 +516,8 @@ export function OnboardingGrowthCategory() {
 
   if (!draftConfig) return null;
   if (!activeTab) return null;
+
+  const welcomePanels = welcomeStatus?.panels;
 
   let isCurrentFeatureEnabled = false;
   let handleToggleCurrentFeature = (_v: boolean) => {};
@@ -273,6 +580,119 @@ export function OnboardingGrowthCategory() {
       {/* Welcome Layout */}
       {activeTab === 'welcome' && (
         <div className="space-y-6">
+          <div className="p-4 sm:p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Info className="h-3.5 w-3.5 text-primary" />
+                  <h3 className="text-sm font-bold text-foreground/90">Publish setup actions</h3>
+                </div>
+                <p className="text-[11px] text-muted-foreground/60 font-medium">
+                  What this does: posts or updates the rules agreement and self-assign role menu in
+                  Discord. Set the channels below first, then publish when you are ready.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={welcomeStatusLoading || welcomePublishing !== null}
+                  onClick={handleRefreshWelcomeStatus}
+                  className="h-8 gap-2 text-[10px] uppercase tracking-widest font-bold border border-border/40 rounded-xl"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Refresh
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={saving || welcomePublishing !== null}
+                  onClick={handlePublishAllWelcomePanels}
+                  className="h-8 gap-2 text-[10px] uppercase tracking-widest font-bold rounded-xl"
+                >
+                  <Send className="h-3.5 w-3.5" />
+                  Publish All
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {[
+                { key: 'rules' as const, label: 'Rules Agreement' },
+                { key: 'role_menu' as const, label: 'Self-Assign Roles' },
+              ].map((panel) => {
+                const status = welcomePanels?.[panel.key];
+                const statusText = getWelcomePanelStatusText(status, welcomeStatusLoading);
+                const channelId = status?.configuredChannelId ?? status?.channelId;
+                const channelName = channelId ? channelNameById.get(channelId) : null;
+
+                return (
+                  <div
+                    key={panel.key}
+                    className="rounded-2xl border border-border/40 bg-background/60 p-4 space-y-3"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="text-xs font-bold text-foreground/90">{panel.label}</div>
+                        <div className="flex min-h-5 flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground/70">
+                          {channelId ? (
+                            <>
+                              <span>
+                                Channel:{' '}
+                                <span className="font-semibold text-foreground/80">
+                                  #{channelName ?? 'unknown-channel'}
+                                </span>
+                              </span>
+                              <button
+                                type="button"
+                                className="inline-flex h-5 items-center gap-1 rounded-lg border border-border/40 px-1.5 font-mono text-[10px] text-muted-foreground hover:border-primary/30 hover:text-primary"
+                                aria-label={`Copy ${panel.label} channel ID`}
+                                title={`Copy channel ID ${channelId}`}
+                                onClick={() => handleCopyChannelId(channelId)}
+                              >
+                                <Copy className="h-3 w-3" />
+                                ID
+                              </button>
+                            </>
+                          ) : (
+                            'No channel configured'
+                          )}
+                        </div>
+                      </div>
+                      <span
+                        className={cn(
+                          'rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider',
+                          getWelcomePanelStatusClassName(statusText),
+                        )}
+                      >
+                        {statusText}
+                      </span>
+                    </div>
+                    {status?.messageId && (
+                      <div className="text-[11px] font-mono text-muted-foreground/70">
+                        Message: {status.messageId}
+                      </div>
+                    )}
+                    {status?.lastError && (
+                      <div className="text-[11px] text-destructive">{status.lastError}</div>
+                    )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={saving || welcomePublishing !== null}
+                      onClick={() => handlePublishWelcomePanel(panel.key)}
+                      className="h-8 w-full gap-2 text-[10px] uppercase tracking-widest font-bold text-primary hover:bg-primary/5 border border-primary/20 rounded-xl"
+                    >
+                      <Send className="h-3.5 w-3.5" />
+                      {status?.messageId ? 'Publish Changes' : 'Publish'}
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
           <div className="p-4 sm:p-6 rounded-[24px] border border-border/40 bg-muted/20 backdrop-blur-xl space-y-6">
             <div className="space-y-2">
               <span className="block text-sm font-bold tracking-tight text-foreground/80">
@@ -314,6 +734,42 @@ export function OnboardingGrowthCategory() {
               )}
             </div>
 
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <span className="block text-sm font-bold tracking-tight text-foreground/80">
+                  Rules agreement message
+                </span>
+                <DiscordMarkdownEditor
+                  value={draftConfig.welcome?.rulesMessage ?? ''}
+                  onChange={(v) => updateWelcomeField('rulesMessage', v)}
+                  variables={[]}
+                  variableSamples={{}}
+                  maxLength={2000}
+                  placeholder="Read the server rules, then click below to verify your access."
+                  disabled={saving}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <span className="block text-sm font-bold tracking-tight text-foreground/80">
+                  Introduction prompt
+                </span>
+                <DiscordMarkdownEditor
+                  value={draftConfig.welcome?.introMessage ?? ''}
+                  onChange={(v) => updateWelcomeField('introMessage', v)}
+                  variables={INTRODUCTION_VARIABLE_DEFINITIONS.map((variable) => variable.name)}
+                  variableSamples={introductionVariableSamples}
+                  maxLength={2000}
+                  placeholder="Welcome {{user}}! Drop a quick intro so we can meet you."
+                  disabled={saving}
+                />
+                <p className="text-[10px] font-medium text-muted-foreground/60">
+                  <code>{'{{user}}'}</code> mentions the member. Use <code>{'{{username}}'}</code>{' '}
+                  for plain text.
+                </p>
+              </div>
+            </div>
+
             <details className="group">
               <summary className="cursor-pointer text-xs font-bold uppercase tracking-widest text-muted-foreground/60 hover:text-primary transition-colors flex items-center gap-2">
                 <span>View Variables Guide</span>
@@ -343,7 +799,7 @@ export function OnboardingGrowthCategory() {
               </div>
             </details>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 pt-4 border-t border-border/40">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-6 pt-4 border-t border-border/40">
               <div className="space-y-2">
                 <label
                   htmlFor="welcome-channel-id"
@@ -372,6 +828,25 @@ export function OnboardingGrowthCategory() {
                     draftConfig.welcome?.rulesChannel ? [draftConfig.welcome.rulesChannel] : []
                   }
                   onChange={(selected) => updateWelcomeField('rulesChannel', selected[0] ?? null)}
+                  disabled={saving}
+                  maxSelections={1}
+                  filter="text"
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 ml-1">
+                  Role Menu
+                </div>
+                <ChannelSelector
+                  guildId={guildId}
+                  selected={
+                    draftConfig.welcome?.roleMenuChannel
+                      ? [draftConfig.welcome.roleMenuChannel]
+                      : []
+                  }
+                  onChange={(selected) =>
+                    updateWelcomeField('roleMenuChannel', selected[0] ?? null)
+                  }
                   disabled={saving}
                   maxSelections={1}
                   filter="text"
@@ -554,6 +1029,21 @@ export function OnboardingGrowthCategory() {
                   label="Role Menu"
                 />
               </div>
+            </div>
+
+            <div className="mb-6 space-y-2">
+              <span className="block text-sm font-bold tracking-tight text-foreground/80">
+                Self-assign roles message
+              </span>
+              <DiscordMarkdownEditor
+                value={draftConfig.welcome?.roleMenu?.message ?? ''}
+                onChange={(v) => updateWelcomeRoleMenu('message', v)}
+                variables={[]}
+                variableSamples={{}}
+                maxLength={2000}
+                placeholder="Pick your roles below. You can update them anytime."
+                disabled={saving}
+              />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">

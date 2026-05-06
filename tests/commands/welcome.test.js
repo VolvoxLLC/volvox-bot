@@ -17,6 +17,16 @@ vi.mock('../../src/modules/welcomeOnboarding.js', () => ({
   normalizeWelcomeOnboardingConfig: vi.fn().mockReturnValue({}),
 }));
 
+vi.mock('../../src/modules/welcomePublishing.js', () => ({
+  publishWelcomePanels: vi.fn().mockResolvedValue({
+    guildId: 'guild-1',
+    results: [
+      { panelType: 'rules', status: 'unconfigured', action: 'skipped' },
+      { panelType: 'role_menu', status: 'unconfigured', action: 'skipped' },
+    ],
+  }),
+}));
+
 vi.mock('../../src/utils/permissions.js', () => ({
   isModerator: vi.fn().mockReturnValue(false),
 }));
@@ -32,14 +42,10 @@ vi.mock('../../src/utils/safeSend.js', () => ({
 
 import { PermissionsBitField } from 'discord.js';
 import { adminOnly, data, execute } from '../../src/commands/welcome.js';
-import { getConfig } from '../../src/modules/config.js';
-import {
-  buildRoleMenuMessage,
-  normalizeWelcomeOnboardingConfig,
-} from '../../src/modules/welcomeOnboarding.js';
-import { fetchChannelCached } from '../../src/utils/discordCache.js';
+import { error as logError } from '../../src/logger.js';
+import { publishWelcomePanels } from '../../src/modules/welcomePublishing.js';
 import { isModerator } from '../../src/utils/permissions.js';
-import { safeEditReply, safeSend } from '../../src/utils/safeSend.js';
+import { safeEditReply } from '../../src/utils/safeSend.js';
 
 function mockInteraction(overrides = {}) {
   return {
@@ -100,36 +106,93 @@ describe('welcome command', () => {
     );
   });
 
-  it('should post both onboarding panels when configured channels are valid', async () => {
+  it('should publish both onboarding panels through the shared publisher', async () => {
     isModerator.mockReturnValueOnce(true);
-    getConfig.mockReturnValueOnce({
-      welcome: {
-        channelId: 'welcome-channel',
-      },
+    publishWelcomePanels.mockResolvedValueOnce({
+      guildId: 'guild-1',
+      results: [
+        {
+          panelType: 'rules',
+          status: 'posted',
+          action: 'created',
+          channelId: 'rules-channel',
+        },
+        {
+          panelType: 'role_menu',
+          status: 'posted',
+          action: 'updated',
+          channelId: 'welcome-channel',
+        },
+      ],
     });
-    normalizeWelcomeOnboardingConfig.mockReturnValueOnce({
-      rulesChannel: 'rules-channel',
-    });
-    buildRoleMenuMessage.mockReturnValueOnce({ content: 'roles' });
-
-    const rulesChannel = { id: 'rules-channel', isTextBased: vi.fn().mockReturnValue(true) };
-    const welcomeChannel = {
-      id: 'welcome-channel',
-      isTextBased: vi.fn().mockReturnValue(true),
-    };
-    fetchChannelCached.mockResolvedValueOnce(rulesChannel).mockResolvedValueOnce(welcomeChannel);
 
     const interaction = mockInteraction({ client: {} });
 
     await execute(interaction);
 
-    expect(fetchChannelCached).toHaveBeenNthCalledWith(1, interaction.client, 'rules-channel');
-    expect(fetchChannelCached).toHaveBeenNthCalledWith(2, interaction.client, 'welcome-channel');
-    expect(safeSend).toHaveBeenNthCalledWith(1, rulesChannel, { content: 'rules' });
-    expect(safeSend).toHaveBeenNthCalledWith(2, welcomeChannel, { content: 'roles' });
+    expect(publishWelcomePanels).toHaveBeenCalledWith(interaction.client, 'guild-1', {
+      source: 'slash-command',
+      userId: 'user-1',
+    });
 
     const reply = safeEditReply.mock.calls.at(-1)?.[1]?.content ?? '';
     expect(reply).toContain('Posted rules agreement panel');
-    expect(reply).toContain('Posted role menu');
+    expect(reply).toContain('Updated role menu panel');
+  });
+
+  it('should surface persistence warnings on posted onboarding panels', async () => {
+    isModerator.mockReturnValueOnce(true);
+    publishWelcomePanels.mockResolvedValueOnce({
+      guildId: 'guild-1',
+      results: [
+        {
+          panelType: 'rules',
+          status: 'posted',
+          action: 'created',
+          channelId: 'rules-channel',
+          persistWarning: true,
+          lastError: 'Published to Discord but failed to save publication state.',
+        },
+        {
+          panelType: 'role_menu',
+          status: 'posted',
+          action: 'updated',
+          channelId: 'welcome-channel',
+          lastError: 'Database pool unavailable',
+        },
+      ],
+    });
+
+    const interaction = mockInteraction({ client: {} });
+
+    await execute(interaction);
+
+    const reply = safeEditReply.mock.calls.at(-1)?.[1]?.content ?? '';
+    expect(reply).toContain(
+      'Posted rules agreement panel in <#rules-channel>. Warning: Published to Discord but failed to save publication state.',
+    );
+    expect(reply).toContain(
+      'Updated role menu panel in <#welcome-channel>. Warning: Database pool unavailable.',
+    );
+  });
+
+  it('should report an error instead of leaving the deferred reply hanging', async () => {
+    isModerator.mockReturnValueOnce(true);
+    publishWelcomePanels.mockRejectedValueOnce(new Error('Discord publish failed'));
+    const interaction = mockInteraction({ client: {} });
+
+    await execute(interaction);
+
+    expect(logError).toHaveBeenCalledWith(
+      'Welcome setup command failed',
+      expect.objectContaining({
+        guildId: 'guild-1',
+        userId: 'user-1',
+        error: 'Discord publish failed',
+      }),
+    );
+    expect(safeEditReply).toHaveBeenCalledWith(interaction, {
+      content: 'Failed to publish welcome setup panels. Please try again later.',
+    });
   });
 });
