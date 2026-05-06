@@ -57,6 +57,7 @@ type KpiCard = {
   previous: number | null | undefined;
   icon: typeof MessageSquare;
   format: (value: number) => string;
+  animate?: boolean;
 };
 
 type MetricSummaryCardProps = {
@@ -174,6 +175,7 @@ function getKpiValueContent(
 ): React.ReactNode {
   if (!analyticsLoaded) return '\u2014';
   if (!state.hasValue) return 'Unavailable';
+  if (card.animate === false) return card.format(state.numericValue);
   return <AnimatedValue value={state.numericValue} format={card.format} />;
 }
 
@@ -559,6 +561,7 @@ export function AnalyticsDashboard() {
         previous: analytics?.comparison?.kpis.newMembers,
         icon: UserPlus,
         format: formatNumber,
+        animate: false,
       },
     ],
     [analytics],

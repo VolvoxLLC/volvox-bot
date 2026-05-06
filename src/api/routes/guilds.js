@@ -1533,28 +1533,6 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
           uses: Number(row.uses || 0),
         }));
 
-        /**
-         * NOTE: guild.members.cache only contains members Discord has sent to the
-         * bot (typically those with recent activity/presence). Both newMembers and
-         * onlineMemberCount will undercount relative to the true guild population.
-         * This is a known Discord gateway limitation — a complete count would
-         * require guild.members.fetch(), which is expensive and rate-limited.
-         */
-        const newMembers = countNewMembersInRange(
-          req.guild.members.cache,
-          from.getTime(),
-          to.getTime(),
-        );
-
-        const comparisonNewMembers =
-          comparisonFrom && comparisonTo
-            ? countNewMembersInRange(
-                req.guild.members.cache,
-                comparisonFrom.getTime(),
-                comparisonTo.getTime(),
-              )
-            : 0;
-
         return {
           guildId: req.params.id,
           range: {
@@ -1570,7 +1548,6 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
             aiRequests: Number(kpiRow.ai_requests || 0),
             aiCostUsd,
             activeUsers: Number(kpiRow.active_users || 0),
-            newMembers,
           },
           messageVolume: volume,
           aiUsage: {
@@ -1595,7 +1572,6 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
                   aiRequests: Number(comparisonKpiRow.ai_requests || 0),
                   aiCostUsd: comparisonAiCostUsd,
                   activeUsers: Number(comparisonKpiRow.active_users || 0),
-                  newMembers: comparisonNewMembers,
                 },
               }
             : null,
@@ -1627,6 +1603,30 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
       },
       analyticsTtl,
     );
+
+    /**
+     * NOTE: guild.members.cache only contains members Discord has sent to the
+     * bot (typically those with recent activity/presence). Both newMembers and
+     * onlineMemberCount will undercount relative to the true guild population.
+     * This is a known Discord gateway limitation — a complete count would
+     * require guild.members.fetch(), which is expensive and rate-limited.
+     *
+     * Keep member-cache-derived counts out of the long-lived analytics DB cache:
+     * guild membership can change between cached weekly/monthly analytics reads.
+     */
+    const currentNewMembers = countNewMembersInRange(
+      req.guild.members.cache,
+      from.getTime(),
+      to.getTime(),
+    );
+    const currentComparisonNewMembers =
+      comparisonFrom && comparisonTo
+        ? countNewMembersInRange(
+            req.guild.members.cache,
+            comparisonFrom.getTime(),
+            comparisonTo.getTime(),
+          )
+        : 0;
 
     // Realtime fields — computed fresh on every request (not cached)
     let onlineMemberCount = 0;
@@ -1669,6 +1669,19 @@ router.get('/:id/analytics', requireGuildAdmin, validateGuild, async (req, res) 
 
     return res.json({
       ...analyticsData,
+      kpis: {
+        ...analyticsData.kpis,
+        newMembers: currentNewMembers,
+      },
+      comparison: analyticsData.comparison
+        ? {
+            ...analyticsData.comparison,
+            kpis: {
+              ...analyticsData.comparison.kpis,
+              newMembers: currentComparisonNewMembers,
+            },
+          }
+        : null,
       realtime: {
         onlineMembers: membersWithPresence > 0 ? onlineMemberCount : null,
         activeAiConversations,
