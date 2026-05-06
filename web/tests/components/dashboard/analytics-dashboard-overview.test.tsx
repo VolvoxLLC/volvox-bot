@@ -186,4 +186,49 @@ describe('AnalyticsDashboard overview', () => {
     expect(screen.getByText('New members')).toBeInTheDocument();
     expect(screen.queryByText('—')).not.toBeInTheDocument();
   });
+
+  it('renders new members value as a plain formatted number immediately without animation', async () => {
+    // analyticsPayload.kpis.newMembers = 7 (from vi.hoisted fixture)
+    // The newMembers KPI card has animate: false, so getKpiValueContent returns
+    // card.format(numericValue) as a plain string rather than an AnimatedValue component.
+    // Other KPI cards (totalMessages=1234, aiRequests=456, activeUsers=88) use AnimatedValue
+    // which starts at display=0 in useState — their final values are not visible on first render.
+    const { AnalyticsDashboard } = await import('@/components/dashboard/analytics-dashboard');
+
+    render(<AnalyticsDashboard />);
+
+    // "7" is only visible immediately because of animate: false on the newMembers card
+    expect(screen.getByText('7')).toBeInTheDocument();
+  });
+
+  it('does not render totalMessages formatted value before AnimatedValue animation completes', async () => {
+    // Contrasts with the animate:false behaviour of newMembers. totalMessages uses AnimatedValue
+    // (no animate flag), which initialises display to 0. The animation advances via
+    // requestAnimationFrame which does not fire synchronously in jsdom, so the final
+    // formatted value "1,234" should not be present on the initial render.
+    const { AnalyticsDashboard } = await import('@/components/dashboard/analytics-dashboard');
+
+    render(<AnalyticsDashboard />);
+
+    expect(screen.queryByText('1,234')).not.toBeInTheDocument();
+  });
+
+  it('renders new members as zero immediately when the count is 0', async () => {
+    analyticsPayload.kpis.newMembers = 0;
+
+    const { AnalyticsDashboard } = await import('@/components/dashboard/analytics-dashboard');
+
+    render(<AnalyticsDashboard />);
+
+    // With animate: false, format(0) = "0" is returned directly.
+    // The New members label is present to confirm we are looking at the right card.
+    expect(screen.getByText('New members')).toBeInTheDocument();
+    // Verify the card section containing "New members" also contains "0".
+    // querySelectorAll is used because AnimatedValue-based cards also start with "0".
+    const newMembersCard = screen.getByText('New members').closest('[class*="glow-card"]');
+    expect(newMembersCard).not.toBeNull();
+    expect(newMembersCard).toHaveTextContent('0');
+
+    analyticsPayload.kpis.newMembers = 7;
+  });
 });
