@@ -62,5 +62,5 @@ BOT_OWNER_IDS=123456789012345678,987654321098765432
 Each ID must be a Discord user ID for an account that logs in to the dashboard with Discord OAuth. Changes take effect after you restart every process or container that reads `BOT_OWNER_IDS`, including both the bot and dashboard when they run separately.
 
 <Callout type="info">
-Global admin status is independent of any server's roles. A user listed in `BOT_OWNER_IDS` only gains access to the operator-only pages above. Normal Discord permissions still govern what they can do in their servers.
+Global admin status is independent of any server's roles. If you're listed in `BOT_OWNER_IDS`, you only gain access to the operator-only pages above. Normal Discord permissions still govern what you can do in your servers.
 </Callout>
